@@ -1,0 +1,19 @@
+inputs:
+  path:
+    description: 'Path where linting test will be executed'
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - name: Install dependencies
+      shell: bash
+      run: |
+        python -m pip install --upgrade pip
+        pip install pylint==3.1.0
+    - name: Run linting test on $ {{ inputs.path }}
+      shell: bash
+      run: |
+        pylint_rc=$(pwd)/qa/python/pylintrc
+        cd ${{ inputs.path }}
+        pylint --rcfile $pylint_rc --load-plugins=pylint.extensions.bad_builtin -r y -j 0 -f colorized **/*.py

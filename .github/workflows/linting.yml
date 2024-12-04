@@ -1,0 +1,23 @@
+name: Linting test
+
+on:
+  push:
+    branches: [ 'main' ]
+  pull_request:
+    paths:
+      - 'ml_worker/**.py'
+      - '.github/workflows/linting.yml'
+
+# TODO: leverage some caching here
+jobs:
+  linting-worker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/pylint
+        with:
+          path: "."
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
