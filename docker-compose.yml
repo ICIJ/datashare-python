@@ -1,0 +1,135 @@
+version: '3.7'
+
+services:
+  ml-worker:
+    build:
+      context: .
+      target: worker
+    container_name: datashare-ml-worker
+    deploy:
+      mode: replicated
+      replicas: 1
+    depends_on:
+      datashare_web:
+        condition: service_started
+    environment:
+      DS_DOCKER_ML_LOG_LEVEL: DEBUG
+      DS_DOCKER_ML_MAX_PROCESSES: 1
+      DS_DOCKER_ML_MAX_LANGUAGES_IN_MEMORY: 1
+      DS_DOCKER_ES_ADDRESS: http://elasticsearch:9200
+      ICIJ_WORKER_TYPE: amqp
+      ICIJ_WORKER_RABBITMQ_HOST: rabbitmq
+      ICIJ_WORKER_RABBITMQ_PORT: 5672
+
+  # Adding rabbitmq to distribute Datashare tasks
+  rabbitmq:
+    image: rabbitmq:3.12.0-management
+    # Set a host name to prevent rabbitmq to create new conf each time https://stackoverflow.com/a/53772874
+    hostname: rmq
+    container_name: datashare-rabbitmq
+    healthcheck:
+      test: rabbitmq-diagnostics -q status
+      interval: 5s
+      timeout: 2s
+      retries: 10
+      start_period: 5s
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - type: volume
+        source: rabbitmq-data
+        target: /var/lib/rabbitmq
+
+
+  # Unless commented, all lines below are copied from https://icij.gitbook.io/datashare/server-mode/install-with-docker
+  datashare_web:
+    image: icij/datashare:19.0.0
+    hostname: datashare
+    ports:
+      - "8080:8080"
+    environment:
+      - DS_DOCKER_MOUNTED_DATA_DIR=${PWD}/data
+    volumes:
+      - type: bind
+        source: ${PWD}/.data
+        target: /home/datashare/Datashare
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    # We need to switch the batchQueueType to AMQP and taskRoutingStrategy to Group compared to the default config
+    command: >-
+      --mode SERVER
+      --batchQueueType AMQP
+      --taskRoutingStrategy GROUP
+      --dataDir /home/datashare/Datashare
+      --pluginsDir /home/datashare/plugins
+      --extensionsDir /home/datashare/extensions
+      --authFilter org.icij.datashare.session.YesCookieAuthFilter
+      --dataSourceUrl jdbc:postgresql://postgresql/datashare?user=datashare\&password=password 
+      --defaultProject test-project
+      --elasticsearchAddress http://elasticsearch:9200      
+      --messageBusAddress redis://redis:6379
+      --queueType REDIS
+      --redisAddress redis://redis:6379  
+      --rootHost http://localhost:8080
+      --sessionStoreType REDIS
+      --sessionTtlSeconds 43200
+      --tcpListenPort 8080
+
+  elasticsearch:
+    image: elasticsearch:7.17.25
+    restart: on-failure
+    volumes:
+      - type: volume
+        source: elasticsearch-data
+        target: /usr/share/elasticsearch/data
+        read_only: false
+    environment:
+      - "http.host=0.0.0.0"
+      - "transport.host=0.0.0.0"
+      - "cluster.name=datashare"
+      - "discovery.type=single-node"
+      - "discovery.zen.minimum_master_nodes=1"
+      - "xpack.license.self_generated.type=basic"
+      - "http.cors.enabled=true"
+      - "http.cors.allow-origin=*"
+      - "http.cors.allow-methods=OPTIONS, HEAD, GET, POST, PUT, DELETE"
+    healthcheck:
+      test: [ "CMD-SHELL", "curl --silent --fail elasticsearch:9200/_cluster/health || exit 1" ]
+    ports:
+      - "9200:9200"
+
+  postgresql:
+    image: postgres:12-alpine
+    environment:
+      - POSTGRES_USER=datashare
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=datashare
+      # This is needed by the heathcheck command
+      # @see https://stackoverflow.com/a/60194261
+      - PGUSER=datashare
+    volumes:
+      - type: volume
+        source: postgresql-data
+        target: /var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready", "-U", "datashare", "-d", "datashare" ]
+
+  redis:
+    image: redis:4.0.1-alpine
+    restart: on-failure
+    volumes:
+      - type: volume
+        source: redis-data
+        target: /data
+    healthcheck:
+      test: [ "CMD-SHELL", "redis-cli", "--raw", "incr", "ping" ]
+
+volumes:
+  elasticsearch-data:
+  postgresql-data:
+  redis-data:
+  rabbitmq-data:

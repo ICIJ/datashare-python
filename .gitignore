@@ -1,0 +1,18 @@
+.idea/
+# Python
+*.log
+venv
+*.egg-info
+.eggs
+__pycache__
+*.pytest_cache
+*.pyc
+build
+dist
+test/.env
+.cache
+tmp
+./*.csv
+
+# VS code
+.vscode

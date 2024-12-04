@@ -1,0 +1,49 @@
+[project]
+name = "datashare-ml-worker-template"
+version = "0.1.0"
+description = "ML worker template for Datashare"
+authors = [{ name = "Clément Doumouro", email = "cdoumouro@icij.org" }]
+readme = "README.md"
+packages = [{ include = "ml_worker" }]
+exclude = ["ml_worker/tests"]
+requires-python = "~=3.11"
+dependencies = [
+    "aiostream~=0.6.4",
+    "icij-common[elasticsearch]~=0.5",
+    "icij-worker[amqp]~=0.11",
+    "torch>=2.5.1 ; sys_platform != 'darwin'",
+    "torch!=2.6.0.dev20241204+cpu ; sys_platform == 'darwin'", # see https://github.com/astral-sh/uv/issues/9209
+    "transformers~=4.46.3",
+    "pycountry>=24.6.1",
+    "sentencepiece>=0.2.0",
+]
+
+[tool.uv.sources]
+torch = [
+    # TODO: add CUDA support
+    { index = "pytorch-nightly" },
+]
+
+[[tool.uv.index]]
+name = "pytorch-nightly"
+url = "https://download.pytorch.org/whl/nightly/cpu"
+explicit = true
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[dependency-groups]
+dev = [
+    "pytest~=8.1",
+    "pytest-asyncio~=0.24",
+    "pylint~=3.1.0",
+]
+
+[tool.uv.pip]
+prerelease = "if-necessary"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "session"

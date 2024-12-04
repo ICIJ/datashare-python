@@ -1,0 +1,7 @@
+*
+!ml_worker
+ml_worker/tests
+!pyproject.toml
+!README.md
+!scripts
+!uv.lock
