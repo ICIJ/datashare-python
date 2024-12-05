@@ -6,9 +6,6 @@ services:
       context: .
       target: worker
     container_name: datashare-ml-worker
-    deploy:
-      mode: replicated
-      replicas: 1
     depends_on:
       datashare_web:
         condition: service_started
