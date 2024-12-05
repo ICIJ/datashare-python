@@ -26,15 +26,16 @@ async def classify_docs(
     progress: PercentProgress | None = None,
     config: ClassificationConfig = ClassificationConfig(),
 ) -> int:
-    # Retrieve docs which haven't been classified yet
     model = config.model
+    # Retrieve the number of docs which haven't been classified yet
+    # (to publish progress)
     n_docs = await _count_unclassified(es_client, project, model=model)
     if not n_docs:
         if progress is not None:
             await progress(1.0)
         return n_docs
     # Convert the progress to a "raw" progress to update the progress incrementally
-    # rather than setting the progress rate
+    # rather than setting the progress rate/percentage
     progress = to_raw_progress(progress, max_progress=n_docs)
     # Torch/macOS silicon stuff
     device = None
@@ -44,9 +45,10 @@ async def classify_docs(
     pipe = pipeline(config.task, model=model, device=device)
     model = pipe.model.name_or_path
     seen = 0
+    # Retrieve unprocessed docs.
+    unclassified = _get_unclassified(es_client, project=project, model=model)
     # We batch the data ourselves, ideally, we should use an async version of:
     # https://huggingface.co/docs/datasets/v3.1.0/en/package_reference/main_classes#datasets.Dataset.from_generator
-    unclassified = _get_unclassified(es_client, project=project, model=model)
     async for batch in async_batches(unclassified, batch_size=config.batch_size):
         contents = [d.content for d in batch]
         labels = _classify(pipe, contents)
