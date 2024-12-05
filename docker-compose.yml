@@ -11,8 +11,6 @@ services:
         condition: service_started
     environment:
       DS_DOCKER_ML_LOG_LEVEL: DEBUG
-      DS_DOCKER_ML_MAX_PROCESSES: 1
-      DS_DOCKER_ML_MAX_LANGUAGES_IN_MEMORY: 1
       DS_DOCKER_ES_ADDRESS: http://elasticsearch:9200
       ICIJ_WORKER_TYPE: amqp
       ICIJ_WORKER_RABBITMQ_HOST: rabbitmq
