@@ -1,17 +1,38 @@
 # pylint: disable=redefined-outer-name
 import asyncio
+import json
+import os
+from multiprocessing import Process
 from pathlib import Path
 from typing import AsyncGenerator, Generator, Iterator
 
+import aiohttp
+import psutil
 import pytest
+from aiohttp import ClientTimeout
 from elasticsearch._async.helpers import async_streaming_bulk
 from icij_common.es import DOC_ROOT_ID, ESClient, ES_DOCUMENT_TYPE, ID
-from icij_worker import AMQPWorkerConfig
+from icij_common.pydantic_utils import jsonable_encoder
+from icij_worker import AMQPWorkerConfig, WorkerBackend
+from icij_worker.backend import start_workers
+from redis import asyncio as aioredis
 
-from ml_worker.app import app
+from ml_worker.app import PYTHON_TASK_GROUP, app
 from ml_worker.config import AppConfig
 from ml_worker.objects import Document
 from ml_worker.tasks.dependencies import lifespan_es_client
+
+RABBITMQ_TEST_PORT = 5672
+RABBITMQ_TEST_HOST = "localhost"
+RABBITMQ_DEFAULT_VHOST = "%2F"
+
+_RABBITMQ_MANAGEMENT_PORT = 15672
+TEST_MANAGEMENT_URL = f"http://localhost:{_RABBITMQ_MANAGEMENT_PORT}"
+_DEFAULT_BROKER_URL = (
+    f"amqp://guest:guest@{RABBITMQ_TEST_HOST}:{RABBITMQ_TEST_PORT}/"
+    f"{RABBITMQ_DEFAULT_VHOST}"
+)
+_DEFAULT_AUTH = aiohttp.BasicAuth(login="guest", password="guest", encoding="utf-8")
 
 TEST_PROJECT = "test-project"
 
@@ -38,7 +59,7 @@ def event_loop(request) -> Iterator[asyncio.AbstractEventLoop]:
 
 @pytest.fixture(scope="session")
 def test_app_config() -> AppConfig:
-    return AppConfig(log_level="DEBUG")
+    return AppConfig(log_level="DEBUG", ds_url="http://localhost:8080")
 
 
 @pytest.fixture(scope="session")
@@ -82,6 +103,28 @@ async def test_es_client(
     await es.indices.delete(index="_all")
     await es.indices.create(index=TEST_PROJECT, body=_INDEX_BODY)
     return es
+
+
+@pytest.fixture()
+async def test_task_client(test_app_config) -> ESClient:
+    task_client = test_app_config.to_task_client()
+    async with task_client:
+        redis = aioredis.from_url("redis://localhost")
+        await redis.flushall()
+        await task_client.delete_all_tasks()
+        yield task_client
+
+
+@pytest.fixture(scope="session")
+async def rabbit_mq_session() -> AsyncGenerator[str, None]:
+    await wipe_rabbit_mq()
+    yield _DEFAULT_BROKER_URL
+
+
+@pytest.fixture()
+async def rabbit_mq() -> AsyncGenerator[str, None]:
+    await wipe_rabbit_mq()
+    yield _DEFAULT_BROKER_URL
 
 
 @pytest.fixture()
@@ -167,7 +210,72 @@ def doc_2() -> Document:
 def doc_3() -> Document:
     return Document(
         id="doc-3",
-        root_document="roo3",
+        root_document="root-3",
         language="SPANISH",
         content="traduce este texto al inglés",
     )
+
+
+def _worker_main(config_path: Path, n_workers: int):
+    os.environ["_TYPER_STANDARD_TRACEBACK"] = "1"
+    start_workers(
+        "ml_worker.app.app",
+        n_workers,
+        config_path,
+        backend=WorkerBackend.MULTIPROCESSING,
+        group=PYTHON_TASK_GROUP.name,
+    )
+
+
+@pytest.fixture
+def worker_pool(
+    test_worker_config: AMQPWorkerConfig,
+    tmpdir,
+    # Clear the tasks
+    test_task_client,  # pylint: disable=unused-argument
+    # Wipe rabbitMQ
+    rabbit_mq,  # pylint: disable=unused-argument
+):
+    tmp_path = Path(tmpdir) / "config.json"
+    config = jsonable_encoder(test_worker_config)
+    config["type"] = test_worker_config.type.default
+    tmp_path.write_text(json.dumps(config))
+    p = Process(target=_worker_main, args=(tmp_path, 2))
+    p.start()
+    try:
+        yield p
+    finally:
+        main_process = psutil.Process(p.pid)
+        for child in main_process.children(recursive=True):
+            child.kill()
+        main_process.kill()
+
+
+def rabbit_mq_test_session() -> aiohttp.ClientSession:
+    return aiohttp.ClientSession(
+        raise_for_status=True, auth=_DEFAULT_AUTH, timeout=ClientTimeout(total=2)
+    )
+
+
+async def wipe_rabbit_mq():
+    async with rabbit_mq_test_session() as session:
+        tasks = [_empty_all_queues(session)]
+        await asyncio.gather(*tasks)
+
+
+def get_test_management_url(url: str) -> str:
+    return f"{TEST_MANAGEMENT_URL}{url}"
+
+
+async def _empty_all_queues(session: aiohttp.ClientSession):
+    url = f"/api/queues/{RABBITMQ_DEFAULT_VHOST}"
+    async with session.get(get_test_management_url(url)) as res:
+        queues = await res.json()
+    tasks = [_delete_queue_content(session, q["name"]) for q in queues]
+    await asyncio.gather(*tasks)
+
+
+async def _delete_queue_content(session: aiohttp.ClientSession, name: str):
+    url = f"/api/queues/{RABBITMQ_DEFAULT_VHOST}/{name}/contents"
+    async with session.delete(get_test_management_url(url)) as res:
+        res.raise_for_status()

@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+
+function _export_globals() {
+    REDIS_IMG=$(redis_img)
+    export REDIS_IMG
+}
+
+function _helpers() {
+    function redis_img() {
+        local host_arch
+        if command -v arch >/dev/null 2>&1; then
+            host_arch=$(arch)
+        else
+            host_arch=$(uname -m)
+        fi
+        local redis_img_
+        if [ "$host_arch" == "x86_64" ] ||[ "$host_arch" == "amd64" ]; then
+            redis_img_="redis"
+        elif [ "$host_arch" == "aarch64" ] || [ "$host_arch" == "arm64" ]; then
+            redis_img_="arm64v8/redis"
+        else
+            _exit_with_message "Unsupported architecture $host_arch"
+        fi
+        echo "$redis_img_"
+    }
+
+}
+
+function _main() {
+    set -e
+    function _exit_with_message() {
+        echo "$1"
+        exit "${2:-1}"
+    }
+    _helpers
+    _export_globals
+    docker compose "$@"
+}
+
+_main "$@"

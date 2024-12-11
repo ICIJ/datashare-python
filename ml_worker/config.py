@@ -23,6 +23,7 @@ class AppConfig(ICIJSettings, LogWithWorkerIDMixin, NoEnumModel):
 
     # DS
     ds_api_key: str | None = None
+    ds_url: str = "http://datashare:8080"
     # ES
     es_address: str = "http://localhost:9200"
     es_default_page_size: int = 1000
@@ -52,3 +53,8 @@ class AppConfig(ICIJSettings, LogWithWorkerIDMixin, NoEnumModel):
             True
         )
         return client
+
+    def to_task_client(self) -> "DSTaskClient":
+        from ml_worker.utils import DSTaskClient
+
+        return DSTaskClient(self.ds_url)

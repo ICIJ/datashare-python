@@ -5,7 +5,9 @@ services:
     build:
       context: .
       target: worker
-    container_name: datashare-ml-worker
+    deploy:
+      mode: replicated
+      replicas: 2
     depends_on:
       datashare_web:
         condition: service_started
@@ -39,6 +41,7 @@ services:
 
   # Unless commented, all lines below are copied from https://icij.gitbook.io/datashare/server-mode/install-with-docker
   datashare_web:
+    # TODO: bump this to a version with serialization fixed
     image: icij/datashare:19.0.0
     hostname: datashare
     ports:
@@ -50,6 +53,8 @@ services:
         source: ${PWD}/.data
         target: /home/datashare/Datashare
     depends_on:
+      redis:
+        condition: service_healthy
       elasticsearch:
         condition: service_healthy
       rabbitmq:
@@ -66,7 +71,7 @@ services:
       --dataSourceUrl jdbc:postgresql://postgresql/datashare?user=datashare\&password=password 
       --defaultProject test-project
       --elasticsearchAddress http://elasticsearch:9200      
-      --messageBusAddress redis://redis:6379
+      --messageBusAddress amqp://guest:guest@rabbitmq:5672
       --queueType REDIS
       --redisAddress redis://redis:6379  
       --rootHost http://localhost:8080
@@ -112,9 +117,11 @@ services:
         target: /var/lib/postgresql/data
     healthcheck:
       test: [ "CMD-SHELL", "pg_isready", "-U", "datashare", "-d", "datashare" ]
+    ports:
+      - "5432:5432"
 
   redis:
-    image: redis:4.0.1-alpine
+    image: ${REDIS_IMG}
     restart: on-failure
     volumes:
       - type: volume
@@ -122,6 +129,8 @@ services:
         target: /data
     healthcheck:
       test: [ "CMD-SHELL", "redis-cli", "--raw", "incr", "ping" ]
+    ports:
+      - "6379:6379"
 
 volumes:
   elasticsearch-data:

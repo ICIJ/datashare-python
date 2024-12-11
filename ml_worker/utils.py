@@ -1,8 +1,10 @@
 import asyncio
 import inspect
-from typing import AsyncIterable, AsyncIterator, Awaitable, Callable, TypeVar
+from itertools import islice
+from typing import AsyncIterable, AsyncIterator, Awaitable, Callable, Iterable, TypeVar
 
 from aiostream import stream
+from icij_worker.ds_task_client import DatashareTaskClient
 
 T = TypeVar("T")
 
@@ -21,6 +23,14 @@ async def async_batches(
         if not batch:
             return
         yield tuple(batch)
+
+
+def batches(iterable: Iterable[T], batch_size: int):
+    if batch_size < 1:
+        raise ValueError("n must be at least one")
+    it = iter(iterable)
+    while batch := tuple(islice(it, batch_size)):
+        yield batch
 
 
 async def maybe_await(maybe_awaitable: Awaitable[T] | T) -> T:
@@ -56,3 +66,22 @@ def before_and_after(
             yield elm
 
     return true_iterator(), remainder_iterator()
+
+
+class DSTaskClient(DatashareTaskClient):
+
+    async def __aenter__(self):
+        await super().__aenter__()
+
+        async with self._get("/settings") as res:
+            # SimpleCookie doesn't seem to parse DS cookie so we perform some dirty
+            # hack here
+            session_id = [
+                item
+                for item in res.headers["Set-Cookie"].split("; ")
+                if "session_id" in item
+            ]
+            if len(session_id) != 1:
+                raise ValueError("Invalid cookie")
+            k, v = session_id[0].split("=")
+            self._session.cookie_jar.update_cookies({k: v})

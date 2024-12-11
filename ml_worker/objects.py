@@ -1,5 +1,6 @@
 from typing import Self
 
+import pycountry
 from icij_common.es import DOC_CONTENT, DOC_LANGUAGE, DOC_ROOT_ID, ID_, SOURCE
 from icij_common.pydantic_utils import ICIJModel, LowerCamelCaseModel
 from pydantic import Field
@@ -30,17 +31,19 @@ class Document(LowerCamelCaseModel):
 
 class ClassificationConfig(ICIJModel):
     task: str = Field(const=True, default="text-classification")
-    model: str = None
+    model: str = "distilbert/distilbert-base-uncased-finetuned-sst-2-english"
     batch_size: int = 16
 
 
 class TranslationConfig(ICIJModel):
     task: str = Field(const=True, default="translation")
+    model: str = "Helsinki-NLP/opus-mt"
     batch_size: int = 16
-    _base_model = "Helsinki-NLP/opus-mt"
 
     def to_pipeline_args(self, source_language: str, *, target_language: str) -> dict:
         as_dict = self.dict()
-        as_dict["task"] = f"translation_{source_language}_to_{target_language}"
-        as_dict["model"] = f"{self._base_model}-{source_language}-{target_language}"
+        source_alpha2 = pycountry.languages.get(name=source_language).alpha_2
+        target_alpha2 = pycountry.languages.get(name=target_language).alpha_2
+        as_dict["task"] = f"translation_{source_alpha2}_to_{target_alpha2}"
+        as_dict["model"] = f"{self.model}-{source_alpha2}-{target_alpha2}"
         return as_dict
