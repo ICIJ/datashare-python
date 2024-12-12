@@ -13,6 +13,9 @@ on:
 jobs:
   test-worker:
     runs-on: ubuntu-latest
+    env:
+      DATASHARE_VERSION: '19.0.0'
+      DATASHARE_PACKAGE: 'datashare-19.0.0.deb'
     steps:
       - uses: actions/checkout@v4
       - uses: psf/black@stable
@@ -21,6 +24,12 @@ jobs:
           jupyter: true
           src: "."
           version: "~= 24.2.0"
+      - name: Download and install the Datashare deb
+        run: |
+          wget "https://github.com/ICIJ/datashare-installer/releases/download/${{ env.DATASHARE_VERSION }}/${{ env.DATASHARE_PACKAGE }}"
+          sudo apt install -y ./${{ env.DATASHARE_PACKAGE }}
+      - name: Run Datashare in background
+        run: ./scripts/run_datashare.sh &
       - name: Install uv
         uses: astral-sh/setup-uv@v4
         with:
@@ -37,15 +46,50 @@ jobs:
       elasticsearch:
         image: elasticsearch:7.17.25
         env:
+          http.host: "0.0.0.0"
+          transport.host: "0.0.0.0"
+          cluster.name: datashare
           discovery.type: single-node
+          discovery.zen.minimum_master_nodes: 1
+          xpack.license.self_generated.type: basic
+          http.cors.enabled: true
+          http.cors.allow-origin: "*"
+          http.cors.allow-methods: OPTIONS, HEAD, GET, POST, PUT, DELETE
         options: >-
-          --health-cmd "curl http://localhost:9200"
+          --health-cmd "curl --silent --fail elasticsearch:9200/_cluster/health || exit 1"
           --health-interval 3s
           --health-timeout 1s
           --health-retries 10
           --health-start-period 5s
         ports:
           - "9200:9200"
+      postgresql:
+        image: postgres:12-alpine
+        env:
+          POSTGRES_USER: datashare
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: datashare
+          # This is needed by the heathcheck command
+          # @see https://stackoverflow.com/a/60194261
+          PGUSER: datashare
+        options: >-
+          --health-cmd "pg_isready -U datashare -d datashare"
+          --health-interval 3s
+          --health-timeout 1s
+          --health-retries 10
+          --health-start-period 5s
+        ports:
+          - "5432:5432"
+      redis:
+        image: arm64v8/redis
+        options: >-
+          --health-cmd "redis-cli --raw incr ping"
+          --health-interval 3s
+          --health-timeout 1s
+          --health-retries 10
+          --health-start-period 5s
+        ports:
+          - "6379:6379"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
