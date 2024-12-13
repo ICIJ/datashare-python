@@ -65,13 +65,13 @@ plugins:
 nav:
   - Datashare Python: index.md
   - Learn:
-    - Concepts: learn/concepts.md
+#    - Concepts: learn/concepts.md
     - From functions to tasks:
       - Creating async tasks: learn/tasks.md
       - Creating an async app: learn/app.md
-      - Running your app with the icij-worker CLI: learn/run-worker.md
-    - Creating Datashare tasks: learn/datashare-app.md
-    - Execute your tasks: learn/execute-tasks.md
-  - Get started: get-started/index.md
-  - Guides: guides/index.md
-  - FAQ: faq.md
+#      - Running your app with the icij-worker CLI: learn/run-worker.md
+#    - Creating Datashare tasks: learn/datashare-app.md
+#    - Execute your tasks: learn/execute-tasks.md
+#  - Get started: get-started/index.md
+#  - Guides: guides/index.md
+#  - FAQ: faq.md
