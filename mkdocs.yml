@@ -65,7 +65,9 @@ plugins:
 nav:
   - Datashare Python: index.md
   - Learn:
-#    - Concepts: learn/concepts.md
+    - Concepts and definitions:
+      - Basic: learn/concepts-basic.md
+      - Advanced: learn/concepts-advanced.md
     - From functions to tasks:
       - Creating async tasks: learn/tasks.md
       - Creating an async app: learn/app.md

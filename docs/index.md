@@ -12,7 +12,7 @@
 </p>
 <br/>
 
-# Implement your own Datashare tasks, written in Python
+# Implement **your own Datashare tasks**, written in Python
 
 Most AI, Machine Learning, Data Engineering happens in Python.
 [Datashare](https://icij.gitbook.io/datashare) now lets you extend its backend with your own tasks implemented in Python.
@@ -64,14 +64,14 @@ you'll then be able to execute task by starting using our [HTTP client]() (and s
 
 [//]: # (TODO: add a link to the HTTP task creation guide)
 
-## Learn
+## **Learn**
 
 Learn how to integrate Data Processing and Machine Learning pipelines to Datashare following our [tutorial](./learn/tasks.md). 
 
-## Get started
+## **Get started**
 
 Follow our [get started](get-started/index.md) guide an learn how to clone the [template repository](https://github.com/ICIJ/datashare-ml-worker-template) and implement your own Datashare tasks !
 
-## Refine your knowledge
+## **Refine your knowledge**
  
 Follow our [guides](guides/index.md) to learn how to implement complex tasks and deploy Datashare workers running your own tasks.
