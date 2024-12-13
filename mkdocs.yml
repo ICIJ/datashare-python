@@ -75,6 +75,6 @@ nav:
       - Running a worker pool with the icij-worker CLI: learn/run-worker.md
 #    - Creating Datashare tasks: learn/datashare-app.md
 #    - Execute your tasks: learn/execute-tasks.md
-#  - Get started: get-started/index.md
-#  - Guides: guides/index.md
-#  - FAQ: faq.md
+  - Get started: get-started/index.md
+  - Guides: guides/index.md
+  - FAQ: faq.md
