@@ -1,8 +1,8 @@
 site_name: Datashare Python
 # TODO: set the domain
 site_url: https://mydomain.org/
-repo_name: ICIJ/datashare-ml-worker-template
-repo_url: https://github.com/ICIJ/datashare-ml-worker-template
+repo_name: ICIJ/datashare-python
+repo_url: https://github.com/ICIJ/datashare-python
 theme:
   name: material
   icon:
