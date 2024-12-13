@@ -250,7 +250,7 @@ wheels = [
 ]
 
 [[package]]
-name = "datashare-ml-worker-template"
+name = "datashare-python"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [

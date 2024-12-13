@@ -1,7 +1,7 @@
 [project]
-name = "datashare-ml-worker-template"
+name = "datashare-python"
 version = "0.1.0"
-description = "ML worker template for Datashare"
+description = "Implement Datashare task in Python"
 authors = [{ name = "Clément Doumouro", email = "cdoumouro@icij.org" }]
 readme = "README.md"
 requires-python = "~=3.11"
