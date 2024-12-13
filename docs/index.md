@@ -34,7 +34,7 @@ hello_world.py
 --8<--
 ```
 
-installing [`uv`](https://docs.astral.sh/uv/) to install dependencies and running your async Datashare worker:
+installing [`uv`](https://docs.astral.sh/uv/) to set up dependencies and running your async Datashare worker:
 <!-- termynal -->
 ```
 $ cd datashare-ml-worker-template
