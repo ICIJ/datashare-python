@@ -2,7 +2,7 @@
 
 ## Turning functions into async tasks using [`icij-worker`](https://github.com/ICIJ/icij-python/tree/main/icij-worker)
 
-Before implementing task for Datashare, let's learn how to transform any Python function into an task which can be run asynchronously by a worker using the [icij-worker](https://github.com/ICIJ/icij-python/tree/main/icij-worker) lib.
+Before implementing task for Datashare, let's learn how to transform any Python function into a [task](concepts-basic.md#tasks) which can be run [asynchronously](concepts-basic.md#asynchronous) by a [worker](concepts-basic.md#workers) using the [icij-worker](https://github.com/ICIJ/icij-python/tree/main/icij-worker) lib.
 
 Given the following function:
 ```python
@@ -53,8 +53,7 @@ hello_world_app.py:hello_user
 The task result is simply the value returned by the decorated function.
 
 ## Supported argument and result types
-[//]: # (TODO: put ref to the async concept)
-[//]: # (TODO: put ref to the task concept)
+
 
 `icij-worker` tasks support any types as arguments and result **as long as they are JSON serializable**.
 
