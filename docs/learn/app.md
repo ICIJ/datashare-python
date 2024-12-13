@@ -20,4 +20,4 @@ hello_world_app.py:app
 ## Next
 
 [//]: # (TODO: put ref to the worker pool concept)
-Perfect, we've built our by registering many async tasks, we need to run pool of async workers, which run these tasks when asked to do so ! 
+Perfect, we've built our first app by registering many async tasks, we need to run pool of async workers to execute these task when asked to do so ! 
