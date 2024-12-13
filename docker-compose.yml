@@ -5,12 +5,12 @@ services:
     build:
       context: .
       target: worker
-    deploy:
-      mode: replicated
-      replicas: 2
-    depends_on:
-      datashare_web:
-        condition: service_started
+#    deploy:
+#      mode: replicated
+#      replicas: 2
+#    depends_on:
+#      datashare_web:
+#        condition: service_started
     environment:
       DS_DOCKER_ML_LOG_LEVEL: DEBUG
       DS_DOCKER_ES_ADDRESS: http://elasticsearch:9200
