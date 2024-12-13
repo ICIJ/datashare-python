@@ -19,15 +19,15 @@ Most AI, Machine Learning, Data Engineering happens in Python.
 
 Turning your own ML pipelines into Datashare tasks is **very simple**.
 
-Actually, it's *almost* as simple as cloning our [template repo](https://github.com/ICIJ/datashare-ml-worker-template):
+Actually, it's *almost* as simple as cloning our [template repo](https://github.com/ICIJ/datashare-python):
 
 <!-- termynal -->
 ```
-$ git clone git@github.com:ICIJ/datashare-ml-worker-template.git
+$ git clone git@github.com:ICIJ/datashare-python.git
 ---> 100%
 ```
 
-replacing existing [app](https://github.com/ICIJ/datashare-ml-worker-template/blob/main/ml_worker/app.py) tasks with your own:   
+replacing existing [app](https://github.com/ICIJ/datashare-python/blob/main/ml_worker/app.py) tasks with your own:   
 ```python
 --8<--
 hello_world.py
@@ -37,7 +37,7 @@ hello_world.py
 installing [`uv`](https://docs.astral.sh/uv/) to set up dependencies and running your async Datashare worker:
 <!-- termynal -->
 ```
-$ cd datashare-ml-worker-template
+$ cd datashare-python
 $ curl -LsSf https://astral.sh/uv/install.sh | sh
 ---> 100%
 $ uv run ./scripts/worker_entrypoint.sh
@@ -57,7 +57,7 @@ Learn how to integrate Data Processing and Machine Learning pipelines to Datasha
 
 ## **Get started**
 
-Follow our [get started](get-started/index.md) guide an learn how to clone the [template repository](https://github.com/ICIJ/datashare-ml-worker-template) and implement your own Datashare tasks !
+Follow our [get started](get-started/index.md) guide an learn how to clone the [template repository](https://github.com/ICIJ/datashare-python) and implement your own Datashare tasks !
 
 ## **Refine your knowledge**
  
