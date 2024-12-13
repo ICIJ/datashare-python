@@ -76,7 +76,7 @@ nav:
       - Creating async tasks: learn/tasks.md
       - Building an app: learn/app.md
       - Running a worker pool with the icij-worker CLI: learn/run-worker.md
-    - Create task for Datashare: learn/datashare-app.md
+    - Create tasks for Datashare: learn/datashare-app.md
   - Get started: get-started/index.md
   - Guides: guides/index.md
   - FAQ: faq.md
