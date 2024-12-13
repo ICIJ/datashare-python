@@ -2,7 +2,7 @@
 
 In the previous [section](app.md), we've created a simple async app featuring multiple tasks.
 
-We now need start a [worker pool](./concepts-advanced#worker-pools), in order to run the app.
+We now need start a [worker pool](./concepts-advanced.md#worker-pools), in order to run the app.
 Workers will execute the app tasks when new tasks are published by the [task manager](./concepts-basic.md#task-manager) through the [broker](./concepts-advanced.md#broker).
 
 ## Installing the `icij-worker` CLI

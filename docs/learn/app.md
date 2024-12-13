@@ -1,6 +1,6 @@
 # Building an app featuring multiple tasks
 
-Let's recap, in the previous [section](tasks.md), we learnt how to:
+Let's recap, in the previous [section](./tasks.md), we learnt how to:
 
 - transform Python functions into asynchronous tasks
 - register tasks with a name
@@ -9,7 +9,7 @@ Let's recap, in the previous [section](tasks.md), we learnt how to:
 
 ## Full async app
 
-If we put everything together, we can build a full [async app](../concepts-basic#app), featuring multiple tasks:
+If we put everything together, we can build a full [async app](./concepts-basic.md#app), featuring multiple tasks:
 
 ```python title="my_app.py"
 --8<--

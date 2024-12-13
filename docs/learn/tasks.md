@@ -13,14 +13,27 @@ def hello_world() -> str:
 the `icij-worker` lib lets you very simply turn it into a task executed asynchronously by a worker: 
 
 ```python
-from icij_worker import AsyncApp
-
-app = AsyncApp("my_app")
-
-@app.task
-def hello_world() -> str:
-    return "Hello world"
+--8<--
+hello_world.py
+--8<--
 ```
+
+Let's break down the above code into pieces. First we start by **defining an app** and give it a name:
+
+```python hl_lines="3"
+--8<--
+hello_world.py
+--8<--
+```
+the we use the `:::python @app.task` decorator to **register** our `:::python hello_world` function as a task app:
+```python hl_lines="6-8"
+--8<--
+hello_world.py
+--8<--
+```
+
+... and that's about it, we've turned our `:::python hello_world` very complex ML pipeline function (🧌-ing) into as an [async task](concepts-basic.md#tasks) !  
+
 ## Registering tasks with names
 
 The `app` `AsyncApp` instance acts as **task registry**. By default, task are registered using the decorated function name.
@@ -31,7 +44,7 @@ The `app` `AsyncApp` instance acts as **task registry**. By default, task are re
     This will **decouple the task name from the Python function name and avoid naming issues** when you renaming/refactoing task functions.
 
 Applying the above tip, we can register our task with the `hello_world` name:
-```python
+```python hl_lines="7"
 --8<--
 hello_world_app.py:hello_world
 --8<--
@@ -42,7 +55,7 @@ hello_world_app.py:hello_world
 Since tasks are just plain Python function, they support input arguments.
 
 For instance, let's register a new task which greets a user given as a `str`. When no user is provided, let's call it `unknown`:  
-```python
+```python hl_lines="2"
 --8<--
 hello_world_app.py:hello_user
 --8<--
@@ -70,7 +83,7 @@ This can be done by adding a  `:::python progress: RateProgress` argument to tas
 The `progress` **argument name is reserved** and `icij-worker` will automatically populate this argument with a async coroutine that you can call to publish progress updates.
 **Progress updates** are expected to be between `0.0` and `1.0` included:
 
-```python
+```python hl_lines="4"
 from icij_worker.typing_ import RateProgress
 
 @app.task(name="hello_user_progress")

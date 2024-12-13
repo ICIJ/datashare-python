@@ -3,7 +3,7 @@ from icij_worker import AsyncApp
 from icij_worker.app import TaskGroup
 
 # --8<-- [start:create_app]
-app = AsyncApp("my_app")
+app = AsyncApp("some-app")
 # --8<-- [end:create_app]
 
 # --8<-- [start:create_task_group]

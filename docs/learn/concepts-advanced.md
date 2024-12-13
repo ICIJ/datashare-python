@@ -3,18 +3,18 @@
 The following concepts are not required to understand what's following, you get back to them as need. 
 
 ### Worker pools
-A ***worker pool*** is a collection of [task workers](./concepts-basic#workers) running the **same [async app](./concepts-basic#app)** on the **same machine**.
+A ***worker pool*** is a collection of [task workers](./concepts-basic.md#workers) running the **same [async app](./concepts-basic.md#app)** on the **same machine**.
 
 A worker pool can be created and started using the [`icij-worker`](https://github.com/ICIJ/icij-python/tree/main/icij-worker) CLI. 
 
 ### Broker
 
-We call ***broker*** the messaging service and protocol allowing Datashare's [task manager](./concepts-basic#task-manager) and [task workers](./concepts-basic#workers) to communicate together.   
+We call ***broker*** the messaging service and protocol allowing Datashare's [task manager](./concepts-basic.md#task-manager) and [task workers](./concepts-basic.md#workers) to communicate together.   
 
 Behind the scene we use a custom task protocol built on the top of [RabbitMQ](https://www.rabbitmq.com/)'s [AMQP protocol](https://en.wikipedia.org/wiki/Advanced_Message_Queuing_Protocol).
 
 ### Queues
-***Queues*** are stacks of messages sent over the [broker](#broker). It's possible to route messages to specific queues so that it's read by some specific agents ([task manager](./concepts-basic#task-manager) or some specific [worker](./concepts-basic#workers)).
+***Queues*** are stacks of messages sent over the [broker](#broker). It's possible to route messages to specific queues so that it's read by some specific agents ([task manager](./concepts-basic.md#task-manager) or some specific [worker](./concepts-basic.md#workers)).
 
 While there can be several workers, **there is single task manager**, and it's already running inside Datashare's backend, so most of the time you don't have to care about it !
 

@@ -31,7 +31,7 @@ not as simple as calling an API endpoint.
 Instead, executing a task asynchronously implies:
 
 1. requesting the task execution by publish the task name and arguments (parameters needed to perform the task) on
-   the [broker](./concepts-advanced#broker)
+   the [broker](./concepts-advanced.md#broker)
 2. receive the task name and arguments from the broker and perform the actual task in the background inside
    a [task worker](#workers) (optionally publishing progress updates on the broker)
 3. monitor the task progress

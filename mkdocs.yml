@@ -52,7 +52,10 @@ theme:
     code: Roboto Mono
 markdown_extensions:
   - admonition
-  - pymdownx.highlight
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
   - pymdownx.inlinehilite
   - pymdownx.snippets:
       base_path: [ "docs/src" ]
@@ -73,8 +76,7 @@ nav:
       - Creating async tasks: learn/tasks.md
       - Building an app: learn/app.md
       - Running a worker pool with the icij-worker CLI: learn/run-worker.md
-#    - Creating Datashare tasks: learn/datashare-app.md
-#    - Execute your tasks: learn/execute-tasks.md
+    - Create task for Datashare: learn/datashare-app.md
   - Get started: get-started/index.md
   - Guides: guides/index.md
   - FAQ: faq.md

@@ -1,9 +1,8 @@
 from icij_worker import AsyncApp
 
-app = AsyncApp("app")
+app = AsyncApp("some-app")
 
 
 @app.task
 def hello_world() -> str:
-    # This is
     return "Hello world"
