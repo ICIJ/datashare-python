@@ -2,16 +2,19 @@
 .md-content .md-typeset h1
 </style>
 
-<p align="center">
-  <a href="https://datashare.icij.org/">
-    <img align="center" src="assets/datashare-logo.svg" alt="Datashare" style="max-width: 60%">
-  </a>
-</p>
-<p align="center">
-    <em>Better analyze information, in all its forms</em>
-</p>
+<div style="background-image: linear-gradient(45deg, #193d87, #fa4070);">
+  <br/>
+  <p align="center">
+    <a href="https://datashare.icij.org/">
+      <img align="center" src="assets/datashare-logo.svg" alt="Datashare" style="max-width: 60%;">
+    </a>
+  </p>
+  <p align="center">
+    <em>Better analyze information, in all its forms</em>  
+  </p>
+  <br/>
+</div>
 <br/>
-
 # Implement **your own Datashare tasks**, written in Python
 
 Most AI, Machine Learning, Data Engineering happens in Python.
