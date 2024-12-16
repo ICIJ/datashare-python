@@ -17,7 +17,7 @@ $ python -m pip install icij-worker
 ## Start the worker pool
 
 To start a worker pool we'll need to provide a config. Config can be provided via environment variables or using a config files.
-Check out our [worker config guide](../guides/worker-config) in order to learn about all config parameters as well as env var naming conventions.  
+Check out our [worker config guide](../guides/config/worker-config.md) in order to learn about all config parameters as well as env var naming conventions.  
 
 ### Using environment variables 
 
@@ -34,7 +34,7 @@ $ ICIJ_WORKER_TYPE=amqp python -m icij-worker workers start -n 2 app.app
 ```
 !!! note
     The above code assumes that an AMQP [broker](./concepts-advanced.md#broker) is running on the default host and ports.
-    Check out the [broker config guide](../guides/broker-config) to make sure your worker can correctly connect to it.
+    Check out the [worker config guide](../guides/config/worker-config.md) to make sure your worker can correctly connect to it.
 
 Let's break this down a bit
 ```bash

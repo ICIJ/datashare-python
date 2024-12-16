@@ -1,4 +1,4 @@
-# Frequently Asked Questions (coming soon !)
+# Frequently Asked Questions (WIP)
 
 [//]: # (### Why should I use `icij-worker` rather than frequently used task orchestrations frameworks to create Datashare task ?)
 

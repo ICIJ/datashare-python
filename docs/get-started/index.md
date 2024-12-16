@@ -1,1 +1,1 @@
-# Get started (coming soon !)
+# Get started (WIP)
