@@ -74,6 +74,7 @@ plugins:
 nav:
   - Home: index.md
   - Learn:
+    - learn/index.md
     - Concepts and definitions:
       - Basic: learn/concepts-basic.md
       - Advanced: learn/concepts-advanced.md
