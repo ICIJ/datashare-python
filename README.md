@@ -2,7 +2,7 @@
   <br/>
   <p align="center">
     <a href="https://datashare.icij.org/">
-      <img align="center" src="assets/datashare-logo.svg" alt="Datashare" style="max-width: 60%;">
+      <img align="center" src="docs/assets/datashare-logo.svg" alt="Datashare" style="max-width: 60%">
     </a>
   </p>
   <p align="center">
