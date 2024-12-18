@@ -6,6 +6,7 @@ repo_url: https://github.com/ICIJ/datashare-python
 theme:
   name: material
   icon:
+    annotation: material/arrow-right-circle
     repo: fontawesome/brands/github
   favicon: assets/favicon.png
   logo: assets/datashare-logo-color-square.svg
@@ -83,7 +84,14 @@ nav:
       - Building an app: learn/app.md
       - Running a worker pool with the icij-worker CLI: learn/run-worker.md
     - Create tasks for Datashare: learn/datashare-app.md
-  - Get started: get-started/index.md
+  - Get started:
+    - get-started/index.md
+    - Implement your own Datashare worker:
+      - How to use the worker template: get-started/implement/index.md
+      - Basic worker: get-started/implement/worker-basic.md
+      - Advanced worker: get-started/implement/worker-advanced.md
+    - Build your worker image: get-started/build.md
+    - Run using Docker Compose: get-started/run.md
   - Guides:
     - guides/index.md
     - Configuration:

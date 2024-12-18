@@ -53,15 +53,24 @@ since they can't execute these tasks, they will fail.
 
 In order, to assign a task to a specific group, you can use the `:::python group: str | TaskGroup | None ` argument of the `:::python task` decorator.
 
-Our app can hence be updated as following:
 
-```python title="my_app.py" hl_lines="7 10 15 23"
+Read the full guide to [task routing](../guides/task-routing.md) to learn more.
+
+## Adding the mandatory `:::python user: dict | None` argument to all tasks
+
+Datashare systematically adds a `:::python user: dict | None` to task arguments.
+Since task arguments are directly forwarded your function, they need to support the `user` argument even when used, 
+otherwise the task will fail complaining that the `user` argument was provided as input but is not used by the task. 
+
+## Our first Datashare app
+
+The app can hence be updated as following:
+
+```python title="my_app.py" hl_lines="7 10 11 15 23"
 --8<--
 hello_world_app_ds.py:app
 --8<--
 ```
-
-Read the full guide to [task routing](../guides/task-routing.md) to learn more.
 
 ## Running group-specific workers
 

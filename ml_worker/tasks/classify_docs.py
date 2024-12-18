@@ -65,7 +65,8 @@ async def create_classification_tasks(
         return task_ids
     logger.info("found %s unclassified documents !", n_docs)
     fetch_unclassified_progress = 0.5
-    progress(fetch_unclassified_progress)
+    if progress is not None:
+        await progress(fetch_unclassified_progress)
     # Roughly split the load between workers:
     # - they should approximately receive the same amount of work
     # - they should receive tasks which are long enough to avoid model loading overhead
@@ -73,9 +74,10 @@ async def create_classification_tasks(
     # case of failure
     n_tasks = max(n_docs // n_workers, n_docs // (n_workers * 5), 1)
     task_batch_size = n_docs // n_tasks
-    # We scale the progress to post incremental progress updates from 0 to n_tasks
-    progress = to_scaled_progress(progress, start=fetch_unclassified_progress)
-    progress = to_raw_progress(progress, max_progress=n_tasks)
+    if progress is not None:
+        # We scale the progress to post incremental progress updates from 0 to n_tasks
+        progress = to_scaled_progress(progress, start=fetch_unclassified_progress)
+        progress = to_raw_progress(progress, max_progress=n_tasks)
     logger.info("creating %s classification tasks...", n_tasks)
     # We create classification tasks which will be picked up by the workers
     args = {"project": project, "config": config.dict(), "language": language}
