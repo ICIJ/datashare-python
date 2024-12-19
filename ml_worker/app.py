@@ -14,38 +14,7 @@ from ml_worker.tasks import (
 )
 from ml_worker.tasks.dependencies import APP_LIFESPAN_DEPS
 
-# Let's build an async app which allows to translate DS document and classify docs as
-# positive or negative (using sentiment analysis). The classification task will only
-# process documents of a given language, so we can optionally be translated beforehand.
-
-# icij-worker hasn't built-in support of task batching and dependency yet. This is
-# often needed to build sequential tasks and split large tasks into several smaller
-# ones which are distributed across workers.
-# To mimic this behavior, we create producer task which will split a large task into
-# smaller once, which will distributed to workers.
-
-# Since the translation is optional before the classification, we'll keep the
-# translation and classification workflow independent. However, for each one of this
-# workflow, a publisher task collects relevant documents, put them into batches and
-# creates new tasks to process each one of these batches
-
-# We define an `AsyncApp` which acts as a registry to register Python functions as task
-# which can be executed by the asynchronous Python workers.
-# We also inject dependencies in the app, these dependencies will be injected when the
-# apps starts up
 app = AsyncApp("ml", dependencies=APP_LIFESPAN_DEPS)
-
-# Task functions are thin wrappers around
-# "core" functions, they just deserialize arguments and forward them to the core
-# function. Doing so helps with testing as you can focus on testing the core and not
-# the serialization/deserialization stuff
-
-# All task have a user argument since Datashare automatically adds it to all task
-# arguments, it then forwarded the task function and ignored. We also add a progress
-# arg to allow us to send some progress updates
-
-# We use the Python TaskGroup when registering the task so that Datashare route the
-# following task to Python workers and not to other workers (java for instance)
 
 
 @app.task(group=PYTHON_TASK_GROUP)
