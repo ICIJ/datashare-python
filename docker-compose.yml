@@ -5,18 +5,22 @@ services:
     build:
       context: .
       target: worker
-#    deploy:
-#      mode: replicated
-#      replicas: 2
-#    depends_on:
-#      datashare_web:
-#        condition: service_started
+    deploy:
+      mode: replicated
+      replicas: 2
+    depends_on:
+      datashare_web:
+        condition: service_started
     environment:
       DS_DOCKER_ML_LOG_LEVEL: DEBUG
       DS_DOCKER_ES_ADDRESS: http://elasticsearch:9200
       ICIJ_WORKER_TYPE: amqp
       ICIJ_WORKER_RABBITMQ_HOST: rabbitmq
       ICIJ_WORKER_RABBITMQ_PORT: 5672
+    volumes:
+      - type: bind
+        source: ${PWD}/.data
+        target: /home/user/src/app/.data
 
   # Adding rabbitmq to distribute Datashare tasks
   rabbitmq:
@@ -50,7 +54,7 @@ services:
       - DS_DOCKER_MOUNTED_DATA_DIR=${PWD}/data
     volumes:
       - type: bind
-        source: ${PWD}/.data
+        source: ${PWD}/.data/datashare
         target: /home/datashare/Datashare
     depends_on:
       redis:

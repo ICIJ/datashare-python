@@ -87,7 +87,7 @@ nav:
   - Get started:
     - get-started/index.md
     - Implement your own Datashare worker:
-      - How to use the worker template: get-started/implement/index.md
+      - How to use the worker template repo: get-started/implement/index.md
       - Basic worker: get-started/implement/worker-basic.md
       - Advanced worker: get-started/implement/worker-advanced.md
     - Build your worker image: get-started/build.md

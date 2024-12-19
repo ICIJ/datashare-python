@@ -11,8 +11,8 @@ logger = logging.getLogger(__name__)
 
 # Lifespan dependencies consist in global variable which can be loaded in function
 # calling lifespan_<dep_name>(), which returns the global variable.
-# The variable itself is created and setup in <>_enter function and if needed
-# torn down in the <>_exit function.
+# The variable itself is created and setup in <>_setup function and if needed
+# torn down in the <>_teardown function.
 # The setup and tear down functions are registered in the APP_LIFESPAN_DEPS list which
 # is then passed to the AsyncApp when creating it. The app will take care of setup up
 # and tearing down all dependencies in the list. Since a dep might depend on another
@@ -51,7 +51,7 @@ def setup_loggers(worker_id: str, **_):
 
 
 # Elasticsearch client setup
-async def es_client_enter(**_):
+async def es_client_setup(**_):
     # pylint: disable=unnecessary-dunder-call
     config = lifespan_config()
     global _ES_CLIENT
@@ -60,7 +60,7 @@ async def es_client_enter(**_):
 
 
 # Elasticsearch client teardown
-async def es_client_exit(exc_type, exc_val, exc_tb):
+async def es_client_teardown(exc_type, exc_val, exc_tb):
     # pylint: disable=unnecessary-dunder-call
     await lifespan_es_client().__aexit__(exc_type, exc_val, exc_tb)
     global _ES_CLIENT
@@ -76,7 +76,7 @@ def lifespan_es_client() -> ESClient:
 
 
 # Task client setup
-async def task_client_enter(**_):
+async def task_client_setup(**_):
     # pylint: disable=unnecessary-dunder-call
     config = lifespan_config()
     global _TASK_CLIENT
@@ -85,7 +85,7 @@ async def task_client_enter(**_):
 
 
 # Task client teardown
-async def task_client_exit(exc_type, exc_val, exc_tb):
+async def task_client_teardown(exc_type, exc_val, exc_tb):
     # pylint: disable=unnecessary-dunder-call
     await lifespan_task_client().__aexit__(exc_type, exc_val, exc_tb)
     global _TASK_CLIENT
@@ -105,6 +105,6 @@ def lifespan_task_client() -> DatashareTaskClient:
 APP_LIFESPAN_DEPS = [
     ("loading async app configuration", load_app_config, None),
     ("loggers", setup_loggers, None),
-    ("elasticsearch client", es_client_enter, es_client_exit),
-    ("task client", task_client_enter, task_client_exit),
+    ("elasticsearch client", es_client_setup, es_client_teardown),
+    ("task client", task_client_setup, task_client_teardown),
 ]

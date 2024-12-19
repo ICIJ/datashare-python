@@ -3,7 +3,6 @@ import inspect
 from itertools import islice
 from typing import AsyncIterable, AsyncIterator, Awaitable, Callable, Iterable, TypeVar
 
-from aiostream import stream
 from icij_worker.ds_task_client import DatashareTaskClient
 
 T = TypeVar("T")
@@ -14,14 +13,18 @@ Predicate = Callable[[T], bool] | Callable[[T], Awaitable[bool]]
 async def async_batches(
     iterable: AsyncIterable[T], batch_size: int
 ) -> AsyncIterator[tuple[T]]:
+    it = aiter(iterable)
     if batch_size < 1:
         raise ValueError("n must be at least one")
     while True:
         batch = []
-        async for item in stream.take(iterable, batch_size):
-            batch.append(item)
-        if not batch:
-            return
+        while len(batch) < batch_size:
+            try:
+                batch.append(await anext(it))
+            except StopAsyncIteration:
+                if batch:
+                    yield tuple(batch)
+                return
         yield tuple(batch)
 
 

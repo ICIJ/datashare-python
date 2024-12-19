@@ -1,4 +1,4 @@
-# How to use the worker template ?
+# How to use the worker template repo ?
 
 The [datashare-python](https://github.com/ICIJ/datashare-python) repository is meant to be used as a template to implement your own Datashare worker.
 
