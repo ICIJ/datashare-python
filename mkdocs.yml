@@ -91,7 +91,8 @@ nav:
       - Basic worker: get-started/implement/worker-basic.md
       - Advanced worker: get-started/implement/worker-advanced.md
     - Build your worker image: get-started/build.md
-    - Run using Docker Compose: get-started/run.md
+    - Deploy using Docker: get-started/run.md
+    - Start your tasks: get-started/start-tasks.md
   - Guides:
     - guides/index.md
     - Configuration:
