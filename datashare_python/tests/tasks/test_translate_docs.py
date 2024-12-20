@@ -6,9 +6,9 @@ import pytest
 from icij_common.es import ESClient
 
 from datashare_python.objects import Document
+from datashare_python.task_client import DatashareTaskClient
 from datashare_python.tasks import create_translation_tasks
 from datashare_python.tests.conftest import TEST_PROJECT
-from datashare_python.utils import DSTaskClient
 
 logger = logging.getLogger(__name__)
 
@@ -21,7 +21,7 @@ async def _progress(p: float):
 async def test_create_translation_tasks_integration(
     populate_es: List[Document],  # pylint: disable=unused-argument
     test_es_client: ESClient,
-    test_task_client: DSTaskClient,
+    test_task_client: DatashareTaskClient,
 ):
     # Given
     es_client = test_es_client

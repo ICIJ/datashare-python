@@ -54,7 +54,7 @@ class AppConfig(ICIJSettings, LogWithWorkerIDMixin, NoEnumModel):
         )
         return client
 
-    def to_task_client(self) -> "DSTaskClient":
-        from datashare_python.utils import DSTaskClient
+    def to_task_client(self) -> "DatashareTaskClient":
+        from datashare_python.task_client import DatashareTaskClient
 
-        return DSTaskClient(self.ds_url)
+        return DatashareTaskClient(self.ds_url)
