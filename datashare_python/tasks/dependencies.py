@@ -5,7 +5,7 @@ from icij_worker import WorkerConfig
 from icij_worker.ds_task_client import DatashareTaskClient
 from icij_worker.utils.dependencies import DependencyInjectionError
 
-from ml_worker.config import AppConfig
+from datashare_python.config import AppConfig
 
 logger = logging.getLogger(__name__)
 

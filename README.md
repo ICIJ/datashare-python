@@ -33,7 +33,7 @@ Actually, it's *almost* as simple as cloning our [template repo](https://github.
 $ git clone git@github.com:ICIJ/datashare-python.git
 ```
 
-replacing existing [app](https://github.com/ICIJ/datashare-python/blob/main/ml_worker/app.py) tasks with your own:   
+replacing existing [app](https://github.com/ICIJ/datashare-python/blob/main/datashare_python/app.py) tasks with your own:   
 ```python
 from icij_worker import AsyncApp
 
@@ -53,7 +53,7 @@ $ uv run ./scripts/worker_entrypoint.sh
 [INFO][icij_worker.backend.backend]: Loading worker configuration from env...
 ...
 }
-[INFO][icij_worker.backend.mp]: starting 1 worker for app ml_worker.app.app
+[INFO][icij_worker.backend.mp]: starting 1 worker for app datashare_python.app.app
 ...
 ```
 you'll then be able to execute task by starting using our [HTTP client]() (and soon using Datashare's UI).

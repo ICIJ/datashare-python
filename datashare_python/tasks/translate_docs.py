@@ -25,10 +25,10 @@ from icij_worker.typing_ import PercentProgress
 from icij_worker.utils.progress import to_raw_progress
 from transformers import Pipeline, pipeline
 
-from ml_worker.constants import PYTHON_TASK_GROUP
-from ml_worker.objects import Document, TranslationConfig
-from ml_worker.tasks.dependencies import lifespan_es_client, lifespan_task_client
-from ml_worker.utils import async_batches, batches, before_and_after, once
+from datashare_python.constants import PYTHON_TASK_GROUP
+from datashare_python.objects import Document, TranslationConfig
+from datashare_python.tasks.dependencies import lifespan_es_client, lifespan_task_client
+from datashare_python.utils import async_batches, batches, before_and_after, once
 
 logger = logging.getLogger(__name__)
 

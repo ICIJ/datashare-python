@@ -22,7 +22,7 @@ Don't hesitate to have a look at the codebase before starting (or get back to it
 In particular the following files should be of interest:
 ```console
 .
-├── ml_worker
+├── datashare_python
 │         ├── app.py
 │         ├── config.py
 │         ├── tasks

@@ -4,9 +4,9 @@ from icij_common.pydantic_utils import ICIJSettings, NoEnumModel
 from icij_worker.utils.logging_ import LogWithWorkerIDMixin
 from pydantic import Field
 
-import ml_worker
+import datashare_python
 
-_ALL_LOGGERS = [ml_worker.__name__]
+_ALL_LOGGERS = [datashare_python.__name__]
 
 
 class AppConfig(ICIJSettings, LogWithWorkerIDMixin, NoEnumModel):
@@ -55,6 +55,6 @@ class AppConfig(ICIJSettings, LogWithWorkerIDMixin, NoEnumModel):
         return client
 
     def to_task_client(self) -> "DSTaskClient":
-        from ml_worker.utils import DSTaskClient
+        from datashare_python.utils import DSTaskClient
 
         return DSTaskClient(self.ds_url)

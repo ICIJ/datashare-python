@@ -2,10 +2,10 @@
 
 ## Running locally with Docker Compose
 
-To run your worker together with Datashare, you can use the [`ml-worker`](https://github.com/ICIJ/datashare-python/blob/main/ml-worker) `docker compose` CLI wrapper:
+To run your worker together with Datashare, you can use the [`datashare-python`](https://github.com/ICIJ/datashare-python/blob/main/datashare-python) `docker compose` CLI wrapper:
 <!-- termynal -->
 ```console
-$ ./ml-worker up
+$ ./datashare-python up
 ```
 
 ## Deploying to a server

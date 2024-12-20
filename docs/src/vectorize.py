@@ -23,15 +23,15 @@ from lancedb.index import FTS, IvfPq
 from lancedb.pydantic import LanceModel, Vector
 from sentence_transformers import SentenceTransformer
 
-from ml_worker.constants import PYTHON_TASK_GROUP
-from ml_worker.tasks.dependencies import (
+from datashare_python.constants import PYTHON_TASK_GROUP
+from datashare_python.tasks.dependencies import (
     lifespan_es_client,
     lifespan_task_client,
     # --8<-- [start:lifespan_vector_db]
     lifespan_vector_db,
     # --8<-- [end:lifespan_vector_db]
 )
-from ml_worker.utils import async_batches
+from datashare_python.utils import async_batches
 
 logger = logging.getLogger(__name__)
 

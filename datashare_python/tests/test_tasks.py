@@ -10,9 +10,9 @@ from icij_worker import TaskState
 from icij_worker.ds_task_client import DatashareTaskClient
 from numpy.random.mtrand import Sequence
 
-from ml_worker.app import PYTHON_TASK_GROUP
-from ml_worker.objects import Document
-from ml_worker.tests.conftest import TEST_PROJECT
+from datashare_python.app import PYTHON_TASK_GROUP
+from datashare_python.objects import Document
+from datashare_python.tests.conftest import TEST_PROJECT
 
 logger = logging.getLogger(__name__)
 

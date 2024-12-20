@@ -1,7 +1,7 @@
 # --8<-- [start:setup]
 from lancedb import AsyncConnection as LanceDBConnection, connect_async
 
-from ml_worker.constants import DATA_DIR
+from datashare_python.constants import DATA_DIR
 
 _VECTOR_DB_CONNECTION: LanceDBConnection | None = None
 _DB_PATH = DATA_DIR / "vector.db"

@@ -7,16 +7,16 @@ import pytest
 from icij_common.es import ESClient
 from lancedb import AsyncConnection as LanceDBConnection, connect_async
 
-from ml_worker.objects import Document
-from ml_worker.tasks.vectorize import (
+from datashare_python.objects import Document
+from datashare_python.tasks.vectorize import (
     create_vectorization_tasks,
     find_most_similar,
     make_record_schema,
     recreate_vector_table,
     vectorize_docs,
 )
-from ml_worker.tests.conftest import TEST_PROJECT
-from ml_worker.utils import DSTaskClient
+from datashare_python.tests.conftest import TEST_PROJECT
+from datashare_python.utils import DSTaskClient
 
 
 @pytest.fixture

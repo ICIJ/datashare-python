@@ -10,7 +10,7 @@ ENV UV_LINK_MODE=copy
 
 WORKDIR $HOME/src/app
 ADD scripts  ./scripts/
-ADD ml_worker/  ./ml_worker/
+ADD datashare_python/  ./datashare_python/
 ADD uv.lock pyproject.toml README.md ./
 
 FROM worker-base AS worker

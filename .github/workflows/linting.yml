@@ -5,7 +5,7 @@ on:
     branches: [ 'main' ]
   pull_request:
     paths:
-      - 'ml_worker/**.py'
+      - 'datashare_python/**.py'
       - '.github/workflows/linting.yml'
 
 # TODO: leverage some caching here

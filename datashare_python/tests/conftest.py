@@ -17,10 +17,10 @@ from icij_worker import AMQPWorkerConfig, WorkerBackend
 from icij_worker.backend import start_workers
 from redis import asyncio as aioredis
 
-from ml_worker.app import PYTHON_TASK_GROUP, app
-from ml_worker.config import AppConfig
-from ml_worker.objects import Document
-from ml_worker.tasks.dependencies import lifespan_es_client
+from datashare_python.app import PYTHON_TASK_GROUP, app
+from datashare_python.config import AppConfig
+from datashare_python.objects import Document
+from datashare_python.tasks.dependencies import lifespan_es_client
 
 RABBITMQ_TEST_PORT = 5672
 RABBITMQ_TEST_HOST = "localhost"
@@ -219,7 +219,7 @@ def doc_3() -> Document:
 def _worker_main(config_path: Path, n_workers: int):
     os.environ["_TYPER_STANDARD_TRACEBACK"] = "1"
     start_workers(
-        "ml_worker.app.app",
+        "datashare_python.app.app",
         n_workers,
         config_path,
         backend=WorkerBackend.MULTIPROCESSING,

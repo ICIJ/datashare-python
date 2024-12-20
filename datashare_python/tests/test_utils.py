@@ -2,7 +2,7 @@ from typing import AsyncGenerator, AsyncIterable, AsyncIterator
 
 from aiostream.stream import chain
 
-from ml_worker.utils import before_and_after, once
+from datashare_python.utils import before_and_after, once
 
 
 async def _num_gen() -> AsyncGenerator[int, None]:

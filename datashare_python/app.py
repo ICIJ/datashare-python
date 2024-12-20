@@ -4,15 +4,15 @@ from icij_worker import AsyncApp
 from icij_worker.typing_ import PercentProgress
 from pydantic import parse_obj_as
 
-from ml_worker.constants import PYTHON_TASK_GROUP
-from ml_worker.objects import ClassificationConfig, TranslationConfig
-from ml_worker.tasks import (
+from datashare_python.constants import PYTHON_TASK_GROUP
+from datashare_python.objects import ClassificationConfig, TranslationConfig
+from datashare_python.tasks import (
     classify_docs as classify_docs_,
     create_classification_tasks as create_classification_tasks_,
     create_translation_tasks as create_translation_tasks_,
     translate_docs as translate_docs_,
 )
-from ml_worker.tasks.dependencies import APP_LIFESPAN_DEPS
+from datashare_python.tasks.dependencies import APP_LIFESPAN_DEPS
 
 app = AsyncApp("ml", dependencies=APP_LIFESPAN_DEPS)
 

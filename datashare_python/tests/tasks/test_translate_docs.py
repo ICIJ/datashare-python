@@ -5,10 +5,10 @@ from typing import List
 import pytest
 from icij_common.es import ESClient
 
-from ml_worker.objects import Document
-from ml_worker.tasks import create_translation_tasks
-from ml_worker.tests.conftest import TEST_PROJECT
-from ml_worker.utils import DSTaskClient
+from datashare_python.objects import Document
+from datashare_python.tasks import create_translation_tasks
+from datashare_python.tests.conftest import TEST_PROJECT
+from datashare_python.utils import DSTaskClient
 
 logger = logging.getLogger(__name__)
 

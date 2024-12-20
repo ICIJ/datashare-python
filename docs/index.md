@@ -30,7 +30,7 @@ $ git clone git@github.com:ICIJ/datashare-python.git
 ---> 100%
 ```
 
-replacing existing [app](https://github.com/ICIJ/datashare-python/blob/main/ml_worker/app.py) tasks with your own:   
+replacing existing [app](https://github.com/ICIJ/datashare-python/blob/main/datashare_python/app.py) tasks with your own:   
 ```python
 --8<--
 hello_world.py
@@ -47,7 +47,7 @@ $ uv run ./scripts/worker_entrypoint.sh
 [INFO][icij_worker.backend.backend]: Loading worker configuration from env...
 ...
 }
-[INFO][icij_worker.backend.mp]: starting 1 worker for app ml_worker.app.app
+[INFO][icij_worker.backend.mp]: starting 1 worker for app datashare_python.app.app
 ...
 ```
 you'll then be able to execute task by starting using our [HTTP client]() (and soon using Datashare's UI).    

@@ -26,7 +26,7 @@ basic_app.py:hello_user_fn
 
 In order to turn our function into a Datashare [task](../../learn/concepts-basic.md#tasks), we have to register it into the 
 `:::python app` [async app](../../learn/concepts-basic.md#app) variable of the
-[app.py](https://github.com/ICIJ/datashare-python/blob/main/ml_worker/app.py) file, using the `:::python @task` decorator.
+[app.py](https://github.com/ICIJ/datashare-python/blob/main/datashare_python/app.py) file, using the `:::python @task` decorator.
 
 Since we won't use existing tasks, we can also perform some cleaning and get rid of them.
 The `app.py` file should hence look like this:

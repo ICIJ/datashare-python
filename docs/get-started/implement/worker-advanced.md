@@ -101,7 +101,7 @@ retrieve it inside our function.
 
 This pattern is already used for the elasticsearch client and the datashare task client, to use it for the vector DB
 connection, we'll need to update the
-[dependencies.py](https://github.com/ICIJ/datashare-python/blob/main/ml_worker/tasks/dependencies.py) file.
+[dependencies.py](https://github.com/ICIJ/datashare-python/blob/main/datashare_python/tasks/dependencies.py) file.
 
 First we need to implement the dependency setup function:
 ```python title="dependencies.py" hl_lines="10 11"
@@ -183,7 +183,7 @@ vectorize.py:hybrid-search
 
 In order to turn our function into a Datashare [task](../../learn/concepts-basic.md#tasks), we have to register it into the 
 `:::python app` [async app](../../learn/concepts-basic.md#app) variable of the
-[app.py](https://github.com/ICIJ/datashare-python/blob/main/ml_worker/app.py) file, using the `:::python @task` decorator:
+[app.py](https://github.com/ICIJ/datashare-python/blob/main/datashare_python/app.py) file, using the `:::python @task` decorator:
  
 ```python title="app.py"   hl_lines="16 17 18 19 20 25 32 37"
 --8<--
@@ -201,15 +201,15 @@ test_vectorize.py:test-vectorize
 --8<--
 ```
 
-We can then run the tests after starting test services using the `ml-worker` Docker Compose wrapper:
+We can then run the tests after starting test services using the `datashare-python` Docker Compose wrapper:
 <!-- termynal -->
 ```console
-$ ./ml-worker up -d postgresql redis elasticsearch rabbitmq datashare_web
-$ uv run --frozen pytest ml_worker/tests/tasks/test_vectorize.py
+$ ./datashare-python up -d postgresql redis elasticsearch rabbitmq datashare_web
+$ uv run --frozen pytest datashare_python/tests/tasks/test_vectorize.py
 ===== test session starts =====
 collected 3 items
 
-ml_worker/tests/tasks/test_vectorize.py ...                                                                                                                                                                                          [100%]
+datashare_python/tests/tasks/test_vectorize.py ...                                                                                                                                                                                          [100%]
 
 ====== 3 passed in 6.87s ======
 ....
@@ -221,8 +221,8 @@ We've successfully added a vector store to Datashare !
 
 Rather than copy-pasting the above code blocks, you can replace/update your codebase with the following files:
 
-- [`ml_worker/tasks/vectorize.py`](https://github.com/ICIJ/datashare-python/blob/main/docs/src/vectorize.py)
-- [`ml_worker/tasks/dependencies`](https://github.com/ICIJ/datashare-python/blob/main/docs/src/vector_db_dependencies.py)
-- [`ml_worker/app.py`](https://github.com/ICIJ/datashare-python/blob/main/docs/src/vectorize_app.py)
-- [`ml_worker/tests/tasks/test_vectorize.py](https://github.com/ICIJ/datashare-python/blob/main/docs/src/test_vectorize.py)
+- [`datashare_python/tasks/vectorize.py`](https://github.com/ICIJ/datashare-python/blob/main/docs/src/vectorize.py)
+- [`datashare_python/tasks/dependencies`](https://github.com/ICIJ/datashare-python/blob/main/docs/src/vector_db_dependencies.py)
+- [`datashare_python/app.py`](https://github.com/ICIJ/datashare-python/blob/main/docs/src/vectorize_app.py)
+- [`datashare_python/tests/tasks/test_vectorize.py](https://github.com/ICIJ/datashare-python/blob/main/docs/src/test_vectorize.py)
 
