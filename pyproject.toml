@@ -22,6 +22,12 @@ dependencies = [
     "alive-progress>=3.2.0",
 ]
 
+[project.urls]
+Homepage = "https://icij.github.io/datashare-python/"
+Documentation = "https://icij.github.io/datashare-python/"
+Repository = "https://github.com/ICIJ/datashare-python"
+Issues = "https://github.com/ICIJ/datashare-python/issues"
+
 [build-system]
 requires = ["pdm-backend"]
 build-backend = "pdm.backend"
