@@ -16,9 +16,14 @@ dependencies = [
     "pycountry>=24.6.1",
     "sentencepiece>=0.2.0",
     "termynal~=0.12.2",
+    "typer>=0.13.1",
+    "alive-progress>=3.2.0",
 ]
 [tool.setuptools]
 py-modules = []
+
+[tool.uv]
+package = true
 
 [tool.uv.sources]
 torch = [
@@ -43,6 +48,7 @@ dev = [
     "pylint~=3.1.0",
     "psutil>=6.1.0",
     "redis[hiredis]>=5.2.1",
+    "nest-asyncio>=1.6.0",
 ]
 doc = [
     "mkdocs-material~=9.5.48"

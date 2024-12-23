@@ -8,7 +8,7 @@ With Datashare and your worker running, you can now use the `datashare-python` C
 [//]: # (TODO: add the output)
 <!-- termynal -->
 ```console
-$ uvx datashare-python tasks --help
+$ uvx datashare-python task --help
 ```
 
 ## Basic worker
@@ -19,9 +19,9 @@ Let's create a task, monitor it and get its result:
 [//]: # (TODO: add the task id)
 <!-- termynal -->
 ```console
-$ uvx datashare-python tasks create hello_world
-$ uvx datashare-python tasks watch  <>
-$ uvx datashare-python tasks result  <>
+$ uvx datashare-python task start hello_world
+$ uvx datashare-python task watch  <>
+$ uvx datashare-python task result  <>
 ```
 
 ## Advanced worker
@@ -31,7 +31,7 @@ First let's create
 [//]: # (TODO: add the task id)
 <!-- termynal -->
 ```console
-$ uvx datashare-python tasks create hello_world
-$ uvx datashare-python tasks watch  <>
-$ uvx datashare-python tasks result  <>
+$ uvx datashare-python task create hello_world
+$ uvx datashare-python task watch  <>
+$ uvx datashare-python task result  <>
 ```

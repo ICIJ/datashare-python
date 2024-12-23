@@ -1,4 +1,4 @@
-    # --8<-- [start:vectorize-app]
+# --8<-- [start:vectorize-app]
 from typing import Optional
 
 from icij_worker import AsyncApp
