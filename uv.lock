@@ -273,7 +273,7 @@ wheels = [
 
 [[package]]
 name = "datashare-python"
-version = "0.1.0"
+version = "0.1.3"
 source = { editable = "." }
 dependencies = [
     { name = "aiohttp" },
@@ -283,7 +283,6 @@ dependencies = [
     { name = "icij-worker", extra = ["amqp"] },
     { name = "pycountry" },
     { name = "sentencepiece" },
-    { name = "termynal" },
     { name = "torch", version = "2.6.0.dev20241022", source = { registry = "https://download.pytorch.org/whl/nightly/cpu" }, marker = "sys_platform == 'darwin'" },
     { name = "torch", version = "2.6.0.dev20241101+cpu", source = { registry = "https://download.pytorch.org/whl/nightly/cpu" }, marker = "sys_platform != 'darwin'" },
     { name = "transformers" },
@@ -301,6 +300,7 @@ dev = [
 ]
 doc = [
     { name = "mkdocs-material" },
+    { name = "termynal" },
 ]
 
 [package.metadata]
@@ -312,7 +312,6 @@ requires-dist = [
     { name = "icij-worker", extras = ["amqp"], specifier = "~=0.12" },
     { name = "pycountry", specifier = ">=24.6.1" },
     { name = "sentencepiece", specifier = ">=0.2.0" },
-    { name = "termynal", specifier = "~=0.12.2" },
     { name = "torch", marker = "sys_platform != 'darwin'", specifier = "==2.6.0.dev20241101", index = "https://download.pytorch.org/whl/nightly/cpu" },
     { name = "torch", marker = "sys_platform == 'darwin'", specifier = "<=2.6.0.dev20241101,!=2.6.0.dev20241101+cpu", index = "https://download.pytorch.org/whl/nightly/cpu" },
     { name = "transformers", specifier = "~=4.46.3" },
@@ -328,7 +327,10 @@ dev = [
     { name = "pytest-asyncio", specifier = "~=0.24" },
     { name = "redis", extras = ["hiredis"], specifier = ">=5.2.1" },
 ]
-doc = [{ name = "mkdocs-material", specifier = "~=9.5.48" }]
+doc = [
+    { name = "mkdocs-material", specifier = "~=9.5.48" },
+    { name = "termynal", specifier = "~=0.12.2" },
+]
 
 [[package]]
 name = "dill"
@@ -547,16 +549,17 @@ elasticsearch = [
 
 [[package]]
 name = "icij-worker"
-version = "0.12.0"
+version = "0.13.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "icij-common" },
+    { name = "pytest-retry" },
     { name = "typer" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/3f/c5/93dcfbf6b3e4dd22f94129c886fc0701e5ec512a181134cf96a798cdae90/icij_worker-0.12.0.tar.gz", hash = "sha256:aeb600749255e91b009f28e8a30e6acdd8698da435a78aef1ebbb80e4368c138", size = 57892 }
+sdist = { url = "https://files.pythonhosted.org/packages/92/5d/3a82468a1bbdf9d0a5b04cc4eeffb2e296f8abb2e127dd24fbceeb192151/icij_worker-0.13.0.tar.gz", hash = "sha256:7b9b6ad45560e20502abb1e21fa1b839e453cf3c19c5c9373b9e7dd56c7105f8", size = 57116 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/2b/a8/bbe5b2fc1aa994757e1a4bb4406e90f1a483a0cf28792bb3e5ba932472ba/icij_worker-0.12.0-py3-none-any.whl", hash = "sha256:6f8da999a8e60c85ca69fce04fb95c20ff6fbc01f25b3d7720c825d2f4d77ec8", size = 77444 },
+    { url = "https://files.pythonhosted.org/packages/d7/45/b19941f308fc3f7207726854123cfae85dda03470540dd77cc212bd44bb9/icij_worker-0.13.0-py3-none-any.whl", hash = "sha256:6e38d99ca043c59c5e591d518a2c4216cf5c345926b833dabf784eaf2c1c2369", size = 76455 },
 ]
 
 [package.optional-dependencies]
@@ -1279,6 +1282,18 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/52/6d/c6cf50ce320cf8611df7a1254d86233b3df7cc07f9b5f5cbcb82e08aa534/pytest_asyncio-0.24.0.tar.gz", hash = "sha256:d081d828e576d85f875399194281e92bf8a68d60d72d1a2faf2feddb6c46b276", size = 49855 }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/96/31/6607dab48616902f76885dfcf62c08d929796fc3b2d2318faf9fd54dbed9/pytest_asyncio-0.24.0-py3-none-any.whl", hash = "sha256:a811296ed596b69bf0b6f3dc40f83bcaf341b155a269052d82efa2b25ac7037b", size = 18024 },
+]
+
+[[package]]
+name = "pytest-retry"
+version = "1.6.3"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "pytest" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/9c/95/8e1be0250a5063c28a1e713b9665ce3bb76a7807096da1b8d6b36cb8856b/pytest_retry-1.6.3.tar.gz", hash = "sha256:36ccfa11c8c8f9ddad5e20375182146d040c20c4a791745139c5a99ddf1b557d", size = 19112 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/8f/b3/fa17695ab9096f75b498642e21db59c0cbcc7d97c709daa204ee0953a72c/pytest_retry-1.6.3-py3-none-any.whl", hash = "sha256:e96f7df77ee70b0838d1085f9c3b8b5b7d74bf8947a0baf32e2b8c71b27683c8", size = 13526 },
 ]
 
 [[package]]

@@ -1,6 +1,6 @@
 [project]
 name = "datashare-python"
-version = "0.1.1"
+version = "0.1.3"
 description = "Implement Datashare task in Python"
 authors = [
     { name = "Clément Doumouro", email = "cdoumouro@icij.org" },
@@ -12,7 +12,7 @@ dependencies = [
     "aiostream~=0.6.4",
     "aiohttp~=3.11.9",
     "icij-common[elasticsearch]~=0.5.5",
-    "icij-worker[amqp]~=0.12",
+    "icij-worker[amqp]~=0.13",
     "torch==2.6.0.dev20241101 ; sys_platform != 'darwin'",
     "torch!=2.6.0.dev20241101+cpu,<=2.6.0.dev20241101; sys_platform == 'darwin'", # see https://github.com/astral-sh/uv/issues/9209
     "transformers~=4.46.3",
