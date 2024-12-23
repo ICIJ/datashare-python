@@ -1,6 +1,6 @@
 [project]
 name = "datashare-python"
-version = "0.1.0"
+version = "0.1.1"
 description = "Implement Datashare task in Python"
 authors = [
     { name = "Clément Doumouro", email = "cdoumouro@icij.org" },
@@ -27,6 +27,9 @@ Homepage = "https://icij.github.io/datashare-python/"
 Documentation = "https://icij.github.io/datashare-python/"
 Repository = "https://github.com/ICIJ/datashare-python"
 Issues = "https://github.com/ICIJ/datashare-python/issues"
+
+[project.scripts]
+datashare-python = "datashare_python.__main__:main"
 
 [build-system]
 requires = ["pdm-backend"]
