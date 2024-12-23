@@ -2,7 +2,10 @@
 name = "datashare-python"
 version = "0.1.0"
 description = "Implement Datashare task in Python"
-authors = [{ name = "Clément Doumouro", email = "cdoumouro@icij.org" }]
+authors = [
+    { name = "Clément Doumouro", email = "cdoumouro@icij.org" },
+    { name = "Clément Doumouro", email = "clement.doumouro@gmail.com" }
+]
 readme = "README.md"
 requires-python = "~=3.11"
 dependencies = [
@@ -15,12 +18,13 @@ dependencies = [
     "transformers~=4.46.3",
     "pycountry>=24.6.1",
     "sentencepiece>=0.2.0",
-    "termynal~=0.12.2",
     "typer>=0.13.1",
     "alive-progress>=3.2.0",
 ]
-[tool.setuptools]
-py-modules = []
+
+[build-system]
+requires = ["pdm-backend"]
+build-backend = "pdm.backend"
 
 [tool.uv]
 package = true
@@ -51,7 +55,8 @@ dev = [
     "nest-asyncio>=1.6.0",
 ]
 doc = [
-    "mkdocs-material~=9.5.48"
+    "mkdocs-material~=9.5.48",
+    "termynal~=0.12.2",
 ]
 
 [tool.uv.pip]

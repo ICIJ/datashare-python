@@ -5,12 +5,9 @@ The [datashare-python](https://github.com/ICIJ/datashare-python) repository is m
 ## Clone the template repository
 
 Start by cloning the [template repository](https://github.com/ICIJ/datashare-python):
-
-<!-- termynal -->
-```console
-$ git clone git@github.com:ICIJ/datashare-python.git
----> 100%
-```
+<p align="center">
+    <img alt="clone_template.png" src="../../assets/clone_template.png"/>
+</p>
 
 ## Explore the codebase
 

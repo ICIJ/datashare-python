@@ -10,11 +10,9 @@ Make sure you've followed the [basic worker example](worker-basic.md) to underst
 
 Start over and clone the [template repository](https://github.com/ICIJ/datashare-python) once again:
 
-<!-- termynal -->
-```console
-$ git clone git@github.com:ICIJ/datashare-python.git
----> 100%
-```
+<p align="center">
+    <img alt="clone_template.png" src="../../../assets/clone_template.png"/>
+</p>
 
 ## Install extra dependencies
 
@@ -205,11 +203,11 @@ We can then run the tests after starting test services using the `datashare-pyth
 <!-- termynal -->
 ```console
 $ ./datashare-python up -d postgresql redis elasticsearch rabbitmq datashare_web
-$ uv run --frozen pytest datashare_python/tests/tasks/test_vectorize.py
+$ uv run --frozen pytest tests/tasks/test_vectorize.py
 ===== test session starts =====
 collected 3 items
 
-datashare_python/tests/tasks/test_vectorize.py ...                                                                                                                                                                                          [100%]
+tests/tasks/test_vectorize.py ...                                                                                                                                                                                          [100%]
 
 ====== 3 passed in 6.87s ======
 ....
@@ -224,5 +222,5 @@ Rather than copy-pasting the above code blocks, you can replace/update your code
 - [`datashare_python/tasks/vectorize.py`](https://github.com/ICIJ/datashare-python/blob/main/docs/src/vectorize.py)
 - [`datashare_python/tasks/dependencies`](https://github.com/ICIJ/datashare-python/blob/main/docs/src/vector_db_dependencies.py)
 - [`datashare_python/app.py`](https://github.com/ICIJ/datashare-python/blob/main/docs/src/vectorize_app.py)
-- [`datashare_python/tests/tasks/test_vectorize.py](https://github.com/ICIJ/datashare-python/blob/main/docs/src/test_vectorize.py)
+- [`tests/tasks/test_vectorize.py](https://github.com/ICIJ/datashare-python/blob/main/docs/src/test_vectorize.py)
 

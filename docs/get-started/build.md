@@ -22,7 +22,16 @@ $ ./datashare-python build datashare-python
 
 ## Publish to [Docker Hub](https://hub.docker.com/)
 
-You can also fork the template repository and use the CI to build and publish the worker image to [Docker Hub](https://hub.docker.com/).
+You can also clone the template repository:
 
-To publish, make sure to set the `DOCKERHUB_USERNAME` and `DOCKERHUB_TOKEN` ([see documentation](https://docs.docker.com/security/for-developers/access-tokens/))
-and then just create a tag to trigger the build.
+<p align="center">
+    <img alt="clone_template.png" src="../../assets/clone_template.png"/>
+</p>
+
+ and use the CI to build and publish the worker image to [Docker Hub](https://hub.docker.com/).
+
+To publish:
+
+- make sure to set the `DOCKERHUB_USERNAME` and `DOCKERHUB_TOKEN` ([see documentation](https://docs.docker.com/security/for-developers/access-tokens/))
+- remove or comment the `:::yml if: false` line in the `publish-to-dockerhub` job of the `.github/pyblish.yml` workflow
+- then commit, create a tag and push it to trigger the build
