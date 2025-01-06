@@ -43,7 +43,7 @@ async def recreate_vector_table(
     table_name = "ds_docs"
     existing_tables = await vector_db.table_names()
     if table_name in existing_tables:
-        logging.info("deleting previous vector db...")
+        logger.info("deleting previous vector db...")
         await vector_db.drop_table(table_name)
     table = await vector_db.create_table(table_name, schema=schema)
     return table
@@ -90,7 +90,7 @@ async def create_vectorization_tasks(
     doc_ids = (doc[ID_] async for doc in _flatten_search_pages(docs_pages))
     batches = async_batches(doc_ids, batch_size=batch_size)
     # --8<-- [end:retrieve-docs]
-    logging.info("spawning vectorization tasks...")
+    logger.info("spawning vectorization tasks...")
     # --8<-- [start:batch-vectorization]
     args = {"project": project}
     task_ids = []
@@ -100,7 +100,7 @@ async def create_vectorization_tasks(
             "vectorize_docs", args, group=PYTHON_TASK_GROUP.name
         )
         task_ids.append(task_id)
-    logging.info("created %s vectorization tasks !", len(task_ids))
+    logger.info("created %s vectorization tasks !", len(task_ids))
     return task_ids
     # --8<-- [end:batch-vectorization]
 
@@ -125,7 +125,7 @@ async def vectorize_docs(
     if vector_db is None:
         vector_db = lifespan_vector_db()
     n_docs = len(docs)
-    logging.info("vectorizing %s docs...", n_docs)
+    logger.info("vectorizing %s docs...", n_docs)
     # --8<-- [start:retrieve-doc-content]
     query = {QUERY: ids_query(docs)}
     docs_pages = es_client.poll_search_pages(
@@ -140,7 +140,7 @@ async def vectorize_docs(
     ]
     await table.add(records)
     # --8<-- [end:vectorization]
-    logging.info("vectorized %s docs !", n_docs)
+    logger.info("vectorized %s docs !", n_docs)
     return n_docs
 
 
@@ -156,7 +156,7 @@ async def find_most_similar(
     if vector_db is None:
         vector_db = lifespan_vector_db()
     n_queries = len(queries)
-    logging.info("performing similarity search for %s queries...", n_queries)
+    logger.info("performing similarity search for %s queries...", n_queries)
     table = await vector_db.open_table("ds_docs")
     # Create indexes for hybrid search
     try:
@@ -165,7 +165,7 @@ async def find_most_similar(
         )
         await table.create_index("content", config=FTS(), replace=False)
     except RuntimeError:
-        logging.debug("skipping index creation as they already exist")
+        logger.debug("skipping index creation as they already exist")
     vectorizer = SentenceTransformer(model)
     vectors = vectorizer.encode(queries)
     futures = (
@@ -173,7 +173,7 @@ async def find_most_similar(
     )
     results = await asyncio.gather(*futures)
     results = sum(results, start=[])
-    logging.info("completed similarity search for %s queries !", n_queries)
+    logger.info("completed similarity search for %s queries !", n_queries)
     return results
 
 
