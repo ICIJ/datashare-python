@@ -1,7 +1,7 @@
-from datashare_python.cli import cli_app
+from .cli import cli_app
 
 
-def main():
+def main() -> None:
     cli_app()
 
 

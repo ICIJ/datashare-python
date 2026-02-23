@@ -4,19 +4,51 @@ on:
   push:
     branches: [ 'main' ]
   pull_request:
+    # TODO: start workflow selectively, rather than running full linting as soon as a file change in one of the monorepos
     paths:
-      - 'datashare_python/**.py'
+      - 'datashare-python/**.py'
+      - 'worker-template/**.py'
+      - 'asr-worker/**.py'
       - '.github/workflows/linting.yml'
 
 # TODO: leverage some caching here
 jobs:
-  linting-worker:
+  datashare-python:
+    runs-on: ubuntu-latest
+    env:
+      RUFF_OUTPUT_FORMAT: github
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/ruff-action@v3
+        with:
+          args: "--version" # skips test by displaying the version
+      - name: Check formatting
+        run: ruff format --config qa/ruff.toml --check datashare-python
+      - name: Lint test
+        run: ruff check --config qa/ruff.toml datashare-python
+
+  worker-template:
+    runs-on: ubuntu-latest
+    env:
+      RUFF_OUTPUT_FORMAT: github
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/ruff-action@v3
+        with:
+          args: "--version" # skips test by displaying the version
+      - name: Check formatting
+        run: ruff format --config qa/ruff.toml --check worker-template
+      - name: Lint test
+        run: ruff check --config qa/ruff.toml worker-template
+
+  asr-worker:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/pylint
+        name: "Lint ASR worker"
         with:
-          path: "."
+          path: asr-worker
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}

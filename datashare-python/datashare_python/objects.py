@@ -1,9 +1,9 @@
-from typing import Self, LiteralString
-
 import logging
-
-from datetime import datetime
-from enum import Enum, unique
+from collections.abc import Callable
+from dataclasses import dataclass
+from datetime import UTC, datetime
+from enum import StrEnum, unique
+from typing import Any, Literal, Self
 
 from icij_common.es import DOC_CONTENT, DOC_LANGUAGE, DOC_ROOT_ID, ID_, SOURCE
 from icij_common.pydantic_utils import (
@@ -12,10 +12,9 @@ from icij_common.pydantic_utils import (
     merge_configs,
     no_enum_values_config,
 )
-from icij_common.registrable import Registrable
-
-import pycountry
-from pydantic import BaseModel as _BaseModel, Field
+from pydantic import BaseModel as _BaseModel
+from pydantic import Field
+from pydantic.main import IncEx
 
 logger = logging.getLogger(__name__)
 
@@ -26,6 +25,96 @@ class BaseModel(_BaseModel):
 
 class DatashareModel(BaseModel):
     model_config = merge_configs(BaseModel.model_config, lowercamel_case_config())
+
+
+@unique
+class TaskState(StrEnum):
+    CREATED = "CREATED"
+    QUEUED = "QUEUED"
+    RUNNING = "RUNNING"
+    ERROR = "ERROR"
+    DONE = "DONE"
+    CANCELLED = "CANCELLED"
+
+
+READY_STATES = frozenset({TaskState.DONE, TaskState.ERROR, TaskState.CANCELLED})
+
+
+class StacktraceItem(DatashareModel):
+    name: str
+    file: str
+    lineno: int
+
+
+class Message(DatashareModel):
+    type: str = Field(frozen=True, alias="@type")
+
+    def model_dump(
+        self,
+        *,
+        mode: Literal["json", "python"] | str = "python",
+        include: IncEx | None = None,
+        exclude: IncEx | None = None,
+        context: Any | None = None,
+        exclude_unset: bool = False,
+        exclude_defaults: bool = False,
+        exclude_none: bool = False,
+        round_trip: bool = False,
+        warnings: bool | Literal["none", "warn", "error"] = True,
+        fallback: Callable[[Any], Any] | None = None,
+        serialize_as_any: bool = False,
+    ) -> dict[str, Any]:
+        return super().model_dump(
+            by_alias=True,
+            mode=mode,
+            include=include,
+            exclude=exclude,
+            context=context,
+            exclude_unset=exclude_unset,
+            exclude_defaults=exclude_defaults,
+            exclude_none=exclude_none,
+            round_trip=round_trip,
+            warnings=warnings,
+            fallback=fallback,
+            serialize_as_any=serialize_as_any,
+        )
+
+
+class TaskResult(Message):
+    type: str = Field(frozen=True, alias="@type", default="TaskResult")
+    value: object
+
+
+class TaskError(Message):
+    type: str = Field(frozen=True, alias="@type", default="TaskError")
+    name: str
+    message: str
+    cause: str | None = None
+    stacktrace: list[StacktraceItem] = Field(default_factory=list)
+
+
+def _datetime_now() -> datetime:
+    return datetime.now(UTC)
+
+
+class Task(Message):
+    type: str = Field(frozen=True, alias="@type", default="Task")
+    id: str
+    name: str
+    args: dict[str, object] | None = None
+    state: TaskState = TaskState.CREATED
+    result: TaskResult | None = None
+    error: TaskError | None = None
+    progress: float | None = None
+    created_at: datetime = Field(default_factory=_datetime_now)
+    completed_at: datetime | None = None
+    retries_left: int | None = None
+    max_retries: int | None = None
+
+
+@dataclass(frozen=True)
+class TaskGroup:
+    name: str
 
 
 class Document(DatashareModel):
@@ -49,71 +138,3 @@ class Document(DatashareModel):
             root_document=sources[DOC_ROOT_ID],
             tags=sources.get("tags", []),
         )
-
-
-class ClassificationConfig(BaseModel):
-    task: LiteralString = Field(const=True, default="text-classification")
-    model: str = "distilbert/distilbert-base-uncased-finetuned-sst-2-english"
-    batch_size: int = 16
-
-
-class TranslationConfig(BaseModel):
-    task: LiteralString = Field(const=True, default="translation")
-    model: str = "Helsinki-NLP/opus-mt"
-    batch_size: int = 16
-
-    def to_pipeline_args(self, source_language: str, *, target_language: str) -> dict:
-        as_dict = self.dict()
-        source_alpha2 = pycountry.languages.get(name=source_language).alpha_2
-        target_alpha2 = pycountry.languages.get(name=target_language).alpha_2
-        as_dict["task"] = f"translation_{source_alpha2}_to_{target_alpha2}"
-        as_dict["model"] = f"{self.model}-{source_alpha2}-{target_alpha2}"
-        return as_dict
-
-
-@unique
-class TaskState(str, Enum):
-    CREATED = "CREATED"
-    QUEUED = "QUEUED"
-    RUNNING = "RUNNING"
-    ERROR = "ERROR"
-    DONE = "DONE"
-    CANCELLED = "CANCELLED"
-
-
-READY_STATES = frozenset({TaskState.DONE, TaskState.ERROR, TaskState.CANCELLED})
-
-
-class StacktraceItem(DatashareModel):
-    name: str
-    file: str
-    lineno: int
-
-
-class Message(DatashareModel, Registrable):
-    type: str = Field(frozen=True, alias="@type")
-
-
-class TaskResult(Message):
-    value: object
-
-
-class TaskError(Message):
-    name: str
-    message: str
-    cause: str | None = None
-    stacktrace: list[StacktraceItem] = Field(default_factory=list)
-
-
-class Task(Message):
-    id: str
-    name: str
-    args: dict[str, object] | None = None
-    state: TaskState
-    result: TaskResult | None = None
-    error: TaskError | None = None
-    progress: float | None = None
-    created_at: datetime
-    completed_at: datetime | None = None
-    retries_left: int | None = None
-    max_retries: int | None = None

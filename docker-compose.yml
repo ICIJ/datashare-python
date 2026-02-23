@@ -23,12 +23,13 @@ services:
       test: [ "CMD-SHELL", "curl --silent --fail elasticsearch:9200/_cluster/health || exit 1" ]
       interval: 2s
       retries: 5
-    expose:
-      - 9200
+    ports:
+      - "9200:9200"
     volumes:
       - elasticsearch-data:/var/lib/elasticsearch/data
     networks:
       - datashare-network
+
   postgres:
     # TODO: Figure out missing root user error
     image: postgres:${POSTGRESQL_VERSION:-18.1}
@@ -48,6 +49,7 @@ services:
       - postgres-data:/var/lib/postgresql
     networks:
       - datashare-network
+
   redis:
     image: redis:${REDIS_VERSION:-8.6-rc1-trixie}
     container_name: redis
@@ -57,47 +59,42 @@ services:
       interval: 2s
       retries: 5
     ports:
-      - 6379:6379
+      - "6379:6379"
     volumes:
       - redis-data:/data
     networks:
       - datashare-network
+
   ############################
   # temporal
   ############################
-  temporal-init:
+  temporal-pre-init:
     image: temporalio/admin-tools:${TEMPORAL_ADMINTOOLS_VERSION-1.29}
-    container_name: temporal-init
-    restart: on-failure:6
+    container_name: temporal-pre-init
     depends_on:
       postgres:
         condition: service_healthy
     environment:
-      - POSTGRES_DB=datashare
+      - POSTGRES_DB=temporal
+      - POSTGRES_VISIBILITY_DB=temporal_visibility
       - POSTGRES_PORT=5432
       - POSTGRES_USER=datashare
       - POSTGRES_PWD=datashare
       - POSTGRES_SEEDS=postgres
-      - ES_HOST=elasticsearch
-      - ES_PORT=9200
-      - ES_SCHEME=http
-      - ES_VERSION=v7
-      - ES_VISIBILITY_INDEX=temporal_visibility_v1_dev
     networks:
       - datashare-network
     volumes:
-      - ./scripts:/scripts
-    entrypoint: [ "/bin/sh" ]
-    command: /scripts/setup-postgres-es.sh
+      - .testcontainers/temporal:/scripts/
+    entrypoint: [ "/bin/bash" ]
+    command: /scripts/pre-init.sh
+
   temporal:
-    image: temporalio/server:${TEMPORAL_VERSION:-1.29.3}
+    image: temporalio/server:${TEMPORAL_VERSION:-1.29.2}
     container_name: temporal
     depends_on:
-      elasticsearch:
-        condition: service_healthy
       postgres:
         condition: service_healthy
-      temporal-init:
+      temporal-pre-init:
         condition: service_completed_successfully
     environment:
       - DB=postgres12_pgx
@@ -105,33 +102,37 @@ services:
       - POSTGRES_USER=datashare
       - POSTGRES_PWD=datashare
       - POSTGRES_SEEDS=postgres
-      - DYNAMIC_CONFIG_FILE_PATH=config/dynamicconfig/development-sql.yaml
-      - ENABLE_ES=true
-      - ES_SEEDS=elasticsearch
-      - ES_VERSION=${TEMPORAL_ES_VERSION:-v7}
       - TEMPORAL_ADDRESS=temporal:7233
       - TEMPORAL_CLI_ADDRESS=temporal:7233
       - DBNAME=datashare
+    healthcheck:
+      test: [ "CMD", "nc", "-z", "temporal", "7233" ]
+      interval: 2s
+      timeout: 3s
+      start_period: 5s
+      retries: 10
     ports:
-      - 7233:7233
+      - "7233:7233"
     volumes:
-      - ./dynamicconfig:/etc/temporal/config/dynamicconfig
+      - .testcontainers/temporal:/etc/temporal/.config/temporalio/
     networks:
       - datashare-network
-  temporal-namespace-init:
+
+  temporal-post-init:
     image: temporalio/admin-tools:${TEMPORAL_ADMINTOOLS_VERSION-1.29}
-    container_name: temporal-namespace-init
-    restart: on-failure:6
+    container_name: temporal-post-init
     depends_on:
-      - temporal
+      temporal:
+        condition: service_healthy
     networks:
       - datashare-network
     volumes:
-      - ./scripts:/scripts
+      - .testcontainers/temporal:/scripts
     entrypoint: [ "/bin/sh" ]
-    command: /scripts/create-namespace.sh
+    command: /scripts/post-init.sh
+
   temporal-ui:
-    image: temporalio/ui:${TEMPORAL_UI_VERSION:-latest}
+    image: temporalio/ui:${TEMPORAL_UI_VERSION:-2.45.3}
     container_name: temporal-ui
     depends_on:
       - temporal
@@ -139,10 +140,11 @@ services:
       - TEMPORAL_ADDRESS=temporal:7233
       - TEMPORAL_CORS_ORIGINS=http://localhost:3000
     ports:
-      - 8233:8080
+      - "8233:8080"
     networks:
       - datashare-network
-  temporal-workers:
+
+  datashare-workers:
     build:
       context: .
       dockerfile: Dockerfile
@@ -174,8 +176,9 @@ services:
       --queueType REDIS
       --redisAddress redis://redis:6379
       --elasticsearchAddress http://elasticsearch:9200
+
   datashare:
-    image: icij/datashare:${DATASHARE_VERSION:-20.12.0}
+    image: icij/datashare:${DATASHARE_VERSION:-20.13.1}
     container_name: datashare
     hostname: datashare
     depends_on:
@@ -189,7 +192,7 @@ services:
       DS_DOCKER_MOUNTED_DATA_DIR: ${PWD}/data
       TEMPORAL_ADDRESS: http://temporal:7233
     ports:
-      - 8080:8080
+      - "8080:8080"
     volumes:
       - type: bind
         source: ${PWD}/.data/datashare

@@ -1,31 +1,17 @@
-from typing import AsyncGenerator, AsyncIterable, AsyncIterator
-
-from aiostream.stream import chain
-
-from datashare_python.utils import before_and_after, once
+from datashare_python.utils import positional_args_only
+from temporalio import activity
 
 
-async def _num_gen() -> AsyncGenerator[int, None]:
-    for i in range(10):
-        yield i // 3
+@positional_args_only
+def hello_world_keyword(*, who: str) -> str:
+    return f"hello {who}"
 
 
-async def test_before_and_after():
-    # Given
-    async def group_by_iterator(
-        items: AsyncIterable[int],
-    ) -> AsyncIterator[AsyncIterator[int]]:
-        while True:
-            try:
-                next_item = await anext(aiter(items))
-            except StopAsyncIteration:
-                return
-            gr, items = before_and_after(items, lambda x: x == next_item)
-            yield chain(once(next_item), gr)
-
+def test_keyword_safe_activity() -> None:
     # When
-    grouped = []
-    async for group in group_by_iterator(_num_gen()):
-        group = [item async for item in group]
-        grouped.append(group)
-    assert grouped == [[0, 0, 0], [1, 1, 1], [2, 2, 2], [3]]
+    try:
+        activity.defn(hello_world_keyword)
+    except Exception as e:
+        raise AssertionError(
+            "couldn't create activity from keyword only function "
+        ) from e

@@ -1,9 +1,15 @@
-import logging
+import asyncio
+from collections.abc import AsyncGenerator, Generator, Iterable
 from functools import partial
-from typing import AsyncGenerator, Generator, Iterable
 
-import torch
 from aiostream.stream import chain
+from datashare_python.objects import Document
+from datashare_python.types_ import ProgressRateHandler
+from datashare_python.utils import (
+    ActivityWithProgress,
+    activity_defn,
+    to_raw_progress,
+)
 from elasticsearch._async.helpers import async_bulk
 from icij_common.es import (
     BOOL,
@@ -11,68 +17,101 @@ from icij_common.es import (
     DOC_CONTENT,
     DOC_LANGUAGE,
     DOC_ROOT_ID,
-    ESClient,
     HITS,
     ID_,
     QUERY,
     SOURCE,
     TERM,
+    ESClient,
     has_id,
     must_not,
 )
-from icij_worker.typing_ import PercentProgress
-from icij_worker.utils.progress import to_raw_progress
+from temporalio.client import Client
 from transformers import Pipeline, pipeline
 
-from datashare_python.task_client import DatashareTaskClient
-from datashare_python.constants import PYTHON_TASK_GROUP
-from datashare_python.objects import Document, TranslationConfig
-from datashare_python.tasks.dependencies import lifespan_es_client, lifespan_task_client
-from datashare_python.utils import async_batches, batches, before_and_after, once
-
-logger = logging.getLogger(__name__)
+from .objects_ import TranslationConfig
+from .utils_ import async_batches, batches, before_and_after, once
 
 
-async def create_translation_tasks(
+class CreateTranslationBatches(ActivityWithProgress):
+    def __init__(
+        self,
+        es_client: ESClient,
+        temporal_client: Client,
+        event_loop: asyncio.AbstractEventLoop,
+    ):
+        super().__init__(temporal_client, event_loop)
+        self._es_client = es_client
+
+    @activity_defn(name="create-translation-batches")
+    # @with_progress
+    # @positional_args_only
+    async def create_translation_batches(
+        self, project: str, target_language: str, batch_size: int
+    ) -> list[list[str]]:
+        return await create_translation_batches(
+            project=project,
+            target_language=target_language,
+            batch_size=batch_size,
+            es_client=self._es_client,
+        )
+
+
+class TranslateDocs(ActivityWithProgress):
+    def __init__(
+        self,
+        es_client: ESClient,
+        temporal_client: Client,
+        event_loop: asyncio.AbstractEventLoop,
+    ):
+        super().__init__(temporal_client, event_loop)
+        self._es_client = es_client
+
+    @activity_defn(name="translate-docs")
+    # @with_progress
+    # @positional_args_only
+    def translate_docs(
+        self,
+        docs: list[str],
+        target_language: str,
+        # *,
+        project: str,
+        config: TranslationConfig,
+        progress: ProgressRateHandler | None = None,
+    ) -> int:
+        return self._event_loop.run_until_complete(
+            translate_docs(
+                docs,
+                target_language=target_language,
+                project=project,
+                es_client=self._es_client,
+                config=config,
+                progress=progress,
+            )
+        )
+
+
+async def create_translation_batches(
     *,
     project: str,
     target_language: str,
-    config: TranslationConfig | None = None,
+    batch_size: int,
     es_client: ESClient | None = None,
-    task_client: DatashareTaskClient | None = None,
-) -> list[str]:
-    if es_client is None:
-        es_client = lifespan_es_client()
-    if task_client is None:
-        task_client = lifespan_task_client()
-    task_ids = []
-    if config is None:
-        config = TranslationConfig()
+) -> list[list[str]]:
     # Retrieve unprocessed docs.
     docs_by_language = _untranslated_by_language(
         es_client, project, target_language=target_language
     )
-    args = {
-        "project": project,
-        "config": config.dict(),
-        "target_language": target_language,
-    }
     # We could set this to a smarter value
-    task_batch_size = config.batch_size * 4
-    current_language = None
+    task_batch_size = batch_size * 4
+    batches = []
+    # Iterate on all documents by language
     async for language_docs in docs_by_language:
+        # Create batches per language
         async for batch in async_batches(language_docs, task_batch_size):
-            language = batch[0][SOURCE][DOC_LANGUAGE]
-            batch = [doc[ID_] for doc in batch]
-            if language != current_language:
-                logger.info("creating translation task for docs in %s", language)
-            args["docs"] = batch
-            task_id = await task_client.create_task(
-                "translate_docs", args, group=PYTHON_TASK_GROUP.name
-            )
-            task_ids.append(task_id)
-    logger.info("done creating %s translation tasks", len(task_ids))
-    return task_ids
+            doc_ids = [doc[ID_] for doc in batch]
+            batches.append(doc_ids)
+    return batches
 
 
 _TRANSLATION_DOC_SOURCES = [DOC_CONTENT, DOC_ROOT_ID, DOC_LANGUAGE]
@@ -84,11 +123,18 @@ async def translate_docs(
     *,
     project: str,
     es_client: ESClient | None = None,
-    progress: PercentProgress | None = None,
-    config: TranslationConfig = TranslationConfig(),
+    progress: ProgressRateHandler | None = None,  # noqa: F821
+    config: TranslationConfig | None = None,
 ) -> int:
-    if es_client is None:
-        es_client = lifespan_es_client()
+    import torch  # noqa:PLC0415
+
+    if config is None:
+        config = TranslationConfig()
+
+    # TODO: this should not happen
+    if not isinstance(config, TranslationConfig):
+        config = TranslationConfig.model_validate(config)
+
     n_docs = len(docs)
     if not n_docs:
         return 0
@@ -99,7 +145,8 @@ async def translate_docs(
     seen = 0
     # Convert the progress to a "raw" progress to update the progress incrementally
     # rather than setting the progress rate
-    progress = to_raw_progress(progress, max_progress=n_docs)
+    if progress is not None:
+        progress = to_raw_progress(progress, max_progress=n_docs)
     pipe = None
     # We batch the data ourselves, ideally, we should use an async version of:
     # https://huggingface.co/docs/datasets/v3.1.0/en/package_reference/main_classes#datasets.Dataset.from_generator
@@ -109,7 +156,7 @@ async def translate_docs(
             body={QUERY: has_id(batch)},
             _source_includes=_TRANSLATION_DOC_SOURCES,
         ):
-            batch_docs.extend((Document.from_es(doc) for doc in page[HITS][HITS]))
+            batch_docs.extend(Document.from_es(doc) for doc in page[HITS][HITS])
         if pipe is None:
             source_language = batch_docs[0].language
             kwargs = config.to_pipeline_args(
@@ -118,10 +165,10 @@ async def translate_docs(
             pipe = pipeline(device=device, **kwargs)
         # Load the classification pipeline
         contents = [d.content for d in batch_docs]
-        translations = _translate(pipe, contents)
+        translations = await asyncio.to_thread(_translate_as_list, pipe, contents)
         await _add_translation(
             es_client,
-            zip(batch_docs, translations),
+            zip(batch_docs, translations, strict=False),
             project,
             target_language=target_language,
         )
@@ -130,6 +177,10 @@ async def translate_docs(
             await progress(seen)
     # Return the number of classified documents
     return n_docs
+
+
+def _translate_as_list(pipe: Pipeline, texts: list[str]) -> list[str]:
+    return list(_translate(pipe, texts))
 
 
 def _translate(pipe: Pipeline, texts: list[str]) -> Generator[str, None, None]:
@@ -143,7 +194,8 @@ def _has_language(doc: dict, language: str) -> bool:
 
 async def _untranslated_by_language(
     es_client: ESClient, project: str, target_language: str
-) -> AsyncGenerator[AsyncGenerator[list[str], None], None]:
+) -> AsyncGenerator[AsyncGenerator[dict, None], None]:
+    # Get all documents that are not in the target language sorted by language
     docs = _get_untranslated(es_client, project, target_language=target_language)
     while True:
         try:
@@ -151,9 +203,11 @@ async def _untranslated_by_language(
         except StopAsyncIteration:
             return
         current_language = next_doc[SOURCE][DOC_LANGUAGE]
+        # Consume the iterator until we find a doc with a different language
         language_docs, docs = before_and_after(
             docs, partial(_has_language, language=current_language)
         )
+        # Yield all docs of the same language
         yield chain(once(next_doc), language_docs)
 
 
@@ -171,7 +225,7 @@ async def _add_translation(
     project: str,
     *,
     target_language: str,
-):
+) -> None:
     actions = (
         {
             "_op_type": "update",
@@ -189,7 +243,7 @@ async def _add_translation(
     await async_bulk(es_client, actions, raise_on_error=True, refresh="wait_for")
 
 
-def _untranslated_query(target_language: str):
+def _untranslated_query(target_language: str) -> dict:
     query = {
         "query": {
             BOOL: must_not(

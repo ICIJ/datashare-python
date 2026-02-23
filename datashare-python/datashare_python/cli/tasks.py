@@ -4,15 +4,15 @@ import logging
 import sys
 from pathlib import Path
 from traceback import FrameSummary, StackSummary
-from typing import Annotated, Any, Optional
+from typing import Annotated, Any
 
 import typer
 from alive_progress import alive_bar
 
 from datashare_python.cli.utils import AsyncTyper, eprint
 from datashare_python.constants import PYTHON_TASK_GROUP
+from datashare_python.objects import READY_STATES, Task, TaskError, TaskState
 from datashare_python.task_client import DatashareTaskClient
-from objects import Task, TaskState
 
 logger = logging.getLogger(__name__)
 
@@ -39,16 +39,16 @@ async def start_task(
     name: Annotated[str, typer.Argument(help=_NAME_HELP)],
     args: Annotated[TaskArgs, typer.Argument(help=_ARGS_HELP)] = None,
     group: Annotated[
-        Optional[str],
+        str | None,
         typer.Option("--group", "-g", help=_GROUP_HELP),
     ] = PYTHON_TASK_GROUP.name,
     ds_address: Annotated[
         str, typer.Option("--ds-address", "-a", help=_DS_URL_HELP)
     ] = DEFAULT_DS_ADDRESS,
     ds_api_key: Annotated[
-        Optional[str], typer.Option("--ds-api-key", "-k", help=_DS_API_KEY_HELP)
+        str | None, typer.Option("--ds-api-key", "-k", help=_DS_API_KEY_HELP)
     ] = None,
-):
+) -> None:
     match args:
         case str():
             as_path = Path(name)
@@ -75,12 +75,12 @@ async def watch(
         str, typer.Option("--ds-address", "-a", help=_DS_URL_HELP)
     ] = DEFAULT_DS_ADDRESS,
     ds_api_key: Annotated[
-        Optional[str], typer.Option("--ds-api-key", "-k", help=_DS_API_KEY_HELP)
+        str | None, typer.Option("--ds-api-key", "-k", help=_DS_API_KEY_HELP)
     ] = None,
     polling_interval_s: Annotated[
         float, typer.Option("--polling-interval-s", "-p", help=_POLLING_INTERVAL_S_HELP)
     ] = 1.0,
-):
+) -> None:
     client = DatashareTaskClient(ds_address, api_key=ds_api_key)
     async with client:
         task = await client.get_task(task_id)
@@ -97,19 +97,19 @@ async def result(
         str, typer.Option("--ds-address", "-a", help=_DS_URL_HELP)
     ] = DEFAULT_DS_ADDRESS,
     ds_api_key: Annotated[
-        Optional[str], typer.Option("--ds-api-key", "-k", help=_DS_API_KEY_HELP)
+        str | None, typer.Option("--ds-api-key", "-k", help=_DS_API_KEY_HELP)
     ] = None,
 ) -> Any:
     client = DatashareTaskClient(ds_address, api_key=ds_api_key)
     async with client:
         res = await client.get_task_result(task_id)
-        if isinstance(res, (dict, list)):
+        if isinstance(res, dict | list):
             res = json.dumps(res, indent=2)
         print(res)
 
 
 async def _handle_ready(
-    task: Task, client: DatashareTaskClient, already_done: bool = False
+    task: Task, client: DatashareTaskClient, *, already_done: bool = False
 ) -> None:
     match task.state:
         case TaskState.ERROR:
@@ -125,27 +125,26 @@ async def _handle_ready(
             raise ValueError(f"Unexpected task state {task.state}")
 
 
-async def _handle_error(task, client: DatashareTaskClient):
+async def _handle_error(task: Task, client: DatashareTaskClient) -> None:
     error = await client.get_task_error(task.id)
     eprint(
-        f"Task({task.id}) failed with the following"
-        f" error:\n\n{_format_error(error)}"
+        f"Task({task.id}) failed with the following error:\n\n{_format_error(error)}"
     )
     eprint(f"Task({task.id}) ❌")
     raise typer.Exit(code=1)
 
 
-async def _handle_cancelled(task):
+async def _handle_cancelled(task: Task) -> None:
     eprint(f"Task({task.id}) was cancelled !")
     eprint(f"Task({task.id}) 🛑")
     raise typer.Exit(code=1)
 
 
-async def _handle_already_done(task):
+async def _handle_already_done(task: Task) -> None:
     eprint(f"Task({task.id}) ✅ is already completed !")
 
 
-async def _handle_done(task):
+async def _handle_done(task: Task) -> None:
     eprint(f"Task({task.id}) 🛬")
     eprint(f"Task({task.id}) ✅")
 
@@ -165,7 +164,7 @@ async def _handle_alive(
             task = await client.get_task(task.id)
             task_state = task.state
             progress = task.progress or 0.0
-            bar(progress)  # pylint: disable=not-callable
+            bar(progress)
             await asyncio.sleep(polling_interval_s)
     if task_state in READY_STATES:
         await _handle_ready(task, client)

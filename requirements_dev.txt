@@ -6,4 +6,5 @@ nest-asyncio>=1.6.0
 black>=26.1.0
 pre-commit>=4.5.1
 redis[hiredis]>=5.2.1
+ruff==0.15.2
 typing_extensions>=4.15.0
