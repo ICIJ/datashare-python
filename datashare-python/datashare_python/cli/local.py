@@ -2,12 +2,10 @@ import json
 from typing import Annotated
 
 import typer
+
 from datashare_python.cli.utils import AsyncTyper
-from datashare_python.constants import DEFAULT_TEMPORAL_ADDRESS
-
+from datashare_python.constants import DEFAULT_NAMESPACE, DEFAULT_TEMPORAL_ADDRESS
 from datashare_python.local_client import LocalClient
-
-from datashare_python.constants import DEFAULT_NAMESPACE
 
 _START_WORKERS_HELP = "starts local temporal workers"
 _REGISTER_NAMESPACE_HELP = "register namespace"
@@ -27,7 +25,7 @@ async def start_workers(
     temporal_address: Annotated[
         str, typer.Option("--temporal-address", "-a", help=_TEMPORAL_URL_HELP)
     ] = DEFAULT_TEMPORAL_ADDRESS,
-):
+) -> None:
     match worker_paths:
         case str():
             worker_paths = json.loads(worker_paths)
@@ -49,13 +47,12 @@ async def register_namespace(
     temporal_address: Annotated[
         str, typer.Option("--temporal-address", "-a", help=_TEMPORAL_URL_HELP)
     ] = DEFAULT_TEMPORAL_ADDRESS,
-):
+) -> None:
     """Create namespace
 
     :param namespace: namespace
     :param temporal_address: target host
     """
-
     client = LocalClient()
 
     await client.register_namespace(temporal_address, namespace)

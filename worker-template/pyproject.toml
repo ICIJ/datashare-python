@@ -1,0 +1,58 @@
+[project]
+name = "worker-template"
+version = "0.1.0"
+description = "Datashare worker template"
+authors = [
+  { name = "Clément Doumouro", email = "cdoumouro@icij.org" },
+  { name = "Clément Doumouro", email = "clement.doumouro@gmail.com" }
+]
+readme = "README.md"
+requires-python = ">=3.11,<4"
+
+dependencies = [
+  "datashare-python",
+  "icij-common[elasticsearch]~=0.7.3",
+  "pycountry~=26.2.16",
+  "sentencepiece~=0.2.1",
+  "temporalio~=1.23.0",
+  "torch~=2.9.1",
+  "transformers~=4.46.3",
+]
+
+[tool.uv.sources]
+torch = [
+  { index = "pytorch-cpu" },
+]
+datashare-python = { path = "../datashare-python", editable = true }
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[dependency-groups]
+dev = [
+  "black>=26.1.0",
+  "datashare-python",
+  "nest-asyncio>=1.6.0",
+  "pre-commit>=4.5.1",
+  "psutil>=6.1.0",
+  "pylint~=3.1.0",
+  "pytest~=8.1",
+  "pytest-asyncio~=0.24",
+  "redis[hiredis]>=5.2.1",
+  "ruff~=0.15.1",
+  "typing-extensions>=4.15.0",
+]
+
+[build-system]
+requires = ["pdm-backend"]
+build-backend = "pdm.backend"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "session"
+markers = [
+  "integration",
+  "pull",
+]

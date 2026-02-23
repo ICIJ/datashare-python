@@ -1,21 +1,100 @@
+import logging
 import uuid
-from typing import Any, Dict, Optional
+from collections.abc import AsyncGenerator
+from contextlib import AbstractAsyncContextManager, asynccontextmanager
+from copy import deepcopy
+from typing import Any, Unpack
 
-from icij_worker import Task, TaskError, TaskState
-from icij_worker.exceptions import UnknownTask
-from icij_worker.utils.http import AiohttpClient
+from aiohttp import BasicAuth, ClientResponse, ClientResponseError, ClientSession
+from aiohttp.client import _RequestOptions
+from aiohttp.typedefs import StrOrURL
 
-# TODO: maxRetries is not supported by java, it's automatically set to 3
-_TASK_UNSUPPORTED = {"max_retries"}
+from .exceptions import UnknownTask
+from .objects import Task, TaskError, TaskState
+
+logger = logging.getLogger(__name__)
+
+
+class AiohttpClient(AbstractAsyncContextManager):
+    def __init__(
+        self,
+        base_url: str,
+        auth: BasicAuth | None = None,
+        headers: dict | None = None,
+    ):
+        self._base_url = base_url
+        self._auth = auth
+        self._session: ClientSession | None = None
+        if headers is None:
+            headers = dict()
+        self._headers = headers
+
+    async def __aenter__(self):
+        self._session = ClientSession(self._base_url, auth=self._auth)
+        await self._session.__aenter__()
+        return self
+
+    async def __aexit__(self, exc_type, exc_value, traceback):  # noqa: ANN001
+        await self._session.__aexit__(exc_type, exc_value, traceback)
+
+    @asynccontextmanager
+    async def _put(
+        self, url: StrOrURL, *, data: Any = None, **kwargs: Any
+    ) -> AsyncGenerator[ClientResponse, None]:
+        headers = deepcopy(self._headers)
+        headers.update(kwargs.pop("headers", dict()))
+        async with self._session.put(url, data=data, headers=headers, **kwargs) as res:
+            _raise_for_status(res)
+            yield res
+
+    @asynccontextmanager
+    async def _get(
+        self, url: StrOrURL, *, allow_redirects: bool = True, **kwargs: Any
+    ) -> AsyncGenerator[ClientResponse, None]:
+        headers = deepcopy(self._headers)
+        headers.update(kwargs.pop("headers", dict()))
+        async with self._session.get(
+            url, headers=headers, allow_redirects=allow_redirects, **kwargs
+        ) as res:
+            _raise_for_status(res)
+            yield res
+
+    @asynccontextmanager
+    async def _post(
+        self, url: StrOrURL, *, json: Any = None, **kwargs: Any
+    ) -> AsyncGenerator[ClientResponse, None]:
+        headers = deepcopy(self._headers)
+        headers.update(kwargs.pop("headers", dict()))
+        async with self._session.post(url, json=json, headers=headers, **kwargs) as res:
+            _raise_for_status(res)
+            yield res
+
+    @asynccontextmanager
+    async def _delete(
+        self, url: StrOrURL, **kwargs: Unpack["_RequestOptions"]
+    ) -> AsyncGenerator[ClientResponse, None]:
+        headers = deepcopy(self._headers)
+        headers.update(kwargs.pop("headers", dict()))
+        async with self._session.delete(url, headers=headers, **kwargs) as res:
+            _raise_for_status(res)
+            yield res
+
+
+def _raise_for_status(res: ClientResponse) -> None:
+    try:
+        res.raise_for_status()
+    except ClientResponseError as e:
+        msg = "request to %s, failed with reason %s"
+        logger.exception(msg, res.request_info, res.reason)
+        raise e
 
 
 class DatashareTaskClient(AiohttpClient):
-    def __init__(self, datashare_url: str = None, api_key: str | None = None) -> None:
+    def __init__(self, datashare_url: str, api_key: str | None = None) -> None:
         headers = None
         if api_key is not None:
             headers = {"Authorization": f"Bearer {api_key}"}
-        if datashare_url is not None:
-            super().__init__(datashare_url, headers=headers)
+        super().__init__(datashare_url, headers=headers)
 
     async def __aenter__(self):
         await super().__aenter__()
@@ -36,16 +115,15 @@ class DatashareTaskClient(AiohttpClient):
     async def create_task(
         self,
         name: str,
-        args: Dict[str, Any],
+        args: dict[str, Any],
         *,
-        id_: Optional[str] = None,
-        group: Optional[str] = None,
+        id_: str | None = None,
+        group: str | None = None,
     ) -> str:
         if id_ is None:
             id_ = _generate_task_id(name)
-        task = Task.create(task_id=id_, task_name=name, args=args)
+        task = Task(id=id_, name=name, args=args)
         task = task.model_dump(mode="json")
-        task.pop("createdAt")
         url = f"/api/task/{id_}"
         if group is not None:
             if not isinstance(group, str):
@@ -64,20 +142,20 @@ class DatashareTaskClient(AiohttpClient):
         # TODO: align Java on Python here... it's not a good idea to store results
         #  inside tasks since result can be quite large and we may want to get the task
         #  metadata without having to deal with the large task results...
-        task = _ds_to_icij_worker_task(task)
-        task = Task(**task)
+        task = Task.model_validate(task)
         return task
 
-    async def get_tasks(self) -> list[Task]:
-        url = "/api/task/all"
+    async def get_tasks(self) -> AsyncGenerator[Task, None]:
+        url = "/api/task"
         async with self._get(url) as res:
             tasks = await res.json()
-        # TODO: align Java on Python here... it's not a good idea to store results
-        #  inside tasks since result can be quite large and we may want to get the task
-        #  metadata without having to deal with the large task results...
-        tasks = (_ds_to_icij_worker_task(t) for t in tasks)
-        tasks = [Task(**task) for task in tasks]
-        return tasks
+
+        while tasks["items"]:
+            for t in tasks["items"]:
+                yield Task.model_validate(t)
+            url = f"/api/task?from={tasks['from']}"
+            async with self._get(url) as res:
+                tasks = await res.json()
 
     async def get_task_state(self, id_: str) -> TaskState:
         return (await self.get_task(id_)).state
@@ -101,24 +179,15 @@ class DatashareTaskClient(AiohttpClient):
         error = TaskError(**task["error"])
         return error
 
-    async def delete(self, id_: str):
+    async def delete(self, id_: str) -> None:
         url = f"/api/task/{id_}"
         async with self._delete(url):
             pass
 
-    async def delete_all_tasks(self):
-        for t in await self.get_tasks():
+    async def delete_all_tasks(self) -> None:
+        async for t in self.get_tasks():
             await self.delete(t.id)
 
 
 def _generate_task_id(task_name: str) -> str:
     return f"{task_name}-{uuid.uuid4()}"
-
-
-_JAVA_TASK_ATTRIBUTES = ["result", "error"]
-
-
-def _ds_to_icij_worker_task(task: dict) -> dict:
-    for k in _JAVA_TASK_ATTRIBUTES:
-        task.pop(k, None)
-    return task

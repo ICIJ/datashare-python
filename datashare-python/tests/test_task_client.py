@@ -1,17 +1,17 @@
 import uuid
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 from unittest.mock import AsyncMock
 
+from _pytest.monkeypatch import MonkeyPatch
 from aiohttp.typedefs import StrOrURL
-from icij_worker import Task, TaskError, TaskState
-from icij_worker.objects import StacktraceItem
-
+from datashare_python.objects import StacktraceItem, Task, TaskError, TaskState
 from datashare_python.task_client import DatashareTaskClient
 
 
-async def test_task_client_create_task(monkeypatch):
+async def test_task_client_create_task(monkeypatch: MonkeyPatch) -> None:
     # Given
     datashare_url = "http://some-url"
     api_key = "some-api-key"
@@ -21,7 +21,13 @@ async def test_task_client_create_task(monkeypatch):
     group = "PYTHON"
 
     @asynccontextmanager
-    async def _put_and_assert(_, url: StrOrURL, *, data: Any = None, **kwargs: Any):
+    async def _put_and_assert(
+        _,  # noqa: ANN001
+        url: StrOrURL,
+        *,
+        data: Any = None,
+        **kwargs: Any,
+    ) -> AsyncGenerator[AsyncMock, None]:
         assert url == f"/api/task/{task_id}?group={group}"
         expected_task = {
             "@type": "Task",
@@ -48,7 +54,7 @@ async def test_task_client_create_task(monkeypatch):
     assert t_id == task_id
 
 
-async def test_task_client_get_task(monkeypatch):
+async def test_task_client_get_task(monkeypatch: MonkeyPatch) -> None:
     # Given
     datashare_url = "http://some-url"
     api_key = "some-api-key"
@@ -57,21 +63,25 @@ async def test_task_client_get_task(monkeypatch):
 
     @asynccontextmanager
     async def _get_and_assert(
-        _, url: StrOrURL, *, allow_redirects: bool = True, **kwargs: Any
-    ):
+        _,  # noqa: ANN001
+        url: StrOrURL,
+        *,
+        allow_redirects: bool = True,
+        **kwargs: Any,
+    ) -> AsyncGenerator[AsyncMock, None]:
         assert url == f"/api/task/{task_id}"
-        task = {
+        task_ = {
             "@type": "Task",
             "id": task_id,
             "state": "CREATED",
-            "createdAt": datetime.now(),
+            "createdAt": datetime.now(UTC),
             "name": "hello",
             "args": {"greeted": "world"},
         }
         assert allow_redirects
         assert not kwargs
         mocked_res = AsyncMock()
-        mocked_res.json.return_value = task
+        mocked_res.json.return_value = task_
         yield mocked_res
 
     monkeypatch.setattr("icij_worker.utils.http.AiohttpClient._get", _get_and_assert)
@@ -83,7 +93,7 @@ async def test_task_client_get_task(monkeypatch):
     assert isinstance(task, Task)
 
 
-async def test_task_client_get_task_state(monkeypatch):
+async def test_task_client_get_task_state(monkeypatch: MonkeyPatch) -> None:
     # Given
     datashare_url = "http://some-url"
     api_key = "some-api-key"
@@ -92,15 +102,19 @@ async def test_task_client_get_task_state(monkeypatch):
 
     @asynccontextmanager
     async def _get_and_assert(
-        _, url: StrOrURL, *, allow_redirects: bool = True, **kwargs: Any
-    ):
+        _,  # noqa: ANN001
+        url: StrOrURL,
+        *,
+        allow_redirects: bool = True,
+        **kwargs: Any,
+    ) -> AsyncGenerator[AsyncMock, None]:
         assert url == f"/api/task/{task_id}"
         task = {
             "@type": "Task",
             "id": task_id,
             "state": "DONE",
-            "createdAt": datetime.now(),
-            "completedAt": datetime.now(),
+            "createdAt": datetime.now(UTC),
+            "completedAt": datetime.now(UTC),
             "name": "hello",
             "args": {"greeted": "world"},
             "result": "hellow world",
@@ -120,7 +134,7 @@ async def test_task_client_get_task_state(monkeypatch):
     assert res == TaskState.DONE
 
 
-async def test_task_client_get_task_result(monkeypatch):
+async def test_task_client_get_task_result(monkeypatch: MonkeyPatch) -> None:
     # Given
     datashare_url = "http://some-url"
     api_key = "some-api-key"
@@ -129,8 +143,12 @@ async def test_task_client_get_task_result(monkeypatch):
 
     @asynccontextmanager
     async def _get_and_assert(
-        _, url: StrOrURL, *, allow_redirects: bool = True, **kwargs: Any
-    ):
+        _,  # noqa: ANN001
+        url: StrOrURL,
+        *,
+        allow_redirects: bool = True,
+        **kwargs: Any,
+    ) -> AsyncGenerator[AsyncMock, None]:
         assert url == f"/api/task/{task_id}/results"
         assert allow_redirects
         assert not kwargs
@@ -147,7 +165,7 @@ async def test_task_client_get_task_result(monkeypatch):
     assert res == "hellow world"
 
 
-async def test_task_client_get_task_error(monkeypatch):
+async def test_task_client_get_task_error(monkeypatch: MonkeyPatch) -> None:
     # Given
     datashare_url = "http://some-url"
     api_key = "some-api-key"
@@ -156,15 +174,19 @@ async def test_task_client_get_task_error(monkeypatch):
 
     @asynccontextmanager
     async def _get_and_assert(
-        _, url: StrOrURL, *, allow_redirects: bool = True, **kwargs: Any
-    ):
+        _,  # noqa: ANN001
+        url: StrOrURL,
+        *,
+        allow_redirects: bool = True,
+        **kwargs: Any,
+    ) -> AsyncGenerator[AsyncMock, None]:
         assert url == f"/api/task/{task_id}"
         task = {
             "@type": "Task",
             "id": task_id,
             "state": "ERROR",
-            "createdAt": datetime.now(),
-            "completedAt": datetime.now(),
+            "createdAt": datetime.now(UTC),
+            "completedAt": datetime.now(UTC),
             "name": "hello",
             "args": {"greeted": "world"},
             "error": {

@@ -8,25 +8,21 @@ from temporalio.api.workflowservice.v1 import (
     ListNamespacesRequest,
     RegisterNamespaceRequest,
 )
-from temporalio.service import ServiceClient, ConnectConfig
-
-logging.basicConfig(level=logging.INFO)
+from temporalio.service import ConnectConfig, ServiceClient
 
 LOGGER = logging.getLogger(__name__)
 
 
 class LocalClient:
-
     @staticmethod
     async def start_workers(
         temporal_address: str, worker_paths: list[str], *args, **kwargs
-    ):
+    ) -> None:
         """Start worker modules, defined as a list of worker paths
 
         :param temporal_address: temporal address string (host:port)
         :param worker_paths: list of worker modules
         """
-
         workers = []
 
         for worker_path in worker_paths:
@@ -48,13 +44,12 @@ class LocalClient:
         await asyncio.gather(*workers, return_exceptions=True)
 
     @staticmethod
-    async def register_namespace(temporal_address: str, namespace: str):
+    async def register_namespace(temporal_address: str, namespace: str) -> None:
         """Register a temporal namespace
 
         :param temporal_address: temporal address string
         :param namespace: namespace string
         """
-
         client = await ServiceClient.connect(
             ConnectConfig(target_host=temporal_address)
         )

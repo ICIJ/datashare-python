@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from icij_worker.app import TaskGroup
+from .objects import TaskGroup
 
 DATA_DIR = Path(__file__).parent.joinpath(".data")
 

@@ -1,7 +1,14 @@
+import asyncio
 import logging
-from typing import AsyncGenerator, Generator, Iterable, Optional
+from collections.abc import AsyncGenerator, Generator, Iterable
 
-import torch
+from datashare_python.objects import Document
+from datashare_python.utils import (
+    ActivityWithProgress,
+    activity_defn,
+    to_raw_progress,
+    to_scaled_progress,
+)
 from elasticsearch._async.helpers import async_bulk
 from icij_common.es import (
     BOOL,
@@ -9,7 +16,6 @@ from icij_common.es import (
     DOC_CONTENT_TRANSLATED,
     DOC_LANGUAGE,
     DOC_ROOT_ID,
-    ESClient,
     HITS,
     ID_,
     MUST_NOT,
@@ -17,42 +23,83 @@ from icij_common.es import (
     SHOULD,
     TERM,
     UPDATE,
+    ESClient,
     and_query,
     bulk_action,
     has_id,
 )
-from icij_worker.typing_ import PercentProgress
-from icij_worker.utils.progress import to_raw_progress, to_scaled_progress
+from objects_ import ClassificationConfig
+from temporalio import activity
+from temporalio.client import Client
 from transformers import Pipeline, pipeline
-
-from datashare_python.constants import PYTHON_TASK_GROUP
-from datashare_python.objects import ClassificationConfig, Document
-from datashare_python.tasks.dependencies import lifespan_es_client, lifespan_task_client
-from datashare_python.utils import batches
-from datashare_python.task_client import DatashareTaskClient
-
-logger = logging.getLogger(__name__)
+from types_ import ProgressRateHandler
+from utils_ import batches
 
 
-async def create_classification_tasks(
+class CreateClassificationBatches(ActivityWithProgress):
+    def __init__(
+        self,
+        es_client: ESClient,
+        temporal_client: Client,
+        event_loop: asyncio.AbstractEventLoop,
+    ):
+        super().__init__(temporal_client, event_loop)
+        self._es_client = es_client
+
+    @activity_defn(name="create-classification-batches")
+    async def create_classification_batches(
+        self, project: str, target_language: str, config: ClassificationConfig
+    ) -> list[list[str]]:
+        return await create_classification_batches(
+            project=project,
+            language=target_language,
+            config=config,
+            es_client=self._es_client,
+            logger=activity.logger,
+        )
+
+
+class ClassifyDocs(ActivityWithProgress):
+    def __init__(
+        self,
+        es_client: ESClient,
+        temporal_client: Client,
+        event_loop: asyncio.AbstractEventLoop,
+    ):
+        super().__init__(temporal_client, event_loop)
+        self._es_client = es_client
+
+    @activity_defn(name="classify-docs")
+    async def classify_docs(
+        self,
+        docs: list[str],
+        classified_language: str,
+        # *,
+        project: str,
+        config: ClassificationConfig,
+        progress: ProgressRateHandler | None = None,
+    ) -> int:
+        return await classify_docs(
+            docs,
+            classified_language=classified_language,
+            project=project,
+            es_client=self._es_client,
+            config=config,
+            progress=progress,
+        )
+
+
+async def create_classification_batches(
     *,
     project: str,
     language: str,
-    n_workers: int,
-    config: ClassificationConfig | None,
-    es_client: ESClient | None = None,
-    task_client: DatashareTaskClient | None = None,
-    progress: PercentProgress | None = None,
-) -> list[str]:
-    if n_workers < 1:
-        raise ValueError("n_workers must be at least 1")
-    if es_client is None:
-        es_client = lifespan_es_client()
-    if task_client is None:
-        task_client = lifespan_task_client()
-    task_ids = []
-    if config is None:
-        config = ClassificationConfig()
+    config: ClassificationConfig,
+    es_client: ESClient,
+    progress: ProgressRateHandler | None = None,
+    logger: logging.Logger,
+) -> list[list[str]]:
+    if not isinstance(config, ClassificationConfig):
+        config = ClassificationConfig.model_validate(config)
     # Retrieve unprocessed docs.
     model = config.model
     unclassified = _get_unclassified(
@@ -62,35 +109,26 @@ async def create_classification_tasks(
     n_docs = len(unclassified)
     if not n_docs:
         logger.info("found not unclassified documents !")
-        return task_ids
+        return []
     logger.info("found %s unclassified documents !", n_docs)
     fetch_unclassified_progress = 0.5
     if progress is not None:
         await progress(fetch_unclassified_progress)
-    # Roughly split the load between workers:
-    # - they should approximately receive the same amount of work
-    # - they should receive tasks which are long enough to avoid model loading overhead
-    # - task should be short enough to avoid starting all over again from scratch in
-    # case of failure
-    n_tasks = max(n_docs // n_workers, n_docs // (n_workers * 5), 1)
-    task_batch_size = n_docs // n_tasks
+    effective_batch_size = config.batch_size * config.batches_per_task
     if progress is not None:
+        n_tasks = n_docs // config.batch_size
         # We scale the progress to post incremental progress updates from 0 to n_tasks
         progress = to_scaled_progress(progress, start=fetch_unclassified_progress)
         progress = to_raw_progress(progress, max_progress=n_tasks)
-    logger.info("creating %s classification tasks...", n_tasks)
+    logger.info("creating %s classification tasks...", effective_batch_size)
     # We create classification tasks which will be picked up by the workers
-    args = {"project": project, "config": config.dict(), "language": language}
-    for batch in batches(unclassified, task_batch_size):
-        args["docs"] = batch
-        task_id = await task_client.create_task(
-            "classify_docs", args, group=PYTHON_TASK_GROUP.name
-        )
-        task_ids.append(task_id)
+    clf_batches = []
+    for batch in batches(unclassified, effective_batch_size):
+        clf_batches.append(batch)
         if progress is not None:
-            await progress(len(task_ids))
+            await progress(len(clf_batches))
     logger.info("created all classification tasks !")
-    return task_ids
+    return clf_batches
 
 
 _CLASSIF_DOC_SOURCES = [DOC_CONTENT, DOC_ROOT_ID, DOC_CONTENT_TRANSLATED, DOC_LANGUAGE]
@@ -99,14 +137,20 @@ _CLASSIF_DOC_SOURCES = [DOC_CONTENT, DOC_ROOT_ID, DOC_CONTENT_TRANSLATED, DOC_LA
 async def classify_docs(
     docs: list[str],
     *,
-    language: str,
+    classified_language: str,
     project: str,
-    config: ClassificationConfig = ClassificationConfig(),
-    progress: PercentProgress | None = None,
-    es_client: ESClient | None = None,
+    config: ClassificationConfig | None = None,
+    progress: ProgressRateHandler | None = None,
+    es_client: ESClient,
 ) -> int:
-    if es_client is None:
-        es_client = lifespan_es_client()
+    import torch  # noqa: PLC0415
+
+    if config is None:
+        config = ClassificationConfig()
+    # TODO: fix this, we should have a ClassificationConfig hered
+    if not isinstance(config, ClassificationConfig):
+        config = ClassificationConfig.model_validate(config)
+
     n_docs = len(docs)
     model = config.model
     # Torch/macOS silicon stuff
@@ -118,7 +162,8 @@ async def classify_docs(
     model = pipe.model.name_or_path
     # Convert the progress to a "raw" progress to update the progress incrementally
     # from 0 to n_docs (rather than 0.0 to 1.0)
-    progress = to_raw_progress(progress, max_progress=n_docs)
+    if progress is not None:
+        progress = to_raw_progress(progress, max_progress=n_docs)
     seen = 0
     # We batch the data ourselves, ideally, we should use an async version of:
     # https://huggingface.co/docs/datasets/v3.1.0/en/package_reference/main_classes#datasets.Dataset.from_generator
@@ -130,16 +175,23 @@ async def classify_docs(
             _source_includes=_CLASSIF_DOC_SOURCES,
         ):
             batch_docs.extend([Document.from_es(doc) for doc in page[HITS][HITS]])
-        contents = (_get_language_content(d, language) for d in batch_docs)
+        contents = (_get_language_content(d, classified_language) for d in batch_docs)
         batch_docs, contents = zip(
-            *((d, c) for d, c in zip(batch_docs, contents) if c is not None)
+            *(
+                (d, c)
+                for d, c in zip(batch_docs, contents, strict=False)
+                if c is not None
+            ),
+            strict=False,
         )
         batch_docs = tuple(batch_docs)
-        labels = _classify(pipe, list(contents))
+        # Offload CPU bound computation to a thread to avoid blocking the IO loop,
+        # classification will happen in numpy/python (outside of Python's GIL reach)
+        labels = await asyncio.to_thread(_classify_as_list, pipe, list(contents))
         # We add the classification results by updating the documents with new tags,
         # this could also be done using: https://github.com/ICIJ/datashare-tarentula
         await _add_classification_tags(
-            es_client, zip(batch_docs, labels), project, model=model
+            es_client, zip(batch_docs, labels, strict=False), project, model=model
         )
         seen += batch_length
         if progress is not None:
@@ -154,7 +206,11 @@ def _classify(pipe: Pipeline, texts: list[str]) -> Generator[str, None, None]:
         yield res["label"]
 
 
-def _get_language_content(doc: Document, language: str) -> Optional[str]:
+def _classify_as_list(pipe: Pipeline, texts: list[str]) -> list[str]:
+    return list(_classify(pipe, texts))
+
+
+def _get_language_content(doc: Document, language: str) -> str | None:
     if doc.language == language:
         return doc.content
     return doc.content_translated.get(language)
@@ -176,7 +232,7 @@ async def _add_classification_tags(
     project: str,
     *,
     model: str,
-):
+) -> None:
     actions = (
         bulk_action(
             op_type=UPDATE,
@@ -194,7 +250,7 @@ async def _add_classification_tags(
     await async_bulk(es_client, actions, raise_on_error=True, refresh="wait_for")
 
 
-def _unclassified_query(model: str, language: str):
+def _unclassified_query(model: str, language: str) -> dict:
     queries = (
         # Get documents which aren't tagged yet
         {BOOL: {MUST_NOT: {"prefix": {"tags": {"value": f"classified:{model}:"}}}}},

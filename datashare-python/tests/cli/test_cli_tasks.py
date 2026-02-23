@@ -1,25 +1,23 @@
-# pylint: disable=redefined-outer-name
-from datetime import datetime
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock
 
 import nest_asyncio
 import pytest
-from icij_worker import Task, TaskError, TaskState
-from icij_worker.objects import StacktraceItem
-from typer.testing import CliRunner
-
+from _pytest.monkeypatch import MonkeyPatch
 from datashare_python.cli import cli_app
+from datashare_python.objects import StacktraceItem, Task, TaskError, TaskState
+from typer.testing import CliRunner
 
 
 @pytest.fixture
-def typer_asyncio_patch():
+def typer_asyncio_patch() -> None:
     nest_asyncio.apply()
 
 
 async def test_task_create_task(
-    monkeypatch,
-    typer_asyncio_patch,  # pylint: disable=unused-argument
-):
+    monkeypatch: MonkeyPatch,
+    typer_asyncio_patch,  # noqa: ANN001, ARG001
+) -> None:
     # Given
     mock_client_fn = MagicMock()
     mock_client = AsyncMock()
@@ -44,15 +42,16 @@ async def test_task_create_task(
 
 
 async def test_task_watch(
-    monkeypatch,
-    typer_asyncio_patch,  # pylint: disable=unused-argument
-):
+    monkeypatch: MonkeyPatch,
+    typer_asyncio_patch,  # noqa: ANN001, ARG001
+) -> None:
     # Given
     mock_client_fn = MagicMock()
     mock_client = AsyncMock()
     task_id = "hello_world-some-id"
     mock_client_fn.return_value = mock_client
-    created_at = datetime.utcnow()
+    created_at = datetime.now(UTC)
+
     mock_client.get_task.side_effect = [
         Task(
             id=task_id,
@@ -94,7 +93,7 @@ async def test_task_watch(
             name="hello_world",
             progress=1.0,
             state=TaskState.DONE,
-            completed_at=datetime.utcnow(),
+            completed_at=datetime.now(UTC),
             created_at=created_at,
         ),
     ]
@@ -117,16 +116,15 @@ async def test_task_watch(
 
 
 async def test_task_watch_error(
-    monkeypatch,
-    typer_asyncio_patch,
-    # pylint: disable=unused-argument
-):
+    monkeypatch: MonkeyPatch,
+    typer_asyncio_patch,  # noqa: ANN001, ARG001
+) -> None:
     # Given
     mock_client_fn = MagicMock()
     mock_client = AsyncMock()
     task_id = "hello_world-some-id"
     mock_client_fn.return_value = mock_client
-    created_at = datetime.utcnow()
+    created_at = datetime.now(UTC)
     mock_client.get_task.return_value = Task(
         id=task_id,
         name="hello_world",
@@ -156,15 +154,15 @@ async def test_task_watch_error(
 
 
 async def test_task_watch_cancelled(
-    monkeypatch,
-    typer_asyncio_patch,  # pylint: disable=unused-argument
-):
+    monkeypatch: MonkeyPatch,
+    typer_asyncio_patch,  # noqa: ANN001, ARG001
+) -> None:
     # Given
     mock_client_fn = MagicMock()
     mock_client = AsyncMock()
     task_id = "hello_world-some-id"
     mock_client_fn.return_value = mock_client
-    created_at = datetime.utcnow()
+    created_at = datetime.now(UTC)
     mock_client.get_task.return_value = Task(
         id=task_id,
         name="hello_world",

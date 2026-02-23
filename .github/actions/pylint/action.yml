@@ -14,6 +14,6 @@ runs:
     - name: Run linting test on $ {{ inputs.path }}
       shell: bash
       run: |
-        pylint_rc=$(pwd)/qa/python/pylintrc
+        pylint_rc=$(pwd)/qa/pylintrc
         cd ${{ inputs.path }}
         pylint --fail-under 9.49 --rcfile $pylint_rc --load-plugins=pylint.extensions.bad_builtin -r y -j 0 -f colorized **/*.py
