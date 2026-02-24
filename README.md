@@ -6,7 +6,7 @@
     </a>
   </p>
   <p align="center">
-    <em>Better analyze information, in all its forms</em>  
+    <em>Better analysis in all of its forms</em>  
   </p>
   <br/>
 </div>
@@ -14,48 +14,30 @@
 
 ---
 
-**Documentation**: <a href="https://icij.github.io/datashare-python" target="_blank">https://icij.github.io/datashare-python</a>
+# Python workers for Temporal in Datashare
 
----
-
-# Implement **your own Datashare tasks**, written in Python
-
-Most AI, Machine Learning, Data Engineering happens in Python.
-[Datashare](https://icij.gitbook.io/datashare) now lets you extend its backend with your own tasks implemented in Python.
-
-Turning your own ML pipelines into Datashare tasks is **very simple**, learn about it inside [documentation](https://icij.github.io/datashare-python).
-
-Turning your own ML pipelines into Datashare tasks is **very simple**.
-
-Actually, it's *almost* as simple as cloning our [template repo](https://github.com/ICIJ/datashare-python):
+This project serves as a repository of Temporal workers and workflows written in Python
+(useful in machine learning) for use with [Datashare](https://icij.gitbook.io/datashare). Install with 
 
 ```
-$ git clone git@github.com:ICIJ/datashare-python.git
+make install
 ```
 
-replacing existing [app](https://github.com/ICIJ/datashare-python/blob/main/datashare_python/app.py) tasks with your own:   
-```python
-from icij_worker import AsyncApp
+## File patterns
 
-app = AsyncApp("app")
-
-
-@app.task
-def hello_world() -> str:
-    return "Hello world"
+To create new workers, you can follow `asr_worker` with the file/dir structure
+```
+activities.py --> Workflow activities
+constants.py  --> Worker/workflow constants
+models.py     --> Workflow and activity inputs/outputs and other data classes
+worker.py     --> Worker definition
+workflow.py   --> Workflow definition
 ```
 
-installing [`uv`](https://docs.astral.sh/uv/) to set up dependencies and running your async Datashare worker:
-```console
-$ cd datashare-python
-$ curl -LsSf https://astral.sh/uv/install.sh | sh
-$ uv run ./scripts/worker_entrypoint.sh
-[INFO][icij_worker.backend.backend]: Loading worker configuration from env...
-...
-}
-[INFO][icij_worker.backend.mp]: starting 1 worker for app datashare_python.app.app
-...
-```
-you'll then be able to execute task by starting using our [HTTP client]() (and soon using Datashare's UI).
+## Docker
 
-## Learn more reading our [documentation](https://icij.github.io/datashare-python) !
+Use `docker-compose` to run the dev server on `localhost`, which will start `elasticsearch`
+(port `9200`), `postgres` (`5432`), and `redis` (`6379`) services, as well as the `Temporal`
+server and ui (`7233` and `8233`), and `datashare` (`8080`). Note that container build and
+startup times can be long if workers and workflows rely on large models, so allocate memory
+to Docker accordingly.

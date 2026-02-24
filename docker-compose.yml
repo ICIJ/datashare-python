@@ -1,143 +1,225 @@
-version: '3.7'
-
 services:
-  datashare-worker:
+  ############################
+  # shared services
+  ############################
+  elasticsearch:
+    image: elasticsearch:${ELASTICSEARCH_VERSION:-7.17.28}
+    container_name: elasticsearch
+    environment:
+      - cluster.name=datashare
+      - cluster.routing.allocation.disk.threshold_enabled=true
+      - cluster.routing.allocation.disk.watermark.low=512mb
+      - cluster.routing.allocation.disk.watermark.high=256mb
+      - cluster.routing.allocation.disk.watermark.flood_stage=128mb
+      - discovery.type=single-node
+      - discovery.zen.minimum_master_nodes=1
+      - xpack.license.self_generated.type=basic
+      - xpack.security.enabled=false
+      - http.cors.enabled=true
+      - http.cors.allow-origin=*
+      - http.cors.allow-methods=OPTIONS, HEAD, GET, POST, PUT, DELETE
+      - ES_JAVA_OPTS=-Xms256m -Xmx256m
+    healthcheck:
+      test: [ "CMD-SHELL", "curl --silent --fail elasticsearch:9200/_cluster/health || exit 1" ]
+      interval: 2s
+      retries: 5
+    expose:
+      - 9200
+    volumes:
+      - elasticsearch-data:/var/lib/elasticsearch/data
+    networks:
+      - datashare-network
+  postgres:
+    # TODO: Figure out missing root user error
+    image: postgres:${POSTGRESQL_VERSION:-18.1}
+    container_name: postgres
+    environment:
+      POSTGRES_USER: datashare
+      POSTGRES_PASSWORD: datashare
+      POSTGRES_DB: datashare
+      PGDATA: /var/lib/postgresql/18/docker
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready", "-U", "datashare" ]
+      interval: 2s
+      retries: 5
+    expose:
+      - 5432
+    volumes:
+      - postgres-data:/var/lib/postgresql
+    networks:
+      - datashare-network
+  redis:
+    image: redis:${REDIS_VERSION:-8.6-rc1-trixie}
+    container_name: redis
+    restart: on-failure
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 2s
+      retries: 5
+    ports:
+      - 6379:6379
+    volumes:
+      - redis-data:/data
+    networks:
+      - datashare-network
+  ############################
+  # temporal
+  ############################
+  temporal-init:
+    image: temporalio/admin-tools:${TEMPORAL_ADMINTOOLS_VERSION-1.29}
+    container_name: temporal-init
+    restart: on-failure:6
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      - POSTGRES_DB=datashare
+      - POSTGRES_PORT=5432
+      - POSTGRES_USER=datashare
+      - POSTGRES_PWD=datashare
+      - POSTGRES_SEEDS=postgres
+      - ES_HOST=elasticsearch
+      - ES_PORT=9200
+      - ES_SCHEME=http
+      - ES_VERSION=v7
+      - ES_VISIBILITY_INDEX=temporal_visibility_v1_dev
+    networks:
+      - datashare-network
+    volumes:
+      - ./scripts:/scripts
+    entrypoint: [ "/bin/sh" ]
+    command: /scripts/setup-postgres-es.sh
+  temporal:
+    image: temporalio/server:${TEMPORAL_VERSION:-1.29.3}
+    container_name: temporal
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      temporal-init:
+        condition: service_completed_successfully
+    environment:
+      - DB=postgres12_pgx
+      - DB_PORT=5432
+      - POSTGRES_USER=datashare
+      - POSTGRES_PWD=datashare
+      - POSTGRES_SEEDS=postgres
+      - DYNAMIC_CONFIG_FILE_PATH=config/dynamicconfig/development-sql.yaml
+      - ENABLE_ES=true
+      - ES_SEEDS=elasticsearch
+      - ES_VERSION=${TEMPORAL_ES_VERSION:-v7}
+      - TEMPORAL_ADDRESS=temporal:7233
+      - TEMPORAL_CLI_ADDRESS=temporal:7233
+      - DBNAME=datashare
+    ports:
+      - 7233:7233
+    volumes:
+      - ./dynamicconfig:/etc/temporal/config/dynamicconfig
+    networks:
+      - datashare-network
+  temporal-namespace-init:
+    image: temporalio/admin-tools:${TEMPORAL_ADMINTOOLS_VERSION-1.29}
+    container_name: temporal-namespace-init
+    restart: on-failure:6
+    depends_on:
+      - temporal
+    networks:
+      - datashare-network
+    volumes:
+      - ./scripts:/scripts
+    entrypoint: [ "/bin/sh" ]
+    command: /scripts/create-namespace.sh
+  temporal-ui:
+    image: temporalio/ui:${TEMPORAL_UI_VERSION:-latest}
+    container_name: temporal-ui
+    depends_on:
+      - temporal
+    environment:
+      - TEMPORAL_ADDRESS=temporal:7233
+      - TEMPORAL_CORS_ORIGINS=http://localhost:3000
+    ports:
+      - 8233:8080
+    networks:
+      - datashare-network
+  temporal-workers:
     build:
       context: .
-      target: worker
-    deploy:
-      mode: replicated
-      replicas: 2
+      dockerfile: Dockerfile
+      platforms:
+        - linux/amd64
+      args:
+        PREDOWNLOAD_MODELS: true
     depends_on:
-      datashare_web:
-        condition: service_started
-    environment:
-      DS_DOCKER_ML_LOG_LEVEL: DEBUG
-      DS_DOCKER_ES_ADDRESS: http://elasticsearch:9200
-      ICIJ_WORKER_TYPE: amqp
-      ICIJ_WORKER_RABBITMQ_HOST: rabbitmq
-      ICIJ_WORKER_RABBITMQ_PORT: 5672
+      - temporal
     volumes:
-      - type: bind
-        source: ${PWD}/.data
-        target: /home/user/src/app/.data
-
-  # Adding rabbitmq to distribute Datashare tasks
-  rabbitmq:
-    image: rabbitmq:3.12.0-management
-    # Set a host name to prevent rabbitmq to create new conf each time https://stackoverflow.com/a/53772874
-    hostname: rmq
-    container_name: datashare-rabbitmq
-    healthcheck:
-      test: rabbitmq-diagnostics -q status
-      interval: 5s
-      timeout: 2s
-      retries: 10
-      start_period: 5s
-    ports:
-      - "5672:5672"
-      - "15672:15672"
-    volumes:
-      - type: volume
-        source: rabbitmq-data
-        target: /var/lib/rabbitmq
-
-
-  # Unless commented, all lines below are copied from https://icij.gitbook.io/datashare/server-mode/install-with-docker
-  datashare_web:
-    # TODO: bump this to a version with serialization fixed
-    image: icij/datashare:19.0.0
+      - ${PWD}/.data/temporal:/temporal/data
+    networks:
+      - datashare-network
+  ############################
+  # datashare
+  ############################
+  datashare-init:
+    image: icij/datashare:${DATASHARE_VERSION:-20.12.0}
+    container_name: datashare-init
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    networks:
+      - datashare-network
+    command: >-
+      --mode CLI
+      --createIndex sandbox
+      --dataSourceUrl jdbc:postgresql://postgres/datashare?user=datashare\&password=datashare
+      --queueType REDIS
+      --redisAddress redis://redis:6379
+      --elasticsearchAddress http://elasticsearch:9200
+  datashare:
+    image: icij/datashare:${DATASHARE_VERSION:-20.12.0}
+    container_name: datashare
     hostname: datashare
-    ports:
-      - "8080:8080"
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      datashare-init:
+        condition: service_completed_successfully
     environment:
-      - DS_DOCKER_MOUNTED_DATA_DIR=${PWD}/data
+      DS_DOCKER_MOUNTED_DATA_DIR: ${PWD}/data
+      TEMPORAL_ADDRESS: http://temporal:7233
+    ports:
+      - 8080:8080
     volumes:
       - type: bind
         source: ${PWD}/.data/datashare
         target: /home/datashare/Datashare
-    depends_on:
-      redis:
-        condition: service_healthy
-      elasticsearch:
-        condition: service_healthy
-      rabbitmq:
-        condition: service_healthy
-    # We need to switch the batchQueueType to AMQP and taskRoutingStrategy to Group compared to the default config
+    networks:
+      - datashare-network
     command: >-
       --mode SERVER
-      --batchQueueType AMQP
       --taskRoutingStrategy GROUP
       --dataDir /home/datashare/Datashare
       --pluginsDir /home/datashare/plugins
       --extensionsDir /home/datashare/extensions
       --authFilter org.icij.datashare.session.YesCookieAuthFilter
-      --dataSourceUrl jdbc:postgresql://postgresql/datashare?user=datashare\&password=password 
-      --defaultProject test-project
-      --elasticsearchAddress http://elasticsearch:9200      
-      --messageBusAddress amqp://guest:guest@rabbitmq:5672
-      --queueType REDIS
-      --redisAddress redis://redis:6379  
+      --dataSourceUrl jdbc:postgresql://postgres/datashare?user=datashare\&password=datashare
+      --defaultProject sandbox
+      --elasticsearchAddress http://elasticsearch:9200
       --rootHost http://localhost:8080
+      --queueType REDIS
+      --redisAddress redis://redis:6379
       --sessionStoreType REDIS
       --sessionTtlSeconds 43200
       --tcpListenPort 8080
+      --batchQueueType TEMPORAL
+      --messageBusAddress temporal:7233
 
-  elasticsearch:
-    image: elasticsearch:7.17.25
-    restart: on-failure
-    volumes:
-      - type: volume
-        source: elasticsearch-data
-        target: /usr/share/elasticsearch/data
-        read_only: false
-    environment:
-      - "http.host=0.0.0.0"
-      - "transport.host=0.0.0.0"
-      - "cluster.name=datashare"
-      - "discovery.type=single-node"
-      - "discovery.zen.minimum_master_nodes=1"
-      - "xpack.license.self_generated.type=basic"
-      - "http.cors.enabled=true"
-      - "http.cors.allow-origin=*"
-      - "http.cors.allow-methods=OPTIONS, HEAD, GET, POST, PUT, DELETE"
-    healthcheck:
-      test: [ "CMD-SHELL", "curl --silent --fail elasticsearch:9200/_cluster/health || exit 1" ]
-    ports:
-      - "9200:9200"
-
-  postgresql:
-    image: postgres:12-alpine
-    environment:
-      - POSTGRES_USER=datashare
-      - POSTGRES_PASSWORD=password
-      - POSTGRES_DB=datashare
-      # This is needed by the heathcheck command
-      # @see https://stackoverflow.com/a/60194261
-      - PGUSER=datashare
-    volumes:
-      - type: volume
-        source: postgresql-data
-        target: /var/lib/postgresql/data
-    healthcheck:
-      test: [ "CMD-SHELL", "pg_isready", "-U", "datashare", "-d", "datashare" ]
-    ports:
-      - "5432:5432"
-
-  redis:
-    image: ${REDIS_IMG}
-    restart: on-failure
-    volumes:
-      - type: volume
-        source: redis-data
-        target: /data
-    healthcheck:
-      test: [ "CMD-SHELL", "redis-cli", "--raw", "incr", "ping" ]
-    ports:
-      - "6379:6379"
-
+networks:
+  datashare-network:
+    driver: bridge
+    name: datashare-network
 volumes:
   elasticsearch-data:
-  postgresql-data:
+  postgres-data:
   redis-data:
-  rabbitmq-data:

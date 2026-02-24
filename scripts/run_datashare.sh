@@ -1,12 +1,12 @@
 #!/bin/bash
 datashare --mode SERVER \
-  --batchQueueType AMQP \
+  --batchQueueType TEMPORAL \
+  --messageBusAddress temporal:7233 \
   --taskRoutingStrategy GROUP \
   --authFilter org.icij.datashare.session.YesCookieAuthFilter \
-  --dataSourceUrl "jdbc:postgresql://localhost/datashare?user=datashare&password=password" \
+  --dataSourceUrl "jdbc:postgresql://localhost/datashare?user=datashare&password=datashare" \
   --defaultProject test-project \
   --elasticsearchAddress http://localhost:9200 \
-  --messageBusAddress amqp://guest:guest@localhost:5672 \
   --queueType REDIS \
   --redisAddress redis://localhost:6379 \
   --rootHost http://localhost:8080 \

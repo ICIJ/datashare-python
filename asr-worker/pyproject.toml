@@ -1,0 +1,71 @@
+[build-system]
+requires = ["hatchling", "uv-dynamic-versioning"]
+build-backend = "hatchling.build"
+
+[tool.hatch.version]
+source = "uv-dynamic-versioning"
+
+[tool.hatch.build.targets.wheel]
+packages = ["asr_worker"]
+
+[tool.uv-dynamic-versioning]
+fallback-version = "0.0.0"
+
+[project]
+name = "asr-worker"
+dynamic = ["version"]
+description = "ASR Temporal task"
+authors = [
+    { name = "Lion Summerbell", email = "lsummerbell@icij.org" }
+]
+readme = "README.md"
+requires-python = ">=3.11.0, <3.14"
+dependencies = [
+    "temporalio>=1.22.0",
+    "caul==0.1.5",
+    "pyarrow<21.0.0",
+    "torchaudio>=2.10.0",
+    "torch>=2.10.0",
+    "torchcodec>=0.9.1",
+    "numpy==2.3.0",
+    "ml-dtypes>=0.5",
+    "kaldialign>=0.9.3",
+]
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[tool.uv.sources]
+torch = [
+  { index = "pytorch-cpu" }
+]
+torchaudio = [
+  { index = "pytorch-cpu" }
+]
+torchcodec = [
+  { index = "pytorch-cpu" }
+]
+
+[tool.uv]
+package = true
+override-dependencies = ["kaldialign>=0.9.3"]
+
+[tool.pylint."MESSAGES CONTROL"]
+disable = [
+    "missing-module-docstring",
+    "logging-fstring-interpolation",
+    "broad-exception-caught"
+]
+
+[tool.uv.pip]
+prerelease = "if-necessary"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "session"
+markers = [
+    "integration",
+    "pull",
+]

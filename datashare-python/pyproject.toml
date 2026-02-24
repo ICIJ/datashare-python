@@ -1,0 +1,73 @@
+[project]
+name = "datashare-python"
+version = "0.1.3"
+description = "Manage Python tasks and local resources in Datashare"
+authors = [
+    { name = "Clément Doumouro", email = "cdoumouro@icij.org" },
+    { name = "Clément Doumouro", email = "clement.doumouro@gmail.com" }
+]
+readme = "README.md"
+requires-python = "~=3.11"
+dependencies = [
+    "aiostream>=0.7.1",
+    "aiohttp>=3.13.3",
+    "icij-common[elasticsearch]>0.5",
+    "icij-worker[amqp]~=0.18",
+    "typer>=0.13.1",
+    "alive-progress>=3.2.0",
+    "temporalio>=1.22.0",
+    "click==8.1.7",
+    "transformers>=4.35.0",
+    "pycountry>=24.6.1",
+    "sentencepiece>=0.2.0",
+    "pydantic>=2"
+]
+
+[project.urls]
+Homepage = "https://icij.github.io/datashare-python/"
+Documentation = "https://icij.github.io/datashare-python/"
+Repository = "https://github.com/ICIJ/datashare-python"
+Issues = "https://github.com/ICIJ/datashare-python/issues"
+
+[project.scripts]
+datashare-python = "datashare_python.__main__:main"
+
+[build-system]
+requires = ["pdm-backend"]
+build-backend = "pdm.backend"
+
+[tool.uv]
+package = true
+
+[tool.uv.sources]
+torch = [
+    # TODO: add CUDA support
+    { index = "pytorch-nightly" },
+]
+
+[[tool.uv.index]]
+name = "pytorch-nightly"
+url = "https://download.pytorch.org/whl/nightly/cpu"
+explicit = true
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[dependency-groups]
+doc = [
+    "mkdocs-material~=9.5.48",
+    "termynal~=0.12.2",
+]
+
+[tool.uv.pip]
+prerelease = "if-necessary"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "session"
+markers = [
+    "integration",
+    "pull",
+]

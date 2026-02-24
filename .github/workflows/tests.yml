@@ -2,49 +2,28 @@ name: Tests
 
 on:
   push:
-    branches: [ 'main' ]
+    branches: [ "main" ]
   pull_request:
     paths:
-      - 'datashare_python/**.py'
-      - 'pyproject.toml'
-      - 'uv.lock'
-      - '.github/workflows/tests.yml'
+      - "datashare_python/**.py"
+      - "pyproject.toml"
+      - "uv.lock"
+      - ".github/workflows/tests.yml"
 
 jobs:
   test-worker:
     runs-on: ubuntu-latest
     env:
-      DATASHARE_VERSION: '19.0.0'
-      DATASHARE_PACKAGE: 'datashare-19.0.0.deb'
-    steps:
-      - uses: actions/checkout@v4
-      - uses: psf/black@stable
-        with:
-          options: "--check --verbose"
-          jupyter: true
-          src: "."
-          version: "~= 24.2.0"
-      - name: Download and install the Datashare deb
-        run: |
-          wget "https://github.com/ICIJ/datashare-installer/releases/download/${{ env.DATASHARE_VERSION }}/${{ env.DATASHARE_PACKAGE }}"
-          sudo apt install -y ./${{ env.DATASHARE_PACKAGE }}
-      - name: Run Datashare in background
-        run: ./scripts/run_datashare.sh &
-      - name: Install uv
-        uses: astral-sh/setup-uv@v4
-        with:
-          version: "0.5.5"
-          python-version: "3.11"
-          enable-cache: true
-      - name: Setup Python project
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-      - name: Run tests
-        run: uv run --frozen pytest -vvv --cache-clear --show-capture=all -r A .
+      DATASHARE_VERSION: "20.12.0"
+      DATASHARE_PACKAGE: "datashare-20.12.0.deb"
+      PYTHON_VERSION: "3.13"
+      ASTRAL_VERSION: "0.10.3"
+      BLACK_VERSION: "~= 24.2.0"
+      TEMPORAL_VERSION: "1.5.1"
+      PYTHONUNBUFFERED: 1
     services:
       elasticsearch:
-        image: elasticsearch:7.17.25
+        image: elasticsearch:7.17.28
         env:
           http.host: "0.0.0.0"
           transport.host: "0.0.0.0"
@@ -63,11 +42,11 @@ jobs:
           --health-start-period 5s
         ports:
           - "9200:9200"
-      postgresql:
-        image: postgres:12-alpine
+      postgres:
+        image: postgres:15
         env:
           POSTGRES_USER: datashare
-          POSTGRES_PASSWORD: password
+          POSTGRES_PASSWORD: datashare
           POSTGRES_DB: datashare
           # This is needed by the heathcheck command
           # @see https://stackoverflow.com/a/60194261
@@ -81,7 +60,7 @@ jobs:
         ports:
           - "5432:5432"
       redis:
-        image: arm64v8/redis
+        image: redis:8.6-rc1-trixie
         options: >-
           --health-cmd "redis-cli --raw incr ping"
           --health-interval 3s
@@ -90,6 +69,41 @@ jobs:
           --health-start-period 5s
         ports:
           - "6379:6379"
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Python project
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Start Temporal
+        run: |
+          docker run -d --rm -p 7233:7233 -p 8233:8233 temporalio/temporal:${{ env.TEMPORAL_VERSION }} server start-dev --ip 0.0.0.0
+#      - name: Download and install datashare
+#        run: |
+#          wget "https://github.com/ICIJ/datashare-installer/releases/download/${{ env.DATASHARE_VERSION }}/${{ env.DATASHARE_PACKAGE }}"
+#          sudo apt update && sudo apt install -y ./${{ env.DATASHARE_PACKAGE }}
+#      - name: Run Datashare in background
+#        run: ./scripts/run_datashare.sh &
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: ${{ env.ASTRAL_VERSION }}
+          python-version: ${{ env.PYTHON_VERSION }}
+          enable-cache: true
+          activate-environment: true
+      - name: Install ffmpeg
+        run: sudo apt update && sudo apt install -y ffmpeg
+      - name: Install worker deps
+        run: |
+          make install-deps
+          make create-dirs
+      - name: Run workers in background
+        run: |
+          ./scripts/worker_entrypoint.sh localhost 7233 &
+      - name: Run tests
+        run: |
+          uv pip install pytest-timeout
+          uv run --frozen pytest --timeout=120 -vvv --cache-clear --show-capture=all -r A **/tests/
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
