@@ -10,10 +10,10 @@ runs:
       shell: bash
       run: |
         python -m pip install --upgrade pip
-        pip install pylint==3.1.0
+        pip install pylint==4.0.5
     - name: Run linting test on $ {{ inputs.path }}
       shell: bash
       run: |
         pylint_rc=$(pwd)/qa/python/pylintrc
         cd ${{ inputs.path }}
-        pylint --rcfile $pylint_rc --load-plugins=pylint.extensions.bad_builtin -r y -j 0 -f colorized **/*.py
+        pylint --fail-under 9.49 --rcfile $pylint_rc --load-plugins=pylint.extensions.bad_builtin -r y -j 0 -f colorized **/*.py

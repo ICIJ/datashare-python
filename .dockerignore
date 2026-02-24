@@ -1,7 +1,7 @@
-*
-!datashare_python
-datashare_python/tests
-!pyproject.toml
-!README.md
-!scripts
-!uv.lock
+old_temporal_manager
+.data
+.github
+.venv
+docs
+qa
+**/tests/
