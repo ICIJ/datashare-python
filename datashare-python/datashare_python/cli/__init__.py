@@ -20,7 +20,7 @@ def version_callback(value: bool):
         raise typer.Exit()
 
 
-@cli_app.callback(name="datashare-python")
+@cli_app.callback()
 def main(
     version: Annotated[  # pylint: disable=unused-argument
         Optional[bool],

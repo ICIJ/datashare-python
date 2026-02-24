@@ -17,7 +17,7 @@ dependencies = [
     "alive-progress>=3.2.0",
     "temporalio>=1.22.0",
     "click==8.1.7",
-    "transformers>=4.35.0",
+    "transformers==4.51",
     "pycountry>=24.6.1",
     "sentencepiece>=0.2.0",
     "pydantic>=2"
