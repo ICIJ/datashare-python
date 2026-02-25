@@ -8,12 +8,11 @@ from typing import Annotated, Any, Optional
 
 import typer
 from alive_progress import alive_bar
-from icij_worker import TaskState
-from icij_worker.objects import READY_STATES, Task, TaskError
 
 from datashare_python.cli.utils import AsyncTyper, eprint
 from datashare_python.constants import PYTHON_TASK_GROUP
 from datashare_python.task_client import DatashareTaskClient
+from objects import Task, TaskState
 
 logger = logging.getLogger(__name__)
 
