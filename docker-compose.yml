@@ -178,7 +178,7 @@ services:
       --elasticsearchAddress http://elasticsearch:9200
 
   datashare:
-    image: icij/datashare:${DATASHARE_VERSION:-20.13.1}
+    image: icij/datashare:${DATASHARE_VERSION:-20.14.0}
     container_name: datashare
     hostname: datashare
     depends_on:

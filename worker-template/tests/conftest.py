@@ -19,6 +19,7 @@ from datashare_python.conftest import (  # noqa: F401
     doc_3,
     event_loop,
     populate_es,
+    test_deps,
     test_es_client,
     test_es_client_session,
     test_task_client,
@@ -29,11 +30,6 @@ from datashare_python.conftest import (  # noqa: F401
     worker_lifetime_deps,
 )
 from datashare_python.dependencies import (
-    set_es_client,
-    set_event_loop,
-    set_loggers,
-    set_task_client,
-    set_temporal_client,
     with_dependencies,
 )
 from datashare_python.types_ import ContextManagerFactory
@@ -64,7 +60,7 @@ def test_worker_config() -> TranslateAndClassifyWorkerConfig:
 @pytest.fixture(scope="session")
 async def lifetime_deps(
     event_loop: AbstractEventLoop,  # noqa: F811
-    test_deps: list[ContextManagerFactory],
+    test_deps: list[ContextManagerFactory],  # noqa: F811
     test_worker_config: WorkerConfig,
 ) -> AsyncGenerator[None, Any]:
     ctx = "unit test application"
@@ -77,17 +73,6 @@ async def lifetime_deps(
         ctx=ctx,
     ):
         yield
-
-
-@pytest.fixture(scope="session")
-def test_deps() -> list[ContextManagerFactory]:
-    return [
-        set_loggers,
-        set_event_loop,
-        set_es_client,
-        set_temporal_client,
-        set_task_client,
-    ]
 
 
 @pytest.fixture(scope="session")

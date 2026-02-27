@@ -10,4 +10,4 @@ DEFAULT_TEMPORAL_ADDRESS = "temporal:7233"
 
 DEFAULT_DS_ADDRESS = "http://localhost:8080"
 
-DEFAULT_NAMESPACE = "default"
+DEFAULT_NAMESPACE = "datashare-default"

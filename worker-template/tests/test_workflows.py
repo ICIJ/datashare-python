@@ -38,6 +38,7 @@ async def test_ping_workflow_e2e(
     assert response == "pong"
 
 
+@pytest.mark.xfail(reason="expected to fail until DS server is fixed")
 @pytest.mark.e2e
 async def test_ping_e2e(
     io_worker: Worker,  # noqa: ARG001

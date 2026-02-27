@@ -353,6 +353,7 @@ dev = [
     { name = "redis", extras = ["hiredis"], specifier = ">=5.2.1" },
     { name = "ruff", specifier = "==0.15.2" },
     { name = "typing-extensions", specifier = ">=4.15.0" },
+    { name = "worker-template", editable = "." },
 ]
 doc = [
     { name = "mkdocs-material", specifier = "~=9.5.48" },

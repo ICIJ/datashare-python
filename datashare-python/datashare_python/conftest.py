@@ -6,17 +6,28 @@ import aiohttp
 import pytest
 from elasticsearch._async.helpers import async_streaming_bulk
 from icij_common.es import DOC_ROOT_ID, ES_DOCUMENT_TYPE, ID, ESClient
+from temporalio import workflow
 
-from .config import DatashareClientConfig, TemporalClientConfig, WorkerConfig
-from .dependencies import (
+from datashare_python.config import (
+    DatashareClientConfig,
+    TemporalClientConfig,
+    WorkerConfig,
+)
+from datashare_python.dependencies import (
     lifespan_es_client,
     lifespan_task_client,
     lifespan_temporal_client,
+    set_es_client,
+    set_event_loop,
+    set_loggers,
+    set_task_client,
+    set_temporal_client,
     with_dependencies,
 )
-from .objects import Document, TaskState
-from .task_client import DatashareTaskClient
-from .types_ import ContextManagerFactory, TemporalClient
+from datashare_python.objects import Document, TaskState
+from datashare_python.task_client import DatashareTaskClient
+from datashare_python.types_ import ContextManagerFactory, TemporalClient
+from datashare_python.utils import activity_defn
 
 RABBITMQ_TEST_PORT = 5672
 RABBITMQ_TEST_HOST = "localhost"
@@ -44,10 +55,32 @@ _INDEX_BODY = {
 }
 
 
-# Override this one in your conftest with your own dependencies
+@activity_defn(name="mocked-act")
+def mocked_act() -> None:
+    pass
+
+
+@activity_defn(name="mocked-async-act")
+async def mocked_async_act() -> None:
+    pass
+
+
+@workflow.defn(name="mocked-workflow", sandboxed=False)
+class MockedWorkflow:
+    @workflow.run
+    async def run(self) -> None:
+        return None
+
+
 @pytest.fixture(scope="session")
 def test_deps() -> list[ContextManagerFactory]:
-    return []
+    return [
+        set_loggers,
+        set_event_loop,
+        set_es_client,
+        set_temporal_client,
+        set_task_client,
+    ]
 
 
 @pytest.fixture(scope="session")
