@@ -1,8 +1,9 @@
 import pytest
-from classify import classify_docs
-from conftest import TEST_PROJECT
+from datashare_python.objects import Document
 from icij_common.es import ESClient
-from objects import Document
+from worker_template.classify import classify_docs
+
+from .conftest import TEST_PROJECT
 
 
 @pytest.mark.integration

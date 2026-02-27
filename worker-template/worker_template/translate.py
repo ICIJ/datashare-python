@@ -44,8 +44,6 @@ class CreateTranslationBatches(ActivityWithProgress):
         self._es_client = es_client
 
     @activity_defn(name="create-translation-batches")
-    # @with_progress
-    # @positional_args_only
     async def create_translation_batches(
         self, project: str, target_language: str, batch_size: int
     ) -> list[list[str]]:
@@ -68,13 +66,11 @@ class TranslateDocs(ActivityWithProgress):
         self._es_client = es_client
 
     @activity_defn(name="translate-docs")
-    # @with_progress
-    # @positional_args_only
     def translate_docs(
         self,
         docs: list[str],
         target_language: str,
-        # *,
+        *,
         project: str,
         config: TranslationConfig,
         progress: ProgressRateHandler | None = None,

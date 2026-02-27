@@ -8,7 +8,6 @@ authors = [
 ]
 readme = "README.md"
 requires-python = ">=3.11,<4"
-
 dependencies = [
   "datashare-python",
   "icij-common[elasticsearch]~=0.7.3",
@@ -18,6 +17,12 @@ dependencies = [
   "torch~=2.9.1",
   "transformers~=4.46.3",
 ]
+
+[project.entry-points."datashare.workflows"]
+workflows = "worker_template.workflows:WORKFLOWS"
+
+[project.entry-points."datashare.activities"]
+activities = "worker_template.activities:ACTIVITIES"
 
 [tool.uv.sources]
 torch = [
@@ -33,7 +38,7 @@ explicit = true
 [dependency-groups]
 dev = [
   "black>=26.1.0",
-  "datashare-python",
+  "datashare-python~=0.1.3",
   "nest-asyncio>=1.6.0",
   "pre-commit>=4.5.1",
   "psutil>=6.1.0",

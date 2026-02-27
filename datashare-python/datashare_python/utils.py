@@ -190,26 +190,48 @@ def with_progress(weight: float = 1.0) -> Callable[P, T]:
 def positional_args_only(activity_fn: Callable[P, T]) -> Callable[P, T]:
     sig = inspect.signature(activity_fn)
 
+    # Keep track of kwargs-only
+    params = list(sig.parameters.values())
+    keyword_only = {p.name for p in params if p.kind == inspect.Parameter.KEYWORD_ONLY}
+
     if asyncio.iscoroutinefunction(activity_fn):
 
         @wraps(activity_fn)
-        async def wrapper(*args, **kwargs) -> Callable[P, T]:
-            return await activity_fn(*args, **kwargs)
+        async def wrapper(*args, **kwargs) -> T:
+            # recreate kwargs from pargs
+            new_args, new_kwargs = _unpack_positional_args(args, keyword_only, params)
+            return await activity_fn(*new_args, **new_kwargs, **kwargs)
     else:
 
         @wraps(activity_fn)
-        def wrapper(*args, **kwargs) -> Callable[P, T]:
-            return activity_fn(*args, **kwargs)
+        def wrapper(*args, **kwargs) -> T:
+            # recreate kwargs from pargs
+            new_args, new_kwargs = _unpack_positional_args(args, keyword_only, params)
+            return activity_fn(*new_args, **new_kwargs, **kwargs)
 
+    # Update the decorated function signature to appear as p-args only
     new_params = [
         p.replace(kind=inspect.Parameter.POSITIONAL_OR_KEYWORD)
         if p.kind == inspect.Parameter.KEYWORD_ONLY
         else p
-        for p in sig.parameters.values()
+        for p in params
     ]
     wrapper.__signature__ = sig.replace(parameters=new_params)
 
     return wrapper
+
+
+def _unpack_positional_args(
+    args: tuple, keyword_only_names: set[str], params: list
+) -> tuple[list, dict]:
+    new_args = []
+    new_kwargs = dict()
+    for value, param in zip(args, params, strict=False):
+        if param.name in keyword_only_names:
+            new_kwargs[param.name] = value
+        else:
+            new_args.append(value)
+    return new_args, new_kwargs
 
 
 def with_retriables(
@@ -255,8 +277,8 @@ def activity_defn(
     dynamic: bool = False,
 ) -> Callable[[Callable[P, T]], Callable[P, T]]:
     def decorator(activity_fn: Callable[P, T]) -> Callable[P, T]:
-        activity_fn = with_retriables(retriables)(activity_fn)
         activity_fn = positional_args_only(activity_fn)
+        activity_fn = with_retriables(retriables)(activity_fn)
         activity_fn = with_progress(progress_weight)(activity_fn)
         activity_fn = activity.defn(
             activity_fn,

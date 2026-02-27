@@ -5,18 +5,16 @@ from enum import StrEnum
 from temporalio import workflow
 
 with workflow.unsafe.imports_passed_through():
+    from datashare_python.utils import (
+        ActivityWithProgress,
+        WorkflowWithProgress,
+        activity_defn,
+        with_progress,
+    )
+
     from .classify import ClassifyDocs, CreateClassificationBatches
-    from .translate import CreateTranslationBatches, TranslateDocs
-
-with workflow.unsafe.imports_passed_through():
     from .objects_ import TranslateAndClassifyRequest, TranslateAndClassifyResponse
-
-from datashare_python.utils import (
-    ActivityWithProgress,
-    WorkflowWithProgress,
-    activity_defn,
-    with_progress,
-)
+    from .translate import CreateTranslationBatches, TranslateDocs
 
 
 class TaskQueues(StrEnum):
@@ -108,3 +106,6 @@ class Pong(ActivityWithProgress):
     @with_progress
     async def pong(self) -> str:
         return "pong"
+
+
+WORKFLOWS = [TranslateAndClassifyWorkflow, PingWorkflow]

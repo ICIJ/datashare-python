@@ -1,7 +1,7 @@
 from collections.abc import AsyncGenerator, AsyncIterable, AsyncIterator
 
 from aiostream.stream import chain
-from utils_ import before_and_after, once
+from worker_template.utils_ import before_and_after, once
 
 
 async def _num_gen() -> AsyncGenerator[int, None]:

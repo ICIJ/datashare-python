@@ -5,7 +5,11 @@ from datetime import UTC, datetime
 from enum import StrEnum, unique
 from typing import Any, Literal, Self
 
-from icij_common.es import DOC_CONTENT, DOC_LANGUAGE, DOC_ROOT_ID, ID_, SOURCE
+from temporalio import workflow
+
+with workflow.unsafe.imports_passed_through():
+    from icij_common.es import DOC_CONTENT, DOC_LANGUAGE, DOC_ROOT_ID, ID_, SOURCE
+
 from icij_common.pydantic_utils import (
     icij_config,
     lowercamel_case_config,
