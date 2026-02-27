@@ -1,6 +1,6 @@
 import torchaudio
-from caul.model_handlers.helpers import ParakeetModelHandlerResult
 from caul.configs.parakeet import ParakeetConfig
+from caul.model_handlers.helpers import ParakeetModelHandlerResult
 from caul.tasks.preprocessing.helpers import PreprocessedInput
 from temporalio import activity
 
@@ -16,7 +16,7 @@ class ASRActivities:
         # load models
         self.asr_handler.startup()
 
-    @activity.defn
+    @activity.defn(name="asr.transcription.preprocess")
     async def preprocess(self, inputs: list[str]) -> list[list[PreprocessedInput]]:
         """Preprocess transcription inputs
 
@@ -25,7 +25,7 @@ class ASRActivities:
         """
         return self.asr_handler.preprocessor.process(inputs)
 
-    @activity.defn
+    @activity.defn(name="asr.transcription.infer")
     async def infer(
         self, inputs: list[PreprocessedInput]
     ) -> list[ParakeetModelHandlerResult]:
@@ -44,7 +44,7 @@ class ASRActivities:
 
         return self.asr_handler.inference_handler.process(inputs)
 
-    @activity.defn
+    @activity.defn(name="asr.transcription.postprocess")
     async def postprocess(
         self, inputs: list[ParakeetModelHandlerResult]
     ) -> list[ParakeetModelHandlerResult]:
@@ -54,3 +54,6 @@ class ASRActivities:
         :return: list of parakeet inference handler results
         """
         return self.asr_handler.postprocessor.process(inputs)
+
+
+REGISTRY = [ASRActivities.preprocess, ASRActivities.infer, ASRActivities.postprocess]

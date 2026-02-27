@@ -5,8 +5,8 @@ from datetime import timedelta
 from more_itertools import flatten
 from temporalio import workflow
 
-from asr_worker.models import ASRResponse, ASRInputs
-from asr_worker.constants import _TEN_MINUTES, RESPONSE_SUCCESS, RESPONSE_ERROR
+from asr_worker.constants import _TEN_MINUTES, RESPONSE_ERROR, RESPONSE_SUCCESS
+from asr_worker.models import ASRInputs, ASRResponse
 
 with workflow.unsafe.imports_passed_through():
     from asr_worker.activities import ASRActivities
@@ -14,7 +14,7 @@ with workflow.unsafe.imports_passed_through():
 
 # TODO: Figure out which modules are violating sandbox restrictions
 #  and grant a limited passthrough
-@workflow.defn(sandboxed=False)
+@workflow.defn(name="asr.transcription", sandboxed=False)
 class ASRWorkflow:
     """ASR workflow definition"""
 
@@ -28,7 +28,6 @@ class ASRWorkflow:
         :param inputs: ASRInputs
         :return: ASRResponse
         """
-
         try:
             # Preprocessing
             preprocessed_batches = await gather(
@@ -99,3 +98,6 @@ class ASRWorkflow:
         except ValueError as e:
             workflow.logger.exception(e)
             return ASRResponse(status=RESPONSE_ERROR, error=str(e))
+
+
+WORKFLOWS = [ASRWorkflow]
