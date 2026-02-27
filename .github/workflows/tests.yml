@@ -11,99 +11,65 @@ on:
       - ".github/workflows/tests.yml"
 
 jobs:
-  test-worker:
+  test-datashare-python:
     runs-on: ubuntu-latest
-    env:
-      DATASHARE_VERSION: "20.12.0"
-      DATASHARE_PACKAGE: "datashare-20.12.0.deb"
-      PYTHON_VERSION: "3.13"
-      ASTRAL_VERSION: "0.10.3"
-      BLACK_VERSION: "~= 24.2.0"
-      TEMPORAL_VERSION: "1.5.1"
-      PYTHONUNBUFFERED: 1
-    services:
-      elasticsearch:
-        image: elasticsearch:7.17.28
-        env:
-          http.host: "0.0.0.0"
-          transport.host: "0.0.0.0"
-          cluster.name: datashare
-          discovery.type: single-node
-          discovery.zen.minimum_master_nodes: 1
-          xpack.license.self_generated.type: basic
-          http.cors.enabled: true
-          http.cors.allow-origin: "*"
-          http.cors.allow-methods: OPTIONS, HEAD, GET, POST, PUT, DELETE
-        options: >-
-          --health-cmd "curl --silent --fail elasticsearch:9200/_cluster/health || exit 1"
-          --health-interval 3s
-          --health-timeout 1s
-          --health-retries 10
-          --health-start-period 5s
-        ports:
-          - "9200:9200"
-      postgres:
-        image: postgres:15
-        env:
-          POSTGRES_USER: datashare
-          POSTGRES_PASSWORD: datashare
-          POSTGRES_DB: datashare
-          # This is needed by the heathcheck command
-          # @see https://stackoverflow.com/a/60194261
-          PGUSER: datashare
-        options: >-
-          --health-cmd "pg_isready -U datashare -d datashare"
-          --health-interval 3s
-          --health-timeout 1s
-          --health-retries 10
-          --health-start-period 5s
-        ports:
-          - "5432:5432"
-      redis:
-        image: redis:8.6-rc1-trixie
-        options: >-
-          --health-cmd "redis-cli --raw incr ping"
-          --health-interval 3s
-          --health-timeout 1s
-          --health-retries 10
-          --health-start-period 5s
-        ports:
-          - "6379:6379"
     steps:
       - uses: actions/checkout@v4
       - name: Setup Python project
         uses: actions/setup-python@v6
         with:
           python-version: ${{ env.PYTHON_VERSION }}
-      - name: Start Temporal
+      - name: Cache Docker images
+        uses: ScribeMD/docker-cache@0.5.0
+        with:
+          key: docker-${{ runner.os }}-${{ hashFiles('docker-compose.yml')  }}
+      - name: Start test services
+        run: docker compose up -d datashare temporal-post-init elasticsearch
+      - name: test temporal setup
         run: |
-          docker run -d --rm -p 7233:7233 -p 8233:8233 temporalio/temporal:${{ env.TEMPORAL_VERSION }} server start-dev --ip 0.0.0.0
-#      - name: Download and install datashare
-#        run: |
-#          wget "https://github.com/ICIJ/datashare-installer/releases/download/${{ env.DATASHARE_VERSION }}/${{ env.DATASHARE_PACKAGE }}"
-#          sudo apt update && sudo apt install -y ./${{ env.DATASHARE_PACKAGE }}
-#      - name: Run Datashare in background
-#        run: ./scripts/run_datashare.sh &
+          curl "https://temporal.download/cli/archive/latest?platform=linux&arch=amd64" --output temporal.tar.gz
+          tar xzvf temporal.tar.gz
+          sudo mv temporal /usr/local/bin
+          temporal operator namespace describe -n datashare-default --address localhost:7233
       - name: Install uv
         uses: astral-sh/setup-uv@v7
         with:
           version: ${{ env.ASTRAL_VERSION }}
           python-version: ${{ env.PYTHON_VERSION }}
           enable-cache: true
-          activate-environment: true
-      - name: Install ffmpeg
-        run: sudo apt update && sudo apt install -y ffmpeg
-      - name: Install worker deps
-        run: |
-          make install-deps
-          make create-dirs
-      - name: Run workers in background
-        run: |
-          ./scripts/worker_entrypoint.sh localhost 7233 &
+          working-directory: datashare-python
       - name: Run tests
         run: |
-          uv pip install pytest-timeout
-          uv run --frozen pytest --timeout=120 -vvv --cache-clear --show-capture=all -r A **/tests/
+          cd datashare-python
+          uv sync --frozen --all-extras 
+          uv run --frozen python -m pytest -vvv --cache-clear --show-capture=all -r A
+
+  test-worker-template:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Python project
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Cache Docker images
+        uses: ScribeMD/docker-cache@0.5.0
+        with:
+          key: docker-${{ runner.os }}-${{ hashFiles('docker-compose.yml')  }}
+      - name: Start test services
+        run: docker compose up -d datashare temporal-post-init elasticsearch
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: ${{ env.ASTRAL_VERSION }}
+          python-version: ${{ env.PYTHON_VERSION }}
+          enable-cache: true
+          working-directory: worker-template
+      - name: Run tests
+        run: |
+          cd worker-template
+          uv sync --frozen --all-extras
+          uv run --frozen python -m pytest --timeout=180 -vvv --cache-clear --show-capture=all -r A
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}

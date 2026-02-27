@@ -1,9 +1,3 @@
-limit.maxIDLength:
-  - value: 255
-    constraints: { }
-system.namespaceCacheRefreshInterval:
-  - value: 0.1s
-    constraints: { }
-system.forceSearchAttributesCacheRefreshOnRead:
-  - value: true
-    constraints: { }
+system:
+  namespaceCacheRefreshInterval: 0.1s
+  forceSearchAttributesCacheRefreshOnRead: true

@@ -17,4 +17,5 @@ create_custom_search_attributes_namespace() {
 }
 
 create_temporal_namespace
+sleep 5
 create_custom_search_attributes_namespace
