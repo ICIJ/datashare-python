@@ -35,7 +35,7 @@ task_app = AsyncTyper(name="task")
 
 
 @task_app.async_command(help=_START_HELP)
-async def start_task(
+async def start(
     name: Annotated[str, typer.Argument(help=_NAME_HELP)],
     args: Annotated[TaskArgs, typer.Argument(help=_ARGS_HELP)] = None,
     group: Annotated[
@@ -84,7 +84,7 @@ async def watch(
     client = DatashareTaskClient(ds_address, api_key=ds_api_key)
     async with client:
         task = await client.get_task(task_id)
-        if task.state is READY_STATES:
+        if task.state in READY_STATES:
             await _handle_ready(task, client, already_done=True)
         await _handle_alive(task, client, polling_interval_s)
     print(task_id)

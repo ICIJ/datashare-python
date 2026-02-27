@@ -7,8 +7,14 @@ from unittest.mock import AsyncMock
 
 from _pytest.monkeypatch import MonkeyPatch
 from aiohttp.typedefs import StrOrURL
-from datashare_python.objects import StacktraceItem, Task, TaskError, TaskState
-from datashare_python.task_client import DatashareTaskClient
+from datashare_python.objects import (
+    StacktraceItem,
+    Task,
+    TaskError,
+    TaskResult,
+    TaskState,
+)
+from datashare_python.task_client import AiohttpClient, DatashareTaskClient
 
 
 async def test_task_client_create_task(monkeypatch: MonkeyPatch) -> None:
@@ -36,16 +42,16 @@ async def test_task_client_create_task(monkeypatch: MonkeyPatch) -> None:
             "name": "hello",
             "args": {"greeted": "world"},
         }
-        expected_data = expected_task
         assert data is None
         json_data = kwargs.pop("json")
         assert not kwargs
-        assert json_data == expected_data
+        assert isinstance(json_data.pop("createdAt", None), str)
+        assert json_data == expected_task
         mocked_res = AsyncMock()
         mocked_res.json.return_value = {"taskId": task_id}
         yield mocked_res
 
-    monkeypatch.setattr("icij_worker.utils.http.AiohttpClient._put", _put_and_assert)
+    monkeypatch.setattr(AiohttpClient, "_put", _put_and_assert)
 
     task_client = DatashareTaskClient(datashare_url, api_key=api_key)
     async with task_client:
@@ -84,7 +90,7 @@ async def test_task_client_get_task(monkeypatch: MonkeyPatch) -> None:
         mocked_res.json.return_value = task_
         yield mocked_res
 
-    monkeypatch.setattr("icij_worker.utils.http.AiohttpClient._get", _get_and_assert)
+    monkeypatch.setattr(AiohttpClient, "_get", _get_and_assert)
 
     task_client = DatashareTaskClient(datashare_url, api_key=api_key)
     async with task_client:
@@ -117,7 +123,7 @@ async def test_task_client_get_task_state(monkeypatch: MonkeyPatch) -> None:
             "completedAt": datetime.now(UTC),
             "name": "hello",
             "args": {"greeted": "world"},
-            "result": "hellow world",
+            "result": TaskResult(value="hellow"),
         }
         assert allow_redirects
         assert not kwargs
@@ -125,7 +131,7 @@ async def test_task_client_get_task_state(monkeypatch: MonkeyPatch) -> None:
         mocked_res.json.return_value = task
         yield mocked_res
 
-    monkeypatch.setattr("icij_worker.utils.http.AiohttpClient._get", _get_and_assert)
+    monkeypatch.setattr(AiohttpClient, "_get", _get_and_assert)
 
     task_client = DatashareTaskClient(datashare_url, api_key=api_key)
     async with task_client:
@@ -156,7 +162,7 @@ async def test_task_client_get_task_result(monkeypatch: MonkeyPatch) -> None:
         mocked_res.json.return_value = "hellow world"
         yield mocked_res
 
-    monkeypatch.setattr("icij_worker.utils.http.AiohttpClient._get", _get_and_assert)
+    monkeypatch.setattr(AiohttpClient, "_get", _get_and_assert)
 
     task_client = DatashareTaskClient(datashare_url, api_key=api_key)
     async with task_client:
@@ -203,7 +209,7 @@ async def test_task_client_get_task_error(monkeypatch: MonkeyPatch) -> None:
         mocked_res.json.return_value = task
         yield mocked_res
 
-    monkeypatch.setattr("icij_worker.utils.http.AiohttpClient._get", _get_and_assert)
+    monkeypatch.setattr(AiohttpClient, "_get", _get_and_assert)
 
     task_client = DatashareTaskClient(datashare_url, api_key=api_key)
     async with task_client:

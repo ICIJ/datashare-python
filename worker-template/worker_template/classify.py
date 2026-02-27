@@ -3,6 +3,7 @@ import logging
 from collections.abc import AsyncGenerator, Generator, Iterable
 
 from datashare_python.objects import Document
+from datashare_python.types_ import ProgressRateHandler
 from datashare_python.utils import (
     ActivityWithProgress,
     activity_defn,
@@ -28,12 +29,12 @@ from icij_common.es import (
     bulk_action,
     has_id,
 )
-from objects_ import ClassificationConfig
 from temporalio import activity
 from temporalio.client import Client
 from transformers import Pipeline, pipeline
-from types_ import ProgressRateHandler
-from utils_ import batches
+
+from .objects_ import ClassificationConfig
+from .utils_ import batches
 
 
 class CreateClassificationBatches(ActivityWithProgress):

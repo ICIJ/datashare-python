@@ -3,9 +3,15 @@ import uuid
 from collections.abc import AsyncGenerator
 from contextlib import AbstractAsyncContextManager, asynccontextmanager
 from copy import deepcopy
-from typing import Any, Unpack
+from typing import Any, Self, Unpack
 
-from aiohttp import BasicAuth, ClientResponse, ClientResponseError, ClientSession
+from aiohttp import (
+    BasicAuth,
+    ClientResponse,
+    ClientResponseError,
+    ClientSession,
+    DummyCookieJar,
+)
 from aiohttp.client import _RequestOptions
 from aiohttp.typedefs import StrOrURL
 
@@ -13,6 +19,8 @@ from .exceptions import UnknownTask
 from .objects import Task, TaskError, TaskState
 
 logger = logging.getLogger(__name__)
+
+# TODO: move this one to icij_common
 
 
 class AiohttpClient(AbstractAsyncContextManager):
@@ -43,6 +51,8 @@ class AiohttpClient(AbstractAsyncContextManager):
     ) -> AsyncGenerator[ClientResponse, None]:
         headers = deepcopy(self._headers)
         headers.update(kwargs.pop("headers", dict()))
+        logger.debug("PUT headers: %s", headers)  # add this
+        logger.debug("Cookie jar: %s", list(self._session.cookie_jar))
         async with self._session.put(url, data=data, headers=headers, **kwargs) as res:
             _raise_for_status(res)
             yield res
@@ -91,26 +101,35 @@ def _raise_for_status(res: ClientResponse) -> None:
 
 class DatashareTaskClient(AiohttpClient):
     def __init__(self, datashare_url: str, api_key: str | None = None) -> None:
+        self._api_key = api_key
         headers = None
         if api_key is not None:
             headers = {"Authorization": f"Bearer {api_key}"}
         super().__init__(datashare_url, headers=headers)
 
-    async def __aenter__(self):
-        await super().__aenter__()
-        if "Authorization" not in self._headers:
-            async with self._get("/settings") as res:
-                # SimpleCookie doesn't seem to parse DS cookie so we perform some dirty
-                # hack here
-                session_id = [
-                    item
-                    for item in res.headers["Set-Cookie"].split("; ")
-                    if "session_id" in item
-                ]
-                if len(session_id) != 1:
-                    raise ValueError("Invalid cookie")
-                k, v = session_id[0].split("=")
-                self._session.cookie_jar.update_cookies({k: v})
+    async def __aenter__(self) -> Self:
+        if self._api_key is None:  # Assume no auth necessary
+            # Disable aiohttp cookie handling which messes up with the CSRF token stuff
+            cookies = DummyCookieJar()
+            self._session = ClientSession(
+                self._base_url, auth=self._auth, cookies=cookies
+            )
+            await self._session.__aenter__()
+            async with self._get("/settings") as res:  # Get a random route with no auth
+                self._session.cookie_jar.clear()
+                cookies = {}
+                for header_val in res.headers.getall("Set-Cookie", []):
+                    cookie_part = header_val.split(";")[0].strip()
+                    name, _, value = cookie_part.partition("=")
+                    name, value = name.strip(), value.strip('"')
+                    cookies[name] = value
+                self._headers["Cookie"] = "; ".join(
+                    f"{k}={v}" for k, v in cookies.items()
+                )
+                self._headers["X-DS-CSRF-TOKEN"] = cookies["_ds_csrf_token"]
+        else:
+            await super().__aenter__()
+        return self
 
     async def create_task(
         self,
@@ -123,7 +142,7 @@ class DatashareTaskClient(AiohttpClient):
         if id_ is None:
             id_ = _generate_task_id(name)
         task = Task(id=id_, name=name, args=args)
-        task = task.model_dump(mode="json")
+        task = task.model_dump(mode="json", exclude_none=True)
         url = f"/api/task/{id_}"
         if group is not None:
             if not isinstance(group, str):
