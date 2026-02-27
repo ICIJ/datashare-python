@@ -22,7 +22,9 @@ services:
     healthcheck:
       test: [ "CMD-SHELL", "curl --silent --fail elasticsearch:9200/_cluster/health || exit 1" ]
       interval: 2s
-      retries: 5
+      timeout: 3s
+      start_period: 5s
+      retries: 10
     ports:
       - "9200:9200"
     volumes:
@@ -104,7 +106,8 @@ services:
       - POSTGRES_SEEDS=postgres
       - TEMPORAL_ADDRESS=temporal:7233
       - TEMPORAL_CLI_ADDRESS=temporal:7233
-      - DBNAME=datashare
+      - DBNAME=temporal
+      - VISIBILITY_DBNAME=temporal_visibility
     healthcheck:
       test: [ "CMD", "nc", "-z", "temporal", "7233" ]
       interval: 2s
