@@ -34,7 +34,9 @@ jobs:
           path: .cache
           restore-keys: |
             mkdocs-material-
-      - run: uv sync --frozen --group doc
+      - run: |
+          uv venv
+          uv pip install -r requirements_doc.txt
       - run: uv run mkdocs gh-deploy --force
 
 # Allow only one concurrent deployment, skipping runs queued between the run in-progress and latest queued.

@@ -37,7 +37,7 @@ from icij_common.es import ESClient
 from temporalio.client import Client as TemporalClient
 from temporalio.testing import ActivityEnvironment
 from temporalio.worker import Worker
-from worker_template.classify import ClassifyDocs, CreateClassificationBatches
+from worker_template.activities import ClassifyDocs, CreateClassificationBatches
 from worker_template.config_ import TranslateAndClassifyWorkerConfig
 from worker_template.translate import CreateTranslationBatches, TranslateDocs
 from worker_template.workflows import (

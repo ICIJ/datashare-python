@@ -20,37 +20,65 @@
 Most AI, Machine Learning, Data Engineering happens in Python.
 [Datashare](https://icij.gitbook.io/datashare) now lets you extend its backend with your own tasks implemented in Python.
 
-Turning your own ML pipelines into Datashare tasks is **very simple**.
+Turning your own data processing pipelines into a Datashare worker running your pipeline is very simple.
 
-Actually, it's *almost* as simple as cloning our [template repo](https://github.com/ICIJ/datashare-python):
+Let's turn this dummy pipeline function into a Datashare worker:
+```py
+--8<--
+activities.py:5:7
+--8<--
+```
+ 
+
+We start by cloning [`datashare-python`](https://github.com/ICIJ/datashare-python)'s repo and create your own worker
+package:  
 
 <!-- termynal -->
-```
+```bash
 $ git clone git@github.com:ICIJ/datashare-python.git
 ---> 100%
-```
-
-replacing existing [app](https://github.com/ICIJ/datashare-python/blob/main/datashare_python/app.py) tasks with your own:   
-```python
---8<--
-hello_world.py
---8<--
-```
-
-installing [`uv`](https://docs.astral.sh/uv/) to set up dependencies and running your async Datashare worker:
-<!-- termynal -->
-```
 $ cd datashare-python
-$ curl -LsSf https://astral.sh/uv/install.sh | sh
----> 100%
-$ uv run ./scripts/worker_entrypoint.sh
-[INFO][icij_worker.backend.backend]: Loading worker configuration from env...
-...
-}
-[INFO][icij_worker.backend.mp]: starting 1 worker for app datashare_python.app.app
-...
+$ make create-worker hello-world
 ```
-you'll then be able to execute task by starting using our [HTTP client]() (and soon using Datashare's UI).    
+
+Datashare's asynchronous execution is backed by the [temporal](https://docs.temporal.io/develop/python/) durable
+execution framework.
+In temporal [workflows](https://docs.temporal.io/workflows) are described in
+plain Python code in which some tasks ([activities](https://docs.temporal.io/activities) in Temporal's terminology) are executed.
+
+Then we implement a simple `HelloWorld` workflow, running a single `hello` activity. Here is what our new activity should look like:
+```py title="datashare-python/hello-world/hello_world/activities.py"
+--8<--
+activities.py
+--8<--
+```
+
+Next, we integrate our task/activity into a workflow:
+```py title="datashare-python/hello-world/hello_world/workflows.py"
+--8<--
+workflows.py
+--8<--
+```
+
+Finally we install [`uv`](https://docs.astral.sh/uv/) to set up dependencies and run our async Datashare worker:
+
+=== "Linux, MacOS"
+    <!-- termynal -->
+    ```console
+    $ curl -LsSf https://astral.sh/uv/install.sh | sh
+    ---> 100%
+    $ cd hello-world
+    $ uv run --frozen datashare-python worker start --activities hello --workflows hello-world --queue hello
+    ```
+=== "Windows"
+    <!-- termynal -->
+    ```console
+    $ powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
+    $ cd hello-world
+    $ uv run --frozen datashare-python worker start --activities hello --workflows hello-world --queue hello
+    ```
+
+you'll then be able to execute workflow using the `datashare-python` CLI.    
 
 [//]: # (TODO: add a link to the HTTP task creation guide)
 

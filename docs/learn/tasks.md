@@ -14,7 +14,7 @@ the `icij-worker` lib lets you very simply turn it into a task executed asynchro
 
 ```python
 --8<--
-hello_world.py
+activities.py
 --8<--
 ```
 
@@ -22,13 +22,13 @@ Let's break down the above code into pieces. First we start by **defining an app
 
 ```python hl_lines="3"
 --8<--
-hello_world.py
+activities.py
 --8<--
 ```
 the we use the `:::python @app.task` decorator to **register** our `:::python hello_world` function as a task app:
 ```python hl_lines="6-8"
 --8<--
-hello_world.py
+activities.py
 --8<--
 ```
 

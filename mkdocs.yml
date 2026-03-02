@@ -14,6 +14,7 @@ theme:
     - content.code.annotate
     - content.code.copy
     - content.code.select
+    - content.tabs.link
     - header.autohide
     - navigation.expand
     - navigation.footer
@@ -55,6 +56,8 @@ markdown_extensions:
   - admonition
   - attr_list
   - md_in_html
+  - pymdownx.tabbed:
+      alternate_style: true
   - pymdownx.highlight:
       anchor_linenums: true
       line_spans: __span
@@ -108,3 +111,5 @@ nav:
     - Testing: guides/testing.md
     - Progress updates: guides/progress-updates.md
   - FAQ: faq.md
+watch:
+  - docs

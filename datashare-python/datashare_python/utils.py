@@ -269,9 +269,9 @@ def with_retriables(
 
 
 def activity_defn(
+    name: str,
     progress_weight: float = 1.0,
     retriables: set[type[Exception]] = None,
-    name: str | None = None,
     *,
     no_thread_cancel_exception: bool = False,
     dynamic: bool = False,
