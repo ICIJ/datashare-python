@@ -1,7 +1,7 @@
 import pytest
 from datashare_python.objects import Document
 from icij_common.es import ESClient
-from worker_template.classify import classify_docs
+from worker_template.activities import classify_docs
 
 from .conftest import TEST_PROJECT
 

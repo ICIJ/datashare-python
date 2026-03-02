@@ -12,9 +12,13 @@ with workflow.unsafe.imports_passed_through():
         with_progress,
     )
 
-    from .classify import ClassifyDocs, CreateClassificationBatches
+    from .activities import (
+        ClassifyDocs,
+        CreateClassificationBatches,
+        CreateTranslationBatches,
+        TranslateDocs,
+    )
     from .objects_ import TranslateAndClassifyRequest, TranslateAndClassifyResponse
-    from .translate import CreateTranslationBatches, TranslateDocs
 
 
 class TaskQueues(StrEnum):

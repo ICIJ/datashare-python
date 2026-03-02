@@ -53,11 +53,6 @@ dev = [
   "typing-extensions>=4.15.0",
   "worker-template",
 ]
-doc = [
-  "mkdocs-material~=9.5.48",
-  "termynal~=0.12.2",
-]
-
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
