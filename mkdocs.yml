@@ -1,6 +1,5 @@
 site_name: Datashare Python
-# TODO: set the domain
-site_url: https://mydomain.org/
+site_url: https://icij.github.io/datashare-python/
 repo_name: ICIJ/datashare-python
 repo_url: https://github.com/ICIJ/datashare-python
 theme:
