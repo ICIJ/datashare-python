@@ -14,10 +14,12 @@ dependencies = [
   "aiostream~=0.6.4",
   "aiohttp~=3.11.9",
   "icij-common[elasticsearch]~=0.7.3",
-  "typer~=0.13.1",
-  "temporalio~=1.23.0",
-  "nest-asyncio~=1.6.0",
   "python-json-logger~=4.0.0",
+  "nest-asyncio~=1.6.0",
+  "temporalio~=1.23.0",
+  "typer~=0.15.4",
+  "worker-template",
+  "tomlkit>=0.14.0",
 ]
 
 [project.urls]
@@ -30,8 +32,14 @@ Issues = "https://github.com/ICIJ/datashare-python/issues"
 datashare-python = "datashare_python.__main__:main"
 
 [build-system]
-requires = ["pdm-backend"]
-build-backend = "pdm.backend"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+package = ["datashare_python"]
+
+[tool.hatch.build.targets.wheel]
+artifacts = [
+  "worker-template.tar.gz"
+]
 
 [tool.uv]
 package = true
@@ -41,16 +49,16 @@ worker-template = { path = "../worker-template", editable = true }
 
 [dependency-groups]
 dev = [
-  "black>=26.1.0",
-  "nest-asyncio>=1.6.0",
-  "pre-commit>=4.5.1",
-  "psutil>=6.1.0",
+  "hatch-build~=0.5.0",
+  "nest-asyncio~=1.6.0",
+  "pre-commit~=4.5.1",
+  "psutil~=6.1.0",
   "pylint~=3.1.0",
   "pytest~=8.1",
   "pytest-asyncio~=0.24",
-  "redis[hiredis]>=5.2.1",
+  "redis[hiredis]~=5.2.1",
   "ruff==0.15.2",
-  "typing-extensions>=4.15.0",
+  "typing-extensions~=4.15.0",
   "worker-template",
 ]
 

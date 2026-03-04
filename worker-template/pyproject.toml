@@ -52,8 +52,17 @@ dev = [
 ]
 
 [build-system]
-requires = ["pdm-backend"]
-build-backend = "pdm.backend"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+package = ["worker_template"]
+
+# Include non python files into the source so that we can copy them as template when the package is distributed
+[tool.hatch.build.targets.wheel.force-include]
+"pyproject.toml" = "worker_template/template/pyproject.toml"
+"README.md" = "worker_template/template/README.md"
+"tests" = "worker_template/template/tests"
+"uv.lock" = "worker_template/template/uv.lock"
+"worker_template" = "worker_template/template/worker_template"
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

@@ -77,16 +77,6 @@ plugins:
   - termynal
 nav:
   - Home: index.md
-  - Learn:
-    - learn/index.md
-    - Concepts and definitions:
-      - Basic: learn/concepts-basic.md
-      - Advanced: learn/concepts-advanced.md
-    - From functions to tasks:
-      - Creating async tasks: learn/tasks.md
-      - Building an app: learn/app.md
-      - Running a worker pool with the icij-worker CLI: learn/run-worker.md
-    - Create tasks for Datashare: learn/datashare-app.md
   - Get started:
     - get-started/index.md
     - Implement your own Datashare worker:
@@ -96,6 +86,16 @@ nav:
     - Build your worker image: get-started/build.md
     - Deploy using Docker: get-started/run.md
     - Start your tasks: get-started/start-tasks.md
+  - Learn:
+      - learn/index.md
+      - Concepts and definitions:
+          - Basic: learn/concepts-basic.md
+          - Advanced: learn/concepts-advanced.md
+      - From Python functions to workflows:
+          - Creating an async tasks: learn/tasks.md
+          - Building an app: learn/app.md
+          - Running a worker pool with the icij-worker CLI: learn/run-worker.md
+      - Create tasks for Datashare: learn/datashare-app.md
   - Guides:
     - guides/index.md
     - Configuration:

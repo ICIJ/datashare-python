@@ -7,13 +7,18 @@ from icij_common.logging_utils import setup_loggers
 
 import datashare_python
 from datashare_python.cli.local import local_app
+from datashare_python.cli.project import project_app
 from datashare_python.cli.task import task_app
 from datashare_python.cli.utils import AsyncTyper
 from datashare_python.cli.worker import worker_app
 
-cli_app = AsyncTyper(context_settings={"help_option_names": ["-h", "--help"]})
-cli_app.add_typer(task_app)
+cli_app = AsyncTyper(
+    context_settings={"help_option_names": ["-h", "--help"]},
+    pretty_exceptions_enable=False,
+)
 cli_app.add_typer(local_app)
+cli_app.add_typer(project_app)
+cli_app.add_typer(task_app)
 cli_app.add_typer(worker_app)
 
 
