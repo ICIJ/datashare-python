@@ -1,5 +1,5 @@
 # About
 
-This section will is a step-by-step guide to create and deploy your own Datashare tasks.
+This section is a step-by-step guide to create and deploy your Datashare worker running your own tasks.
 
-You might want to [learn](../learn/index.md) the basics before actually starting to implement your own worker.
+If you feel you need more theoretical context, you can [learn](../learn/index.md) the basics before actually starting to implement your worker.

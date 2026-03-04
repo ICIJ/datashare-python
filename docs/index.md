@@ -30,16 +30,28 @@ activities.py:5:7
 ```
  
 
-We start by cloning [`datashare-python`](https://github.com/ICIJ/datashare-python)'s repo and create your own worker
-package:  
+We start by running the [`datashare-python`](https://github.com/ICIJ/datashare-python)'s CLI to create a worker project from a template:  
 
-<!-- termynal -->
-```bash
-$ git clone git@github.com:ICIJ/datashare-python.git
----> 100%
-$ cd datashare-python
-$ make create-worker hello-world
-```
+=== "Linux, MacOS"
+    <!-- termynal -->
+    ```console
+    $ curl -LsSf https://astral.sh/uv/install.sh | sh
+    ---> 100%
+    $ uvx datashare-python project init hello-world
+    Initializing hello-world worker project in .
+    Project hello-world initialized !
+    $ cd hello-world
+    ```
+=== "Windows"
+    <!-- termynal -->
+    ```console
+    $ powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
+    ---> 100%
+    $ uvx datashare-python project init hello-world
+    Initializing hello-world worker project in .
+    Project hello-world initialized !
+    $ cd hello-world
+    ```
 
 Datashare's asynchronous execution is backed by the [temporal](https://docs.temporal.io/develop/python/) durable
 execution framework.
@@ -47,34 +59,29 @@ In temporal [workflows](https://docs.temporal.io/workflows) are described in
 plain Python code in which some tasks ([activities](https://docs.temporal.io/activities) in Temporal's terminology) are executed.
 
 Then we implement a simple `HelloWorld` workflow, running a single `hello` activity. Here is what our new activity should look like:
-```py title="datashare-python/hello-world/hello_world/activities.py"
+```py title="hello_world/activities.py"
 --8<--
 activities.py
 --8<--
 ```
 
 Next, we integrate our task/activity into a workflow:
-```py title="datashare-python/hello-world/hello_world/workflows.py"
+```py title="hello_world/workflows.py"
 --8<--
 workflows.py
 --8<--
 ```
 
-Finally we install [`uv`](https://docs.astral.sh/uv/) to set up dependencies and run our async Datashare worker:
+Finally we set up dependencies and run our async Datashare worker:
 
 === "Linux, MacOS"
     <!-- termynal -->
     ```console
-    $ curl -LsSf https://astral.sh/uv/install.sh | sh
-    ---> 100%
-    $ cd hello-world
     $ uv run --frozen datashare-python worker start --activities hello --workflows hello-world --queue hello
     ```
 === "Windows"
     <!-- termynal -->
     ```console
-    $ powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
-    $ cd hello-world
     $ uv run --frozen datashare-python worker start --activities hello --workflows hello-world --queue hello
     ```
 

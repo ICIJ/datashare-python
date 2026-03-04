@@ -1,50 +1,85 @@
 # Basic Datashare worker
 
-## Install dependencies
+## Initialize a worker python package
 
-Start by installing [`uv`](https://docs.astral.sh/uv/getting-started/installation/) and dependencies:
-<!-- termynal -->
 ```console
-$ curl -LsSf https://astral.sh/uv/install.sh | sh
-$ uv sync --frozen --group dev
+$ uvx datashare-python project init basic-worker
+Initializing basic-worker worker project in .
+Project basic-worker initialized !
+$ cd basic-worker
 ```
 
-## Implement the `hello_user` task function
+## Implement an activity function
 
-As seen in the [task tutorial](../../learn/tasks.md#task-arguments), one of the dummiest tasks we can implement take
-the `:::python user: dict | None` argument automatically added by Datashare to all tasks and greet that user.
+As seen in the [task tutorial](../../learn/tasks.md#task-arguments), one of the task/activity workflow we can implement 
+takes the `:::python user: dict | None` argument automatically added by Datashare to all workflows and greet that user:
 
-The function performing this task is the following 
+```python title="basic_worker/activities.py"
+--8<--
+basic_activities.py:hello_user_fn
+--8<--
+```
 
+## Register an activity
+
+Let's register our function as a temporal activity under the `hello_user` name:
+
+```python title="basic_worker/activities.py" hl_lines="4 11"
+--8<--
+basic_activities.py:activities
+--8<--
+``` 
+
+1. decorate the activity function with `@activity_defn` using `"hello-user"` as name
+2. expose the activity function to `datashare-python`'s CLI, by listing it in the `ACTIVITIES` variable
+
+Under the hood, the `ACTIVITIES` is registered as
+[plugin entrypoint](https://setuptools.pypa.io/en/latest/userguide/entry_point.html#entry-points-for-plugins)
+in the package's `pyproject.toml`:
+```toml title="pyproject.toml" 
+--8<--
+pyproject.toml:entry_points_acts
+--8<--
+```
+When running a worker through `datashare-python worker start`, the CLI will look for any variable registered under 
+the `:::toml "datashare.activities"` key and will be able to run the associated activities.
+
+You can register as many variables as you want, under the names of your choices, as long as it's registered under
+the `:::toml "datashare.activities"` key.  
+
+## Implement and register a workflow
+
+We've implemented an [activity](https://docs.temporal.io/activities) performing a task but Datashare
+runs temporal run [workflows](https://docs.temporal.io/workflows) not activities. 
+
+In our case, the workflow could be as simple as running the `hello_world` activity:
 ```python
 --8<--
-basic_app.py:hello_user_fn
+basic_run_workflow.py
 --8<--
 ```
 
-## Register the `hello_user` task
+In practice, we'll build a
+[temporal workflow](https://docs.temporal.io/develop/python/core-application#develop-workflows) to run our activity:
 
-In order to turn our function into a Datashare [task](../../learn/concepts-basic.md#tasks), we have to register it into the 
-`:::python app` [async app](../../learn/concepts-basic.md#app) variable of the
-[app.py](https://github.com/ICIJ/datashare-python/blob/main/datashare_python/app.py) file, using the `:::python @task` decorator.
-
-Since we won't use existing tasks, we can also perform some cleaning and get rid of them.
-The `app.py` file should hence look like this:
-
-```python title="app.py" hl_lines="9"
+```python title="basic_worker/workflows.py" hl_lines="8 10 13 19"
 --8<--
-basic_app.py:app
+basic_workflows.py:workflows
 --8<--
 ```
+    
+1. decorate the workflow class with `@workflow.defn` using `"hello-user"` as name  
+2. decorate `run`function with `@workflow.run` 
+3. execute our `hello_user` activity
+4. expose the workflow class to `datashare-python`'s CLI, by listing it in the `:::python WORKFLOWS` variable
 
-The only thing we had to do is to use the `:::python @app.task` decorator and make sure to provide it with
-`:::python name` to **bind the function to a task name** and group the task in the `:::python PYTHON_TASK_GROUP = TaskGroup(name="PYTHON")`.
-
-As detailed in [here](../../learn/datashare-app.md#grouping-our-tasks-in-the-python-task-group), using this task group
-ensures that when custom tasks are published for execution, they are correctly routed to your custom Python worker and
-not to the Java built-in workers running behind Datashare's backend. 
-
-## Get rid of unused codebase
+Just like for activities, our workflow is exposed to `datashare-python`'s CLI under the `:::python WORKFLOWS` variable,
+bound in the `pyproject.toml`:
+```toml title="pyproject.toml" 
+--8<--
+pyproject.toml:entry_points_wfs
+--8<--
+```
 
 ## Next
 
@@ -52,3 +87,4 @@ Now that you have created a basic app, you can either:
 
 - learn how to [build a docker image](../build.md) from it
 - learn how to implement a more realistic worker in the [advanced example](./worker-advanced.md)
+
