@@ -12,7 +12,7 @@ PYTHON_TASK_GROUP = TaskGroup(name="PYTHON")
 
 # --8<-- [end:create_app]
 @app.task(name="hello_world", group=PYTHON_TASK_GROUP)
-def hello_world(user: dict | None) -> str:  # pylint: disable=unused-argument
+def hello_world(user: dict | None) -> str:  # noqa: ARG001
     return "Hello world"
 
 
@@ -21,10 +21,7 @@ def hello_world(user: dict | None) -> str:  # pylint: disable=unused-argument
 @app.task(name="hello_user", group=PYTHON_TASK_GROUP)
 def hello_user(user: dict | None) -> str:
     greeting = "Hello "
-    if user is None:
-        user = "unknown"
-    else:
-        user = user["id"]
+    user = "unknown" if user is None else user["id"]
     return greeting + user
 
 
@@ -34,10 +31,7 @@ def hello_user(user: dict | None) -> str:
 async def hello_user_progress(user: dict | None, progress: RateProgress) -> str:
     greeting = "Hello "
     await progress(0.5)
-    if user is None:
-        user = "unknown"
-    else:
-        user = user["id"]
+    user = "unknown" if user is None else user["id"]
     res = greeting + user
     await progress(1)
     return res

@@ -1,28 +1,9 @@
 # --8<-- [start:create_vectorization_tasks]
 import asyncio
 import logging
-from collections.abc import AsyncIterable
-from typing import AsyncIterator
+from collections.abc import AsyncIterable, AsyncIterator
 
 import numpy as np
-from icij_common.es import (
-    DOC_CONTENT,
-    ESClient,
-    HITS,
-    ID_,
-    QUERY,
-    SOURCE,
-    ids_query,
-    make_document_query,
-    match_all,
-)
-from icij_worker.ds_task_client import DatashareTaskClient
-from lancedb import AsyncConnection as LanceDBConnection, AsyncTable
-from lancedb.embeddings import get_registry
-from lancedb.index import FTS, IvfPq
-from lancedb.pydantic import LanceModel, Vector
-from sentence_transformers import SentenceTransformer
-
 from datashare_python.constants import PYTHON_TASK_GROUP
 from datashare_python.tasks.dependencies import (
     lifespan_es_client,
@@ -32,6 +13,24 @@ from datashare_python.tasks.dependencies import (
     # --8<-- [end:lifespan_vector_db]
 )
 from datashare_python.utils import async_batches
+from icij_common.es import (
+    DOC_CONTENT,
+    HITS,
+    ID_,
+    QUERY,
+    SOURCE,
+    ESClient,
+    ids_query,
+    make_document_query,
+    match_all,
+)
+from icij_worker.ds_task_client import DatashareTaskClient
+from lancedb import AsyncConnection as LanceDBConnection
+from lancedb import AsyncTable
+from lancedb.embeddings import get_registry
+from lancedb.index import FTS, IvfPq
+from lancedb.pydantic import LanceModel, Vector
+from sentence_transformers import SentenceTransformer
 
 logger = logging.getLogger(__name__)
 
@@ -169,7 +168,8 @@ async def find_most_similar(
     vectorizer = SentenceTransformer(model)
     vectors = vectorizer.encode(queries)
     futures = (
-        _find_most_similar(table, q, v, n_similar) for q, v in zip(queries, vectors)
+        _find_most_similar(table, q, v, n_similar)
+        for q, v in zip(queries, vectors, strict=False)
     )
     results = await asyncio.gather(*futures)
     results = sum(results, start=[])
@@ -179,9 +179,12 @@ async def find_most_similar(
 
 # --8<-- [start:hybrid-search]
 async def _find_most_similar(
-    table: AsyncTable, query: str, vector: np.ndarray, n_similar: int
+    table: AsyncTable,
+    query: str,  # noqa: ARG001
+    vector: np.ndarray,
+    n_similar: int,
 ) -> list[dict]:
-    # pylint: disable=unused-argument
+
     most_similar = (
         await table.query()
         # The async client seems to be bugged and does really support hybrid queries

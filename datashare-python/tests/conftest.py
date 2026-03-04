@@ -1,3 +1,4 @@
+import pytest  # noqa: I001
 import nest_asyncio
 from datashare_python.conftest import *  # noqa: F403
 from datashare_python.template import build_template_tarball
