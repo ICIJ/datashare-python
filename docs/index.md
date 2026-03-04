@@ -74,16 +74,13 @@ workflows.py
 
 Finally we set up dependencies and run our async Datashare worker:
 
-=== "Linux, MacOS"
-    <!-- termynal -->
-    ```console
-    $ uv run --frozen datashare-python worker start --activities hello --workflows hello-world --queue hello
-    ```
-=== "Windows"
-    <!-- termynal -->
-    ```console
-    $ uv run --frozen datashare-python worker start --activities hello --workflows hello-world --queue hello
-    ```
+<div class="wrap">
+<!-- termynal -->
+```python
+$ uv run --frozen datashare-python worker start --activities hello --workflows hello-world --queue hello
+```
+</div>
+
 
 you'll then be able to execute workflow using the `datashare-python` CLI.    
 

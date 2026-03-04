@@ -110,5 +110,7 @@ nav:
     - Testing: guides/testing.md
     - Progress updates: guides/progress-updates.md
   - FAQ: faq.md
+extra_css:
+  - stylesheets/extra.css
 watch:
   - docs
