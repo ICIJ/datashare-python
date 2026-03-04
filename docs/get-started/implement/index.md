@@ -1,38 +1,36 @@
-# How to use the worker template repo ?
+# Install the [`datashare-python`](https://pypi.org/project/datashare-python/) CLI
 
-The [datashare-python](https://github.com/ICIJ/datashare-python) repository is meant to be used as a template to implement your own Datashare worker.
+We recommend running the [`datashare-python`](https://pypi.org/project/datashare-python/) CLI using [uv](https://docs.astral.sh/uv).
 
-## Clone the template repository
+If you don't have [uv](https://docs.astral.sh/uv) yet, start by installing it:
 
-Start by cloning the [template repository](https://github.com/ICIJ/datashare-python):
-<p align="center">
-    <img alt="clone_template.png" src="../../assets/clone_template.png"/>
-</p>
+=== "Linux, MacOS"
+    <!-- termynal -->
+    ```console
+    $ curl -LsSf https://astral.sh/uv/install.sh | sh
+    ---> 100%
+    ```
+=== "Windows"
+    <!-- termynal -->
+    ```console
+    $ powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
+    ---> 100%
+    ```
 
-## Explore the codebase
-
-In addition to be used as a template, the repository can also showcases some of advanced schemes detailed in the
-[guides](../../guides/index.md) section of this documentation.
-
-Don't hesitate to have a look at the codebase before starting (or get back to it later on) !
-
-In particular the following files should be of interest:
+Then verify the installation:
+<!-- termynal -->
 ```console
-.
-├── datashare_python
-│         ├── app.py
-│         ├── config.py
-│         ├── tasks
-│         │         ├── __init__.py
-│         │         ├── classify_docs.py
-│         │         ├── dependencies.py
-│         │         └── translate_docs.py
+uvx datashare-python --version
 ```
 
+Feel also free to install and run the [`datashare-python`](https://pypi.org/project/datashare-python/) CLI with the
+package/tool manager of your choice.
 
-## Replace existing tasks with your own
+## Explore the [datashare-python](https://github.com/ICIJ/datashare-python) codebase
 
-To implement your Datashare worker the only thing you have to do is to **replace existing tasks with your own and
-register them in the `app` app variable of the `app.py` file.**
+[datashare-python](https://github.com/ICIJ/datashare-python) contains all worker implementations powering Datashare's backend 
+(speech-to-text, translation...), don't hesitate to have a look at the existing codebase before starting 
+(or get back to it later on) !
 
-We'll detail how to do so in the [Basic Worker](./worker-basic.md) and [Advanced Worker](./worker-advanced.md) examples.
+## Get started...
+...and see how to implement a [Basic Worker](./worker-basic.md) or a more [Advanced Worker](./worker-advanced.md) !
