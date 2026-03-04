@@ -15,8 +15,6 @@ on:
 jobs:
   datashare-python:
     runs-on: ubuntu-latest
-    env:
-      RUFF_OUTPUT_FORMAT: github
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/ruff-action@v3
@@ -29,8 +27,6 @@ jobs:
 
   worker-template:
     runs-on: ubuntu-latest
-    env:
-      RUFF_OUTPUT_FORMAT: github
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/ruff-action@v3
@@ -40,6 +36,18 @@ jobs:
         run: ruff format --config qa/ruff.toml --check worker-template
       - name: Lint test
         run: ruff check --config qa/ruff.toml worker-template
+
+  doc:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/ruff-action@v3
+        with:
+          args: "--version" # skips test by displaying the version
+      - name: Check formatting
+        run: ruff format --config qa/ruff.toml --check docs
+      - name: Lint test
+        run: ruff check --config qa/ruff.toml docs
 
   asr-worker:
     runs-on: ubuntu-latest

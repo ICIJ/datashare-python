@@ -1,12 +1,8 @@
 # pylint: disable=redefined-outer-name
 # --8<-- [start:test-vectorize]
 from pathlib import Path
-from typing import List
 
 import pytest
-from icij_common.es import ESClient
-from lancedb import AsyncConnection as LanceDBConnection, connect_async
-
 from datashare_python.objects import Document
 from datashare_python.tasks.vectorize import (
     create_vectorization_tasks,
@@ -17,21 +13,24 @@ from datashare_python.tasks.vectorize import (
 )
 from datashare_python.tests.conftest import TEST_PROJECT
 from datashare_python.utils import DSTaskClient
+from icij_common.es import ESClient
+from lancedb import AsyncConnection as LanceDBConnection
+from lancedb import connect_async
 
 
 @pytest.fixture
-async def test_vector_db(tmpdir) -> LanceDBConnection:
+async def test_vector_db(tmpdir) -> LanceDBConnection:  # noqa: ANN001
     db = await connect_async(Path(tmpdir) / "test_vectors.db")
     return db
 
 
 @pytest.mark.integration
 async def test_create_vectorization_tasks(
-    populate_es: List[Document],  # pylint: disable=unused-argument
+    populate_es: list[Document],  # noqa: ARG001
     test_es_client: ESClient,
     test_task_client: DSTaskClient,
     test_vector_db: LanceDBConnection,
-):
+) -> None:
     # When
     task_ids = await create_vectorization_tasks(
         project=TEST_PROJECT,
@@ -46,10 +45,10 @@ async def test_create_vectorization_tasks(
 
 @pytest.mark.integration
 async def test_vectorize_docs(
-    populate_es: List[Document],  # pylint: disable=unused-argument
+    populate_es: list[Document],  # noqa: ARG001
     test_es_client: ESClient,
     test_vector_db: LanceDBConnection,
-):
+) -> None:
     # Given
     model = "BAAI/bge-small-en-v1.5"
     docs = ["doc-0", "doc-3"]
@@ -74,7 +73,7 @@ async def test_vectorize_docs(
 
 
 @pytest.mark.integration
-async def test_find_most_similar(test_vector_db: LanceDBConnection):
+async def test_find_most_similar(test_vector_db: LanceDBConnection) -> None:
     # Given
     model = "BAAI/bge-small-en-v1.5"
     schema = make_record_schema(model)

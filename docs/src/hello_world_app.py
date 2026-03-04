@@ -16,7 +16,7 @@ def hello_world() -> str:
 # --8<-- [end:hello_world]
 # --8<-- [start:hello_user]
 @app.task(name="hello_user")
-def hello_user(user: str | None) -> str:
+def hello_user(user: str | None) -> str:  # noqa: ARG001
     greeting = "Hello "
     if user is None:
         user = "unknown"
