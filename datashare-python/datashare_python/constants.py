@@ -2,7 +2,8 @@ from pathlib import Path
 
 from .objects import TaskGroup
 
-DATA_DIR = Path(__file__).parent.joinpath(".data")
+PACKAGE_DIR = Path(__file__).parent
+PACKAGE_ROOT = PACKAGE_DIR.parent
 
 PYTHON_TASK_GROUP = TaskGroup(name="PYTHON")
 
