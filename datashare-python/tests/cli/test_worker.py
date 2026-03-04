@@ -16,7 +16,7 @@ async def test_start_workers(
     capsys: CaptureFixture[str],
 ) -> None:
     # Given
-    runner = CliRunner(catch_exceptions=False)
+    runner = CliRunner(mix_stderr=False)
     monkeypatch.setattr(Worker, "run", _mock_worker_run)
     with capsys.disabled():
         # When
@@ -36,6 +36,7 @@ async def test_start_workers(
                 "--temporal-address",
                 "localhost:7233",
             ],
+            catch_exceptions=False,
         )
     # Then
     assert result.exit_code == 0

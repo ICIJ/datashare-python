@@ -6,16 +6,14 @@ from temporalio import workflow
 
 with workflow.unsafe.imports_passed_through():
     from datashare_python.utils import (
-        ActivityWithProgress,
         WorkflowWithProgress,
-        activity_defn,
-        with_progress,
     )
 
     from .activities import (
         ClassifyDocs,
         CreateClassificationBatches,
         CreateTranslationBatches,
+        Pong,
         TranslateDocs,
     )
     from .objects_ import TranslateAndClassifyRequest, TranslateAndClassifyResponse
@@ -103,13 +101,6 @@ class PingWorkflow(WorkflowWithProgress):
             task_queue=TaskQueues.CPU,
             start_to_close_timeout=timedelta(hours=1),
         )
-
-
-class Pong(ActivityWithProgress):
-    @activity_defn(name="pong")
-    @with_progress
-    async def pong(self) -> str:
-        return "pong"
 
 
 WORKFLOWS = [TranslateAndClassifyWorkflow, PingWorkflow]

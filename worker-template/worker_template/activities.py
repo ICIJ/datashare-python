@@ -40,7 +40,12 @@ from transformers import Pipeline, pipeline
 
 from .objects_ import ClassificationConfig, TranslationConfig
 from .utils_ import async_batches, batches, before_and_after, once
-from .workflows import Pong
+
+
+class Pong(ActivityWithProgress):
+    @activity_defn(name="pong")
+    async def pong(self) -> str:
+        return "pong"
 
 
 class CreateTranslationBatches(ActivityWithProgress):
