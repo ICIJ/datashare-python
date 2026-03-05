@@ -35,10 +35,6 @@ P = ParamSpec("P")
 T = TypeVar("T")
 
 
-PROGRESS_SEARCH_ATTRIBUTE = SearchAttributeKey.for_text("Progress")
-MAX_PROGRESS_SEARCH_ATTRIBUTE = SearchAttributeKey.for_keyword("MaxProgress")
-
-
 @dataclass(frozen=True)
 class Progress:
     max_progress: float
@@ -83,10 +79,10 @@ class WorkflowWithProgress:
             self._progress[key] = signal.to_progress()
             progress = sum(p.current for p in self._progress.values())
             max_progress = sum(p.max_progress for p in self._progress.values())
-            attributes = {
-                PROGRESS_SEARCH_ATTRIBUTE.name: [progress],
-                MAX_PROGRESS_SEARCH_ATTRIBUTE.name: [max_progress],
-            }
+            attributes = [
+                SearchAttributeKey.for_float("Progress").value_set(progress),
+                SearchAttributeKey.for_float("MaxProgress").value_set(max_progress),
+            ]
             workflow.upsert_search_attributes(attributes)
 
 
