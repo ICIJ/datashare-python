@@ -30,8 +30,13 @@ async def test_ping_workflow_e2e(
     wf_id = f"ping-{uuid.uuid4()}"
 
     # When
+    args = dict()
     response = await temporal_client.execute_workflow(
-        PingWorkflow, id=wf_id, task_queue=TaskQueues.CPU, request_eager_start=True
+        PingWorkflow,
+        args,
+        id=wf_id,
+        task_queue=TaskQueues.CPU,
+        request_eager_start=True,
     )
 
     # Then
