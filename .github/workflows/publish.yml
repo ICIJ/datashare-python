@@ -7,15 +7,15 @@ on:
       - '*'
 
 jobs:
-  create-release:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Create GH release
-        run: gh release create "$tag" --generate-notes
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          tag: ${{ github.ref_name }}
+#  create-release:
+#    runs-on: ubuntu-latest
+#    steps:
+#      - uses: actions/checkout@v4
+#      - name: Create GH release
+#        run: gh release create "$tag" --generate-notes
+#        env:
+#          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+#          tag: ${{ github.ref_name }}
 
   publish-datashare-python-to-pypi:
     runs-on: ubuntu-latest
