@@ -3,7 +3,7 @@ from functools import partial
 
 import pytest
 from datashare_python.conftest import TEST_PROJECT, has_state
-from datashare_python.objects import Document, TaskState
+from datashare_python.objects import Document, TaskResult, TaskState
 from datashare_python.task_client import DatashareTaskClient
 from icij_common.es import HITS, ESClient, has_type
 from icij_common.test_utils import async_true_after
@@ -38,7 +38,6 @@ async def test_ping_workflow_e2e(
     assert response == "pong"
 
 
-@pytest.mark.xfail(reason="expected to fail until DS server is fixed")
 @pytest.mark.e2e
 async def test_ping_e2e(
     io_worker: Worker,  # noqa: ARG001
@@ -61,9 +60,9 @@ async def test_ping_e2e(
         after_s=ping_timeout_s,
     )
     # When
-    ping_result = await test_task_client.get_task_result(ping_task_id)
+    ping_task = await test_task_client.get_task(ping_task_id)
     # Then
-    assert ping_result == "pong"
+    assert ping_task.result == TaskResult(value="pong")
 
 
 @pytest.mark.e2e

@@ -101,6 +101,17 @@ def _datetime_now() -> datetime:
     return datetime.now(UTC)
 
 
+class User(Message):
+    type: str = Field(
+        frozen=True, alias="@type", default="org.icij.datashare.user.User"
+    )
+    id: str
+    name: str | None = None
+    email: str | None = None
+    provider: str | None = None
+    details: dict = dict()
+
+
 class Task(Message):
     type: str = Field(frozen=True, alias="@type", default="Task")
     id: str

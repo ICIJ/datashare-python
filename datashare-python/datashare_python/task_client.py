@@ -1,3 +1,4 @@
+import json
 import logging
 import uuid
 from collections.abc import AsyncGenerator
@@ -16,7 +17,7 @@ from aiohttp.client import _RequestOptions
 from aiohttp.typedefs import StrOrURL
 
 from .exceptions import UnknownTask
-from .objects import Task, TaskError, TaskState
+from .objects import Task, TaskError, TaskState, User
 
 logger = logging.getLogger(__name__)
 
@@ -33,6 +34,7 @@ class AiohttpClient(AbstractAsyncContextManager):
         self._base_url = base_url
         self._auth = auth
         self._session: ClientSession | None = None
+        self._user_id = None
         if headers is None:
             headers = dict()
         self._headers = headers
@@ -51,8 +53,6 @@ class AiohttpClient(AbstractAsyncContextManager):
     ) -> AsyncGenerator[ClientResponse, None]:
         headers = deepcopy(self._headers)
         headers.update(kwargs.pop("headers", dict()))
-        logger.debug("PUT headers: %s", headers)  # add this
-        logger.debug("Cookie jar: %s", list(self._session.cookie_jar))
         async with self._session.put(url, data=data, headers=headers, **kwargs) as res:
             _raise_for_status(res)
             yield res
@@ -131,6 +131,23 @@ class DatashareTaskClient(AiohttpClient):
             await super().__aenter__()
         return self
 
+    async def create_api_key(self, user: User | None = None) -> tuple[User, str]:
+        if user is None:
+            cookies = self._headers["Cookie"].split(";")
+            session = [c for c in cookies if c.startswith("_ds_session_id=")]
+            if len(session) != 1:
+                raise ValueError("invalid cookies")
+            session = json.loads(session[0].replace("_ds_session_id=", ""))
+            user = User(id=session["login"])
+        url = f"/api/key/{user.id}"
+        async with self._put(url) as res:
+            api_key = await res.text()
+        return user, api_key
+
+    def authenticate(self, user: User, api_key: str) -> None:
+        self._user = user
+        self._headers["Authorization"] = f"Bearer {api_key}"
+
     async def create_task(
         self,
         name: str,
@@ -141,6 +158,8 @@ class DatashareTaskClient(AiohttpClient):
     ) -> str:
         if id_ is None:
             id_ = _generate_task_id(name)
+        if "user" not in args:
+            args["user"] = self._user
         task = Task(id=id_, name=name, args=args)
         task = task.model_dump(mode="json", exclude_none=True)
         url = f"/api/task/{id_}"

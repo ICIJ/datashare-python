@@ -165,7 +165,7 @@ services:
   # datashare
   ############################
   datashare-init:
-    image: icij/datashare:${DATASHARE_VERSION:-20.12.0}
+    image: icij/datashare:${DATASHARE_VERSION:-20.14.10}
     container_name: datashare-init
     depends_on:
       elasticsearch:
@@ -181,7 +181,7 @@ services:
       --elasticsearchAddress http://elasticsearch:9200
 
   datashare:
-    image: icij/datashare:${DATASHARE_VERSION:-20.14.0}
+    image: icij/datashare:${DATASHARE_VERSION:-20.14.10}
     container_name: datashare
     hostname: datashare
     depends_on:

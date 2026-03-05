@@ -95,7 +95,7 @@ class TranslateAndClassifyWorkflow(WorkflowWithProgress):
 @workflow.defn(name="ping")
 class PingWorkflow(WorkflowWithProgress):
     @workflow.run
-    async def run(self) -> str:
+    async def run(self, arg: dict) -> str:  # noqa: ARG002
         return await workflow.execute_activity(
             Pong.pong,
             task_queue=TaskQueues.CPU,

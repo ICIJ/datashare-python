@@ -144,6 +144,8 @@ async def test_task_client_session(
 ) -> AsyncGenerator[DatashareTaskClient, None]:
     task_client = lifespan_task_client()
     async with task_client:
+        user, key = await task_client.create_api_key()
+        task_client.authenticate(user, key)
         await task_client.delete_all_tasks()
         yield task_client
 
