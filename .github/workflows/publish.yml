@@ -1,6 +1,7 @@
 name: Publish release assets
 
 on:
+  workflow_dispatch:
   push:
     tags:
       - '*'
