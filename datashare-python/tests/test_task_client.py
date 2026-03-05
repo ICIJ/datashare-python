@@ -155,7 +155,7 @@ async def test_task_client_get_task_result(monkeypatch: MonkeyPatch) -> None:
         allow_redirects: bool = True,
         **kwargs: Any,
     ) -> AsyncGenerator[AsyncMock, None]:
-        assert url == f"/api/task/{task_id}/results"
+        assert url == f"/api/task/{task_id}/result"
         assert allow_redirects
         assert not kwargs
         mocked_res = AsyncMock()

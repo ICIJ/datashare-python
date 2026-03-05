@@ -180,7 +180,7 @@ class DatashareTaskClient(AiohttpClient):
         return (await self.get_task(id_)).state
 
     async def get_task_result(self, id_: str) -> Any:
-        url = f"/api/task/{id_}/results"
+        url = f"/api/task/{id_}/result"
         async with self._get(url) as res:
             task_res = await res.json()
         return task_res
