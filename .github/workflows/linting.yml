@@ -9,7 +9,7 @@ on:
       - 'datashare-python/**.py'
       - 'worker-template/**.py'
       - 'asr-worker/**.py'
-      - '.github/workflows/linting.yml'
+      - 'translation-worker/**.py'
 
 # TODO: leverage some caching here
 jobs:
@@ -37,6 +37,30 @@ jobs:
       - name: Lint test
         run: ruff check --config qa/ruff.toml worker-template
 
+  asr-worker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/ruff-action@v3
+        with:
+          args: "--version" # skips test by displaying the version
+      - name: Check formatting
+        run: ruff format --config qa/ruff.toml --check asr-worker
+      - name: Lint test
+        run: ruff check --config qa/ruff.toml asr-worker
+
+  translation-worker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/ruff-action@v3
+        with:
+          args: "--version" # skips test by displaying the version
+      - name: Check formatting
+        run: ruff format --config qa/ruff.toml --check translation-worker
+      - name: Lint test
+        run: ruff check --config qa/ruff.toml translation-worker
+
   doc:
     runs-on: ubuntu-latest
     steps:
@@ -48,15 +72,6 @@ jobs:
         run: ruff format --config qa/ruff.toml --check docs
       - name: Lint test
         run: ruff check --config qa/ruff.toml docs
-
-  asr-worker:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: ./.github/actions/pylint
-        name: "Lint ASR worker"
-        with:
-          path: asr-worker
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}

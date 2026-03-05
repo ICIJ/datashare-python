@@ -6,13 +6,7 @@ from icij_common.pydantic_utils import (
 )
 from pydantic import BaseModel, Field
 
-
-class BasePayload(BaseModel):
-    model_config = icij_config()
-
-
-class LowerCamelCaseModel(BaseModel):
-    model_config = merge_configs(icij_config(), lowercamel_case_config())
+from datashare_python.objects import BasePayload
 
 
 class ClassificationConfig(BasePayload):

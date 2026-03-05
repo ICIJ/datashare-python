@@ -1,0 +1,47 @@
+from enum import StrEnum
+
+from datashare_python.objects import BasePayload, WorkerResponse
+from pydantic import BaseModel, Field
+
+from .constants import ASR_CPU_TASK_QUEUE, ASR_GPU_TASK_QUEUE, PARAKEET
+
+
+class TaskQueues(StrEnum):
+    CPU = ASR_CPU_TASK_QUEUE
+    GPU = ASR_GPU_TASK_QUEUE
+
+
+class BatchSize(BaseModel):
+    """Batch size helper"""
+
+    batch_size: int = 32
+
+
+class PreprocessingConfig(BatchSize):
+    """Preprocessing config"""
+
+
+class InferenceConfig(BatchSize):
+    """Inference config"""
+
+    model_name: str = PARAKEET
+
+
+class ASRPipelineConfig(BaseModel):
+    """ASR pipeline config"""
+
+    preprocessing: PreprocessingConfig = Field(default_factory=PreprocessingConfig)
+    inference: InferenceConfig = Field(default_factory=InferenceConfig)
+
+
+class ASRRequest(BasePayload):
+    """Inputs to ASR workflow"""
+
+    file_paths: list[str]
+    pipeline: ASRPipelineConfig
+
+
+class ASRResponse(WorkerResponse):
+    """ASR workflow response"""
+
+    transcriptions: list[dict] = Field(default_factory=list)

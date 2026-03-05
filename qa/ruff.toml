@@ -38,6 +38,7 @@ ignore = [
   "ASYNC240",
   "C408", # missing-type-kwargs
   "D1", # doc
+  "D205", # missing-blank-line-after-summary
   "D400", # missing-trailing-period
   "D415", # missing-terminal-punctuation
   "N818", # error-suffix-on-exception-name

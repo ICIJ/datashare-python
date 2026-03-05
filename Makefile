@@ -1,9 +1,11 @@
 create-venv:
-	[ -d .venv ] || uv venv --python 3.10
+	[ -d .venv ] || uv venv --python 3.13
 
 install-deps:
 	uv pip install --override requirements_overrides.txt -e asr_worker/
-	uv pip install --override requirements_overrides.txt -e datashare_cli/
+	uv pip install -e translation-worker/
+	uv pip install -e datashare-python/
+	uv pip install -e worker-template/
 	uv pip install -r requirements_dev.txt
 
 create-dirs:

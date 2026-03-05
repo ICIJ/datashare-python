@@ -1,16 +1,21 @@
+import asyncio
+
 import torchaudio
 from caul.configs.parakeet import ParakeetConfig
-from caul.model_handlers.helpers import ParakeetModelHandlerResult
-from caul.tasks.preprocessing.helpers import PreprocessedInput
+from caul.model_handlers.objects import ParakeetModelHandlerResult
+from caul.tasks.preprocessing.objects import PreprocessedInput
+from datashare_python.utils import ActivityWithProgress
 from temporalio import activity
+from temporalio.client import Client
 
 
-class ASRActivities:
+class ASRActivities(ActivityWithProgress):
     """Contains activity definitions as well as reference to models"""
 
-    def __init__(self):
+    def __init__(self, temporal_client: Client, event_loop: asyncio.AbstractEventLoop):
         # TODO: Eventually this may include whisper, which will
         #  then require passing language_map
+        super().__init__(temporal_client, event_loop)
         self.asr_handler = ParakeetConfig(return_tensors=False).handler_from_config()
 
         # load models
@@ -21,7 +26,7 @@ class ASRActivities:
         """Preprocess transcription inputs
 
         :param inputs: list of file paths
-        :return: list of caul.tasks.preprocessing.helpers.PreprocessedInput
+        :return: list of caul.tasks.preprocessing.objects.PreprocessedInput
         """
         return self.asr_handler.preprocessor.process(inputs)
 
@@ -42,7 +47,7 @@ class ASRActivities:
             # assign
             item.tensor = tensor
 
-        return self.asr_handler.inference_handler.process(inputs)
+        return self.asr_handler.inference_handler.process([inputs])
 
     @activity.defn(name="asr.transcription.postprocess")
     async def postprocess(

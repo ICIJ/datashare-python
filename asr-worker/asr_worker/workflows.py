@@ -1,20 +1,19 @@
 from asyncio import gather
-from dataclasses import asdict
 from datetime import timedelta
 
+from datashare_python.objects import WorkerResponseStatus
 from more_itertools import flatten
 from temporalio import workflow
 
-from asr_worker.constants import _TEN_MINUTES, RESPONSE_ERROR, RESPONSE_SUCCESS
-from asr_worker.models import ASRInputs, ASRResponse
+from .objects import ASRRequest, ASRResponse, TaskQueues
 
 with workflow.unsafe.imports_passed_through():
-    from asr_worker.activities import ASRActivities
+    from .activities import ASRActivities
 
 
 # TODO: Figure out which modules are violating sandbox restrictions
 #  and grant a limited passthrough
-@workflow.defn(name="asr.transcription", sandboxed=False)
+@workflow.defn(sandboxed=False)
 class ASRWorkflow:
     """ASR workflow definition"""
 
@@ -22,10 +21,10 @@ class ASRWorkflow:
         pass
 
     @workflow.run
-    async def run(self, inputs: ASRInputs) -> ASRResponse:
+    async def run(self, inputs: ASRRequest) -> ASRResponse:
         """Run ASR workflow
 
-        :param inputs: ASRInputs
+        :param inputs: ASRRequest
         :return: ASRResponse
         """
         try:
@@ -34,10 +33,14 @@ class ASRWorkflow:
                 *[
                     workflow.execute_activity_method(
                         ASRActivities.preprocess,
-                        inputs.file_paths[
-                            offset : offset + inputs.pipeline.preprocessing.batch_size
+                        args=[
+                            inputs.file_paths[
+                                offset : offset
+                                + inputs.pipeline.preprocessing.batch_size
+                            ]
                         ],
-                        start_to_close_timeout=timedelta(seconds=_TEN_MINUTES),
+                        task_queue=TaskQueues.CPU,
+                        start_to_close_timeout=timedelta(minutes=10),
                     )
                     for offset in range(
                         0,
@@ -55,8 +58,9 @@ class ASRWorkflow:
                     *[
                         workflow.execute_activity_method(
                             ASRActivities.infer,
-                            inner_batch,
-                            start_to_close_timeout=timedelta(seconds=_TEN_MINUTES),
+                            args=[inner_batch],
+                            task_queue=TaskQueues.GPU,
+                            start_to_close_timeout=timedelta(minutes=10),
                         )
                         for inner_batch in outer_batch
                     ]
@@ -71,8 +75,9 @@ class ASRWorkflow:
                 *[
                     workflow.execute_activity_method(
                         ASRActivities.postprocess,
-                        flatten(inference_result_batch),
-                        start_to_close_timeout=timedelta(seconds=_TEN_MINUTES),
+                        args=[flatten(inference_result_batch)],
+                        task_queue=TaskQueues.CPU,
+                        start_to_close_timeout=timedelta(minutes=10),
                     )
                     for inference_result_batch in inference_results
                 ]
@@ -81,8 +86,8 @@ class ASRWorkflow:
             serialized_transcriptions = []
 
             # drop unnecessary fields, serialize
-            for transcription in flatten(transcriptions):
-                transcription = asdict(transcription)
+            for trans in flatten(transcriptions):
+                transcription = trans.model_dump()
 
                 del transcription["input_ordering"]
 
@@ -93,11 +98,9 @@ class ASRWorkflow:
             # TODO: Output formatting; do we want to keep PreprocessedInput metadata
             #  and remap results to it?
             return ASRResponse(
-                status=RESPONSE_SUCCESS, transcriptions=serialized_transcriptions
+                status=WorkerResponseStatus.SUCCESS,
+                transcriptions=serialized_transcriptions,
             )
         except ValueError as e:
             workflow.logger.exception(e)
-            return ASRResponse(status=RESPONSE_ERROR, error=str(e))
-
-
-WORKFLOWS = [ASRWorkflow]
+            return ASRResponse(status=WorkerResponseStatus.ERROR, error=str(e))
