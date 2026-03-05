@@ -21,6 +21,8 @@ from .objects import Task, TaskError, TaskState, User
 
 logger = logging.getLogger(__name__)
 
+ApiKey = str
+UserAndApiKey = tuple[User, ApiKey]
 # TODO: move this one to icij_common
 
 
@@ -100,11 +102,11 @@ def _raise_for_status(res: ClientResponse) -> None:
 
 
 class DatashareTaskClient(AiohttpClient):
-    def __init__(self, datashare_url: str, api_key: str | None = None) -> None:
-        self._api_key = api_key
+    def __init__(self, datashare_url: str, auth: UserAndApiKey | None = None) -> None:
+        self._user, self._api_key = auth if auth else (None, None)
         headers = None
-        if api_key is not None:
-            headers = {"Authorization": f"Bearer {api_key}"}
+        if self._api_key is not None:
+            headers = {"Authorization": f"Bearer {self._api_key}"}
         super().__init__(datashare_url, headers=headers)
 
     async def __aenter__(self) -> Self:

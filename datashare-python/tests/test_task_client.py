@@ -13,6 +13,7 @@ from datashare_python.objects import (
     TaskError,
     TaskResult,
     TaskState,
+    User,
 )
 from datashare_python.task_client import AiohttpClient, DatashareTaskClient
 
@@ -20,7 +21,9 @@ from datashare_python.task_client import AiohttpClient, DatashareTaskClient
 async def test_task_client_create_task(monkeypatch: MonkeyPatch) -> None:
     # Given
     datashare_url = "http://some-url"
+    user = User(id="user")
     api_key = "some-api-key"
+    auth = (user, api_key)
     task_name = "hello"
     task_id = f"{task_name}-{uuid.uuid4()}"
     args = {"greeted": "world"}
@@ -40,7 +43,14 @@ async def test_task_client_create_task(monkeypatch: MonkeyPatch) -> None:
             "id": task_id,
             "state": "CREATED",
             "name": "hello",
-            "args": {"greeted": "world"},
+            "args": {
+                "greeted": "world",
+                "user": {
+                    "@type": "org.icij.datashare.user.User",
+                    "details": {},
+                    "id": "user",
+                },
+            },
         }
         assert data is None
         json_data = kwargs.pop("json")
@@ -53,7 +63,7 @@ async def test_task_client_create_task(monkeypatch: MonkeyPatch) -> None:
 
     monkeypatch.setattr(AiohttpClient, "_put", _put_and_assert)
 
-    task_client = DatashareTaskClient(datashare_url, api_key=api_key)
+    task_client = DatashareTaskClient(datashare_url, auth=auth)
     async with task_client:
         # When
         t_id = await task_client.create_task(task_name, args, id_=task_id, group=group)
@@ -63,7 +73,9 @@ async def test_task_client_create_task(monkeypatch: MonkeyPatch) -> None:
 async def test_task_client_get_task(monkeypatch: MonkeyPatch) -> None:
     # Given
     datashare_url = "http://some-url"
+    user = User(id="user")
     api_key = "some-api-key"
+    auth = (user, api_key)
     task_name = "hello"
     task_id = f"{task_name}-{uuid.uuid4()}"
 
@@ -92,7 +104,7 @@ async def test_task_client_get_task(monkeypatch: MonkeyPatch) -> None:
 
     monkeypatch.setattr(AiohttpClient, "_get", _get_and_assert)
 
-    task_client = DatashareTaskClient(datashare_url, api_key=api_key)
+    task_client = DatashareTaskClient(datashare_url, auth=auth)
     async with task_client:
         # When
         task = await task_client.get_task(task_id)
@@ -102,7 +114,9 @@ async def test_task_client_get_task(monkeypatch: MonkeyPatch) -> None:
 async def test_task_client_get_task_state(monkeypatch: MonkeyPatch) -> None:
     # Given
     datashare_url = "http://some-url"
+    user = User(id="user")
     api_key = "some-api-key"
+    auth = (user, api_key)
     task_name = "hello"
     task_id = f"{task_name}-{uuid.uuid4()}"
 
@@ -133,7 +147,7 @@ async def test_task_client_get_task_state(monkeypatch: MonkeyPatch) -> None:
 
     monkeypatch.setattr(AiohttpClient, "_get", _get_and_assert)
 
-    task_client = DatashareTaskClient(datashare_url, api_key=api_key)
+    task_client = DatashareTaskClient(datashare_url, auth=auth)
     async with task_client:
         # When
         res = await task_client.get_task_state(task_id)
@@ -143,7 +157,9 @@ async def test_task_client_get_task_state(monkeypatch: MonkeyPatch) -> None:
 async def test_task_client_get_task_result(monkeypatch: MonkeyPatch) -> None:
     # Given
     datashare_url = "http://some-url"
+    user = User(id="user")
     api_key = "some-api-key"
+    auth = (user, api_key)
     task_name = "hello"
     task_id = f"{task_name}-{uuid.uuid4()}"
 
@@ -164,7 +180,7 @@ async def test_task_client_get_task_result(monkeypatch: MonkeyPatch) -> None:
 
     monkeypatch.setattr(AiohttpClient, "_get", _get_and_assert)
 
-    task_client = DatashareTaskClient(datashare_url, api_key=api_key)
+    task_client = DatashareTaskClient(datashare_url, auth=auth)
     async with task_client:
         # When
         res = await task_client.get_task_result(task_id)
@@ -174,7 +190,9 @@ async def test_task_client_get_task_result(monkeypatch: MonkeyPatch) -> None:
 async def test_task_client_get_task_error(monkeypatch: MonkeyPatch) -> None:
     # Given
     datashare_url = "http://some-url"
+    user = User(id="user")
     api_key = "some-api-key"
+    auth = (user, api_key)
     task_name = "hello"
     task_id = f"{task_name}-{uuid.uuid4()}"
 
@@ -211,7 +229,7 @@ async def test_task_client_get_task_error(monkeypatch: MonkeyPatch) -> None:
 
     monkeypatch.setattr(AiohttpClient, "_get", _get_and_assert)
 
-    task_client = DatashareTaskClient(datashare_url, api_key=api_key)
+    task_client = DatashareTaskClient(datashare_url, auth=auth)
     async with task_client:
         # When
         error = await task_client.get_task_error(task_id)
