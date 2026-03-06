@@ -35,7 +35,7 @@ jobs:
       - name: Build
         run: cd datashare-python && uv build
       - name: Publish
-        run: uv publish
+        run: cd datashare-python && uv publish
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
