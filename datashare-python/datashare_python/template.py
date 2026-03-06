@@ -22,7 +22,11 @@ ALLOWED_EXTS = {
 
 class CopyTemplateHook(BuildHookInterface):
     def initialize(self, version: str, build_data: dict[str, Any]) -> None:  # noqa: ARG002
-        build_template_tarball()
+        # Only generate the worker template when building the sources,
+        # the wheel is then generated from this first build
+        if self.target_name == "sdist":
+            build_template_tarball()
+        build_data["artifacts"].append("datashare_python/worker-template.tar.gz")
 
 
 def build_template_tarball() -> None:

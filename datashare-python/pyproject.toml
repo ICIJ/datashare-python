@@ -1,6 +1,6 @@
 [project]
 name = "datashare-python"
-version = "0.2.19"
+version = "0.2.20"
 description = "Manage Pythoœn tasks and local resources in Datashare"
 authors = [
   { name = "Clément Doumouro", email = "cdoumouro@icij.org" },
@@ -47,7 +47,7 @@ only-include = ["datashare_python"]
 
 [tool.hatch.build.targets.wheel]
 artifacts = [
-  "worker-template.tar.gz"
+  "datashare_python/worker-template.tar.gz"
 ]
 
 
