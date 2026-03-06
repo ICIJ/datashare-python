@@ -77,6 +77,12 @@ def _update_pyproject_toml(
         for d in project["dependencies"]
         if any(d.startswith(base) for base in _BASE_DEPS)
     )
+    project["dependencies"] = sorted(
+        d
+        for d in project["dependencies"]
+        if any(d.startswith(base) for base in _BASE_DEPS)
+    )
+    project.pop("optional-dependencies")
 
     entry_points = project["entry-points"]
 

@@ -29,6 +29,8 @@ async def test_init_project(
     assert any(d.startswith("icij-common") for d in dependencies)
     assert any(d.startswith("temporalio") for d in dependencies)
 
+    assert "optional-dependencies" not in project
+
     assert "uv" not in pyproject_toml["tool"]
 
     entry_points = project["entry-points"]
