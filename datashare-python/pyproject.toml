@@ -1,6 +1,6 @@
 [project]
 name = "datashare-python"
-version = "0.2.13"
+version = "0.2.14"
 description = "Manage Python tasks and local resources in Datashare"
 authors = [
   { name = "Clément Doumouro", email = "cdoumouro@icij.org" },
@@ -35,12 +35,14 @@ datashare-python = "datashare_python.__main__:main"
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
-package = ["datashare_python"]
 
 [tool.hatch.build.targets.wheel]
 artifacts = [
   "worker-template.tar.gz"
 ]
+
+[tool.hatch.build.targets.sdist]
+only-include = ["datashare_python"]
 
 [tool.uv]
 package = true
