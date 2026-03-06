@@ -8,9 +8,8 @@ from typing import Any
 import tomlkit
 from hatchling.builders.hooks.plugin.interface import BuildHookInterface
 
-import datashare_python
-
-from .constants import PACKAGE_DIR, PACKAGE_ROOT
+PACKAGE_DIR = Path(__file__).parent
+PACKAGE_ROOT = PACKAGE_DIR.parent
 
 ALLOWED_EXTS = {
     ".py",
@@ -44,7 +43,7 @@ def build_template_tarball() -> None:
 
 def init_project(name: str, path: Path) -> None:
     destination = path / name
-    template_tar = files(datashare_python.__name__)
+    template_tar = files("datashare_python")
     with (
         as_file(template_tar / "worker-template.tar.gz") as tar_path,
         tarfile.open(tar_path, mode="r:gz") as tar,
