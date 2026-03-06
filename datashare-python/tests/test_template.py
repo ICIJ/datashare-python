@@ -10,15 +10,19 @@ async def test_init_project(
 ) -> None:
     # Given
     test_worker_project = "test-project"
+
     # When
     init_project(test_worker_project, tmp_path)
+
     # Then
     project_path = tmp_path / test_worker_project
 
     assert project_path.exists()
     pyproject_toml_path = project_path / "pyproject.toml"
-
     assert pyproject_toml_path.exists()
+    package_path = project_path / "test_project"
+    assert package_path.exists()
+
     pyproject_toml = tomlkit.loads(pyproject_toml_path.read_text())
 
     project = pyproject_toml["project"]
@@ -38,3 +42,6 @@ async def test_init_project(
     assert wf_entrypoints == "test_project.workflows:WORKFLOWS"
     acts = entry_points["datashare.activities"]["activities"]
     assert acts == "test_project.activities:ACTIVITIES"
+
+    hatch_sdist = pyproject_toml["tool"]["hatch"]["build"]["targets"]["sdist"]
+    assert hatch_sdist["only-include"] == ["test_project"]
