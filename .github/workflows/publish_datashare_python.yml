@@ -1,4 +1,4 @@
-name: Publish release assets
+name: Publish datashare-python
 
 on:
   workflow_dispatch:

@@ -1,4 +1,4 @@
-name: Publish release assets
+name: Publish worker-template
 
 on:
   workflow_dispatch:
