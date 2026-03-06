@@ -1,6 +1,6 @@
 [project]
 name = "datashare-python"
-version = "0.2.17"
+version = "0.2.18"
 description = "Manage Pythoœn tasks and local resources in Datashare"
 authors = [
   { name = "Clément Doumouro", email = "cdoumouro@icij.org" },
@@ -33,7 +33,10 @@ Issues = "https://github.com/ICIJ/datashare-python/issues"
 datashare-python = "datashare_python.__main__:main"
 
 [build-system]
-requires = ["hatchling"]
+requires = [
+  "hatchling",
+  "tomlkit==0.14.0"
+]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.hooks.custom]
