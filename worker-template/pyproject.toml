@@ -1,5 +1,5 @@
 [project]
-name = "worker-template"
+name = "datashare-worker-template"
 version = "0.1.1"
 description = "Datashare worker template"
 authors = [

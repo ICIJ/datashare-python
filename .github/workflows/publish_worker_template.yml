@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
   push:
     tags:
-      - '*'
+      - 'worker-template-*'
 
 jobs:
   create-release:
@@ -23,7 +23,7 @@ jobs:
       id-token: write
     environment:
       name: pypi
-      url: https://pypi.org/p/datashare-python
+      url: https://pypi.org/p/datashare-worker-template
     steps:
       - uses: actions/checkout@v4
       - name: Install uv
@@ -33,9 +33,9 @@ jobs:
       - name: Install Python 3.11
         run: uv python install 3.11
       - name: Build
-        run: cd datashare-python && uv build
+        run: cd worker-template && uv build
       - name: Publish
-        run: cd datashare-python && uv publish
+        run: cd worker-template && uv publish
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}

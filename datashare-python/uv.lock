@@ -310,13 +310,13 @@ dependencies = [
     { name = "aiohttp" },
     { name = "aiostream" },
     { name = "alive-progress" },
+    { name = "datashare-worker-template" },
     { name = "icij-common", extra = ["elasticsearch"] },
     { name = "nest-asyncio" },
     { name = "python-json-logger" },
     { name = "temporalio" },
     { name = "tomlkit" },
     { name = "typer" },
-    { name = "worker-template" },
 ]
 
 [package.dev-dependencies]
@@ -331,7 +331,6 @@ dev = [
     { name = "redis", extra = ["hiredis"] },
     { name = "ruff" },
     { name = "typing-extensions" },
-    { name = "worker-template" },
 ]
 
 [package.metadata]
@@ -339,13 +338,13 @@ requires-dist = [
     { name = "aiohttp", specifier = "~=3.11.9" },
     { name = "aiostream", specifier = "~=0.6.4" },
     { name = "alive-progress", specifier = "~=3.2.0" },
+    { name = "datashare-worker-template", editable = "../worker-template" },
     { name = "icij-common", extras = ["elasticsearch"], specifier = "~=0.7.3" },
     { name = "nest-asyncio", specifier = "~=1.6.0" },
     { name = "python-json-logger", specifier = "~=4.0.0" },
     { name = "temporalio", specifier = "~=1.23.0" },
     { name = "tomlkit", specifier = ">=0.14.0" },
     { name = "typer", specifier = "~=0.15.4" },
-    { name = "worker-template", editable = "../worker-template" },
 ]
 
 [package.metadata.requires-dev]
@@ -360,7 +359,45 @@ dev = [
     { name = "redis", extras = ["hiredis"], specifier = "~=5.2.1" },
     { name = "ruff", specifier = "==0.15.2" },
     { name = "typing-extensions", specifier = "~=4.15.0" },
-    { name = "worker-template", editable = "../worker-template" },
+]
+
+[[package]]
+name = "datashare-worker-template"
+version = "0.1.1"
+source = { editable = "../worker-template" }
+dependencies = [
+    { name = "datashare-python" },
+    { name = "icij-common", extra = ["elasticsearch"] },
+    { name = "pycountry" },
+    { name = "temporalio" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "datashare-python", editable = "." },
+    { name = "icij-common", extras = ["elasticsearch"], specifier = "~=0.7.3" },
+    { name = "pycountry", specifier = "~=26.2.16" },
+    { name = "sentencepiece", marker = "extra == 'ml'", specifier = "~=0.2.1" },
+    { name = "temporalio", specifier = "~=1.23.0" },
+    { name = "torch", marker = "extra == 'ml'", specifier = "~=2.9.1", index = "https://download.pytorch.org/whl/cpu" },
+    { name = "transformers", marker = "extra == 'ml'", specifier = "~=4.46.3" },
+]
+provides-extras = ["ml"]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "black", specifier = ">=26.1.0" },
+    { name = "datashare-python", editable = "." },
+    { name = "nest-asyncio", specifier = ">=1.6.0" },
+    { name = "pre-commit", specifier = ">=4.5.1" },
+    { name = "psutil", specifier = ">=6.1.0" },
+    { name = "pylint", specifier = "~=3.1.0" },
+    { name = "pytest", specifier = "~=8.1" },
+    { name = "pytest-asyncio", specifier = "~=0.24" },
+    { name = "pytest-timeout", specifier = "==2.4.0" },
+    { name = "redis", extras = ["hiredis"], specifier = ">=5.2.1" },
+    { name = "ruff", specifier = "==0.15.2" },
+    { name = "typing-extensions", specifier = ">=4.15.0" },
 ]
 
 [[package]]
@@ -2157,45 +2194,6 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/35/a2/8e3becb46433538a38726c948d3399905a4c7cabd0df578ede5dc51f0ec2/wcwidth-0.6.0.tar.gz", hash = "sha256:cdc4e4262d6ef9a1a57e018384cbeb1208d8abbc64176027e2c2455c81313159", size = 159684, upload-time = "2026-02-06T19:19:40.919Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/68/5a/199c59e0a824a3db2b89c5d2dade7ab5f9624dbf6448dc291b46d5ec94d3/wcwidth-0.6.0-py3-none-any.whl", hash = "sha256:1a3a1e510b553315f8e146c54764f4fb6264ffad731b3d78088cdb1478ffbdad", size = 94189, upload-time = "2026-02-06T19:19:39.646Z" },
-]
-
-[[package]]
-name = "worker-template"
-version = "0.1.1"
-source = { editable = "../worker-template" }
-dependencies = [
-    { name = "datashare-python" },
-    { name = "icij-common", extra = ["elasticsearch"] },
-    { name = "pycountry" },
-    { name = "temporalio" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "datashare-python", editable = "." },
-    { name = "icij-common", extras = ["elasticsearch"], specifier = "~=0.7.3" },
-    { name = "pycountry", specifier = "~=26.2.16" },
-    { name = "sentencepiece", marker = "extra == 'ml'", specifier = "~=0.2.1" },
-    { name = "temporalio", specifier = "~=1.23.0" },
-    { name = "torch", marker = "extra == 'ml'", specifier = "~=2.9.1", index = "https://download.pytorch.org/whl/cpu" },
-    { name = "transformers", marker = "extra == 'ml'", specifier = "~=4.46.3" },
-]
-provides-extras = ["ml"]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "black", specifier = ">=26.1.0" },
-    { name = "datashare-python", editable = "." },
-    { name = "nest-asyncio", specifier = ">=1.6.0" },
-    { name = "pre-commit", specifier = ">=4.5.1" },
-    { name = "psutil", specifier = ">=6.1.0" },
-    { name = "pylint", specifier = "~=3.1.0" },
-    { name = "pytest", specifier = "~=8.1" },
-    { name = "pytest-asyncio", specifier = "~=0.24" },
-    { name = "pytest-timeout", specifier = "==2.4.0" },
-    { name = "redis", extras = ["hiredis"], specifier = ">=5.2.1" },
-    { name = "ruff", specifier = "==0.15.2" },
-    { name = "typing-extensions", specifier = ">=4.15.0" },
 ]
 
 [[package]]

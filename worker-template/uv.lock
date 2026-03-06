@@ -316,19 +316,19 @@ wheels = [
 
 [[package]]
 name = "datashare-python"
-version = "0.2.10"
+version = "0.2.11"
 source = { editable = "../datashare-python" }
 dependencies = [
     { name = "aiohttp" },
     { name = "aiostream" },
     { name = "alive-progress" },
+    { name = "datashare-worker-template" },
     { name = "icij-common", extra = ["elasticsearch"] },
     { name = "nest-asyncio" },
     { name = "python-json-logger" },
     { name = "temporalio" },
     { name = "tomlkit" },
     { name = "typer" },
-    { name = "worker-template" },
 ]
 
 [package.metadata]
@@ -336,13 +336,13 @@ requires-dist = [
     { name = "aiohttp", specifier = "~=3.11.9" },
     { name = "aiostream", specifier = "~=0.6.4" },
     { name = "alive-progress", specifier = "~=3.2.0" },
+    { name = "datashare-worker-template", editable = "." },
     { name = "icij-common", extras = ["elasticsearch"], specifier = "~=0.7.3" },
     { name = "nest-asyncio", specifier = "~=1.6.0" },
     { name = "python-json-logger", specifier = "~=4.0.0" },
     { name = "temporalio", specifier = "~=1.23.0" },
     { name = "tomlkit", specifier = ">=0.14.0" },
     { name = "typer", specifier = "~=0.15.4" },
-    { name = "worker-template", editable = "." },
 ]
 
 [package.metadata.requires-dev]
@@ -357,7 +357,69 @@ dev = [
     { name = "redis", extras = ["hiredis"], specifier = "~=5.2.1" },
     { name = "ruff", specifier = "==0.15.2" },
     { name = "typing-extensions", specifier = "~=4.15.0" },
-    { name = "worker-template", editable = "." },
+]
+
+[[package]]
+name = "datashare-worker-template"
+version = "0.1.1"
+source = { editable = "." }
+dependencies = [
+    { name = "datashare-python" },
+    { name = "icij-common", extra = ["elasticsearch"] },
+    { name = "pycountry" },
+    { name = "temporalio" },
+]
+
+[package.optional-dependencies]
+ml = [
+    { name = "sentencepiece" },
+    { name = "torch", version = "2.9.1", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "sys_platform == 'darwin'" },
+    { name = "torch", version = "2.9.1+cpu", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "sys_platform != 'darwin'" },
+    { name = "transformers" },
+]
+
+[package.dev-dependencies]
+dev = [
+    { name = "black" },
+    { name = "datashare-python" },
+    { name = "nest-asyncio" },
+    { name = "pre-commit" },
+    { name = "psutil" },
+    { name = "pylint" },
+    { name = "pytest" },
+    { name = "pytest-asyncio" },
+    { name = "pytest-timeout" },
+    { name = "redis", extra = ["hiredis"] },
+    { name = "ruff" },
+    { name = "typing-extensions" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "datashare-python", editable = "../datashare-python" },
+    { name = "icij-common", extras = ["elasticsearch"], specifier = "~=0.7.3" },
+    { name = "pycountry", specifier = "~=26.2.16" },
+    { name = "sentencepiece", marker = "extra == 'ml'", specifier = "~=0.2.1" },
+    { name = "temporalio", specifier = "~=1.23.0" },
+    { name = "torch", marker = "extra == 'ml'", specifier = "~=2.9.1", index = "https://download.pytorch.org/whl/cpu" },
+    { name = "transformers", marker = "extra == 'ml'", specifier = "~=4.46.3" },
+]
+provides-extras = ["ml"]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "black", specifier = ">=26.1.0" },
+    { name = "datashare-python", editable = "../datashare-python" },
+    { name = "nest-asyncio", specifier = ">=1.6.0" },
+    { name = "pre-commit", specifier = ">=4.5.1" },
+    { name = "psutil", specifier = ">=6.1.0" },
+    { name = "pylint", specifier = "~=3.1.0" },
+    { name = "pytest", specifier = "~=8.1" },
+    { name = "pytest-asyncio", specifier = "~=0.24" },
+    { name = "pytest-timeout", specifier = "==2.4.0" },
+    { name = "redis", extras = ["hiredis"], specifier = ">=5.2.1" },
+    { name = "ruff", specifier = "==0.15.2" },
+    { name = "typing-extensions", specifier = ">=4.15.0" },
 ]
 
 [[package]]
@@ -2073,69 +2135,6 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/ed/54/809199edc537dbace273495ac0884d13df26436e910a5ed4d0ec0a69806b/virtualenv-20.39.0.tar.gz", hash = "sha256:a15f0cebd00d50074fd336a169d53422436a12dfe15149efec7072cfe817df8b", size = 5869141, upload-time = "2026-02-23T18:09:13.349Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/f7/b4/8268da45f26f4fe84f6eae80a6ca1485ffb490a926afecff75fc48f61979/virtualenv-20.39.0-py3-none-any.whl", hash = "sha256:44888bba3775990a152ea1f73f8e5f566d49f11bbd1de61d426fd7732770043e", size = 5839121, upload-time = "2026-02-23T18:09:11.173Z" },
-]
-
-[[package]]
-name = "worker-template"
-version = "0.1.1"
-source = { editable = "." }
-dependencies = [
-    { name = "datashare-python" },
-    { name = "icij-common", extra = ["elasticsearch"] },
-    { name = "pycountry" },
-    { name = "temporalio" },
-]
-
-[package.optional-dependencies]
-ml = [
-    { name = "sentencepiece" },
-    { name = "torch", version = "2.9.1", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "sys_platform == 'darwin'" },
-    { name = "torch", version = "2.9.1+cpu", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "sys_platform != 'darwin'" },
-    { name = "transformers" },
-]
-
-[package.dev-dependencies]
-dev = [
-    { name = "black" },
-    { name = "datashare-python" },
-    { name = "nest-asyncio" },
-    { name = "pre-commit" },
-    { name = "psutil" },
-    { name = "pylint" },
-    { name = "pytest" },
-    { name = "pytest-asyncio" },
-    { name = "pytest-timeout" },
-    { name = "redis", extra = ["hiredis"] },
-    { name = "ruff" },
-    { name = "typing-extensions" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "datashare-python", editable = "../datashare-python" },
-    { name = "icij-common", extras = ["elasticsearch"], specifier = "~=0.7.3" },
-    { name = "pycountry", specifier = "~=26.2.16" },
-    { name = "sentencepiece", marker = "extra == 'ml'", specifier = "~=0.2.1" },
-    { name = "temporalio", specifier = "~=1.23.0" },
-    { name = "torch", marker = "extra == 'ml'", specifier = "~=2.9.1", index = "https://download.pytorch.org/whl/cpu" },
-    { name = "transformers", marker = "extra == 'ml'", specifier = "~=4.46.3" },
-]
-provides-extras = ["ml"]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "black", specifier = ">=26.1.0" },
-    { name = "datashare-python", editable = "../datashare-python" },
-    { name = "nest-asyncio", specifier = ">=1.6.0" },
-    { name = "pre-commit", specifier = ">=4.5.1" },
-    { name = "psutil", specifier = ">=6.1.0" },
-    { name = "pylint", specifier = "~=3.1.0" },
-    { name = "pytest", specifier = "~=8.1" },
-    { name = "pytest-asyncio", specifier = "~=0.24" },
-    { name = "pytest-timeout", specifier = "==2.4.0" },
-    { name = "redis", extras = ["hiredis"], specifier = ">=5.2.1" },
-    { name = "ruff", specifier = "==0.15.2" },
-    { name = "typing-extensions", specifier = ">=4.15.0" },
 ]
 
 [[package]]

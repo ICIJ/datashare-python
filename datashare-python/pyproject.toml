@@ -18,7 +18,7 @@ dependencies = [
   "nest-asyncio~=1.6.0",
   "temporalio~=1.23.0",
   "typer~=0.15.4",
-  "worker-template",
+  "datashare-worker-template",
   "tomlkit>=0.14.0",
 ]
 
@@ -45,7 +45,7 @@ artifacts = [
 package = true
 
 [tool.uv.sources]
-worker-template = { path = "../worker-template", editable = true }
+datashare-worker-template = { path = "../worker-template", editable = true }
 
 [dependency-groups]
 dev = [
@@ -59,7 +59,6 @@ dev = [
   "redis[hiredis]~=5.2.1",
   "ruff==0.15.2",
   "typing-extensions~=4.15.0",
-  "worker-template",
 ]
 
 [tool.pytest.ini_options]
