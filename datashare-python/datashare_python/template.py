@@ -105,4 +105,10 @@ def _update_pyproject_toml(
         i if i != "worker_template" else package_name for i in hatch_sdist["packages"]
     ]
 
+    hatch_sdist = pyproject_toml["tool"]["hatch"]["build"]["targets"]["sdist"]
+    hatch_sdist["only-include"] = [
+        i if i != "worker_template" else package_name
+        for i in hatch_sdist["only-include"]
+    ]
+
     return pyproject_toml
