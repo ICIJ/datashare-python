@@ -43,5 +43,5 @@ async def test_init_project(
     acts = entry_points["datashare.activities"]["activities"]
     assert acts == "test_project.activities:ACTIVITIES"
 
-    hatch_sdist = pyproject_toml["tool"]["hatch"]["build"]["targets"]["sdist"]
-    assert hatch_sdist["only-include"] == ["test_project"]
+    hatch_sdist = pyproject_toml["tool"]["hatch"]["build"]["targets"]["wheel"]
+    assert hatch_sdist["packages"] == ["test_project"]

@@ -100,11 +100,9 @@ def _update_pyproject_toml(
         "worker_template", package_name
     )
     entry_points["datashare.activities"]["activities"] = activities_entry_point
-
-    hatch_sdist = pyproject_toml["tool"]["hatch"]["build"]["targets"]["sdist"]
-    hatch_sdist["only-include"] = [
-        i if i != "worker_template" else package_name
-        for i in hatch_sdist["only-include"]
+    hatch_sdist = pyproject_toml["tool"]["hatch"]["build"]["targets"]["wheel"]
+    hatch_sdist["packages"] = [
+        i if i != "worker_template" else package_name for i in hatch_sdist["packages"]
     ]
 
     return pyproject_toml

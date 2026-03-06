@@ -1,6 +1,6 @@
 [project]
 name = "datashare-worker-template"
-version = "0.1.4"
+version = "0.1.5"
 description = "Datashare worker template"
 authors = [
   { name = "Clément Doumouro", email = "cdoumouro@icij.org" },
@@ -60,8 +60,13 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 package = ["worker_template"]
 
+[tool.hatch.build.targets.wheel]
+packages = ["worker_template"]
+
 [tool.hatch.build.targets.sdist]
-only-include = ["worker_template"]
+exclude = [
+  "tests"
+]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
