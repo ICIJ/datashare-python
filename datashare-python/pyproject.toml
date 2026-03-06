@@ -1,6 +1,6 @@
 [project]
 name = "datashare-python"
-version = "0.2.12"
+version = "0.2.13"
 description = "Manage Python tasks and local resources in Datashare"
 authors = [
   { name = "Clément Doumouro", email = "cdoumouro@icij.org" },
@@ -18,8 +18,9 @@ dependencies = [
   "nest-asyncio~=1.6.0",
   "temporalio~=1.23.0",
   "typer~=0.15.4",
-  "datashare-worker-template",
-  "tomlkit>=0.14.0",
+  "datashare-worker-template~=0.1",
+  "tomlkit~=0.14.0",
+  "hatchling~=1.27.0",
 ]
 
 [project.urls]

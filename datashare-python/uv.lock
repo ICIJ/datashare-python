@@ -311,6 +311,7 @@ dependencies = [
     { name = "aiostream" },
     { name = "alive-progress" },
     { name = "datashare-worker-template" },
+    { name = "hatchling" },
     { name = "icij-common", extra = ["elasticsearch"] },
     { name = "nest-asyncio" },
     { name = "python-json-logger" },
@@ -339,11 +340,12 @@ requires-dist = [
     { name = "aiostream", specifier = "~=0.6.4" },
     { name = "alive-progress", specifier = "~=3.2.0" },
     { name = "datashare-worker-template", editable = "../worker-template" },
+    { name = "hatchling", specifier = "~=1.27.0" },
     { name = "icij-common", extras = ["elasticsearch"], specifier = "~=0.7.3" },
     { name = "nest-asyncio", specifier = "~=1.6.0" },
     { name = "python-json-logger", specifier = "~=4.0.0" },
     { name = "temporalio", specifier = "~=1.23.0" },
-    { name = "tomlkit", specifier = ">=0.14.0" },
+    { name = "tomlkit", specifier = "~=0.14.0" },
     { name = "typer", specifier = "~=0.15.4" },
 ]
 
@@ -363,7 +365,7 @@ dev = [
 
 [[package]]
 name = "datashare-worker-template"
-version = "0.1.1"
+version = "0.1.2"
 source = { editable = "../worker-template" }
 dependencies = [
     { name = "datashare-python" },
