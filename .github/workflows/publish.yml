@@ -7,36 +7,36 @@ on:
       - '*'
 
 jobs:
-#  create-release:
-#    runs-on: ubuntu-latest
-#    steps:
-#      - uses: actions/checkout@v4
-#      - name: Create GH release
-#        run: gh release create "$tag" --generate-notes
-#        env:
-#          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-#          tag: ${{ github.ref_name }}
+  create-release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Create GH release
+        run: gh release create "$tag" --generate-notes
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          tag: ${{ github.ref_name }}
 
   publish-datashare-python-to-pypi:
     runs-on: ubuntu-latest
-#    permissions:
-#      id-token: write
-#    environment:
-#      name: pypi
-#      url: https://pypi.org/p/datashare-python
+    permissions:
+      id-token: write
+    environment:
+      name: pypi
+      url: https://pypi.org/p/datashare-python
     steps:
       - uses: actions/checkout@v4
-#      - name: Install uv
-#        uses: astral-sh/setup-uv@v7
-#        with:
-#          version: "0.10.8"
-#      - name: Install Python 3.11
-#        run: uv python install 3.11
-#      - name: Build
-#        run: cd datashare-python && uv build
-#      - name: Publish
-#        run: uv publish
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: "0.10.8"
+      - name: Install Python 3.11
+        run: uv python install 3.11
+      - name: Build
+        run: cd datashare-python && uv build
+      - name: Publish
+        run: uv publish
 
-#concurrency:
-#  group: ${{ github.workflow }}-${{ github.ref }}
-#  cancel-in-progress: false
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
