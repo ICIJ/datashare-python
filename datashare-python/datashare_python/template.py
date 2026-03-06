@@ -76,7 +76,7 @@ def _update_pyproject_toml(
 
     project = pyproject_toml["project"]
     project["authors"] = []
-    project["urls"] = []
+    project.pop("urls")
     project["dependencies"] = sorted(
         d
         for d in project["dependencies"]
