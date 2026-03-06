@@ -1,6 +1,6 @@
 [project]
 name = "datashare-worker-template"
-version = "0.1.2"
+version = "0.1.3"
 description = "Datashare worker template"
 authors = [
   { name = "Clément Doumouro", email = "cdoumouro@icij.org" },
@@ -42,7 +42,7 @@ explicit = true
 [dependency-groups]
 dev = [
   "black>=26.1.0",
-  "datashare-python~=0.1.3",
+  "datashare-python~=0.2",
   "nest-asyncio>=1.6.0",
   "pre-commit>=4.5.1",
   "psutil>=6.1.0",
