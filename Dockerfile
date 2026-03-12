@@ -16,10 +16,10 @@ WORKDIR /app
 
 # add task cli
 ADD datashare-python/ ./datashare-python/
+ADD worker-template/ ./worker-template/
 
 # install python deps
-RUN --mount=type=cache,target=~/.cache/uv \
-    uv pip install --system datashare-python/
+RUN --mount=type=cache,target=~/.cache/uv uv pip install --system datashare-python/
 
 # copy build-independant files
 ADD scripts scripts
@@ -50,6 +50,8 @@ COPY --from=dp_builder /bin/uv /bin/uvx /bin/
 WORKDIR /app
 
 # add asr-worker
+ADD worker-template/ ./worker-template/
+ADD datashare-python/ ./datashare-python/
 ADD asr-worker/ ./asr-worker/
 ADD requirements_overrides.txt ./requirements_overrides.txt
 

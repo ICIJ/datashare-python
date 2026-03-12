@@ -6,7 +6,7 @@ build-backend = "hatchling.build"
 source = "uv-dynamic-versioning"
 
 [tool.hatch.build.targets.wheel]
-packages = ["asr_worker"]
+packages = ["translation_worker"]
 
 [tool.hatch.build.targets.sdist]
 exclude = [
@@ -17,70 +17,54 @@ exclude = [
 fallback-version = "0.0.0"
 
 [project]
-name = "asr-worker"
+name = "translation-worker"
 dynamic = ["version"]
-description = "ASR Temporal task"
+description = "Translation worker implementation in Temporal"
 authors = [
+    { name = "Clément Doumouro", email = "cdoumouro@icij.org" },
+    { name = "Clément Doumouro", email = "clement.doumouro@gmail.com" },
     { name = "Lion Summerbell", email = "lsummerbell@icij.org" }
 ]
 readme = "README.md"
 requires-python = ">=3.11.0, <3.14"
 dependencies = [
     "datashare-python",
+    "argostranslate>=1.11.0",
     "temporalio>=1.22.0",
-    "caul==0.1.6",
-    "pyarrow<21.0.0",
-    "torchaudio>=2.10.0",
-    "torch>=2.10.0",
-    "torchcodec>=0.9.1",
-    "numpy==2.3.0",
-    "ml-dtypes>=0.5",
-    "kaldialign>=0.9.3",
-    "icij-common~=0.7.3",
+    "pycountry~=26.2.16",
+    "icij-common[elasticsearch]~=0.7.3",
 ]
+
 [project.entry-points."datashare.workflows"]
-workflows = "asr_worker.workflows:REGISTRY"
+workflows = "translation_worker.workflows:WORKFLOWS"
 
 [project.entry-points."datashare.activities"]
-activities = "asr_worker.activities:REGISTRY"
+activities = "translation_worker.activities:ACTIVITIES"
+
+[tool.uv.sources]
+torch = [
+  { index = "pytorch-cpu" },
+]
+datashare-python = { path = "../datashare-python", editable = true }
 
 [[tool.uv.index]]
 name = "pytorch-cpu"
 url = "https://download.pytorch.org/whl/cpu"
 explicit = true
 
-[tool.uv.sources]
-torch = [
-  { index = "pytorch-cpu" }
-]
-torchaudio = [
-  { index = "pytorch-cpu" }
-]
-torchcodec = [
-  { index = "pytorch-cpu" }
-]
-datashare-python = { path = "../datashare-python", editable = true }
-
-[tool.uv]
-package = true
-override-dependencies = ["kaldialign>=0.9.3"]
-
 [dependency-groups]
 dev = [
-  "datashare-python~=0.1.3",
-  "nest-asyncio>=1.6.0",
-  "pre-commit>=4.5.1",
-  "psutil>=6.1.0",
-  "pytest~=8.1",
-  "pytest-asyncio~=0.24",
-  "pytest-timeout==2.4.0",
-  "redis[hiredis]>=5.2.1",
-  "ruff==0.15.2",
-  "typing-extensions>=4.15.0",
+    "datashare-python~=0.2",
+    "nest-asyncio>=1.6.0",
+    "pre-commit>=4.5.1",
+    "psutil>=6.1.0",
+    "pytest~=8.1",
+    "pytest-asyncio~=0.24",
+    "pytest-timeout==2.4.0",
+    "redis[hiredis]>=5.2.1",
+    "ruff==0.15.2",
+    "typing-extensions>=4.15.0",
 ]
-
-[tool.uv.pip]
-prerelease = "if-necessary"
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

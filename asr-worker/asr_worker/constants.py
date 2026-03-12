@@ -4,12 +4,10 @@ _ONE_MINUTE = 60
 
 _TEN_MINUTES = _ONE_MINUTE * 10
 
-ASR_TASK_QUEUE = "transcription-tasks"
+ASR_CPU_TASK_QUEUE = "asr-cpu-tasks"
+
+ASR_GPU_TASK_QUEUE = "asr-gpu-tasks"
 
 PARAKEET = "parakeet"
 
-DEFAULT_TEMPORAL_ADDRESS = "temporal:7233"
-
-RESPONSE_SUCCESS = "success"
-
-RESPONSE_ERROR = "error"
+ASR_WORKFLOW_NAME = "asr-workflow"

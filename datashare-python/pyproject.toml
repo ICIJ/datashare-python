@@ -50,7 +50,6 @@ artifacts = [
   "datashare_python/worker-template.tar.gz"
 ]
 
-
 [tool.uv]
 package = true
 
