@@ -25,6 +25,22 @@ from translation_worker.activities import CreateTranslationBatches, TranslateDoc
 from translation_worker.objects import TaskQueues, TranslationConfig
 from translation_worker.workflows import TranslationWorkflow
 
+EN = "en"
+FR = "fr"
+ES = "es"
+ENGLISH = "english"
+FRENCH = "french"
+SPANISH = "spanish"
+DOC_ID_1 = "doc_id_1"
+DOC_ID_2 = "doc_id_2"
+ROOT_DOCUMENT_1 = "root_document_1"
+ROOT_DOCUMENT_2 = "root_document_2"
+
+MOCK_TRANSLATIONS = [
+    (DOC_ID_1, ROOT_DOCUMENT_1, "1"),
+    (DOC_ID_2, ROOT_DOCUMENT_2, "2"),
+]
+
 FRENCH_TEXT = (
     "Dans le port d'Amsterdam, il y a des marins qui chantent les rêves "
     "y a des qui les hantent au large d'Amsterdam. Dans le port "
