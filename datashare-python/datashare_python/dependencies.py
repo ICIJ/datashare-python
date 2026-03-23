@@ -14,10 +14,22 @@ from .types_ import ContextManagerFactory, TemporalClient
 logger = logging.getLogger(__name__)
 
 
+WORKER_CONFIG: ContextVar[WorkerConfig] = ContextVar("worker_config")
 EVENT_LOOP: ContextVar[AbstractEventLoop] = ContextVar("event_loop")
 ES_CLIENT: ContextVar[ESClient] = ContextVar("es_client")
 TASK_CLIENT: ContextVar[DatashareTaskClient] = ContextVar("task_client")
 TEMPORAL_CLIENT: ContextVar[TemporalClient] = ContextVar("temporal_client")
+
+
+def set_worker_config(worker_config: WorkerConfig, **_) -> None:
+    WORKER_CONFIG.set(worker_config)
+
+
+def lifespan_worker_config() -> WorkerConfig:
+    try:
+        return WORKER_CONFIG.get()
+    except LookupError as e:
+        raise DependencyInjectionError("worker config") from e
 
 
 def set_event_loop(event_loop: AbstractEventLoop, **_) -> None:

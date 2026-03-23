@@ -1,0 +1,64 @@
+[project]
+name = "ner-worker"
+version = "0.1.5"
+description = "Datashare worker template"
+authors = []
+readme = "README.md"
+requires-python = ">=3.11,<4"
+dependencies = [
+    "datashare-python",
+    "icij-common[elasticsearch]~=0.7.3",
+    "pycountry>=26.2.16",
+    "spacy~=3.8",
+    "temporalio~=1.23.0",
+]
+
+[project.entry-points."datashare.workflows"]
+workflows = "ner_worker.workflows:WORKFLOWS"
+
+[project.entry-points."datashare.activities"]
+activities = "ner_worker.activities:ACTIVITIES"
+
+[dependency-groups]
+dev = [
+  "black>=26.1.0",
+  "datashare-python~=0.2",
+  "nest-asyncio>=1.6.0",
+  "pre-commit>=4.5.1",
+  "psutil>=6.1.0",
+  "pylint~=3.1.0",
+  "pytest~=8.1",
+  "pytest-asyncio~=0.24",
+  "pytest-timeout==2.4.0",
+  "redis[hiredis]>=5.2.1",
+  "ruff==0.15.2",
+  "typing-extensions>=4.15.0",
+]
+
+[tool.uv.sources]
+datashare-python = { path = "../datashare-python", editable = true }
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+package = ["ner_worker"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["ner_worker"]
+
+[tool.hatch.build.targets.sdist]
+exclude = [
+  "tests"
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "session"
+markers = [
+  "integration",
+  "pull",
+]
+log_cli = 1
+log_cli_level = "DEBUG"
+log_file_format = "[%(levelname)s][%(asctime)s.%(msecs)03d][%(name)s]: %(message)s"
+log_file_date_format = "%Y-%m-%d %H:%M:%S"

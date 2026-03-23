@@ -26,6 +26,9 @@ async def test_init_project(
     pyproject_toml = tomlkit.loads(pyproject_toml_path.read_text())
 
     project = pyproject_toml["project"]
+
+    assert pyproject_toml["name"] == test_worker_project
+
     assert not project["authors"]
 
     dependencies = project["dependencies"]

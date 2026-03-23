@@ -1,0 +1,410 @@
+{
+  "ca": {
+    "sizes": {
+      "sm": {
+        "model": "core_news",
+        "version": "3.7.0"
+      },
+      "md": {
+        "model": "core_news",
+        "version": "3.7.0"
+      },
+      "lg": {
+        "model": "core_news",
+        "version": "3.7.0"
+      },
+      "trf": {
+        "model": "core_news",
+        "version": "3.7.2"
+      }
+    }
+  },
+  "zh": {
+    "sizes": {
+      "sm": {
+        "model": "core_web",
+        "version": "3.7.0"
+      },
+      "md": {
+        "model": "core_web",
+        "version": "3.7.0"
+      },
+      "lg": {
+        "model": "core_web",
+        "version": "3.7.0"
+      },
+      "trf": {
+        "model": "core_web",
+        "version": "3.7.2"
+      }
+    }
+  },
+  "hr": {
+    "sizes": {
+      "sm": {
+        "model": "core_news",
+        "version": "3.7.0"
+      },
+      "md": {
+        "model": "core_news",
+        "version": "3.7.0"
+      },
+      "lg": {
+        "model": "core_news",
+        "version": "3.7.0"
+      }
+    }
+  },
+  "da": {
+    "sizes": {
+      "sm": {
+        "model": "core_news",
+        "version": "3.7.0"
+      },
+      "md": {
+        "model": "core_news",
+        "version": "3.7.0"
+      },
+      "lg": {
+        "model": "core_news",
+        "version": "3.7.0"
+      },
+      "trf": {
+        "model": "core_news",
+        "version": "3.7.2"
+      }
+    }
+  },
+  "nl": {
+    "sizes": {
+      "sm": {
+        "model": "core_news",
+        "version": "3.7.0"
+      },
+      "md": {
+        "model": "core_news",
+        "version": "3.7.0"
+      },
+      "lg": {
+        "model": "core_news",
+        "version": "3.7.0"
+      }
+    }
+  },
+  "en": {
+    "sizes": {
+      "sm": {
+        "model": "core_web",
+        "version": "3.7.0"
+      },
+      "md": {
+        "model": "core_web",
+        "version": "3.7.0"
+      },
+      "lg": {
+        "model": "core_web",
+        "version": "3.7.0"
+      },
+      "trf": {
+        "model": "core_web",
+        "version": "3.7.2"
+      }
+    }
+  },
+  "fi": {
+    "sizes": {
+      "sm": {
+        "model": "core_news",
+        "version": "3.7.0"
+      },
+      "md": {
+        "model": "core_news",
+        "version": "3.7.0"
+      },
+      "lg": {
+        "model": "core_news",
+        "version": "3.7.0"
+      }
+    }
+  },
+  "fr": {
+    "sizes": {
+      "sm": {
+        "model": "core_news",
+        "version": "3.7.0"
+      },
+      "md": {
+        "model": "core_news",
+        "version": "3.7.0"
+      },
+      "lg": {
+        "model": "core_news",
+        "version": "3.7.0"
+      },
+      "trf": {
+        "model": "core_news",
+        "version": "3.7.2"
+      }
+    }
+  },
+  "de": {
+    "sizes": {
+      "sm": {
+        "model": "core_news",
+        "version": "3.7.0"
+      },
+      "md": {
+        "model": "core_news",
+        "version": "3.7.0"
+      },
+      "lg": {
+        "model": "core_news",
+        "version": "3.7.0"
+      },
+      "trf": {
+        "model": "core_news",
+        "version": "3.7.2"
+      }
+    }
+  },
+  "el": {
+    "sizes": {
+      "sm": {
+        "model": "core_news",
+        "version": "3.7.0"
+      },
+      "md": {
+        "model": "core_news",
+        "version": "3.7.0"
+      },
+      "lg": {
+        "model": "core_news",
+        "version": "3.7.0"
+      }
+    }
+  },
+  "it": {
+    "sizes": {
+      "sm": {
+        "model": "core_news",
+        "version": "3.7.0"
+      },
+      "md": {
+        "model": "core_news",
+        "version": "3.7.0"
+      },
+      "lg": {
+        "model": "core_news",
+        "version": "3.7.0"
+      }
+    }
+  },
+  "ja": {
+    "sizes": {
+      "sm": {
+        "model": "core_news",
+        "version": "3.7.0"
+      },
+      "md": {
+        "model": "core_news",
+        "version": "3.7.0"
+      },
+      "lg": {
+        "model": "core_news",
+        "version": "3.7.0"
+      },
+      "trf": {
+        "model": "core_news",
+        "version": "3.7.2"
+      }
+    }
+  },
+  "ko": {
+    "sizes": {
+      "sm": {
+        "model": "core_news",
+        "version": "3.7.0"
+      },
+      "md": {
+        "model": "core_news",
+        "version": "3.7.0"
+      },
+      "lg": {
+        "model": "core_news",
+        "version": "3.7.0"
+      }
+    }
+  },
+  "lt": {
+    "sizes": {
+      "sm": {
+        "model": "core_news",
+        "version": "3.7.0"
+      },
+      "md": {
+        "model": "core_news",
+        "version": "3.7.0"
+      },
+      "lg": {
+        "model": "core_news",
+        "version": "3.7.0"
+      }
+    }
+  },
+  "mk": {
+    "sizes": {
+      "sm": {
+        "model": "core_news",
+        "version": "3.7.0"
+      },
+      "md": {
+        "model": "core_news",
+        "version": "3.7.0"
+      },
+      "lg": {
+        "model": "core_news",
+        "version": "3.7.0"
+      }
+    }
+  },
+  "nb": {
+    "sizes": {
+      "sm": {
+        "model": "core_news",
+        "version": "3.7.0"
+      },
+      "md": {
+        "model": "core_news",
+        "version": "3.7.0"
+      },
+      "lg": {
+        "model": "core_news",
+        "version": "3.7.0"
+      }
+    }
+  },
+  "pl": {
+    "sizes": {
+      "sm": {
+        "model": "core_news",
+        "version": "3.7.0"
+      },
+      "md": {
+        "model": "core_news",
+        "version": "3.7.0"
+      },
+      "lg": {
+        "model": "core_news",
+        "version": "3.7.0"
+      }
+    }
+  },
+  "pt": {
+    "sizes": {
+      "sm": {
+        "model": "core_news",
+        "version": "3.7.0"
+      },
+      "md": {
+        "model": "core_news",
+        "version": "3.7.0"
+      },
+      "lg": {
+        "model": "core_news",
+        "version": "3.7.0"
+      }
+    }
+  },
+  "ro": {
+    "sizes": {
+      "sm": {
+        "model": "core_news",
+        "version": "3.7.0"
+      },
+      "md": {
+        "model": "core_news",
+        "version": "3.7.0"
+      },
+      "lg": {
+        "model": "core_news",
+        "version": "3.7.0"
+      }
+    }
+  },
+  "ru": {
+    "sizes": {
+      "sm": {
+        "model": "core_news",
+        "version": "3.7.0"
+      },
+      "md": {
+        "model": "core_news",
+        "version": "3.7.0"
+      },
+      "lg": {
+        "model": "core_news",
+        "version": "3.7.0"
+      }
+    }
+  },
+  "sl": {
+    "sizes": {
+      "sm": {
+        "model": "core_news",
+        "version": "3.7.0"
+      },
+      "md": {
+        "model": "core_news",
+        "version": "3.7.0"
+      },
+      "lg": {
+        "model": "core_news",
+        "version": "3.7.0"
+      },
+      "trf": {
+        "model": "core_news",
+        "version": "3.7.2"
+      }
+    }
+  },
+  "es": {
+    "sizes": {
+      "sm": {
+        "model": "core_news",
+        "version": "3.7.0"
+      },
+      "md": {
+        "model": "core_news",
+        "version": "3.7.0"
+      },
+      "lg": {
+        "model": "core_news",
+        "version": "3.7.0"
+      },
+      "trf": {
+        "model": "core_news",
+        "version": "3.7.2"
+      }
+    }
+  },
+  "uk": {
+    "sizes": {
+      "sm": {
+        "model": "core_news",
+        "version": "3.7.0"
+      },
+      "md": {
+        "model": "core_news",
+        "version": "3.7.0"
+      },
+      "lg": {
+        "model": "core_news",
+        "version": "3.7.0"
+      },
+      "trf": {
+        "model": "core_news",
+        "version": "3.7.2"
+      }
+    }
+  }
+}

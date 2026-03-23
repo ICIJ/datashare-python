@@ -59,7 +59,9 @@ def init_project(name: str, path: Path) -> None:
     shutil.move(destination / "worker_template", package_dir)
     pyproject_toml_path = destination / "pyproject.toml"
     pyproject_toml = tomlkit.loads(pyproject_toml_path.read_text())
-    pyproject_toml = _update_pyproject_toml(pyproject_toml, package_name=package_name)
+    pyproject_toml = _update_pyproject_toml(
+        pyproject_toml, name, package_name=package_name
+    )
     pyproject_toml_path.write_text(tomlkit.dumps(pyproject_toml))
 
 
@@ -67,7 +69,7 @@ _BASE_DEPS = {"datashare-python", "icij-common", "temporalio"}
 
 
 def _update_pyproject_toml(
-    pyproject_toml: dict[str, Any], *, package_name: str
+    pyproject_toml: dict[str, Any], name: str, *, package_name: str
 ) -> dict[str, Any]:
     pyproject_toml = deepcopy(pyproject_toml)
 
@@ -75,6 +77,7 @@ def _update_pyproject_toml(
     pyproject_toml["tool"]["uv"].pop("index")
 
     project = pyproject_toml["project"]
+    project["name"] = name
     project["authors"] = []
     project["urls"] = []
     project["dependencies"] = sorted(
@@ -103,6 +106,11 @@ def _update_pyproject_toml(
     hatch_sdist = pyproject_toml["tool"]["hatch"]["build"]["targets"]["wheel"]
     hatch_sdist["packages"] = [
         i if i != "worker_template" else package_name for i in hatch_sdist["packages"]
+    ]
+
+    pyproject_toml["build-system"]["packages"] = [
+        i if i != "worker_template" else package_name
+        for i in pyproject_toml["build-system"]["packages"]
     ]
 
     return pyproject_toml
