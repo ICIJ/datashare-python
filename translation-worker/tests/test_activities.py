@@ -578,7 +578,7 @@ async def test__add_translation__generates_update_action_per_translation() -> No
     assert all(a["_index"] == TEST_PROJECT for a in bulk_actions)
 
 
-async def test__add_translation__sets_correct_doc_id_and_routing() -> None:
+async def test__add_translation__sets_correct_doc_id_routing_and_params() -> None:
     bulk_actions = []
 
     async def capture_bulk(client, actions, **kwargs):
@@ -595,23 +595,9 @@ async def test__add_translation__sets_correct_doc_id_and_routing() -> None:
     assert bulk_actions[0][ID_] == DOC_ID_1
     assert bulk_actions[0]["_routing"] == ROOT_DOCUMENT_1
 
-
-async def test__add_translation__target_lang_and_translation_in_script_params() -> None:
-    bulk_actions = []
-
-    async def capture_bulk(client, actions, **kwargs):
-        bulk_actions.extend(list(actions))
-
-    with patch("translation_worker.activities.async_bulk", side_effect=capture_bulk):
-        await _add_translation(
-            MagicMock(),
-            MOCK_TRANSLATIONS[:1],
-            TEST_PROJECT,
-            target_language_alpha_code=FR,
-        )
-
     params = bulk_actions[0]["script"]["params"]
-    assert params["language"] == FR
+
+    assert params["language"] == EN
     assert params["translation"] == MOCK_TRANSLATIONS[0][2]
 
 
