@@ -20,7 +20,7 @@ with workflow.unsafe.imports_passed_through():
 
 
 class TaskQueues(StrEnum):
-    CPU = "cpu"
+    IO = "io"
     TRANSLATE_GPU = "translate-gpu"
     CLASSIFY_GPU = "classify-gpu"
 
@@ -40,7 +40,7 @@ class TranslateAndClassifyWorkflow(WorkflowWithProgress):
         translation_batches = await workflow.execute_activity(
             CreateTranslationBatches.create_translation_batches,
             args=translation_batch_args,
-            task_queue=TaskQueues.CPU,
+            task_queue=TaskQueues.IO,
             start_to_close_timeout=timedelta(hours=1),
         )
         # Translate
@@ -68,7 +68,7 @@ class TranslateAndClassifyWorkflow(WorkflowWithProgress):
         clf_batches = await workflow.execute_activity(
             CreateClassificationBatches.create_classification_batches,
             args=clf_batch_args,
-            task_queue=TaskQueues.CPU,
+            task_queue=TaskQueues.IO,
             start_to_close_timeout=timedelta(days=1),
         )
         # Classify
@@ -98,7 +98,7 @@ class PingWorkflow(WorkflowWithProgress):
     async def run(self, arg: dict) -> str:  # noqa: ARG002
         return await workflow.execute_activity(
             Pong.pong,
-            task_queue=TaskQueues.CPU,
+            task_queue=TaskQueues.IO,
             start_to_close_timeout=timedelta(hours=1),
         )
 

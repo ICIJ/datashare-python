@@ -37,24 +37,24 @@ def datashare_worker(
     # Scale horizontally be default for activities, each worker processes one activity
     # at a time
     max_concurrent_activities: int = 1,
+    worker_id: str | None = None,
 ) -> Worker:
     if workflows is None:
         workflows = []
     if activities is None:
         activities = []
-    are_async = [a.__temporal_activity_definition.is_async for a in activities]
-    if all(not a for a in are_async):
-        activity_executor = ThreadPoolExecutor(
-            thread_name_prefix=_ACTIVITY_THREAD_NAME_PREFIX
-        )
-    elif all(are_async):
-        activity_executor = None  # Use temporal default
-    else:
-        activity_executor = ThreadPoolExecutor(
-            thread_name_prefix=_ACTIVITY_THREAD_NAME_PREFIX
-        )
-        logger.warning(_SEPARATE_IO_AND_CPU_ACTIVITIES)
-
+    activity_executor = None  # Use temporal default
+    if activities:
+        are_async = [a.__temporal_activity_definition.is_async for a in activities]
+        if all(not a for a in are_async):
+            activity_executor = ThreadPoolExecutor(
+                thread_name_prefix=_ACTIVITY_THREAD_NAME_PREFIX
+            )
+        else:
+            activity_executor = ThreadPoolExecutor(
+                thread_name_prefix=_ACTIVITY_THREAD_NAME_PREFIX
+            )
+            logger.warning(_SEPARATE_IO_AND_CPU_ACTIVITIES)
     if isinstance(activity_executor, ThreadPoolExecutor) and workflows:
         logger.warning(_SEPARATE_IO_AND_CPU_WORKERS)
 
@@ -71,4 +71,5 @@ def datashare_worker(
         # Workflow tasks are assumed to be very lightweight and fast we can reserve
         # several of them
         workflow_task_poller_behavior=PollerBehaviorSimpleMaximum(5),
+        identity=worker_id,
     )

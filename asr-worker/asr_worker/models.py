@@ -1,54 +1,73 @@
-from dataclasses import dataclass, field, asdict
-from typing import Optional
+from pathlib import Path
+from typing import Self
 
-from asr_worker.constants import PARAKEET
+from caul.model_handlers.objects import ASRModelHandlerResult
+from datashare_python.objects import DatashareModel
+from pydantic import Field
+
+from .constants import PARAKEET
 
 
-@dataclass
-class BatchSize:
+class _WithBatchSize(DatashareModel):
     """Batch size helper"""
 
     batch_size: int = 32
 
 
-@dataclass
-class PreprocessingConfig(BatchSize):
+# TODO: ideally these should be caul objects from which can directly init components
+#  using from_config
+class PreprocessingConfig(DatashareModel):
     """Preprocessing config"""
 
 
-@dataclass
-class InferenceConfig(BatchSize):
+class InferenceConfig(DatashareModel):
     """Inference config"""
 
     model_name: str = PARAKEET
 
 
-@dataclass
-class ASRPipelineConfig:
-    """ASR pipeline config"""
-
-    preprocessing: PreprocessingConfig = field(default_factory=PreprocessingConfig)
-    inference: InferenceConfig = field(default_factory=InferenceConfig)
-
-    def serialize(self):
-        return {
-            "preprocessing": asdict(self.preprocessing),
-            "inference": asdict(self.inference),
-        }
+class ASRPipelineConfig(DatashareModel):
+    batch_size: int = 32
+    preprocessing: PreprocessingConfig = Field(default_factory=PreprocessingConfig)
+    inference: InferenceConfig = Field(default_factory=InferenceConfig)
 
 
-@dataclass
-class ASRInputs:
-    """Inputs to ASR workflow"""
-
-    file_paths: list[str]
-    pipeline: ASRPipelineConfig
+class ASRInputs(DatashareModel):
+    project: str
+    paths: list[Path]
+    config: ASRPipelineConfig
 
 
-@dataclass
-class ASRResponse:
-    """ASR workflow response"""
+class ASRResponse(DatashareModel):
+    n_transcribed: int
 
-    status: str
-    transcriptions: list[dict] = field(default_factory=list)
-    error: Optional[str] = None
+
+class Timestamp(DatashareModel):
+    start_s: float
+    end_s: float
+
+    @classmethod
+    def from_floats(cls, start_s: float, end_s: float) -> Self:
+        return Timestamp(start_s=start_s, end_s=end_s)
+
+
+class Transcript(DatashareModel):
+    text: str
+    timestamp: Timestamp | None = None
+    speaker: str | None = None
+
+
+class Transcription(DatashareModel):
+    transcripts: list[Transcript] = Field(default_factory=list)
+    # TODO: add validation [0, 1]
+    confidence: float
+
+    @classmethod
+    def from_asr_handler_result(cls, asr_handler_result: ASRModelHandlerResult) -> Self:
+        transcripts = [
+            Transcript(text=text, timestamp=Timestamp(start_s=start_s, end_s=end_s))
+            for start_s, end_s, text in asr_handler_result.transcription
+        ]
+        return Transcription(
+            confidence=asr_handler_result.score, transcripts=transcripts
+        )

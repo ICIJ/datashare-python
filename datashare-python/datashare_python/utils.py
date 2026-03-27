@@ -1,11 +1,14 @@
 import asyncio
 import inspect
+import json
 import logging
 import sys
 from collections.abc import Callable, Coroutine
 from dataclasses import dataclass
 from functools import partial, wraps
+from hashlib import sha256
 from inspect import signature
+from pathlib import Path
 from typing import ParamSpec, TypeVar
 
 import nest_asyncio
@@ -23,6 +26,7 @@ from temporalio.client import Client, WorkflowHandle
 from temporalio.common import SearchAttributeKey
 from temporalio.exceptions import ApplicationError
 
+from .constants import METADATA_JSON
 from .types_ import ProgressRateHandler, RawProgressHandler
 
 DependencyLabel = str | None
@@ -370,3 +374,36 @@ class LogWithWorkerIDMixin:
                 handler.addFilter(worker_id_filter)
             handler.setLevel(log_level)
         return handlers
+
+
+def safe_dir(filename: str) -> Path:
+    parts = (p for p in (filename[:2], filename[2:4]) if p)
+    return Path(*parts)
+
+
+def artifacts_dir(project: str, *, filename: str) -> Path:
+    return Path(project, safe_dir(filename), filename)
+
+
+def metadata_path(filename: str, *, project: str) -> Path:
+    metadata_path = artifacts_dir(project, filename=filename) / METADATA_JSON
+    return metadata_path
+
+
+def read_artifact_metadata(root: Path, project: str, *, filename: str) -> dict:
+    m_path = root / metadata_path(filename, project=project)
+    return json.loads(m_path.read_text())
+
+
+def write_artifact_metadata(
+    metadata: dict, root: Path, project: str, *, filename: str
+) -> None:
+    m_path = root / artifacts_dir(project, filename=filename) / METADATA_JSON
+    m_path.parent.mkdir(parents=True, exist_ok=True)
+    m_path.write_text(json.dumps(metadata))
+
+
+def debuggable_name(path: Path, component_size_limit: int = 10) -> str:
+    displayable_file_name = [c[:component_size_limit] for c in path.parts]
+    uuid = sha256(str(path).encode()).hexdigest()[:20]
+    return f"{uuid}-{'__'.join(displayable_file_name)}"
