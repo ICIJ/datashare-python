@@ -392,6 +392,11 @@ class LogWithWorkerIDMixin:
 
 
 # Temporal utils
+async def async_iterable(seq: list | tuple) -> AsyncIterable:
+    for item in seq:
+        yield item
+
+
 async def async_batches(
     iterable: AsyncIterable[T], batch_size: int
 ) -> AsyncIterator[tuple[T]]:

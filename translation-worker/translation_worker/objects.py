@@ -1,6 +1,5 @@
 from enum import StrEnum
 
-from aiostream import Stream
 from argostranslate.sbd import (
     MiniSBDSentencizer,
     SpacySentencizerSmall,
@@ -33,6 +32,7 @@ class TranslationConfig(BaseModel):
     device: str = Field(default=CPU, frozen=True)
     batch_size: int = 16
     max_parallel_batches: int = 8
+    max_batch_byte_len: int = 1000000
     # ctranslate2 params
     beam_size: int = 4
     num_hypotheses: int = 1
@@ -51,22 +51,11 @@ class TranslationResponse(WorkerResponse):
     num_translations: int = 0
 
 
-class AsyncEsDocumentIteratorByLanguage(BaseModel):
-    model_config = ArbitraryTypesConfig
-    language: str
-    document_iter: Stream
-
-
 class BatchSentence(BaseModel):
     doc_id: str
     root_document: str
     sentence_index: int
     sentence: str
-
-
-class SentencesBatch(BaseModel):
-    language: str
-    sentences: list[BatchSentence] = Field(default_factory=list)
 
 
 class TranslationEnsemble(BaseModel):

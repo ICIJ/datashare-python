@@ -21,7 +21,11 @@ from datashare_python.objects import Document
 from datashare_python.types_ import TemporalClient
 from icij_common.es import ESClient
 from temporalio.worker import Worker
-from translation_worker.activities import CreateTranslationBatches, TranslateDocs
+from translation_worker.activities import (
+    CreateTranslationBatches,
+    TranslateDocs,
+    resolve_language_alpha_code,
+)
 from translation_worker.objects import TaskQueues, TranslationConfig
 from translation_worker.workflows import TranslationWorkflow
 
@@ -67,8 +71,8 @@ async def index_translation_documents(
     docs = []
     languages = ["FRENCH", "SPANISH"]
     for idx, text in enumerate([FRENCH_TEXT, SPANISH_TEXT]):
-        doc_id = f"doc-{idx}"
-        root_document = f"root-{idx}"
+        doc_id = f"doc_id_{idx}"
+        root_document = f"root_document_{idx}"
         docs.append(_create_doc(doc_id, root_document, text, languages[idx]))
     async for _ in index_docs(test_es_client, docs=docs, index_name=TEST_PROJECT):
         pass
@@ -95,7 +99,7 @@ async def batching_worker(
         event_loop=event_loop,
     )
     batching_activities = [
-        create_translation_batches.language_alpha_codes,
+        resolve_language_alpha_code,
         create_translation_batches.create_translation_batches,
     ]
     workflows = [TranslationWorkflow]
@@ -131,7 +135,7 @@ async def translation_worker(
             es_client=es_client,
             temporal_client=temporal_client,
             event_loop=event_loop,
-        ).translate_sentences,
+        ).translate_docs,
     ]
     with ThreadPoolExecutor() as executor:
         translation_worker = Worker(

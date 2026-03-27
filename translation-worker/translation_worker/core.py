@@ -14,6 +14,7 @@ from datashare_python.utils import find_device
 from icij_common.es import DOC_LANGUAGE, SOURCE
 from spacy import Language
 
+from .constants import CONTENT_LENGTH
 from .objects import BatchSentence, TranslationConfig, TranslationEnsemble
 
 logging.basicConfig(level=logging.INFO)
@@ -21,7 +22,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-def _language_alpha_codes(*languages: str) -> list[str]:
+def _language_alpha_codes(*languages: str) -> list[str] | str:
     alpha_codes = []
 
     for language in languages:
@@ -32,20 +33,24 @@ def _language_alpha_codes(*languages: str) -> list[str]:
             logger.warning("%s language not found by pycountry; skipping.", language)
             continue
 
+    if len(alpha_codes) == 0:
+        return list(languages)
+
+    if len(alpha_codes) == 1:
+        return alpha_codes[0]
+
     return alpha_codes
 
 
 def _translate_as_list(
-    sentence_batch: tuple[BatchSentence, ...],
-    source_language_alpha_code: str,
-    target_language_alpha_code: str,
+    sentence_batch: list[BatchSentence],
+    translation_ensemble: TranslationEnsemble,
     config: TranslationConfig,
 ) -> list[str]:
     return list(
         _translate(
             [s.sentence for s in sentence_batch],
-            source_language_alpha_code,
-            target_language_alpha_code,
+            translation_ensemble,
             config,
         )
     )
@@ -53,65 +58,55 @@ def _translate_as_list(
 
 def _translate(
     sentence_batch: list[str],
-    source_language_alpha_code: str,
-    target_language_alpha_code: str,
+    translation_ensemble: TranslationEnsemble,
     config: TranslationConfig,
 ) -> Generator[str, None, None]:
-    translation_package = _get_translation_package(
-        source_language_alpha_code, target_language_alpha_code, config
-    )
     tokenized_sentences = [
-        translation_package.tokenizer.encode(sentence) for sentence in sentence_batch
+        translation_ensemble.tokenizer.encode(sentence) for sentence in sentence_batch
     ]
 
     target_prefix = None
 
-    if translation_package.target_prefix != "":
-        target_prefix = [[translation_package.target_prefix]] * len(tokenized_sentences)
+    if translation_ensemble.target_prefix != "":
+        target_prefix = [[translation_ensemble.target_prefix]] * len(
+            tokenized_sentences
+        )
 
-    for translation_result in translation_package.translator.translate_batch(
+    for translation_result in translation_ensemble.translator.translate_batch(
         tokenized_sentences,
         target_prefix=target_prefix,
         replace_unknowns=True,
         batch_type="tokens",
         beam_size=config.beam_size,
-        num_hypotheses=config.num_hypotheses,
+        num_hypotheses=1,
         length_penalty=0.2,
         return_scores=True,
     ):
-        max_score = 0
-        best_translation = None
-        for i in range(0, config.num_hypotheses):
-            # Assume we want the highest scoring translation; discard the rest
-            score = float(translation_result.scores[i])
+        hypothesis = translation_result.hypotheses[0]
+        decoded_translation = translation_ensemble.tokenizer.decode(hypothesis)
 
-            # scores are log probs
-            if score >= max_score:
-                continue
+        if translation_ensemble.target_prefix != "" and decoded_translation.startswith(
+            translation_ensemble.target_prefix
+        ):
+            # Remove target prefix
+            decoded_translation = decoded_translation[
+                len(translation_ensemble.target_prefix) :
+            ]
 
-            max_score = score
-            hypothesis = translation_result.hypotheses[i]
-            decoded_translation = translation_package.tokenizer.decode(hypothesis)
-
-            if (
-                translation_package.target_prefix != ""
-                and decoded_translation.startswith(translation_package.target_prefix)
-            ):
-                # Remove target prefix
-                decoded_translation = decoded_translation[
-                    len(translation_package.target_prefix) :
-                ]
-
-            best_translation = decoded_translation
-
-        if best_translation is None:
-            continue
-
-        yield best_translation
+        yield decoded_translation
 
 
 def _has_language(doc: dict, language: str) -> bool:
     return doc[SOURCE][DOC_LANGUAGE] == language
+
+
+def _has_language_or_exceeds_max_len(
+    doc: dict, language: str, current_batch_byte_len: int, max_batch_byte_len: int
+) -> bool:
+    return (
+        doc[SOURCE][DOC_LANGUAGE] == language
+        or doc[SOURCE][CONTENT_LENGTH] + current_batch_byte_len > max_batch_byte_len
+    )
 
 
 def _get_argos_package(
@@ -187,7 +182,7 @@ def _get_or_download_argos_languages(
     return _get_argos_languages(source_language_alpha_code, target_language_alpha_code)
 
 
-def _get_translation_package(
+def get_translation_ensemble(
     source_language_alpha_code: str,
     target_language_alpha_code: str,
     config: TranslationConfig,
