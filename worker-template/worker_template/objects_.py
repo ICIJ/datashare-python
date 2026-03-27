@@ -12,6 +12,9 @@ class LowerCamelCaseModel(BaseModel):
     model_config = merge_configs(icij_config(), lowercamel_case_config())
 
 
+class BasePayload(LowerCamelCaseModel): ...
+
+
 class ClassificationConfig(BasePayload):
     task: str = Field(default="text-classification", frozen=True)
     model: str = "distilbert/distilbert-base-uncased-finetuned-sst-2-english"
