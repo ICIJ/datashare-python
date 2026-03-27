@@ -18,8 +18,8 @@ dependencies = [
 [project.optional-dependencies]
 ml = [
   "sentencepiece~=0.2.1",
-  "torch~=2.9.1",
-  "transformers~=4.46.3",
+  "torch~=2.9",
+  "transformers~=4.46",
 ]
 
 [project.entry-points."datashare.workflows"]

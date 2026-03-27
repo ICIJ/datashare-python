@@ -14,8 +14,8 @@ RESPONSE_SUCCESS = "success"
 
 RESPONSE_ERROR = "error"
 
-TRANSCRIPTION_JSON = "transcription.json"
 TRANSCRIPTION_METADATA_KEY = "transcription"
+TRANSCRIPTION_METADATA_VALUE = "transcription.json"
 
 ASR_WORKFLOW = "asr.transcription"
 GET_CONFIG_ACTIVITY = "asr.transcription.config"

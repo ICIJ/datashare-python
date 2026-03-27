@@ -27,31 +27,31 @@ class TaskQueues(StrEnum):
 class ASRWorkflow(WorkflowWithProgress):
     @workflow.run
     async def run(self, inputs: ASRInputs) -> ASRResponse:
-        """Run ASR workflow
-
-        :param inputs: ASRInputs
-        :return: ASRResponse
-        """
-        # We can't get the config from the env since it's non-deterministic,
-        # it has to be an activity
         # Preprocessing
         logger = workflow.logger
-        batch_size = inputs.config.batch_size
-        batched_input_paths = [
+        config = inputs.config
+        batch_size = config.batch_size
+        batched_input_paths = (
             inputs.paths[batch_start : batch_start + batch_size]
             for batch_start in range(0, len(inputs.paths), batch_size)
-        ]
+        )
+        preprocess_args = zip(
+            batched_input_paths, repeat(config.preprocessing), strict=False
+        )
         preprocessing_acts = (
             workflow.execute_activity(
                 ASRActivities.preprocess,
-                paths,
+                args=a,
                 start_to_close_timeout=timedelta(seconds=TEN_MINUTES),
                 task_queue=TaskQueues.CPU,
             )
-            for paths in batched_input_paths
+            for a in preprocess_args
         )
         logger.info("preprocessing files...")
         preprocessed_batches = await gather(*preprocessing_acts)
+        inference_args = zip(
+            preprocessed_batches, repeat(config.inference), strict=False
+        )
         logger.info("preprocessing complete !")
         # Inference
         inference_acts = [
@@ -69,7 +69,11 @@ class ASRWorkflow(WorkflowWithProgress):
         logger.info("inference complete !")
         # Postprocessing
         postprocessing_ins = zip(
-            inference_results, batched_input_paths, repeat(inputs.project), strict=False
+            inference_results,
+            batched_input_paths,
+            repeat(config.postprocessing),
+            repeat(inputs.project),
+            strict=False,
         )
         postprocessing_acts = [
             workflow.execute_activity(

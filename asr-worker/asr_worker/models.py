@@ -1,3 +1,4 @@
+import math
 from pathlib import Path
 from typing import Self
 
@@ -28,8 +29,15 @@ class InferenceConfig(DatashareModel):
 
 class ASRPipelineConfig(DatashareModel):
     batch_size: int = 32
-    preprocessing: PreprocessingConfig = Field(default_factory=PreprocessingConfig)
-    inference: InferenceConfig = Field(default_factory=InferenceConfig)
+    preprocessing: ParakeetPreprocessorConfig = Field(
+        default_factory=ParakeetPreprocessorConfig
+    )
+    inference: InferenceRunnerConfig = Field(
+        default_factory=ParakeetInferenceRunnerConfig
+    )
+    postprocessing: PostProcessorConfig = Field(
+        default_factory=ParakeetPostprocessorConfig
+    )
 
 
 class ASRInputs(DatashareModel):
@@ -68,6 +76,7 @@ class Transcription(DatashareModel):
             Transcript(text=text, timestamp=Timestamp(start_s=start_s, end_s=end_s))
             for start_s, end_s, text in asr_handler_result.transcription
         ]
-        return Transcription(
-            confidence=asr_handler_result.score, transcripts=transcripts
-        )
+        confidence = asr_handler_result.score
+        if confidence is not None:
+            confidence = math.exp(asr_handler_result.score)
+        return Transcription(confidence=confidence, transcripts=transcripts)
