@@ -73,6 +73,7 @@ datashare-python = { path = "../datashare-python", editable = true }
 [tool.uv]
 package = true
 override-dependencies = ["kaldialign>=0.9.3"]
+environments = ["sys_platform == 'darwin'" , "sys_platform == 'linux'"]
 
 [tool.pylint."MESSAGES CONTROL"]
 disable = [

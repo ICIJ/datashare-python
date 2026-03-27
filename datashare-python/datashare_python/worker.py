@@ -45,16 +45,15 @@ def datashare_worker(
         activities = []
     activity_executor = None  # Use temporal default
     if activities:
-        are_async = [a.__temporal_activity_definition.is_async for a in activities]
-        if all(not a for a in are_async):
+        n_sync = sum(
+            1 for a in activities if not a.__temporal_activity_definition.is_async
+        )
+        if n_sync:
             activity_executor = ThreadPoolExecutor(
                 thread_name_prefix=_ACTIVITY_THREAD_NAME_PREFIX
             )
-        else:
-            activity_executor = ThreadPoolExecutor(
-                thread_name_prefix=_ACTIVITY_THREAD_NAME_PREFIX
-            )
-            logger.warning(_SEPARATE_IO_AND_CPU_ACTIVITIES)
+            if n_sync != len(activities):
+                logger.warning(_SEPARATE_IO_AND_CPU_ACTIVITIES)
     if isinstance(activity_executor, ThreadPoolExecutor) and workflows:
         logger.warning(_SEPARATE_IO_AND_CPU_WORKERS)
 

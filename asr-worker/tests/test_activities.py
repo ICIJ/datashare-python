@@ -1,4 +1,5 @@
 import json
+import math
 from pathlib import Path
 
 from asr_worker.activities import write_transcription
@@ -9,7 +10,9 @@ from datashare_python.conftest import TEST_PROJECT
 
 def test_write_transcription(tmpdir: Path) -> None:
     # Given
-    asr_result = ASRModelHandlerResult(transcription=[(0.0, 1.0, "text")], score=0.5)
+    asr_result = ASRModelHandlerResult(
+        transcription=[(0.0, 1.0, "text")], score=math.log(0.5)
+    )
     transcribed_filename = "0011someid"
     artifacts_root = Path(tmpdir)
     project = TEST_PROJECT

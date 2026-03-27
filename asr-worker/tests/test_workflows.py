@@ -1,11 +1,13 @@
 import json
+import math
+import shutil
 import uuid
 from asyncio import AbstractEventLoop
 from collections.abc import AsyncGenerator
 from pathlib import Path
 
 import pytest
-from asr_worker.activities import write_transcription
+from asr_worker.activities import ASRActivities, write_transcription
 from asr_worker.config import ASRWorkerConfig
 from asr_worker.constants import (
     POSTPROCESS_ACTIVITY,
@@ -20,24 +22,26 @@ from asr_worker.models import (
     Transcript,
     Transcription,
 )
-from asr_worker.workflow import ASRWorkflow, TaskQueues
+from asr_worker.workflows import ASRWorkflow, TaskQueues
 from caul.model_handlers.objects import ASRModelHandlerResult
 from caul.tasks.preprocessing.objects import InputMetadata, PreprocessedInput
+from datashare_python.conftest import TEST_PROJECT
 from datashare_python.types_ import ProgressRateHandler, TemporalClient
 from datashare_python.utils import ActivityWithProgress, activity_defn
 from datashare_python.worker import datashare_worker
-from dist.datashare_python.conftest import TEST_PROJECT
 from pydantic import TypeAdapter
 from temporalio import activity
 from temporalio.worker import Worker
 
+from . import AUDIOS_PATH
+
 _LIST_OF_PATH_ADAPTER = TypeAdapter(list[Path])
 
 _MODEL_RESULT_0 = ASRModelHandlerResult(
-    transcription=[(0.0, 2.0, "segment zero")], score=0.5
+    transcription=[(0.0, 2.0, "segment zero")], score=math.log(0.5)
 )
 _MODEL_RESULT_1 = ASRModelHandlerResult(
-    transcription=[(0.0, 1.0, "segment one")], score=0.5
+    transcription=[(0.0, 1.0, "segment one")], score=math.log(0.5)
 )
 
 
@@ -72,7 +76,7 @@ class MockedASRActivities(ActivityWithProgress):
         self,
         preprocessed_inputs: list[Path],
         *,
-        progress: ProgressRateHandler | None = None,
+        progress: ProgressRateHandler | None = None,  # noqa: ARG002
     ) -> list[Path]:  # noqa: ANN001, ARG001
         # TODO: this shouldn't be necessary, fix this bug
         preprocessed_inputs = _LIST_OF_PATH_ADAPTER.validate_python(preprocessed_inputs)
@@ -100,13 +104,13 @@ class MockedASRActivities(ActivityWithProgress):
         inference_results: list[Path],
         input_paths: list[Path],
         project: str,
-        progress: ProgressRateHandler | None = None,
+        progress: ProgressRateHandler | None = None,  # noqa: ARG002
     ) -> None:
         # TODO: this shouldn't be necessary, fix this bug
         inference_results = _LIST_OF_PATH_ADAPTER.validate_python(inference_results)
         input_paths = _LIST_OF_PATH_ADAPTER.validate_python(input_paths)
         config = ASRWorkerConfig()
-        artifact_root = config.artifact_root
+        artifact_root = config.artifacts_root
         workdir = config.workdir
         artifact_root.mkdir(parents=True, exist_ok=True)
         inference_results = [
@@ -149,7 +153,7 @@ async def io_bound_worker(
 
 
 @pytest.fixture
-async def cpu_bound_worker(
+async def mock_cpu_bound_worker(
     test_temporal_client_session: TemporalClient,
     event_loop: AbstractEventLoop,  # noqa: F811
 ) -> AsyncGenerator[Worker, None]:
@@ -165,12 +169,42 @@ async def cpu_bound_worker(
 
 
 @pytest.fixture
-async def cpu_inference_worker(
+async def mock_cpu_inference_worker(
     test_temporal_client_session: TemporalClient,
     event_loop: AbstractEventLoop,  # noqa: F811
 ) -> AsyncGenerator[Worker, None]:
     client = test_temporal_client_session
     activities = MockedASRActivities(client, event_loop)
+    worker = datashare_worker(
+        client, task_queue=TaskQueues.INFERENCE_CPU, activities=[activities.infer]
+    )
+    async with worker:
+        yield worker
+
+
+@pytest.fixture
+async def cpu_bound_worker(
+    test_temporal_client_session: TemporalClient,
+    event_loop: AbstractEventLoop,  # noqa: F811
+) -> AsyncGenerator[Worker, None]:
+    client = test_temporal_client_session
+    activities = ASRActivities(client, event_loop)
+    worker = datashare_worker(
+        client,
+        task_queue=TaskQueues.CPU,
+        activities=[activities.preprocess, activities.postprocess],
+    )
+    async with worker:
+        yield worker
+
+
+@pytest.fixture
+async def cpu_inference_worker(
+    test_temporal_client_session: TemporalClient,
+    event_loop: AbstractEventLoop,  # noqa: F811
+) -> AsyncGenerator[Worker, None]:
+    client = test_temporal_client_session
+    activities = ASRActivities(client, event_loop)
     worker = datashare_worker(
         client, task_queue=TaskQueues.INFERENCE_CPU, activities=[activities.infer]
     )
@@ -198,8 +232,8 @@ _EXPECTED_TRANSCRIPTION_1 = Transcription(
 
 async def test_asr_workflow(
     test_temporal_client_session: TemporalClient,
-    cpu_bound_worker: Worker,  # noqa: ARG001
-    cpu_inference_worker: Worker,  # noqa: ARG001
+    mock_cpu_bound_worker: Worker,  # noqa: ARG001
+    mock_cpu_inference_worker: Worker,  # noqa: ARG001
     io_bound_worker: Worker,  # noqa: ARG001
     mocked_worker_config_in_env: ASRWorkerConfig,
 ) -> None:
@@ -219,7 +253,7 @@ async def test_asr_workflow(
     # Then
     expected_response = ASRResponse(n_transcribed=2)
     assert result == expected_response
-    artifacts_dir = worker_config.artifact_root
+    artifacts_dir = worker_config.artifacts_root
     expected_transcription_dirs = [
         artifacts_dir / project / "aa" / "bb" / "aabb",
         artifacts_dir / project / "cc" / "cc",
@@ -241,3 +275,68 @@ async def test_asr_workflow(
             transcription_path.read_text()
         )
         assert transcription == expected_t
+
+
+@pytest.fixture
+def with_audios(mocked_worker_config_in_env: ASRWorkerConfig) -> list[Path]:
+    config = mocked_worker_config_in_env
+    audios = [f for f in AUDIOS_PATH.iterdir() if f.suffix == ".wav"]
+    paths = []
+    config.audios_root.mkdir(parents=True, exist_ok=True)
+    for audio in audios:
+        rel_path = audio.relative_to(AUDIOS_PATH)
+        shutil.copy(audio, config.audios_root / rel_path)
+        paths.append(rel_path)
+    return paths
+
+
+@pytest.mark.e2e
+async def test_asr_workflow_e2e(
+    test_temporal_client_session: TemporalClient,
+    cpu_bound_worker: Worker,  # noqa: ARG001
+    cpu_inference_worker: Worker,  # noqa: ARG001
+    io_bound_worker: Worker,  # noqa: ARG001
+    mocked_worker_config_in_env: ASRWorkerConfig,  # noqa: ARG001
+    with_audios: list[Path],
+) -> None:
+    # Given
+    config = mocked_worker_config_in_env
+    client = test_temporal_client_session
+    n_audios = 3
+    batch_size = n_audios - 1
+    audios = with_audios * n_audios
+    inputs = ASRInputs(
+        project=TEST_PROJECT,
+        paths=audios,
+        config=ASRPipelineConfig(batch_size=batch_size),
+    )
+    workflow_id = f"asr-{uuid.uuid4().hex}"
+
+    # When
+    response = await client.execute_workflow(
+        ASRWorkflow.run, inputs, id=workflow_id, task_queue=TaskQueues.IO
+    )
+
+    # Then
+    assert response.n_transcribed == n_audios
+    expected_transcription_path = config.artifacts_root / "as" / "r_" / "asr_test"
+    assert expected_transcription_path.exists()
+    assert expected_transcription_path.is_dir()
+    meta_path = expected_transcription_path / "metadata.json"
+    assert meta_path.exists()
+    meta = json.loads(meta_path.read_text())
+    transcription_name = meta.get("transcription")
+    assert transcription_name is not None
+    transcription_path = expected_transcription_path / transcription_name
+    assert transcription_path.exists()
+    transcription = Transcription.model_validate_json(transcription_path.read_text())
+    expcted_transcription = Transcription(
+        transcripts=[
+            Transcript(
+                text="To embrace the chaos that they fought in this battle.",
+                timestamp=Timestamp.from_floats(0.08, 2.56),
+            )
+        ],
+        confidence=math.log(-248.3),
+    )
+    assert transcription == expcted_transcription

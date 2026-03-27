@@ -27,13 +27,6 @@ class TaskQueues(StrEnum):
 class ASRWorkflow(WorkflowWithProgress):
     @workflow.run
     async def run(self, inputs: ASRInputs) -> ASRResponse:
-        """Run ASR workflow
-
-        :param inputs: ASRInputs
-        :return: ASRResponse
-        """
-        # We can't get the config from the env since it's non-deterministic,
-        # it has to be an activity
         # Preprocessing
         logger = workflow.logger
         batch_size = inputs.config.batch_size

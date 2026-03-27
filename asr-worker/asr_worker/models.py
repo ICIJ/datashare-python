@@ -1,3 +1,4 @@
+import math
 from pathlib import Path
 from typing import Self
 
@@ -68,6 +69,7 @@ class Transcription(DatashareModel):
             Transcript(text=text, timestamp=Timestamp(start_s=start_s, end_s=end_s))
             for start_s, end_s, text in asr_handler_result.transcription
         ]
-        return Transcription(
-            confidence=asr_handler_result.score, transcripts=transcripts
-        )
+        confidence = asr_handler_result.score
+        if confidence is not None:
+            confidence = math.exp(asr_handler_result.score)
+        return Transcription(confidence=confidence, transcripts=transcripts)

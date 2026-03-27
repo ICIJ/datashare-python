@@ -53,10 +53,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: ./.github/actions/pylint
-        name: "Lint ASR worker"
+      - uses: astral-sh/ruff-action@v3
         with:
-          path: asr-worker
+          args: "--version" # skips test by displaying the version
+      - name: Check formatting
+        run: ruff format --config qa/ruff.toml --check asr-worker
+      - name: Lint test
+        run: ruff check --config qa/ruff.toml asr-worker
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
