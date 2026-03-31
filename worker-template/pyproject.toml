@@ -28,6 +28,9 @@ workflows = "worker_template.workflows:WORKFLOWS"
 [project.entry-points."datashare.activities"]
 activities = "worker_template.activities:ACTIVITIES"
 
+[project.entry-points."datashare.dependencies"]
+dependencies = "worker_template.dependencies:DEPENDENCIES"
+
 [tool.uv.sources]
 torch = [
   { index = "pytorch-cpu" },
