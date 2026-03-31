@@ -13,7 +13,7 @@ from datashare_python.constants import DEFAULT_NAMESPACE, DEFAULT_TEMPORAL_ADDRE
 from datashare_python.dependencies import with_dependencies
 from datashare_python.discovery import discover, discover_activities, discover_workflows
 from datashare_python.types_ import TemporalClient
-from datashare_python.worker import create_worker_id, datashare_worker
+from datashare_python.worker import create_worker_id, datashare_worker, init_activity
 
 from .utils import AsyncTyper
 
@@ -130,6 +130,7 @@ async def start(
     )
     async with deps_cm:
         client = await TemporalClient.connect(temporal_address, namespace=namespace)
+        acts = [init_activity(a, client=client, event_loop=event_loop) for a in acts]
         worker = datashare_worker(
             client,
             worker_id,

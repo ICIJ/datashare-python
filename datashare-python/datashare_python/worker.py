@@ -1,7 +1,10 @@
+import inspect
 import logging
 import os
 import socket
 import threading
+from asyncio import AbstractEventLoop
+from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 
 from temporalio.worker import PollerBehaviorSimpleMaximum, Worker
@@ -85,3 +88,32 @@ def create_worker_id(prefix: str) -> str:
     hostname = socket.gethostname()
     # TODO: this might not be unique when using asyncio
     return f"{prefix}-{hostname}-{pid}-{threadid}"
+
+
+_CLIENT = "client"
+_WORKER = "worker"
+_EXPECTED_INIT_ARGS = {"self", _CLIENT, _WORKER}
+
+
+def _get_class_from_method(method: Callable) -> type:
+    qualname = method.__qualname__
+    class_name = qualname.rsplit(".", 1)[0]
+    return method.__globals__.get(class_name)
+
+
+def init_activity(
+    activity: Callable, client: TemporalClient, event_loop: AbstractEventLoop
+) -> Callable:
+    if not inspect.ismethod(activity):
+        return activity
+    cls = _get_class_from_method(activity)
+    init_args = inspect.signature(cls.__init__).parameters
+    invalid = [p for p in init_args if p not in _EXPECTED_INIT_ARGS]
+    if invalid:
+        msg = f"invalid activity arguments: {invalid}"
+        raise ValueError(msg)
+    kwargs = {"client": client, "event_loop": event_loop}
+    kwargs = {k: v for k, v in kwargs.items() if k in _EXPECTED_INIT_ARGS}
+    if not kwargs:
+        return activity
+    return cls(**kwargs)
