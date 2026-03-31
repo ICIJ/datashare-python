@@ -1,6 +1,7 @@
 import asyncio
 from asyncio import AbstractEventLoop
 from collections.abc import AsyncGenerator, Generator, Iterator, Sequence
+from pathlib import Path
 
 import aiohttp
 import pytest
@@ -100,6 +101,13 @@ def test_worker_config() -> WorkerConfig:
         datashare=DatashareClientConfig(url="http://localhost:8080"),
         temporal=TemporalClientConfig(host="localhost:7233"),
     )
+
+
+@pytest.fixture
+def test_worker_config_path(test_worker_config: WorkerConfig, tmpdir: Path) -> Path:
+    config_path = Path(tmpdir) / "config.json"
+    config_path.write_text(test_worker_config.model_dump_json())
+    return config_path
 
 
 @pytest.fixture(scope="session")

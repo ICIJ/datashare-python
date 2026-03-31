@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from _pytest.capture import CaptureFixture
 from _pytest.monkeypatch import MonkeyPatch
 from datashare_python.cli import cli_app
@@ -10,12 +12,13 @@ async def _mock_worker_run(self) -> None:  # noqa: ANN001
 
 
 async def test_start_workers(
-    worker_lifetime_deps,  # noqa: ANN001, ARG001
     typer_asyncio_patch,  # noqa: ANN001, ARG001
+    test_worker_config_path: Path,
     monkeypatch: MonkeyPatch,
     capsys: CaptureFixture[str],
 ) -> None:
     # Given
+    config_path = test_worker_config_path
     runner = CliRunner(mix_stderr=False)
     monkeypatch.setattr(Worker, "run", _mock_worker_run)
     with capsys.disabled():
@@ -27,6 +30,8 @@ async def test_start_workers(
                 "start",
                 "--queue",
                 "cpu",
+                "-c",
+                str(config_path),
                 "--activities",
                 "ping",
                 "--activities",
@@ -40,7 +45,8 @@ async def test_start_workers(
         )
     # Then
     assert result.exit_code == 0
-    expected = """Starting datashare worker running:
+    expected = """discovered:
 - 1 workflow: ping
-- 1 activity: create-translation-batches"""
+- 1 activity: create-translation-batches
+- 4 dependencies: set_loggers, set_event_loop, set_es_client, set_temporal_client"""
     assert expected in result.stderr

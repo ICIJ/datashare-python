@@ -2,6 +2,7 @@ import asyncio
 import logging
 from collections.abc import AsyncGenerator, Generator, Iterable
 from functools import partial
+from typing import TYPE_CHECKING
 
 from aiostream.stream import chain
 from datashare_python.objects import Document
@@ -37,7 +38,9 @@ from icij_common.es import (
 from icij_common.iter_utils import async_batches, batches, before_and_after, once
 from temporalio import activity
 from temporalio.client import Client
-from transformers import Pipeline, pipeline
+
+if TYPE_CHECKING:
+    from transformers import Pipeline
 
 from .objects_ import ClassificationConfig, TranslationConfig
 
@@ -233,6 +236,7 @@ async def translate_docs(
     config: TranslationConfig | None = None,
 ) -> int:
     import torch  # noqa:PLC0415
+    from transformers import pipeline  # noqa: PLC0415
 
     if config is None:
         config = TranslationConfig()
@@ -298,6 +302,7 @@ async def classify_docs(
     es_client: ESClient,
 ) -> int:
     import torch  # noqa: PLC0415
+    from transformers import pipeline  # noqa: PLC0415
 
     if config is None:
         config = ClassificationConfig()
@@ -354,11 +359,11 @@ async def classify_docs(
     return n_docs
 
 
-def _translate_as_list(pipe: Pipeline, texts: list[str]) -> list[str]:
+def _translate_as_list(pipe: "Pipeline", texts: list[str]) -> list[str]:
     return list(_translate(pipe, texts))
 
 
-def _translate(pipe: Pipeline, texts: list[str]) -> Generator[str, None, None]:
+def _translate(pipe: "Pipeline", texts: list[str]) -> Generator[str, None, None]:
     for res in pipe(texts):
         yield res["translation_text"]
 
@@ -452,13 +457,13 @@ async def _count_untranslated(
     return res[COUNT]
 
 
-def _classify(pipe: Pipeline, texts: list[str]) -> Generator[str, None, None]:
+def _classify(pipe: "Pipeline", texts: list[str]) -> Generator[str, None, None]:
     # In practice, we should chunk the text
     for res in pipe(texts, padding=True, truncation=True):
         yield res["label"]
 
 
-def _classify_as_list(pipe: Pipeline, texts: list[str]) -> list[str]:
+def _classify_as_list(pipe: "Pipeline", texts: list[str]) -> list[str]:
     return list(_classify(pipe, texts))
 
 
