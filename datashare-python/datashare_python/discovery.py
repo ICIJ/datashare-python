@@ -1,16 +1,69 @@
+import logging
 import re
 from collections.abc import Callable, Iterable
 from importlib.metadata import entry_points
 
+from .types_ import ContextManagerFactory
 from .utils import ActivityWithProgress
+
+logger = logging.getLogger(__name__)
 
 Activity = ActivityWithProgress | Callable | type
 
+_DEPENDENCIES = "dependencies"
 _WORKFLOW_GROUPS = "datashare.workflows"
 _ACTIVITIES_GROUPS = "datashare.activities"
+_DEPENDENCIES_GROUPS = "datashare.dependencies"
+
+_RegisteredWorkflow = tuple[str, type]
+_RegisteredActivity = tuple[str, Activity]
+_Dependencies = list[ContextManagerFactory]
+_Discovery = tuple[
+    Iterable[_RegisteredWorkflow] | None,
+    Iterable[_RegisteredActivity] | None,
+    _Dependencies | None,
+]
 
 
-def discover_workflows(names: list[str]) -> Iterable[tuple[str, type]]:
+def discover(
+    wf_names: list[str] | None, *, act_names: list[str] | None, deps_name: str | None
+) -> _Discovery:
+    discovered = ""
+    wfs = None
+    if wf_names is not None:
+        wf_names, wfs = zip(*discover_workflows(wf_names), strict=True)
+        if wf_names:
+            n_wfs = len(wf_names)
+            discovered += (
+                f"- {n_wfs} workflow{'s' if n_wfs > 1 else ''}: {', '.join(wf_names)}"
+            )
+    acts = None
+    if act_names is not None:
+        act_names, acts = zip(*discover_activities(act_names), strict=True)
+        if act_names:
+            if discovered:
+                discovered += "\n"
+            n_acts = len(act_names)
+            discovered += (
+                f"- {n_acts} activit{'ies' if n_acts > 1 else 'y'}:"
+                f" {', '.join(act_names)}"
+            )
+    if not acts and not wfs:
+        raise ValueError("Couldn't find any registered activity or workflow.")
+    deps = discover_dependencies(deps_name)
+    if deps:
+        n_deps = len(deps)
+        discovered += "\n"
+        deps_names = (d.__name__ for d in deps)
+        discovered += (
+            f"- {n_deps} dependenc{'ies' if n_deps > 1 else 'y'}:"
+            f" {', '.join(deps_names)}"
+        )
+    logger.info("discovered:\n%s", discovered)
+    return wfs, acts, deps
+
+
+def discover_workflows(names: list[str]) -> Iterable[_RegisteredWorkflow]:
     pattern = None if not names else re.compile(rf"^{'|'.join(names)}$")
     impls = entry_points(group=_WORKFLOW_GROUPS)
     for wf_impls in impls:
@@ -24,7 +77,7 @@ def discover_workflows(names: list[str]) -> Iterable[tuple[str, type]]:
             yield wf_name, wf_impl
 
 
-def discover_activities(names: list[str]) -> Iterable[tuple[str, Activity]]:
+def discover_activities(names: list[str]) -> Iterable[_RegisteredActivity]:
     pattern = None if not names else re.compile(rf"^{'|'.join(names)}$")
     impls = entry_points(group=_ACTIVITIES_GROUPS)
     for act_impls in impls:
@@ -36,6 +89,43 @@ def discover_activities(names: list[str]) -> Iterable[tuple[str, Activity]]:
             if pattern and not pattern.match(act_name):
                 continue
             yield act_name, act_impl
+
+
+def discover_dependencies(name: str | None) -> _Dependencies | None:
+    impls = entry_points(name=_DEPENDENCIES, group=_DEPENDENCIES_GROUPS)
+    if not impls:
+        if name is None:
+            return None
+        available_impls = entry_points(group=_DEPENDENCIES_GROUPS)
+        msg = (
+            f'failed to find dependency: "{name}", '
+            f"available dependencies: {available_impls}"
+        )
+        raise LookupError(msg)
+    if len(impls) > 1:
+        msg = f'found multiple dependencies for name "{name}": {impls}'
+        raise ValueError(msg)
+    deps_registry = impls[_DEPENDENCIES].load()
+    if name:
+        try:
+            return deps_registry[name]
+        except KeyError as e:
+            available = list(deps_registry)
+            msg = (
+                f'failed to find dependency for name "{name}", available dependencies: '
+                f"{available}"
+            )
+            raise LookupError(msg) from e
+    if not deps_registry:
+        raise ValueError("empty dependency registry !")
+    if len(deps_registry) > 1:
+        available = ", ".join('"' + d + '"' for d in deps_registry)
+        msg = (
+            f"dependency registry contains multiples entries {available},"
+            f" please select one by providing a name"
+        )
+        raise ValueError(msg)
+    return next(iter(deps_registry.values()))
 
 
 def _parse_wf_name(wf_type: type) -> str:
