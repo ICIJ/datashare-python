@@ -21,21 +21,37 @@ authors = [
 readme = "README.md"
 requires-python = ">=3.11.0, <3.14"
 dependencies = [
-    "temporalio>=1.22.0",
-    "caul==0.1.5",
+    "caul~=0.1.6",
+    "kaldialign>=0.9.3",
+    "datashare-python~=0.2",
+    "ml-dtypes>=0.5",
+    "numpy==2.3.0",
     "pyarrow<21.0.0",
+    "temporalio>=1.22.0",
     "torchaudio>=2.10.0",
     "torch>=2.10.0",
     "torchcodec>=0.9.1",
-    "numpy==2.3.0",
-    "ml-dtypes>=0.5",
-    "kaldialign>=0.9.3",
 ]
 [project.entry-points."datashare.workflows"]
 workflows = "asr_worker.workflows:REGISTRY"
 
 [project.entry-points."datashare.activities"]
 activities = "asr_worker.activities:REGISTRY"
+
+[dependency-groups]
+dev = [
+    "black>=26.1.0",
+    "nest-asyncio>=1.6.0",
+    "pre-commit>=4.5.1",
+    "psutil>=6.1.0",
+    "pylint~=3.1.0",
+    "pytest~=8.1",
+    "pytest-asyncio~=0.24",
+    "pytest-timeout==2.4.0",
+    "redis[hiredis]>=5.2.1",
+    "ruff==0.15.2",
+    "typing-extensions>=4.15.0",
+]
 
 [[tool.uv.index]]
 name = "pytorch-cpu"
@@ -52,10 +68,12 @@ torchaudio = [
 torchcodec = [
   { index = "pytorch-cpu" }
 ]
+datashare-python = { path = "../datashare-python", editable = true }
 
 [tool.uv]
 package = true
 override-dependencies = ["kaldialign>=0.9.3"]
+environments = ["sys_platform == 'darwin'" , "sys_platform == 'linux'"]
 
 [tool.pylint."MESSAGES CONTROL"]
 disable = [

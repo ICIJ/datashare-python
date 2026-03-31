@@ -1,11 +1,14 @@
 import asyncio
 import inspect
+import json
 import logging
 import sys
 from collections.abc import Callable, Coroutine
 from dataclasses import dataclass
 from functools import partial, wraps
+from hashlib import sha256
 from inspect import signature
+from pathlib import Path
 from typing import ParamSpec, TypeVar
 
 import nest_asyncio
@@ -23,6 +26,7 @@ from temporalio.client import Client, WorkflowHandle
 from temporalio.common import SearchAttributeKey
 from temporalio.exceptions import ApplicationError
 
+from .constants import METADATA_JSON
 from .types_ import ProgressRateHandler, RawProgressHandler
 
 DependencyLabel = str | None
@@ -147,10 +151,7 @@ def with_progress(weight: float = 1.0) -> Callable[P, T]:
                     client=self._temporal_client, weight=weight
                 )
                 await handler(0.0)
-                if supports_progress(activity_fn):
-                    res = await activity_fn(self, *args, progress=handler)
-                else:
-                    res = await activity_fn(self, *args)
+                res = await activity_fn(self, *args, progress=handler)
                 await handler(1.0)
                 return res
 
@@ -171,10 +172,7 @@ def with_progress(weight: float = 1.0) -> Callable[P, T]:
                 )
                 event_loop = self._event_loop
                 event_loop.run_until_complete(handler(0.0))
-                if supports_progress(activity_fn):
-                    res = activity_fn(self, *args, progress=handler)
-                else:
-                    res = activity_fn(self, *args)
+                res = activity_fn(self, *args, progress=handler)
                 event_loop.run_until_complete(handler(1.0))
                 return res
 
@@ -234,8 +232,28 @@ def with_retriables(
     retriables: set[type[Exception]] = None,
 ) -> Callable[[Callable[P, T]], Callable[P, T]]:
     if retriables is None:
-        retriables = set()
-    retriables = tuple(retriables)
+
+        def decorator(activity_fn: Callable[P, T]) -> Callable[P, T]:
+            if asyncio.iscoroutinefunction(activity_fn):
+
+                @wraps(activity_fn)
+                async def wrapper(*args, **kwargs) -> T:
+                    try:
+                        return await activity_fn(*args, **kwargs)
+                    except Exception as e:
+                        raise fatal_error_from_exception(e) from e
+            else:
+
+                @wraps(activity_fn)
+                def wrapper(*args, **kwargs) -> T:
+                    try:
+                        return activity_fn(*args, **kwargs)
+                    except Exception as e:
+                        raise fatal_error_from_exception(e) from e
+
+            return wrapper
+
+        return decorator
 
     def decorator(activity_fn: Callable[P, T]) -> Callable[P, T]:
         if asyncio.iscoroutinefunction(activity_fn):
@@ -273,9 +291,10 @@ def activity_defn(
     dynamic: bool = False,
 ) -> Callable[[Callable[P, T]], Callable[P, T]]:
     def decorator(activity_fn: Callable[P, T]) -> Callable[P, T]:
-        activity_fn = positional_args_only(activity_fn)
         activity_fn = with_retriables(retriables)(activity_fn)
-        activity_fn = with_progress(progress_weight)(activity_fn)
+        activity_fn = positional_args_only(activity_fn)
+        if supports_progress(activity_fn):
+            activity_fn = with_progress(progress_weight)(activity_fn)
         activity_fn = activity.defn(
             activity_fn,
             name=name,
@@ -370,3 +389,54 @@ class LogWithWorkerIDMixin:
                 handler.addFilter(worker_id_filter)
             handler.setLevel(log_level)
         return handlers
+
+
+def safe_dir(filename: str) -> Path:
+    filename = filename.split(".", maxsplit=1)[0]
+    parts = (p for p in (filename[:2], filename[2:4]) if p)
+    return Path(*parts)
+
+
+def artifacts_dir(project: str, *, filename: str) -> Path:
+    return Path(project, safe_dir(filename), filename)
+
+
+def metadata_path(filename: str, *, project: str) -> Path:
+    metadata_path = artifacts_dir(project, filename=filename) / METADATA_JSON
+    return metadata_path
+
+
+def _read_artifact_metadata(root: Path, project: str, *, filename: str) -> dict:
+    m_path = root / metadata_path(filename, project=project)
+    return json.loads(m_path.read_text())
+
+
+def write_artifact(
+    artifact: bytes,
+    root: Path,
+    *,
+    project: str,
+    filename: str,
+    metadata_key: str,
+    metadata_value: str,
+) -> Path:
+    artif_dir = root / artifacts_dir(project, filename=filename)
+    artif_dir.mkdir(exist_ok=True, parents=True)
+    # TODO: if transcriptions are too large we could also serialize them
+    #  as jsonl
+    transcription_path = artif_dir / metadata_value
+    transcription_path.write_bytes(artifact)
+    try:
+        meta = _read_artifact_metadata(root, project, filename=filename)
+    except FileNotFoundError:
+        meta = dict()
+    meta[metadata_key] = metadata_value
+    meta_path = root / artifacts_dir(project, filename=filename) / METADATA_JSON
+    meta_path.write_text(json.dumps(meta))
+    return transcription_path.relative_to(artif_dir)
+
+
+def debuggable_name(path: Path, component_size_limit: int = 10) -> str:
+    displayable_file_name = [c[:component_size_limit] for c in path.parts]
+    uuid = sha256(str(path).encode()).hexdigest()[:20]
+    return f"{uuid}-{'__'.join(displayable_file_name)}"
