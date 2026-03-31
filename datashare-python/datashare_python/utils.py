@@ -2,13 +2,25 @@ import asyncio
 import inspect
 import logging
 import sys
-from collections.abc import Callable, Coroutine
+from collections.abc import (
+    AsyncIterable,
+    AsyncIterator,
+    Awaitable,
+    Callable,
+    Coroutine,
+    Generator,
+    Iterable,
+)
 from dataclasses import dataclass
 from functools import partial, wraps
 from inspect import signature
-from typing import ParamSpec, TypeVar
+from itertools import islice
+from typing import (
+    ParamSpec,
+    TypeVar,
+)
 
-import nest_asyncio
+import torch
 from icij_common.logging_utils import (
     DATE_FMT,
     STREAM_HANDLER_FMT,
@@ -23,6 +35,8 @@ from temporalio.client import Client, WorkflowHandle
 from temporalio.common import SearchAttributeKey
 from temporalio.exceptions import ApplicationError
 
+from .constants import CPU
+from .objects import Predicate
 from .types_ import ProgressRateHandler, RawProgressHandler
 
 DependencyLabel = str | None
@@ -61,7 +75,6 @@ class ProgressSignal:
 class ActivityWithProgress:
     def __init__(self, temporal_client: Client, event_loop: asyncio.AbstractEventLoop):
         self._temporal_client = temporal_client
-        nest_asyncio.apply()
         self._event_loop = event_loop
 
 
@@ -170,12 +183,12 @@ def with_progress(weight: float = 1.0) -> Callable[P, T]:
                     client=self._temporal_client, weight=weight
                 )
                 event_loop = self._event_loop
-                event_loop.run_until_complete(handler(0.0))
+                asyncio.run_coroutine_threadsafe(handler(0.0), event_loop).result()
                 if supports_progress(activity_fn):
                     res = activity_fn(self, *args, progress=handler)
                 else:
                     res = activity_fn(self, *args)
-                event_loop.run_until_complete(handler(1.0))
+                asyncio.run_coroutine_threadsafe(handler(1.0), event_loop).result()
                 return res
 
         return wrapper
@@ -197,6 +210,7 @@ def positional_args_only(activity_fn: Callable[P, T]) -> Callable[P, T]:
             # recreate kwargs from pargs
             new_args, new_kwargs = _unpack_positional_args(args, keyword_only, params)
             return await activity_fn(*new_args, **new_kwargs, **kwargs)
+
     else:
 
         @wraps(activity_fn)
@@ -207,9 +221,11 @@ def positional_args_only(activity_fn: Callable[P, T]) -> Callable[P, T]:
 
     # Update the decorated function signature to appear as p-args only
     new_params = [
-        p.replace(kind=inspect.Parameter.POSITIONAL_OR_KEYWORD)
-        if p.kind == inspect.Parameter.KEYWORD_ONLY
-        else p
+        (
+            p.replace(kind=inspect.Parameter.POSITIONAL_OR_KEYWORD)
+            if p.kind == inspect.Parameter.KEYWORD_ONLY
+            else p
+        )
         for p in params
     ]
     wrapper.__signature__ = sig.replace(parameters=new_params)
@@ -248,6 +264,7 @@ def with_retriables(
                     raise
                 except Exception as e:
                     raise fatal_error_from_exception(e) from e
+
         else:
 
             @wraps(activity_fn)
@@ -370,3 +387,89 @@ class LogWithWorkerIDMixin:
                 handler.addFilter(worker_id_filter)
             handler.setLevel(log_level)
         return handlers
+
+
+# Temporal utils
+async def async_iterable(seq: list | tuple) -> AsyncIterable:
+    for item in seq:
+        yield item
+
+
+async def async_batches(
+    iterable: AsyncIterable[T], batch_size: int
+) -> AsyncIterator[tuple[T]]:
+    it = aiter(iterable)
+    if batch_size < 1:
+        raise ValueError("n must be at least one")
+    while True:
+        batch = []
+        while len(batch) < batch_size:
+            try:
+                batch.append(await anext(it))
+            except StopAsyncIteration:
+                if batch:
+                    yield tuple(batch)
+                return
+        yield tuple(batch)
+
+
+def batches(
+    iterable: Iterable[T], batch_size: int
+) -> Generator[tuple[T, ...], None, None]:
+    if batch_size < 1:
+        raise ValueError("n must be at least one")
+    it = iter(iterable)
+    while batch := tuple(islice(it, batch_size)):
+        yield batch
+
+
+async def maybe_await(maybe_awaitable: Awaitable[T] | T) -> T:
+    if inspect.isawaitable(maybe_awaitable):
+        return await maybe_awaitable
+    return maybe_awaitable
+
+
+async def once(item: T) -> AsyncIterator[T]:
+    yield item
+
+
+def before_and_after(
+    iterable: AsyncIterable[T], predicate: Predicate[T]
+) -> tuple[AsyncIterable[T], AsyncIterable[T]]:
+    transition = asyncio.get_event_loop().create_future()
+
+    async def true_iterator() -> AsyncIterator[T]:
+        async for elem in iterable:
+            if await maybe_await(predicate(elem)):
+                yield elem
+            else:
+                transition.set_result(elem)
+                return
+        transition.set_exception(StopAsyncIteration)
+
+    async def remainder_iterator() -> AsyncIterator[T]:
+        try:
+            yield await transition
+        except StopAsyncIteration:
+            return
+        async for elm in iterable:
+            yield elm
+
+    return true_iterator(), remainder_iterator()
+
+
+# Torch utils
+def find_device(device_name: str = CPU) -> str:
+    """Check if a device is available; if not, return cpu
+
+    :param device_name: device name
+    :return: str device name
+    """
+    if (
+        hasattr(torch.backends, device_name)
+        and hasattr(getattr(torch.backends, device_name), "is_available")
+        and getattr(torch.backends, device_name).is_available()
+    ):
+        return device_name
+
+    return CPU

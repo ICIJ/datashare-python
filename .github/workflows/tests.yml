@@ -71,6 +71,64 @@ jobs:
           uv sync --frozen --all-extras
           uv run --frozen python -m pytest --timeout=180 -vvv --cache-clear --show-capture=all -r A
 
+  test-asr-worker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Python project
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Cache Docker images
+        uses: ScribeMD/docker-cache@0.5.0
+        with:
+          key: docker-${{ runner.os }}-${{ hashFiles('docker-compose.yml')  }}
+      - name: Start test services
+        run: docker compose up -d datashare temporal-post-init elasticsearch
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: ${{ env.ASTRAL_VERSION }}
+          python-version: ${{ env.PYTHON_VERSION }}
+          enable-cache: true
+          working-directory: asr-worker
+      - name: Install ffmpeg
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg libavcodec-dev libavformat-dev libavutil-dev
+      - name: Run tests
+        run: |
+          cd asr-worker
+          uv sync --frozen --all-extras
+          uv run --frozen python -m pytest --timeout=180 -vvv --cache-clear --show-capture=all -r A
+
+  test-translation-worker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Python project
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Cache Docker images
+        uses: ScribeMD/docker-cache@0.5.0
+        with:
+          key: docker-${{ runner.os }}-${{ hashFiles('docker-compose.yml')  }}
+      - name: Start test services
+        run: docker compose up -d datashare temporal-post-init elasticsearch
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: ${{ env.ASTRAL_VERSION }}
+          python-version: ${{ env.PYTHON_VERSION }}
+          enable-cache: true
+          working-directory: translation-worker
+      - name: Run tests
+        run: |
+          cd translation-worker
+          uv sync --frozen --all-extras
+          uv run --frozen python -m pytest --timeout=180 -vvv --cache-clear --show-capture=all -r A
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true

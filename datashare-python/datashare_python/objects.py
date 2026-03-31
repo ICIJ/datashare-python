@@ -1,9 +1,9 @@
 import logging
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from enum import StrEnum, unique
-from typing import Any, Literal, Self
+from typing import Any, Literal, Self, TypeVar
 
 from temporalio import workflow
 
@@ -23,12 +23,28 @@ from pydantic.main import IncEx
 logger = logging.getLogger(__name__)
 
 
+T = TypeVar("T")
+
+
+Predicate = Callable[[T], bool] | Callable[[T], Awaitable[bool]]
+
+ArbitraryTypesConfig = {"arbitrary_types_allowed": True}
+
+
 class BaseModel(_BaseModel):
     model_config = merge_configs(icij_config(), no_enum_values_config())
 
 
+class BasePayload(_BaseModel):
+    model_config = icij_config()
+
+
 class DatashareModel(BaseModel):
     model_config = merge_configs(BaseModel.model_config, lowercamel_case_config())
+
+
+class LowerCamelCaseModel(_BaseModel):
+    model_config = merge_configs(icij_config(), lowercamel_case_config())
 
 
 @unique
@@ -153,3 +169,16 @@ class Document(DatashareModel):
             root_document=sources[DOC_ROOT_ID],
             tags=sources.get("tags", []),
         )
+
+
+# Temporal objects
+class WorkerResponse(BasePayload):
+    """Generic worker response"""
+
+    status: str
+    error: str | None = None
+
+
+class WorkerResponseStatus(StrEnum):
+    SUCCESS = "success"
+    ERROR = "error"
