@@ -21,6 +21,7 @@ dependencies = [
   "datashare-worker-template[ml]~=0.1",
   "tomlkit~=0.14.0",
   "hatchling~=1.27.0",
+  "pyyaml~=6.0",
 ]
 
 [project.urls]

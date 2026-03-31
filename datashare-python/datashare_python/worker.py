@@ -1,4 +1,7 @@
 import logging
+import os
+import socket
+import threading
 from concurrent.futures import ThreadPoolExecutor
 
 from temporalio.worker import PollerBehaviorSimpleMaximum, Worker
@@ -30,6 +33,7 @@ _ACTIVITY_THREAD_NAME_PREFIX = "datashare-activity-worker-"
 
 def datashare_worker(
     client: TemporalClient,
+    worker_id: str,
     *,
     workflows: list[type] | None = None,
     activities: list[Activity] | None = None,
@@ -60,6 +64,7 @@ def datashare_worker(
 
     return Worker(
         client,
+        identity=worker_id,
         workflows=workflows,
         activities=activities,
         task_queue=task_queue,
@@ -72,3 +77,11 @@ def datashare_worker(
         # several of them
         workflow_task_poller_behavior=PollerBehaviorSimpleMaximum(5),
     )
+
+
+def create_worker_id(prefix: str) -> str:
+    pid = os.getpid()
+    threadid = threading.get_ident()
+    hostname = socket.gethostname()
+    # TODO: this might not be unique when using asyncio
+    return f"{prefix}-{hostname}-{pid}-{threadid}"
