@@ -15,14 +15,14 @@ from icij_common.es import DOC_LANGUAGE, SOURCE
 from spacy import Language
 
 from .constants import CONTENT_LENGTH
-from .objects import BatchSentence, TranslationConfig, TranslationEnsemble
+from .objects import BatchSentence, TranslationEnsemble
 
 logging.basicConfig(level=logging.INFO)
 
 logger = logging.getLogger(__name__)
 
 
-def _language_alpha_codes(*languages: str) -> list[str] | str:
+def language_alpha_codes(*languages: str) -> list[str] | str:
     alpha_codes = []
 
     for language in languages:
@@ -42,16 +42,16 @@ def _language_alpha_codes(*languages: str) -> list[str] | str:
     return alpha_codes
 
 
-def _translate_as_list(
+def translate_as_list(
     sentence_batch: list[BatchSentence],
     translation_ensemble: TranslationEnsemble,
-    config: TranslationConfig,
+    beam_size: int,
 ) -> list[str]:
     return list(
         _translate(
             [s.sentence for s in sentence_batch],
             translation_ensemble,
-            config,
+            beam_size,
         )
     )
 
@@ -59,7 +59,7 @@ def _translate_as_list(
 def _translate(
     sentence_batch: list[str],
     translation_ensemble: TranslationEnsemble,
-    config: TranslationConfig,
+    beam_size: int,
 ) -> Generator[str, None, None]:
     tokenized_sentences = [
         translation_ensemble.tokenizer.encode(sentence) for sentence in sentence_batch
@@ -77,7 +77,7 @@ def _translate(
         target_prefix=target_prefix,
         replace_unknowns=True,
         batch_type="tokens",
-        beam_size=config.beam_size,
+        beam_size=beam_size,
         num_hypotheses=1,
         length_penalty=0.2,
         return_scores=True,
@@ -96,7 +96,7 @@ def _translate(
         yield decoded_translation
 
 
-def _has_language(doc: dict, language: str) -> bool:
+def has_language(doc: dict, language: str) -> bool:
     return doc[SOURCE][DOC_LANGUAGE] == language
 
 
@@ -185,7 +185,10 @@ def _get_or_download_argos_languages(
 def get_translation_ensemble(
     source_language_alpha_code: str,
     target_language_alpha_code: str,
-    config: TranslationConfig,
+    device: str = "cpu",
+    inter_threads: int = 1,
+    intra_threads: int = 0,
+    compute_type: str = "auto",
 ) -> TranslationEnsemble | None:
     # Create batches per language
     language_packages = _get_or_download_argos_languages(
@@ -223,21 +226,25 @@ def get_translation_ensemble(
         )
 
     return _get_translation_ensemble_from_argos_package(
-        argos_translation_package, config
+        argos_translation_package, device, inter_threads, intra_threads, compute_type
     )
 
 
 def _get_translation_ensemble_from_argos_package(
-    argos_package: PackageTranslation, config: TranslationConfig
+    argos_package: PackageTranslation,
+    device: str,
+    inter_threads: int,
+    intra_threads: int,
+    compute_type: str,
 ) -> TranslationEnsemble:
     model_path = str(argos_package.pkg.package_path / "model")
-    device = find_device(config.device)
+    device = find_device(device)
     translator = ctranslate2.Translator(
         model_path,
         device=device,
-        inter_threads=config.inter_threads,
-        intra_threads=config.intra_threads,
-        compute_type=config.compute_type,
+        inter_threads=inter_threads,
+        intra_threads=intra_threads,
+        compute_type=compute_type,
     )
 
     return TranslationEnsemble(

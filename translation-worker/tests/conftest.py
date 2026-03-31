@@ -26,7 +26,7 @@ from translation_worker.activities import (
     TranslateDocs,
     resolve_language_alpha_code,
 )
-from translation_worker.objects import TaskQueues, TranslationConfig
+from translation_worker.objects import TaskQueues, TranslationWorkerConfig
 from translation_worker.workflows import TranslationWorkflow
 
 EN = "en"
@@ -80,8 +80,8 @@ async def index_translation_documents(
 
 
 @pytest.fixture(scope="session")
-def translation_config() -> TranslationConfig:
-    return TranslationConfig()
+def translation_worker_config() -> TranslationWorkerConfig:
+    return TranslationWorkerConfig()
 
 
 @pytest.fixture(scope="session")

@@ -29,7 +29,7 @@ from translation_worker.constants import CONTENT_LENGTH
 from translation_worker.core import get_translation_ensemble
 from translation_worker.objects import (
     BatchSentence,
-    TranslationConfig,
+    TranslationWorkerConfig,
 )
 
 from tests.conftest import (
@@ -124,7 +124,8 @@ async def test__iter_sentences__yields_sentences_with_correct_indices() -> None:
 
     batches = await _collect_async(
         _iter_sentences(
-            _single_doc_iter(es_doc), translation_ensemble, TranslationConfig()
+            _single_doc_iter(es_doc),
+            translation_ensemble,
         )
     )
 
@@ -142,7 +143,8 @@ async def test__iter_sentences__doc_id_and_root_document_are_preserved() -> None
 
     batches = await _collect_async(
         _iter_sentences(
-            _single_doc_iter(FR_DOC_1), translation_ensemble, TranslationConfig()
+            _single_doc_iter(FR_DOC_1),
+            translation_ensemble,
         )
     )
 
@@ -164,9 +166,7 @@ async def test__iter_sentences__multiple_docs_sentences_collected_into_one_batch
     translation_ensemble = MagicMock()
     translation_ensemble.sentencizer = sentencizer
 
-    batches = await _collect_async(
-        _iter_sentences(docs_iter(), translation_ensemble, TranslationConfig())
-    )
+    batches = await _collect_async(_iter_sentences(docs_iter(), translation_ensemble))
 
     non_empty = [b for b in batches if b]
     assert len(non_empty) == 1
@@ -174,9 +174,7 @@ async def test__iter_sentences__multiple_docs_sentences_collected_into_one_batch
 
 
 async def test__iter_sentences__empty_docs_iter_yields_no_sentences() -> None:
-    batches = await _collect_async(
-        _iter_sentences(_empty_docs_iter(), MagicMock(), TranslationConfig())
-    )
+    batches = await _collect_async(_iter_sentences(_empty_docs_iter(), MagicMock()))
 
     assert not any(batches)
 
@@ -207,7 +205,6 @@ async def test__create_translation_batches__returns_empty_list_when_no_docs() ->
         result = await create_translation_batches(
             project=TEST_PROJECT,
             target_language_alpha_code=EN,
-            config=TranslationConfig(),
         )
 
     assert result == []
@@ -225,7 +222,6 @@ async def test__create_translation_batches__single_doc_creates_one_batch() -> No
         result = await create_translation_batches(
             project=TEST_PROJECT,
             target_language_alpha_code=EN,
-            config=TranslationConfig(),
         )
 
     assert len(result) == 1
@@ -246,7 +242,6 @@ async def test__create_translation_batches__multiple_docs_same_lang_one_batch() 
         result = await create_translation_batches(
             project=TEST_PROJECT,
             target_language_alpha_code=EN,
-            config=TranslationConfig(),
         )
 
     assert len(result) == 1
@@ -270,7 +265,6 @@ async def test__create_translation_batches__multiple_langs_yield_separate_entrie
         result = await create_translation_batches(
             project=TEST_PROJECT,
             target_language_alpha_code=EN,
-            config=TranslationConfig(),
         )
 
     langs = [lang for lang, _ in result]
@@ -298,9 +292,7 @@ async def test__create_translation_batches__splits_batch_if_max_byte_len_exceede
         "translation_worker.activities._get_es_docs", side_effect=mock_get_es_docs
     ):
         result = await create_translation_batches(
-            project=TEST_PROJECT,
-            target_language_alpha_code=EN,
-            config=TranslationConfig(max_batch_byte_len=1000),
+            project=TEST_PROJECT, target_language_alpha_code=EN, max_batch_byte_len=1000
         )
 
     _, batches = result[0]
@@ -313,25 +305,25 @@ async def test__create_translation_batches__splits_batch_if_max_byte_len_exceede
 
 
 async def test_translate_docs__returns_zero_for_empty_batch() -> None:
-    empty_batch = {"language": FR, "sentences": []}
+    empty_batch = (FR, [])
     result = await translate_docs(
         empty_batch,
         EN,
         project=TEST_PROJECT,
         es_client=MagicMock(),
-        config=TranslationConfig(),
+        worker_config=TranslationWorkerConfig(),
     )
     assert result == 0
 
 
 async def test_translate_docs__accepts_none_config_and_defaults() -> None:
-    empty_batch = {"language": FR, "sentences": []}
+    empty_batch = (FR, [])
     result = await translate_docs(
         empty_batch,
         EN,
         project=TEST_PROJECT,
         es_client=MagicMock(),
-        config=None,
+        worker_config=None,
     )
     assert result == 0
 
@@ -377,7 +369,7 @@ async def test_translate_docs__returns_count_of_unique_docs_translated() -> None
             EN,
             project=TEST_PROJECT,
             es_client=MagicMock(),
-            config=TranslationConfig(),
+            worker_config=TranslationWorkerConfig(),
         )
 
     assert result == 2
@@ -424,7 +416,7 @@ async def test_translate_docs__sentences_from_same_doc_count_as_one() -> None:
             EN,
             project=TEST_PROJECT,
             es_client=MagicMock(),
-            config=TranslationConfig(),
+            worker_config=TranslationWorkerConfig(),
         )
 
     assert result == 1
@@ -480,7 +472,7 @@ async def test_translate_docs__reconstructs_translation_in_sentence_order() -> N
             EN,
             project=TEST_PROJECT,
             es_client=MagicMock(),
-            config=TranslationConfig(),
+            worker_config=TranslationWorkerConfig(),
         )
 
     assert len(captured_translations) == 1
@@ -532,7 +524,7 @@ async def test_translate_docs__calls_add_translation_with_target_language() -> N
             EN,
             project=TEST_PROJECT,
             es_client=MagicMock(),
-            config=TranslationConfig(),
+            worker_config=TranslationWorkerConfig(),
         )
 
     assert captured_kwargs["target_language_alpha_code"] == EN
@@ -553,15 +545,12 @@ async def test__translate_batch_returns_translations_from_translate_as_list() ->
     translation_ensemble = get_translation_ensemble(
         source_language_alpha_code=EN,
         target_language_alpha_code=FR,
-        config=TranslationConfig(),
     )
     with patch(
-        "translation_worker.activities._translate_as_list",
+        "translation_worker.activities.translate_as_list",
         return_value=[FR_DOC_1_TEXT],
     ):
-        result = await _translate_batch(
-            sentences, translation_ensemble, TranslationConfig()
-        )
+        result = await _translate_batch(sentences, translation_ensemble)
 
     assert result == [FR_DOC_1_TEXT]
 
@@ -725,7 +714,7 @@ async def test__get_doc_contents_and_split_on_sentences__empty_iter_yields_empty
 ):
     result = await _collect_async(
         _get_doc_contents_and_split_on_sentences(
-            MagicMock(), TEST_PROJECT, [], MagicMock(), TranslationConfig()
+            MagicMock(), TEST_PROJECT, [], MagicMock()
         )
     )
 
@@ -753,7 +742,6 @@ async def test__get_doc_contents_and_split_on_sentences__yields_sents_from_doc()
             TEST_PROJECT,
             [DOC_ID_1],
             translation_ensemble,
-            TranslationConfig(),
         )
     )
 
@@ -783,7 +771,6 @@ async def test__get_doc_contents_and_split_on_sentences__yields_last_batch() -> 
             TEST_PROJECT,
             [DOC_ID_1],
             translation_ensemble,
-            TranslationConfig(batch_size=16),
         )
     )
 
@@ -813,7 +800,7 @@ async def test__get_doc_contents_and_split_on_sentences__many_batches_batch_size
             TEST_PROJECT,
             [DOC_ID_1],
             translation_ensemble,
-            TranslationConfig(batch_size=2),
+            sentence_batch_size=2,
         )
     )
 

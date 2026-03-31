@@ -7,7 +7,7 @@ from icij_common.es import HITS, ESClient, has_type
 from temporalio.client import Client as TemporalClient
 from temporalio.client import WorkflowFailureError
 from temporalio.worker import Worker
-from translation_worker.objects import TaskQueues, TranslationConfig, TranslationRequest
+from translation_worker.objects import TaskQueues, TranslationRequest
 from translation_worker.workflows import TranslationWorkflow
 
 
@@ -16,7 +16,6 @@ async def test_translate_docs(
     test_temporal_client_session: TemporalClient,  # noqa: ARG001
     index_translation_documents: list[Document],  # noqa: ARG001
     test_es_client: ESClient,
-    translation_config: TranslationConfig,
     batching_worker: Worker,  # noqa: ARG001
     translation_worker: Worker,  # noqa: ARG001
 ) -> None:
@@ -24,7 +23,6 @@ async def test_translate_docs(
     req: TranslationRequest = TranslationRequest(
         project=TEST_PROJECT,
         target_language="english",
-        translation_config=translation_config,
     )
 
     # When

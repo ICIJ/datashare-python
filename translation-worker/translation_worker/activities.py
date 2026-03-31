@@ -42,15 +42,15 @@ from .constants import (
     TRANSLATION_TRANSLATE_ACTIVITY_NAME,
 )
 from .core import (
-    _has_language,
-    _language_alpha_codes,
-    _translate_as_list,
     get_translation_ensemble,
+    has_language,
+    language_alpha_codes,
+    translate_as_list,
 )
 from .objects import (
     BatchSentence,
-    TranslationConfig,
     TranslationEnsemble,
+    TranslationWorkerConfig,
 )
 
 logging.basicConfig(level=logging.DEBUG)
@@ -59,7 +59,7 @@ logger = logging.getLogger(__name__)
 
 @activity.defn(name=LANGUAGE_ALPHA_CODE_ACTIVITY_NAME)
 async def resolve_language_alpha_code(language: str) -> str:
-    return _language_alpha_codes(language)
+    return language_alpha_codes(language)
 
 
 class CreateTranslationBatches(ActivityWithProgress):
@@ -74,13 +74,16 @@ class CreateTranslationBatches(ActivityWithProgress):
 
     @activity_defn(name=TRANSLATION_BATCHING_ACTIVITY_NAME)
     async def create_translation_batches(
-        self, project: str, target_language_alpha_code: str, config: TranslationConfig
+        self,
+        project: str,
+        target_language_alpha_code: str,
+        max_batch_byte_len: int,
     ) -> list[tuple[str, list[list[str]]]]:
         return await create_translation_batches(
             project=project,
             target_language_alpha_code=target_language_alpha_code,
             es_client=self._es_client,
-            config=config,
+            max_batch_byte_len=max_batch_byte_len,
         )
 
 
@@ -101,7 +104,7 @@ class TranslateDocs(ActivityWithProgress):
         target_language_alpha_code: str,
         *,
         project: str,
-        config: TranslationConfig,
+        worker_config: TranslationWorkerConfig | None = None,
         progress: ProgressRateHandler | None = None,
     ) -> int:
         return self._event_loop.run_until_complete(
@@ -110,8 +113,8 @@ class TranslateDocs(ActivityWithProgress):
                 target_language_alpha_code=target_language_alpha_code,
                 project=project,
                 es_client=self._es_client,
-                config=config,
                 progress=progress,
+                worker_config=worker_config,
             )
         )
 
@@ -120,14 +123,14 @@ async def create_translation_batches(
     *,
     project: str,
     target_language_alpha_code: str,
-    config: TranslationConfig,
+    max_batch_byte_len: int = 1000000,
     es_client: ESClient | None = None,
 ) -> list[tuple[str, list[list[str]]]]:
     """Batch doc ids by language and/or total batch byte length
 
     :param project: Project name
     :param target_language_alpha_code: Target language
-    :param config: TranslationConfig
+    :param max_batch_byte_len: Maximum batch byte length
     :param es_client: ES client
     :return: list of batches keyed by language
     """
@@ -147,7 +150,7 @@ async def create_translation_batches(
         if first_doc is None:
             continue
 
-        source_language_alpha_code = _language_alpha_codes(
+        source_language_alpha_code = language_alpha_codes(
             first_doc[SOURCE][DOC_LANGUAGE]
         )
         all_results[source_language_alpha_code] = []
@@ -157,7 +160,7 @@ async def create_translation_batches(
             doc_id = item[ID_]
             doc_byte_len = item[SOURCE][CONTENT_LENGTH]
 
-            if 0 < config.max_batch_byte_len < current_batch_byte_len + doc_byte_len:
+            if 0 < max_batch_byte_len < current_batch_byte_len + doc_byte_len:
                 all_results[source_language_alpha_code].append(deepcopy(current_batch))
                 current_batch = []
                 current_batch_byte_len = 0
@@ -179,8 +182,8 @@ async def translate_docs(
     *,
     project: str,
     es_client: ESClient | None = None,
+    worker_config: TranslationWorkerConfig | None = None,
     progress: ProgressRateHandler | None = None,  # noqa: F821
-    config: TranslationConfig | None = None,
 ) -> int:
     """Translate sentence batches and reconstruct translations from original
     sentence ordering, inserting them into ES
@@ -190,15 +193,15 @@ async def translate_docs(
     :param project: Project name
     :param es_client: ES client
     :param progress: ProgressRateHandler
-    :param config: TranslationConfig | None
+    :param worker_config: worker config
     :return: number of documents translated
     """
-    if config is None:
-        config = TranslationConfig()
+    if worker_config is None:
+        worker_config = TranslationWorkerConfig()
 
     # TODO: this should not happen
-    if not isinstance(config, TranslationConfig):
-        config = TranslationConfig.model_validate(config)
+    if not isinstance(worker_config, TranslationWorkerConfig):
+        worker_config = TranslationWorkerConfig.model_validate(worker_config)
 
     source_language_alpha_code, doc_id_batches = doc_id_batch_with_lang
 
@@ -206,7 +209,10 @@ async def translate_docs(
     translation_ensemble = get_translation_ensemble(
         source_language_alpha_code=source_language_alpha_code,
         target_language_alpha_code=target_language_alpha_code,
-        config=config,
+        device=worker_config.device,
+        inter_threads=worker_config.inter_threads,
+        intra_threads=worker_config.intra_threads,
+        compute_type=worker_config.compute_type,
     )
 
     all_sentences = []
@@ -219,7 +225,11 @@ async def translate_docs(
 
     async for doc_id_batch in async_iterable(doc_id_batches):
         sentences_batches = _get_doc_contents_and_split_on_sentences(
-            es_client, project, doc_id_batch, translation_ensemble, config
+            es_client,
+            project,
+            doc_id_batch,
+            translation_ensemble,
+            worker_config.batch_size,
         )
 
         # Create translation tasks
@@ -240,7 +250,7 @@ async def translate_docs(
                     _translate_batch(
                         sentences_batch,
                         translation_ensemble,
-                        config,
+                        worker_config.beam_size,
                     )
                 )
             )
@@ -263,6 +273,7 @@ async def translate_docs(
     ]
 
     # Reconstruct documents from sentences
+    # TODO: separate into a function for testing
     reconstructed_docs = defaultdict(dict)
 
     for batch_sentence, translation in zip(
@@ -304,7 +315,7 @@ async def _get_doc_contents_and_split_on_sentences(
     project: str,
     doc_ids: list[str],
     translation_ensemble: TranslationEnsemble,
-    config: TranslationConfig,
+    sentence_batch_size: int = 16,
 ) -> AsyncGenerator[list[BatchSentence] | None, Any]:
     if len(doc_ids) == 0:
         return
@@ -316,14 +327,16 @@ async def _get_doc_contents_and_split_on_sentences(
         source_includes=TRANSLATION_DOC_SOURCES,
     )
 
-    async for batch in _iter_sentences(batch_gen, translation_ensemble, config):
+    async for batch in _iter_sentences(
+        batch_gen, translation_ensemble, sentence_batch_size
+    ):
         yield batch
 
 
 async def _iter_sentences(
     doc_iter: AsyncGenerator[dict, None],
     translation_ensemble: TranslationEnsemble,
-    config: TranslationConfig,
+    sentence_batch_size: int = 16,
 ) -> AsyncGenerator[list[BatchSentence], None]:
     sentence_batch = []
 
@@ -341,7 +354,7 @@ async def _iter_sentences(
                 )
             )
 
-            if len(sentence_batch) >= config.batch_size:
+            if len(sentence_batch) >= sentence_batch_size:
                 yield sentence_batch
                 sentence_batch = []
 
@@ -352,14 +365,15 @@ async def _iter_sentences(
 async def _translate_batch(
     sentence_batch: list[BatchSentence],
     translation_ensemble: TranslationEnsemble,
-    config: TranslationConfig,
+    max_parallel_batches: int = 8,
+    beam_size: int = 4,
 ) -> list[str]:
-    async with asyncio.Semaphore(config.max_parallel_batches):
+    async with asyncio.Semaphore(max_parallel_batches):
         return await asyncio.to_thread(
-            _translate_as_list,
+            translate_as_list,
             sentence_batch,
             translation_ensemble,
-            config,
+            beam_size,
         )
 
 
@@ -386,7 +400,7 @@ async def _get_es_docs(
 
         # Consume the iterator until we find a doc with a different language
         language_docs, docs = before_and_after(
-            docs, predicate=partial(_has_language, language=current_language)
+            docs, predicate=partial(has_language, language=current_language)
         )
         # Group all docs of same language
         grouped_docs = chain(once(next_doc), language_docs)
