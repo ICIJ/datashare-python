@@ -20,7 +20,6 @@ from typing import (
     TypeVar,
 )
 
-import nest_asyncio
 import torch
 from icij_common.logging_utils import (
     DATE_FMT,
@@ -76,7 +75,6 @@ class ProgressSignal:
 class ActivityWithProgress:
     def __init__(self, temporal_client: Client, event_loop: asyncio.AbstractEventLoop):
         self._temporal_client = temporal_client
-        nest_asyncio.apply()
         self._event_loop = event_loop
 
 
@@ -185,12 +183,12 @@ def with_progress(weight: float = 1.0) -> Callable[P, T]:
                     client=self._temporal_client, weight=weight
                 )
                 event_loop = self._event_loop
-                event_loop.run_until_complete(handler(0.0))
+                asyncio.run_coroutine_threadsafe(handler(0.0), event_loop).result()
                 if supports_progress(activity_fn):
                     res = activity_fn(self, *args, progress=handler)
                 else:
                     res = activity_fn(self, *args)
-                event_loop.run_until_complete(handler(1.0))
+                asyncio.run_coroutine_threadsafe(handler(1.0), event_loop).result()
                 return res
 
         return wrapper

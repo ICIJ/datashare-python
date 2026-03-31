@@ -107,7 +107,7 @@ class TranslateDocs(ActivityWithProgress):
         worker_config: TranslationWorkerConfig | None = None,
         progress: ProgressRateHandler | None = None,
     ) -> int:
-        return self._event_loop.run_until_complete(
+        return asyncio.run_coroutine_threadsafe(
             translate_docs(
                 doc_id_batch_with_lang,
                 target_language_alpha_code=target_language_alpha_code,
@@ -115,8 +115,9 @@ class TranslateDocs(ActivityWithProgress):
                 es_client=self._es_client,
                 progress=progress,
                 worker_config=worker_config,
-            )
-        )
+            ),
+            self._event_loop,
+        ).result()
 
 
 async def create_translation_batches(
