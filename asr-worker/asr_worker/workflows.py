@@ -27,14 +27,24 @@ class TaskQueues(StrEnum):
 class ASRWorkflow(WorkflowWithProgress):
     @workflow.run
     async def run(self, inputs: ASRInputs) -> ASRResponse:
-        # Preprocessing
         logger = workflow.logger
         config = inputs.config
         batch_size = config.batch_size
-        batched_input_paths = (
-            inputs.paths[batch_start : batch_start + batch_size]
-            for batch_start in range(0, len(inputs.paths), batch_size)
-        )
+        if isinstance(inputs.docs, dict):
+            args = [inputs.project, inputs.docs, batch_size]
+            audio_paths = workflow.execute_activity(
+                ASRActivities.search_audios,
+                args=args,
+                start_to_close_timeout=timedelta(seconds=TEN_MINUTES),
+                task_queue=TaskQueues.IO,
+            )
+        else:
+            audio_paths = inputs.docs
+            batched_input_paths = (
+                inputs.docs[batch_start : batch_start + batch_size]
+                for batch_start in range(0, len(inputs.docs), batch_size)
+            )
+        # Preprocessing
         preprocess_args = zip(
             batched_input_paths, repeat(config.preprocessing), strict=False
         )
@@ -87,7 +97,7 @@ class ASRWorkflow(WorkflowWithProgress):
         logger.info("running postprocessing...")
         await gather(*postprocessing_acts)
         logger.info("postprocessing complete !")
-        return ASRResponse(n_transcribed=len(inputs.paths))
+        return ASRResponse(n_transcribed=len(inputs.docs))
 
 
 REGISTRY = [ASRWorkflow]

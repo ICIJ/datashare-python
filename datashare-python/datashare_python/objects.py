@@ -135,8 +135,9 @@ class TaskGroup:
 class Document(DatashareModel):
     id: str
     root_document: str
-    content: str
     language: str
+    content: str | None = None
+    content_type: str | None = None
     tags: list[str] = Field(default_factory=list)
     content_translated: dict[str, str] = Field(
         default_factory=dict, alias="content_translated"

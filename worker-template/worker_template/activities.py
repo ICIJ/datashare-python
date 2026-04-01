@@ -34,12 +34,12 @@ from icij_common.es import (
     has_id,
     must_not,
 )
+from icij_common.iter_utils import async_batches, batches, before_and_after, once
 from temporalio import activity
 from temporalio.client import Client
 from transformers import Pipeline, pipeline
 
 from .objects_ import ClassificationConfig, TranslationConfig
-from .utils_ import async_batches, batches, before_and_after, once
 
 
 class Pong(ActivityWithProgress):

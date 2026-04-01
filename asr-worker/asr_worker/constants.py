@@ -20,5 +20,21 @@ TRANSCRIPTION_METADATA_VALUE = "transcription.json"
 ASR_WORKFLOW = "asr.transcription"
 GET_CONFIG_ACTIVITY = "asr.transcription.config"
 PREPROCESS_ACTIVITY = "asr.transcription.preprocess"
+SEARCH_AUDIOS_ACTIVITY = "asr.transcription.search_audios"
 RUN_INFERENCE_ACTIVITY = "asr.transcription.infer"
 POSTPROCESS_ACTIVITY = "asr.transcription.postprocess"
+
+SUPPORTED_CONTENT_TYPES = {
+    "audio/aac",
+    "audio/aiff",
+    "audio/mp4",
+    "audio/ogg",
+    "audio/vnd.wave",
+    "audio/wav",
+    "audio/wave",
+    "audio/x-wav",
+    "audio/x-pn-wav",
+    "video/mp4",
+    "video/mpeg",
+    "video/mov",
+}

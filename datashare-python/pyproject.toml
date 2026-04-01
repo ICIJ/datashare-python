@@ -11,9 +11,8 @@ readme = "README.md"
 requires-python = ">=3.11,<4"
 dependencies = [
   "alive-progress~=3.2.0",
-  "aiostream~=0.6.4",
   "aiohttp~=3.11.9",
-  "icij-common[elasticsearch]~=0.7.3",
+  "icij-common[elasticsearch]~=0.8.0",
   "python-json-logger~=4.0.0",
   "nest-asyncio~=1.6.0",
   "temporalio~=1.23.0",

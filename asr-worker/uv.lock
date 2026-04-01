@@ -137,14 +137,14 @@ wheels = [
 
 [[package]]
 name = "aiostream"
-version = "0.6.4"
+version = "0.7.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "typing-extensions", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/a5/fe/aa14603fcd5cc4333f81791bbdf58cd4cb8677c8e21e3cc691d27c00173f/aiostream-0.6.4.tar.gz", hash = "sha256:f99bc6b1b9cea3e70885dc235a233523597555fe4a585ed21d65264b3f1ff3d2", size = 67983, upload-time = "2024-10-30T12:59:15.361Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/8b/65/b9b69695702b76a878c9879f2ee80cefce75bc5cb864fc100460bc1c5380/aiostream-0.7.1.tar.gz", hash = "sha256:272aaa0d8f83beb906f5aa9022bb59046bb7a103fa3770f807c31f918595acf6", size = 44059, upload-time = "2025-10-13T20:02:06.961Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/71/5c/639dc59441df1d5cec49a09c36eb89af651476760f950b7d018bdf0ec4a7/aiostream-0.6.4-py3-none-any.whl", hash = "sha256:bd8c6a8b90a52c0325a3b19406f0f2a131448e596c06398886f5be1c73b4cea9", size = 53665, upload-time = "2024-10-30T12:59:13.732Z" },
+    { url = "https://files.pythonhosted.org/packages/52/a0/d7c6ca304140f3f49987d710e15bc164248924a35d8cdfac2f6e87fca041/aiostream-0.7.1-py3-none-any.whl", hash = "sha256:ea8739e9158ee6a606b3feedf3762721c3507344e540d09a10984c5e88a13b37", size = 41416, upload-time = "2025-10-13T20:02:05.535Z" },
 ]
 
 [[package]]
@@ -722,7 +722,6 @@ version = "0.2.23"
 source = { editable = "../datashare-python" }
 dependencies = [
     { name = "aiohttp", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
-    { name = "aiostream", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
     { name = "alive-progress", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
     { name = "datashare-worker-template", extra = ["ml"], marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
     { name = "hatchling", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
@@ -737,11 +736,10 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "aiohttp", specifier = "~=3.11.9" },
-    { name = "aiostream", specifier = "~=0.6.4" },
     { name = "alive-progress", specifier = "~=3.2.0" },
     { name = "datashare-worker-template", extras = ["ml"], editable = "../worker-template" },
     { name = "hatchling", specifier = "~=1.27.0" },
-    { name = "icij-common", extras = ["elasticsearch"], specifier = "~=0.7.3" },
+    { name = "icij-common", extras = ["elasticsearch"], specifier = "~=0.8.0" },
     { name = "nest-asyncio", specifier = "~=1.6.0" },
     { name = "python-json-logger", specifier = "~=4.0.0" },
     { name = "temporalio", specifier = "~=1.23.0" },
@@ -769,7 +767,6 @@ version = "0.1.5"
 source = { editable = "../worker-template" }
 dependencies = [
     { name = "datashare-python", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
-    { name = "icij-common", extra = ["elasticsearch"], marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
     { name = "pycountry", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
     { name = "temporalio", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
 ]
@@ -785,7 +782,6 @@ ml = [
 [package.metadata]
 requires-dist = [
     { name = "datashare-python", editable = "../datashare-python" },
-    { name = "icij-common", extras = ["elasticsearch"], specifier = "~=0.7.3" },
     { name = "pycountry", specifier = "~=26.2.16" },
     { name = "sentencepiece", marker = "extra == 'ml'", specifier = "~=0.2.1" },
     { name = "temporalio", specifier = "~=1.23.0" },
@@ -1236,15 +1232,16 @@ wheels = [
 
 [[package]]
 name = "icij-common"
-version = "0.7.5"
+version = "0.8.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
+    { name = "aiostream", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
     { name = "pydantic", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
     { name = "pydantic-settings", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/93/94/ee49a69d9aa5ea31a5a5d09301b41c9f2b204858a67b78c9cb7d254b3f64/icij_common-0.7.5.tar.gz", hash = "sha256:004d9e5affcbae9e9c2c6770f808f258b9c412923295c98f7253865f7721a763", size = 15158, upload-time = "2026-03-24T14:36:13.607Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/dc/ba/ce278a6d752db6351dedba8134495034a15ab27f9c8265b343f802c24865/icij_common-0.8.0.tar.gz", hash = "sha256:94163aab79449c04482943da7d3457e4ae5162b406a28b6210ea06496e300978", size = 15883, upload-time = "2026-04-01T12:23:05.269Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/07/08/1c95f34e107cf810c8eae9f6be3b6dba6f3b2057d12b50365f346da62e7b/icij_common-0.7.5-py3-none-any.whl", hash = "sha256:50dfcf274711ac0f09b679f92ed41151e15844775c99e7a33574a612b34a2ac5", size = 19558, upload-time = "2026-03-24T14:36:12.76Z" },
+    { url = "https://files.pythonhosted.org/packages/98/12/0f48ce9f1368be19f50dae6665e477da8fc78198d9edfc3a95d5383ae424/icij_common-0.8.0-py3-none-any.whl", hash = "sha256:bc04aac053c88cc024fc0a1a9948da54f414e8a3a5075461149e1ba2989bea38", size = 20516, upload-time = "2026-04-01T12:23:04.339Z" },
 ]
 
 [package.optional-dependencies]
