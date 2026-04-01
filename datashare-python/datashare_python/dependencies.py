@@ -89,7 +89,7 @@ async def with_dependencies(
 ) -> AsyncGenerator[None, None]:
     async with AsyncExitStack() as stack:
         for dep in dependencies:
-            cm = dep(**add_missing_args(dep, kwargs))
+            cm = dep(**add_missing_args(dep, dict(), **kwargs))
             if hasattr(cm, "__aenter__"):
                 await stack.enter_async_context(cm)
             elif hasattr(cm, "__enter__"):

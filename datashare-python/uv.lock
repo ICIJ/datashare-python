@@ -458,7 +458,6 @@ version = "0.1.5"
 source = { editable = "../worker-template" }
 dependencies = [
     { name = "datashare-python" },
-    { name = "icij-common", extra = ["elasticsearch"] },
     { name = "pycountry" },
     { name = "temporalio" },
 ]
@@ -474,7 +473,6 @@ ml = [
 [package.metadata]
 requires-dist = [
     { name = "datashare-python", editable = "." },
-    { name = "icij-common", extras = ["elasticsearch"], specifier = "~=0.8.2" },
     { name = "pycountry", specifier = "~=26.2.16" },
     { name = "sentencepiece", marker = "extra == 'ml'", specifier = "~=0.2.1" },
     { name = "temporalio", specifier = "~=1.23.0" },

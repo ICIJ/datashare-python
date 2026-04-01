@@ -45,8 +45,10 @@ async def test_retriable(test_temporal_client_session: TemporalClient) -> None:
     # Given
     client = test_temporal_client_session
     workflow_id = f"workflow_{uuid.uuid4().hex}"
+    worker_id = f"worker-{uuid.uuid4().hex}"
     worker = datashare_worker(
         client,
+        worker_id=worker_id,
         task_queue="io",
         workflows=[NonRetriableWorkflow],
         activities=[non_retriable],

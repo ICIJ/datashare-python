@@ -1,15 +1,25 @@
 import json
 import math
-from collections.abc import Iterable
+from collections.abc import AsyncGenerator, Iterable
 from pathlib import Path
 from typing import Self
 
-from asr_worker.activities import preprocess, write_transcription
+import pytest
+from aiostream import stream
+from asr_worker.activities import (
+    preprocess,
+    search_audios,
+    write_audio_search_results,
+    write_transcription,
+)
+from asr_worker.constants import SUPPORTED_CONTENT_TYPES
 from asr_worker.models import Timestamp, Transcript, Transcription
 from asr_worker.utils import read_jsonl
 from caul.objects import ASRResult, InputMetadata, PreprocessedInput
 from caul.tasks import Preprocessor
 from datashare_python.conftest import TEST_PROJECT
+from datashare_python.objects import Document
+from icij_common.es import ESClient, ids_query, match_all
 from icij_common.registrable import RegistrableConfig
 
 PREPROCESSED_INPUT_0 = PreprocessedInput(metadata=InputMetadata(duration_s=0.0))
@@ -77,3 +87,63 @@ def test_write_transcription(tmpdir: Path) -> None:
         confidence=0.5,
     )
     assert transcription == expected_transcription
+
+
+@pytest.mark.parametrize(
+    ("query", "expected_docs"),
+    [
+        # Supports empty query
+        ({}, ["doc-0", "doc-2"]),
+        # Return all audio/video docs
+        (match_all(), ["doc-0", "doc-2"]),
+        (ids_query(["doc-0"]), ["doc-0"]),
+        # Should filter non supported content type
+        (ids_query(["doc-1"]), []),
+    ],
+)
+async def test_search_audios(
+    populate_es_with_audio: list[Document],
+    test_es_client: ESClient,
+    query: dict,
+    expected_docs: list[str],
+) -> None:
+    # Given
+    assert len(populate_es_with_audio) == 4
+    client = test_es_client
+    # When
+    results = search_audios(
+        es_client=client,
+        project=TEST_PROJECT,
+        query=query,
+        supported_content_types=SUPPORTED_CONTENT_TYPES,
+    )
+    # Then
+    docs_ids = [i async for i in results]
+    assert docs_ids == expected_docs
+
+
+async def test_write_audio_search_results(tmpdir: Path) -> None:
+    # Given
+    root = Path(tmpdir)
+    batch_size = 2
+
+    async def results() -> AsyncGenerator[str, None]:
+        res = ["doc-0", "doc-1", "doc-2"]
+        for r in res:
+            yield r
+
+    # When
+    batches = write_audio_search_results(results(), root=root, batch_size=batch_size)
+
+    # Then
+    async def expected_content() -> AsyncGenerator[str, None]:
+        contents = ["doc-0\ndoc-1\n", "doc-2\n"]
+        for e in contents:
+            yield e
+
+    batches_and_expected_content = stream.zip(batches, expected_content())
+
+    async with batches_and_expected_content.stream() as streamed:
+        async for p, expected_content in streamed:
+            assert p.exists()
+            assert p.read_text() == expected_content

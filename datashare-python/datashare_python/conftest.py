@@ -51,6 +51,9 @@ _INDEX_BODY = {
             "language": {"type": "keyword"},
             "documentId": {"type": "keyword"},
             "join": {"type": "join", "relations": {"Document": "NamedEntity"}},
+            "contentType": {"type": "keyword"},
+            "content": {"type": "text"},
+            "contentTranslated": {"type": "text"},
         }
     }
 }

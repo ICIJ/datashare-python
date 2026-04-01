@@ -4,11 +4,6 @@ on:
   push:
     branches: [ "main" ]
   pull_request:
-    paths:
-      - "datashare_python/**.py"
-      - "pyproject.toml"
-      - "uv.lock"
-      - ".github/workflows/tests.yml"
 
 jobs:
   test-datashare-python:

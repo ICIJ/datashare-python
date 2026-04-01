@@ -1,6 +1,6 @@
 import math
 from pathlib import Path
-from typing import Annotated, Self
+from typing import Annotated, Any, Self
 
 from caul.asr_pipeline import ASRPipelineConfig
 from caul.config import InferenceRunnerConfig as CaulInferenceRunnerConfig
@@ -31,10 +31,13 @@ _DEFAULT_PIPELINE_CONFIG = ASRPipelineConfig(
 )
 
 
+DocumentSearchQuery = dict[str, Any]
+
+
 class ASRInputs(DatashareModel):
     project: str
-    paths: list[Path]
-    config: ASRPipelineConfig = Field(default=ASRPipelineConfig)
+    docs: list[Path] | DocumentSearchQuery
+    config: ASRPipelineConfig = Field(default=_DEFAULT_PIPELINE_CONFIG)
     batch_size: int
 
 

@@ -25,6 +25,7 @@ from asr_worker.models import (
 from asr_worker.workflows import ASRWorkflow, TaskQueues
 from caul.config import InferenceRunnerConfig, PostprocessorConfig
 from caul.objects import ASRResult, InputMetadata, PreprocessedInput
+from datashare_python.config import WorkerConfig
 from datashare_python.conftest import TEST_PROJECT
 from datashare_python.types_ import (
     ContextManagerFactory,
@@ -32,7 +33,7 @@ from datashare_python.types_ import (
     TemporalClient,
 )
 from datashare_python.utils import ActivityWithProgress, activity_defn
-from datashare_python.worker import datashare_worker
+from datashare_python.worker import bootstrap_worker
 from pydantic import TypeAdapter
 from temporalio.worker import Worker
 
@@ -84,7 +85,8 @@ class MockedASRActivities(ActivityWithProgress):
     ) -> list[Path]:  # noqa: ANN001, ARG001
         # TODO: this shouldn't be necessary, fix this bug
         preprocessed_inputs = _LIST_OF_PATH_ADAPTER.validate_python(preprocessed_inputs)
-        workdir = ASRWorkerConfig().workdir
+        worker_config = ASRWorkerConfig()
+        workdir = worker_config.workdir
         paths = []
         preprocessed_inputs = [
             PreprocessedInput.model_validate_json((workdir / p).read_text())
@@ -116,8 +118,8 @@ class MockedASRActivities(ActivityWithProgress):
         inference_results = _LIST_OF_PATH_ADAPTER.validate_python(inference_results)
         input_paths = _LIST_OF_PATH_ADAPTER.validate_python(input_paths)
         config = ASRWorkerConfig()
-        artifact_root = config.artifacts_root
         workdir = config.workdir
+        artifact_root = config.artifacts_root
         artifact_root.mkdir(parents=True, exist_ok=True)
         inference_results = [
             ASRResult.model_validate_json((workdir / f).read_text())
@@ -148,42 +150,73 @@ class MockedASRActivities(ActivityWithProgress):
 
 @pytest.fixture
 async def io_bound_worker(
-    test_temporal_client_session: TemporalClient,  # noqa: F811
-) -> AsyncGenerator[Worker, None]:
+    test_temporal_client_session: TemporalClient,
+    test_worker_config: WorkerConfig,
+    event_loop: AbstractEventLoop,
+) -> AsyncGenerator[None, None]:
     client = test_temporal_client_session
-    worker = datashare_worker(client, task_queue=TaskQueues.IO, workflows=[ASRWorkflow])
-    async with worker:
-        yield worker
+    worker_id = f"worker-{uuid.uuid4()}"
+    task_queue = TaskQueues.IO
+    async with (
+        bootstrap_worker(
+            worker_id,
+            bootstrap_config=test_worker_config,
+            client=client,
+            event_loop=event_loop,
+            task_queue=task_queue,
+            workflows=[ASRWorkflow],
+        ) as worker,
+        worker,
+    ):
+        yield
 
 
 @pytest.fixture
 async def mock_cpu_bound_worker(
     test_temporal_client_session: TemporalClient,
+    test_worker_config: WorkerConfig,
     event_loop: AbstractEventLoop,  # noqa: F811
-) -> AsyncGenerator[Worker, None]:
+) -> AsyncGenerator[None, None]:
     client = test_temporal_client_session
     activities = MockedASRActivities(client, event_loop)
-    worker = datashare_worker(
-        client,
-        task_queue=TaskQueues.CPU,
-        activities=[activities.preprocess, activities.postprocess],
-    )
-    async with worker:
-        yield worker
+    worker_id = f"worker-{uuid.uuid4()}"
+    task_queue = TaskQueues.CPU
+    async with (
+        bootstrap_worker(
+            worker_id,
+            bootstrap_config=test_worker_config,
+            client=client,
+            event_loop=event_loop,
+            task_queue=task_queue,
+            activities=[activities.preprocess, activities.postprocess],
+        ) as worker,
+        worker,
+    ):
+        yield
 
 
 @pytest.fixture
 async def mock_cpu_inference_worker(
     test_temporal_client_session: TemporalClient,
+    test_worker_config: WorkerConfig,
     event_loop: AbstractEventLoop,  # noqa: F811
-) -> AsyncGenerator[Worker, None]:
+) -> AsyncGenerator[None, None]:
     client = test_temporal_client_session
     activities = MockedASRActivities(client, event_loop)
-    worker = datashare_worker(
-        client, task_queue=TaskQueues.INFERENCE_CPU, activities=[activities.infer]
-    )
-    async with worker:
-        yield worker
+    task_queue = TaskQueues.INFERENCE_CPU
+    worker_id = f"worker-{uuid.uuid4()}"
+    async with (
+        bootstrap_worker(
+            worker_id,
+            bootstrap_config=test_worker_config,
+            client=client,
+            event_loop=event_loop,
+            task_queue=task_queue,
+            activities=[activities.infer],
+        ) as worker,
+        worker,
+    ):
+        yield
 
 
 @pytest.fixture
@@ -192,16 +225,23 @@ async def cpu_bound_worker(
     mocked_worker_config_in_env: ASRWorkerConfig,  # noqa: ARG001
     test_temporal_client_session: TemporalClient,
     event_loop: AbstractEventLoop,  # noqa: F811
-) -> AsyncGenerator[Worker, None]:
+) -> AsyncGenerator[None, None]:
     client = test_temporal_client_session
     activities = ASRActivities(client, event_loop)
-    worker = datashare_worker(
-        client,
-        task_queue=TaskQueues.CPU,
-        activities=[activities.preprocess, activities.postprocess],
-    )
-    async with worker:
-        yield worker
+    worker_id = f"worker-{uuid.uuid4()}"
+    task_queue = TaskQueues.CPU
+    async with (
+        bootstrap_worker(
+            worker_id,
+            bootstrap_config=mocked_worker_config_in_env,
+            client=client,
+            event_loop=event_loop,
+            task_queue=task_queue,
+            activities=[activities.preprocess, activities.postprocess],
+        ) as worker,
+        worker,
+    ):
+        yield
 
 
 @pytest.fixture
@@ -210,14 +250,23 @@ async def cpu_inference_worker(
     mocked_worker_config_in_env: ASRWorkerConfig,  # noqa: ARG001
     test_temporal_client_session: TemporalClient,
     event_loop: AbstractEventLoop,  # noqa: F811
-) -> AsyncGenerator[Worker, None]:
+) -> AsyncGenerator[None, None]:
     client = test_temporal_client_session
     activities = ASRActivities(client, event_loop)
-    worker = datashare_worker(
-        client, task_queue=TaskQueues.INFERENCE_CPU, activities=[activities.infer]
-    )
-    async with worker:
-        yield worker
+    worker_id = f"worker-{uuid.uuid4()}"
+    task_queue = TaskQueues.INFERENCE_CPU
+    async with (
+        bootstrap_worker(
+            worker_id,
+            bootstrap_config=mocked_worker_config_in_env,
+            client=client,
+            event_loop=event_loop,
+            task_queue=task_queue,
+            activities=[activities.infer],
+        ) as worker,
+        worker,
+    ):
+        yield
 
 
 _EXPECTED_TRANSCRIPTION_0 = Transcription(
@@ -253,9 +302,7 @@ async def test_asr_workflow(
     config = ASRPipelineConfig()
     workflow_id = f"asr-{uuid.uuid4().hex}"
     project = TEST_PROJECT
-    inputs = ASRInputs(
-        project=project, paths=path, config=config, batch_size=batch_size
-    )
+    inputs = ASRInputs(project=project, docs=path, config=config, batch_size=batch_size)
     # When
     result = await client.execute_workflow(
         ASRWorkflow.run, inputs, id=workflow_id, task_queue=TaskQueues.IO
@@ -317,7 +364,7 @@ async def test_asr_workflow_e2e(
     audios = with_audios * n_audios
     project = TEST_PROJECT
     inputs = ASRInputs(
-        project=project, paths=audios, config=ASRPipelineConfig(), batch_size=batch_size
+        project=project, docs=audios, config=ASRPipelineConfig(), batch_size=batch_size
     )
     workflow_id = f"asr-{uuid.uuid4().hex}"
 

@@ -3,12 +3,12 @@ from enum import StrEnum
 from datashare_python.objects import BasePayload
 from pydantic import BaseModel, Field
 
-from .constants import ASR_CPU_TASK_QUEUE, ASR_GPU_TASK_QUEUE, PARAKEET
+from asr_worker.constants import PARAKEET
 
 
 class TaskQueues(StrEnum):
-    CPU = ASR_CPU_TASK_QUEUE
-    GPU = ASR_GPU_TASK_QUEUE
+    CPU = "asr.transcription.cpu"
+    GPU = "asr.transcription.gpu"
 
 
 class BatchSize(BaseModel):

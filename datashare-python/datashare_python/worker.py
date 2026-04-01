@@ -143,7 +143,7 @@ async def bootstrap_worker(
             event_loop=event_loop,
         )
         if dependencies
-        else _do_nothing_cm
+        else _do_nothing_cm()
     )
     async with deps_cm:
         if activities is not None:
@@ -151,6 +151,8 @@ async def bootstrap_worker(
                 init_activity(a, client=client, event_loop=event_loop)
                 for a in activities
             ]
+        else:
+            acts = None
         worker = datashare_worker(
             client,
             worker_id,
