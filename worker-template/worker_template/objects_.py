@@ -1,12 +1,6 @@
 import pycountry
-from icij_common.pydantic_utils import (
-    icij_config,
-    lowercamel_case_config,
-    merge_configs,
-)
-from pydantic import BaseModel, Field
-
 from datashare_python.objects import BasePayload
+from pydantic import Field
 
 
 class ClassificationConfig(BasePayload):

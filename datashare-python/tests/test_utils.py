@@ -1,8 +1,7 @@
-from typing import AsyncGenerator, AsyncIterable, AsyncIterator
+from collections.abc import AsyncGenerator, AsyncIterable, AsyncIterator
 
 from aiostream.stream import chain
-
-from datashare_python.utils import positional_args_only, before_and_after, once
+from datashare_python.utils import before_and_after, once, positional_args_only
 from temporalio import activity
 
 
