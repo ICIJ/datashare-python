@@ -40,7 +40,8 @@ from icij_common.es import (
     must_not,
 )
 from temporalio import activity
-from temporalio.client import Client
+
+from worker_template.dependencies import lifespan_es_client
 
 if TYPE_CHECKING:
     from transformers import Pipeline
@@ -55,60 +56,35 @@ class Pong(ActivityWithProgress):
 
 
 class CreateTranslationBatches(ActivityWithProgress):
-    def __init__(
-        self,
-        es_client: ESClient,
-        temporal_client: Client,
-        event_loop: asyncio.AbstractEventLoop,
-    ):
-        super().__init__(temporal_client, event_loop)
-        self._es_client = es_client
-
     @activity_defn(name="create-translation-batches")
     async def create_translation_batches(
         self, project: str, target_language: str, batch_size: int
     ) -> list[list[str]]:
+        es_client = lifespan_es_client()
         return await create_translation_batches(
             project=project,
             target_language=target_language,
             batch_size=batch_size,
-            es_client=self._es_client,
+            es_client=es_client,
         )
 
 
 class CreateClassificationBatches(ActivityWithProgress):
-    def __init__(
-        self,
-        es_client: ESClient,
-        temporal_client: Client,
-        event_loop: asyncio.AbstractEventLoop,
-    ):
-        super().__init__(temporal_client, event_loop)
-        self._es_client = es_client
-
     @activity_defn(name="create-classification-batches")
     async def create_classification_batches(
         self, project: str, target_language: str, config: ClassificationConfig
     ) -> list[list[str]]:
+        es_client = lifespan_es_client()
         return await create_classification_batches(
             project=project,
             language=target_language,
             config=config,
-            es_client=self._es_client,
+            es_client=es_client,
             logger=activity.logger,
         )
 
 
 class TranslateDocs(ActivityWithProgress):
-    def __init__(
-        self,
-        es_client: ESClient,
-        temporal_client: Client,
-        event_loop: asyncio.AbstractEventLoop,
-    ):
-        super().__init__(temporal_client, event_loop)
-        self._es_client = es_client
-
     @activity_defn(name="translate-docs")
     def translate_docs(
         self,
@@ -119,12 +95,13 @@ class TranslateDocs(ActivityWithProgress):
         config: TranslationConfig,
         progress: ProgressRateHandler | None = None,
     ) -> int:
+        es_client = lifespan_es_client()
         return self._event_loop.run_until_complete(
             translate_docs(
                 docs,
                 target_language=target_language,
                 project=project,
-                es_client=self._es_client,
+                es_client=es_client,
                 config=config,
                 progress=progress,
             )
@@ -132,15 +109,6 @@ class TranslateDocs(ActivityWithProgress):
 
 
 class ClassifyDocs(ActivityWithProgress):
-    def __init__(
-        self,
-        es_client: ESClient,
-        temporal_client: Client,
-        event_loop: asyncio.AbstractEventLoop,
-    ):
-        super().__init__(temporal_client, event_loop)
-        self._es_client = es_client
-
     @activity_defn(name="classify-docs")
     async def classify_docs(
         self,
@@ -151,11 +119,12 @@ class ClassifyDocs(ActivityWithProgress):
         config: ClassificationConfig,
         progress: ProgressRateHandler | None = None,
     ) -> int:
+        es_client = lifespan_es_client()
         return await classify_docs(
             docs,
             classified_language=classified_language,
             project=project,
-            es_client=self._es_client,
+            es_client=es_client,
             config=config,
             progress=progress,
         )
