@@ -35,7 +35,7 @@ basic_activities.py:activities
 1. decorate the activity function with `@activity_defn` using `"hello-user"` as name
 2. expose the activity function to `datashare-python`'s CLI, by listing it in the `ACTIVITIES` variable
 
-Under the hood, the `ACTIVITIES` is registered as
+Under the hood, the `ACTIVITIES` variable is registered as
 [plugin entrypoint](https://setuptools.pypa.io/en/latest/userguide/entry_point.html#entry-points-for-plugins)
 in the package's `pyproject.toml`:
 ```toml title="pyproject.toml" 
@@ -46,7 +46,7 @@ pyproject.toml:entry_points_acts
 When running a worker using `datashare-python worker start` CLI, `datashare-python` will look for any variable registered under 
 the `:::toml "datashare.activities"` key and will be able to run activities registered in these variables.
 
-You can register as many variables as you want, under the names of your choices, as long as it's registered under
+You can register as many variables as you want, under the names of your choices, as long as it's bound under
 the `:::toml "datashare.activities"` key.  
 
 ## Implement and register a workflow
