@@ -20,7 +20,6 @@ from typing import (
     TypeVar,
 )
 
-import torch
 from icij_common.logging_utils import (
     DATE_FMT,
     STREAM_HANDLER_FMT,
@@ -465,6 +464,8 @@ def find_device(device_name: str = CPU) -> str:
     :param device_name: device name
     :return: str device name
     """
+    import torch  # noqa: PLC0415
+
     if (
         hasattr(torch.backends, device_name)
         and hasattr(getattr(torch.backends, device_name), "is_available")

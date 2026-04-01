@@ -71,12 +71,12 @@ def _update_pyproject_toml(
 ) -> dict[str, Any]:
     pyproject_toml = deepcopy(pyproject_toml)
 
-    pyproject_toml["tool"]["uv"].pop("sources")
-    pyproject_toml["tool"]["uv"].pop("index")
+    pyproject_toml["tool"]["uv"].pop("sources", None)
+    pyproject_toml["tool"]["uv"].pop("index", None)
 
     project = pyproject_toml["project"]
     project["authors"] = []
-    project.pop("urls")
+    project.pop("urls", None)
     project["dependencies"] = sorted(
         d
         for d in project["dependencies"]
@@ -87,7 +87,7 @@ def _update_pyproject_toml(
         for d in project["dependencies"]
         if any(d.startswith(base) for base in _BASE_DEPS)
     )
-    project.pop("optional-dependencies")
+    project.pop("optional-dependencies", None)
 
     entry_points = project["entry-points"]
 
@@ -106,9 +106,10 @@ def _update_pyproject_toml(
     ]
 
     hatch_sdist = pyproject_toml["tool"]["hatch"]["build"]["targets"]["sdist"]
-    hatch_sdist["only-include"] = [
-        i if i != "worker_template" else package_name
-        for i in hatch_sdist["only-include"]
-    ]
+    if "only-include" in hatch_sdist:
+        hatch_sdist["only-include"] = [
+            i if i != "worker_template" else package_name
+            for i in hatch_sdist["only-include"]
+        ]
 
     return pyproject_toml
