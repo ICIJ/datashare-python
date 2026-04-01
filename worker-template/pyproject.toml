@@ -10,7 +10,6 @@ readme = "README.md"
 requires-python = ">=3.11,<4"
 dependencies = [
   "datashare-python",
-  "icij-common[elasticsearch]~=0.8.2",
   "pycountry~=26.2.16",
   "temporalio~=1.23.0",
 ]

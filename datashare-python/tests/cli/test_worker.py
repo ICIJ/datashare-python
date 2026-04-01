@@ -48,5 +48,5 @@ async def test_start_workers(
     expected = """discovered:
 - 1 workflow: ping
 - 1 activity: create-translation-batches
-- 4 dependencies: set_loggers, set_event_loop, set_es_client, set_temporal_client"""
+- 2 dependencies: set_loggers, set_es_client"""
     assert expected in result.stderr

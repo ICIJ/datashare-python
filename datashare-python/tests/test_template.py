@@ -30,7 +30,6 @@ async def test_init_project(
 
     dependencies = project["dependencies"]
     assert any(d.startswith("datashare-python") for d in dependencies)
-    assert any(d.startswith("icij-common") for d in dependencies)
     assert any(d.startswith("temporalio") for d in dependencies)
 
     assert "optional-dependencies" not in project

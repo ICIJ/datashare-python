@@ -14,9 +14,14 @@ def test_datashare_worker_default(test_temporal_client_session: TemporalClient) 
     # Given
     client = test_temporal_client_session
     task_queue = f"test-{uuid.uuid4()}"
+    worker_id = f"worker-{uuid.uuid4()}"
     # When
     worker = datashare_worker(
-        client, task_queue=task_queue, activities=[mocked_act], workflows=[]
+        client,
+        worker_id=worker_id,
+        task_queue=task_queue,
+        activities=[mocked_act],
+        workflows=[],
     )
     # Then
     worker_config = worker.config()
@@ -33,10 +38,14 @@ def test_datashare_worker_should_warn_for_sync_and_async_activities(
     # Given
     client = test_temporal_client_session
     task_queue = f"test-{uuid.uuid4()}"
+    worker_id = f"worker-{uuid.uuid4()}"
     # When
     with caplog.at_level(logging.WARNING, logger=datashare_python.__name__):
         datashare_worker(
-            client, task_queue=task_queue, activities=[mocked_act, mocked_async_act]
+            client,
+            worker_id=worker_id,
+            task_queue=task_queue,
+            activities=[mocked_act, mocked_async_act],
         )
     # Then
     expected = (
@@ -52,10 +61,12 @@ def test_datashare_worker_should_warn_for_sync_activities_and_workflow(
     # Given
     client = test_temporal_client_session
     task_queue = f"test-{uuid.uuid4()}"
+    worker_id = f"worker-{uuid.uuid4()}"
     # When
     with caplog.at_level(logging.WARNING, logger=datashare_python.__name__):
         datashare_worker(
             client,
+            worker_id=worker_id,
             task_queue=task_queue,
             activities=[mocked_act],
             workflows=[MockedWorkflow],

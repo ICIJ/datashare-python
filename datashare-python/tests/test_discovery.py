@@ -59,12 +59,7 @@ def test_discover_dependencies(name: str | None) -> None:
     # When
     deps = discover_dependencies(name)
     # Then
-    expected_deps = [
-        "set_loggers",
-        "set_event_loop",
-        "set_es_client",
-        "set_temporal_client",
-    ]
+    expected_deps = ["set_loggers", "set_es_client"]
     assert [d.__name__ for d in deps] == expected_deps
 
 

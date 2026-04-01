@@ -326,6 +326,7 @@ dependencies = [
     { name = "icij-common", extra = ["elasticsearch"] },
     { name = "nest-asyncio" },
     { name = "python-json-logger" },
+    { name = "pyyaml" },
     { name = "temporalio" },
     { name = "tomlkit" },
     { name = "typer" },
@@ -340,6 +341,7 @@ requires-dist = [
     { name = "icij-common", extras = ["elasticsearch"], specifier = "~=0.8.2" },
     { name = "nest-asyncio", specifier = "~=1.6.0" },
     { name = "python-json-logger", specifier = "~=4.0.0" },
+    { name = "pyyaml", specifier = "~=6.0" },
     { name = "temporalio", specifier = "~=1.23.0" },
     { name = "tomlkit", specifier = "~=0.14.0" },
     { name = "typer", specifier = "~=0.15.4" },
@@ -365,7 +367,6 @@ version = "0.1.5"
 source = { editable = "." }
 dependencies = [
     { name = "datashare-python" },
-    { name = "icij-common", extra = ["elasticsearch"] },
     { name = "pycountry" },
     { name = "temporalio" },
 ]
@@ -397,7 +398,6 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "datashare-python", editable = "../datashare-python" },
-    { name = "icij-common", extras = ["elasticsearch"], specifier = "~=0.8.2" },
     { name = "pycountry", specifier = "~=26.2.16" },
     { name = "sentencepiece", marker = "extra == 'ml'", specifier = "~=0.2.1" },
     { name = "temporalio", specifier = "~=1.23.0" },
