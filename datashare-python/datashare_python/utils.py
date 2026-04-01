@@ -440,3 +440,16 @@ def debuggable_name(path: Path, component_size_limit: int = 10) -> str:
     displayable_file_name = [c[:component_size_limit] for c in path.parts]
     uuid = sha256(str(path).encode()).hexdigest()[:20]
     return f"{uuid}-{'__'.join(displayable_file_name)}"
+
+
+def activity_contextual_id(*, wf_context: bool = False) -> str:
+    act_info = activity.info()
+    act_id = act_info.activity_id
+    act_run_id = act_info.activity_id
+    act_type = act_info.activity_type
+    contextual_id = f"{act_type}-{act_id}-{act_run_id}"
+    if wf_context:
+        wf_id = act_info.workflow_id
+        wf_run_id = act_info.workflow_run_id
+        contextual_id += f"-{wf_id}-{wf_run_id}"
+    return contextual_id

@@ -245,7 +245,7 @@ async def test_asr_workflow(
     config = ASRPipelineConfig(batch_size=batch_size)
     workflow_id = f"asr-{uuid.uuid4().hex}"
     project = TEST_PROJECT
-    inputs = ASRInputs(project=project, paths=path, config=config)
+    inputs = ASRInputs(project=project, docs=path, config=config)
     # When
     result = await client.execute_workflow(
         ASRWorkflow.run, inputs, id=workflow_id, task_queue=TaskQueues.IO
@@ -307,7 +307,7 @@ async def test_asr_workflow_e2e(
     audios = with_audios * n_audios
     inputs = ASRInputs(
         project=TEST_PROJECT,
-        paths=audios,
+        docs=audios,
         config=ASRPipelineConfig(batch_size=batch_size),
     )
     workflow_id = f"asr-{uuid.uuid4().hex}"

@@ -1,6 +1,6 @@
 import math
 from pathlib import Path
-from typing import Self
+from typing import Any, Self
 
 from caul.model_handlers.objects import ASRModelHandlerResult
 from datashare_python.objects import DatashareModel
@@ -40,9 +40,12 @@ class ASRPipelineConfig(DatashareModel):
     )
 
 
+DocumentSearchQuery = dict[str, Any]
+
+
 class ASRInputs(DatashareModel):
     project: str
-    paths: list[Path]
+    docs: list[Path] | DocumentSearchQuery
     config: ASRPipelineConfig
 
 
