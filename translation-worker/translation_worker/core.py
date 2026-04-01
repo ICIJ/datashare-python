@@ -10,12 +10,12 @@ from argostranslate.translate import (
     PackageTranslation,
     get_installed_languages,
 )
-from datashare_python.utils import find_device
 from icij_common.es import DOC_LANGUAGE, SOURCE
 from spacy import Language
 
 from .constants import CONTENT_LENGTH
 from .objects import BatchSentence, TranslationEnsemble
+from .utils import find_device
 
 logging.basicConfig(level=logging.INFO)
 

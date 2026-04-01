@@ -24,11 +24,7 @@ logger = logging.getLogger(__name__)
 
 
 T = TypeVar("T")
-
-
 Predicate = Callable[[T], bool] | Callable[[T], Awaitable[bool]]
-
-ArbitraryTypesConfig = {"arbitrary_types_allowed": True}
 
 
 class BaseModel(_BaseModel):
@@ -169,16 +165,3 @@ class Document(DatashareModel):
             root_document=sources[DOC_ROOT_ID],
             tags=sources.get("tags", []),
         )
-
-
-# Temporal objects
-class WorkerResponse(BasePayload):
-    """Generic worker response"""
-
-    status: str
-    error: str | None = None
-
-
-class WorkerResponseStatus(StrEnum):
-    SUCCESS = "success"
-    ERROR = "error"

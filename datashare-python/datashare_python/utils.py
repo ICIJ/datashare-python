@@ -20,6 +20,7 @@ from typing import (
     TypeVar,
 )
 
+import nest_asyncio
 from icij_common.logging_utils import (
     DATE_FMT,
     STREAM_HANDLER_FMT,
@@ -34,7 +35,6 @@ from temporalio.client import Client, WorkflowHandle
 from temporalio.common import SearchAttributeKey
 from temporalio.exceptions import ApplicationError
 
-from .constants import CPU
 from .objects import Predicate
 from .types_ import ProgressRateHandler, RawProgressHandler
 
@@ -74,6 +74,7 @@ class ProgressSignal:
 class ActivityWithProgress:
     def __init__(self, temporal_client: Client, event_loop: asyncio.AbstractEventLoop):
         self._temporal_client = temporal_client
+        nest_asyncio.apply()
         self._event_loop = event_loop
 
 
@@ -455,22 +456,3 @@ def before_and_after(
             yield elm
 
     return true_iterator(), remainder_iterator()
-
-
-# Torch utils
-def find_device(device_name: str = CPU) -> str:
-    """Check if a device is available; if not, return cpu
-
-    :param device_name: device name
-    :return: str device name
-    """
-    import torch  # noqa: PLC0415
-
-    if (
-        hasattr(torch.backends, device_name)
-        and hasattr(getattr(torch.backends, device_name), "is_available")
-        and getattr(torch.backends, device_name).is_available()
-    ):
-        return device_name
-
-    return CPU

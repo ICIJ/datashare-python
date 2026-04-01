@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from enum import StrEnum
 
 from argostranslate.sbd import (
@@ -7,11 +8,11 @@ from argostranslate.sbd import (
 )
 from argostranslate.tokenizer import BPETokenizer, SentencePieceTokenizer
 from ctranslate2 import Translator
-from datashare_python.constants import CPU
-from datashare_python.objects import ArbitraryTypesConfig, BasePayload, WorkerResponse
+from datashare_python.objects import BasePayload
 from pydantic import BaseModel, Field
 
 from .constants import (
+    CPU,
     TRANSLATION_CPU_TASK_QUEUE,
     TRANSLATION_GPU_TASK_QUEUE,
     TRANSLATION_TASK_NAME,
@@ -41,7 +42,7 @@ class TranslationRequest(BasePayload):
     target_language: str
 
 
-class TranslationResponse(WorkerResponse):
+class TranslationResponse(BasePayload):
     num_translations: int = 0
 
 
@@ -52,8 +53,8 @@ class BatchSentence(BaseModel):
     sentence: str
 
 
-class TranslationEnsemble(BaseModel):
-    model_config = ArbitraryTypesConfig
+@dataclass(frozen=True)
+class TranslationEnsemble:
     tokenizer: SentencePieceTokenizer | BPETokenizer
     sentencizer: StanzaSentencizer | MiniSBDSentencizer | SpacySentencizerSmall
     translator: Translator
