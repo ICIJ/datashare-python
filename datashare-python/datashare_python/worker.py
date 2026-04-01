@@ -1,12 +1,27 @@
+import inspect
 import logging
+import os
+import socket
+import sys
+import threading
+from asyncio import AbstractEventLoop
+from collections.abc import AsyncGenerator, Callable
 from concurrent.futures import ThreadPoolExecutor
+from contextlib import asynccontextmanager
+from typing import Any
 
 from temporalio.worker import PollerBehaviorSimpleMaximum, Worker
 
+from .config import WorkerConfig
+from .dependencies import with_dependencies
 from .discovery import Activity
-from .types_ import TemporalClient
+from .types_ import ContextManagerFactory, TemporalClient
 
 logger = logging.getLogger(__name__)
+
+_TEMPORAL_CLIENT = "temporal_client"
+_EVENT_LOOP = "event_loop"
+_EXPECTED_INIT_ARGS = {"self", _TEMPORAL_CLIENT, _EVENT_LOOP, "args", "kwargs"}
 
 _SEPARATE_IO_AND_CPU_WORKERS = """The worker will run sync (CPU-bound) activities as \
 well as IO-bound workflows.
@@ -30,13 +45,14 @@ _ACTIVITY_THREAD_NAME_PREFIX = "datashare-activity-worker-"
 
 def datashare_worker(
     client: TemporalClient,
+    worker_id: str,
     *,
     workflows: list[type] | None = None,
     activities: list[Activity] | None = None,
     task_queue: str,
     # Scale horizontally be default for activities, each worker processes one activity
     # at a time
-    max_concurrent_activities: int = 1,
+    max_concurrent_io_activities: int = 10,
 ) -> Worker:
     if workflows is None:
         workflows = []
@@ -55,11 +71,15 @@ def datashare_worker(
         )
         logger.warning(_SEPARATE_IO_AND_CPU_ACTIVITIES)
 
-    if isinstance(activity_executor, ThreadPoolExecutor) and workflows:
-        logger.warning(_SEPARATE_IO_AND_CPU_WORKERS)
+    max_concurrent_activities = max_concurrent_io_activities
+    if isinstance(activity_executor, ThreadPoolExecutor):
+        max_concurrent_activities = 1
+        if workflows:
+            logger.warning(_SEPARATE_IO_AND_CPU_WORKERS)
 
     return Worker(
         client,
+        identity=worker_id,
         workflows=workflows,
         activities=activities,
         task_queue=task_queue,
@@ -72,3 +92,82 @@ def datashare_worker(
         # several of them
         workflow_task_poller_behavior=PollerBehaviorSimpleMaximum(5),
     )
+
+
+def create_worker_id(prefix: str) -> str:
+    pid = os.getpid()
+    threadid = threading.get_ident()
+    hostname = socket.gethostname()
+    # TODO: this might not be unique when using asyncio
+    return f"{prefix}-{hostname}-{pid}-{threadid}"
+
+
+def init_activity(
+    activity: Callable, client: TemporalClient, event_loop: AbstractEventLoop
+) -> Callable:
+    is_object_method = "." not in activity.__qualname__
+    if is_object_method:
+        return activity
+    cls = _get_class_from_method(activity)
+    init_args = inspect.signature(cls.__init__).parameters
+    invalid = [p for p in init_args if p not in _EXPECTED_INIT_ARGS]
+    if invalid:
+        msg = f"invalid activity arguments: {invalid}"
+        raise ValueError(msg)
+    kwargs = {_TEMPORAL_CLIENT: client, _EVENT_LOOP: event_loop}
+    kwargs = {k: v for k, v in kwargs.items() if k in _EXPECTED_INIT_ARGS}
+    if not kwargs:
+        return activity
+    act_instance = cls(**kwargs)
+    act_method = getattr(act_instance, activity.__name__)
+    return act_method
+
+
+@asynccontextmanager
+async def bootstrap_worker(
+    worker_id: str,
+    *,
+    activities: list[Callable[..., Any] | None] | None = None,
+    workflows: list[type] | None = None,
+    bootstrap_config: WorkerConfig,
+    client: TemporalClient,
+    event_loop: AbstractEventLoop,
+    task_queue: str,
+    dependencies: list[ContextManagerFactory] | None = None,
+) -> AsyncGenerator[Worker, None]:
+    deps_cm = (
+        with_dependencies(
+            dependencies,
+            worker_config=bootstrap_config,
+            worker_id=worker_id,
+            event_loop=event_loop,
+        )
+        if dependencies
+        else _do_nothing_cm
+    )
+    async with deps_cm:
+        if activities is not None:
+            acts = [
+                init_activity(a, client=client, event_loop=event_loop)
+                for a in activities
+            ]
+        worker = datashare_worker(
+            client,
+            worker_id,
+            workflows=workflows,
+            activities=acts,
+            task_queue=task_queue,
+            max_concurrent_io_activities=bootstrap_config.max_concurrent_io_activities,
+        )
+        yield worker
+
+
+@asynccontextmanager
+async def _do_nothing_cm() -> AsyncGenerator[None, None]:
+    yield
+
+
+def _get_class_from_method(method: Callable) -> type:
+    class_name = method.__qualname__.rsplit(".", 1)[0]
+    module = sys.modules[method.__module__]
+    return getattr(module, class_name)
