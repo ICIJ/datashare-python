@@ -89,7 +89,7 @@ async def batching_worker(
     test_es_client_session: ESClient,  # noqa: F811
     test_temporal_client_session: TemporalClient,  # noqa: F811
     event_loop: asyncio.AbstractEventLoop,  # noqa: F811
-) -> AsyncGenerator[None, None]:
+) -> AsyncGenerator[Worker, None]:
     es_client = test_es_client_session
     temporal_client = test_temporal_client_session
     batching_worker_id = f"test-translation-batching-worker-{uuid.uuid4()}"

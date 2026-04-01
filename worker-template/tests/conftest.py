@@ -34,6 +34,7 @@ from datashare_python.dependencies import (
 from datashare_python.types_ import ContextManagerFactory
 from datashare_python.worker import bootstrap_worker
 from temporalio.client import Client as TemporalClient
+from temporalio.worker import Worker
 from worker_template.activities import (
     ClassifyDocs,
     CreateClassificationBatches,
