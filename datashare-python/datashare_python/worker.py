@@ -47,7 +47,6 @@ def datashare_worker(
     client: TemporalClient,
     worker_id: str,
     *,
-    worker_id: str | None = None,
     workflows: list[type] | None = None,
     activities: list[Activity] | None = None,
     task_queue: str,

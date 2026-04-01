@@ -8,4 +8,10 @@ workflows = "basic_worker.workflows:WORKFLOWS"
 [project.entry-points."datashare.activities"]
 activities = "basic_worker.activities:ACTIVITIES"
 # --8<-- [end:entry_points_acts]
+
+# --8<-- [start:entry_points_deps]
+[project.entry-points."datashare.dependencies"]
+dependencies = "asr_worker.dependencies:DEPENDENCIES"
+# --8<-- [end:entry_points_deps]
+
 # --8<-- [start:entry_points]
