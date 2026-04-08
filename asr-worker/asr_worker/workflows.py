@@ -1,106 +1,95 @@
 from asyncio import gather
 from datetime import timedelta
+from enum import StrEnum
+from itertools import repeat
 
-from datashare_python.objects import WorkerResponseStatus
-from more_itertools import flatten
+from datashare_python.utils import WorkflowWithProgress, execute_activity
+from pydantic import TypeAdapter
 from temporalio import workflow
 
-from .objects import ASRRequest, ASRResponse, TaskQueues
+from asr_worker.constants import ASR_WORKFLOW, TEN_MINUTES
+from asr_worker.models import ASRInputs, ASRResponse
 
 with workflow.unsafe.imports_passed_through():
-    from .activities import ASRActivities
+    from asr_worker.activities import ASRActivities
+
+_ASR_INPUTS_TYPE_ADAPTER = TypeAdapter(ASRInputs)
 
 
-# TODO: Figure out which modules are violating sandbox restrictions
-#  and grant a limited passthrough
-@workflow.defn(sandboxed=False)
-class ASRWorkflow:
-    """ASR workflow definition"""
+class TaskQueues(StrEnum):
+    IO = "asr.preprocessing.io"
+    CPU = "asr.processing.cpu"
+    INFERENCE_GPU = "asr.inference.gpu"
+    INFERENCE_CPU = "asr.inference.cpu"
 
-    def __init__(self):
-        pass
 
+@workflow.defn(name=ASR_WORKFLOW)  # noqa: F821
+class ASRWorkflow(WorkflowWithProgress):
     @workflow.run
-    async def run(self, inputs: ASRRequest) -> ASRResponse:
-        """Run ASR workflow
-
-        :param inputs: ASRRequest
-        :return: ASRResponse
-        """
-        try:
-            # Preprocessing
-            preprocessed_batches = await gather(
-                *[
-                    workflow.execute_activity_method(
-                        ASRActivities.preprocess,
-                        args=[
-                            inputs.file_paths[
-                                offset : offset
-                                + inputs.pipeline.preprocessing.batch_size
-                            ]
-                        ],
-                        task_queue=TaskQueues.CPU,
-                        start_to_close_timeout=timedelta(minutes=10),
-                    )
-                    for offset in range(
-                        0,
-                        len(inputs.file_paths),
-                        inputs.pipeline.preprocessing.batch_size,
-                    )
-                ]
+    async def run(self, inputs: ASRInputs) -> ASRResponse:
+        # Preprocessing
+        logger = workflow.logger
+        config = inputs.config
+        batch_size = inputs.batch_size
+        batched_input_paths = [
+            inputs.paths[batch_start : batch_start + batch_size]
+            for batch_start in range(0, len(inputs.paths), batch_size)
+        ]
+        preprocess_args = zip(
+            batched_input_paths, repeat(config.preprocessing), strict=False
+        )
+        preprocessing_acts = (
+            execute_activity(
+                ASRActivities.preprocess,
+                args=a,
+                start_to_close_timeout=timedelta(seconds=TEN_MINUTES),
+                task_queue=TaskQueues.CPU,
             )
-
-            workflow.logger.info("Preprocessing complete")
-
-            # Inference
-            inference_results = [
-                await gather(
-                    *[
-                        workflow.execute_activity_method(
-                            ASRActivities.infer,
-                            args=[inner_batch],
-                            task_queue=TaskQueues.GPU,
-                            start_to_close_timeout=timedelta(minutes=10),
-                        )
-                        for inner_batch in outer_batch
-                    ]
-                )
-                for outer_batch in preprocessed_batches
-            ]
-
-            workflow.logger.info("Inference complete")
-
-            # Postprocessing
-            transcriptions = await gather(
-                *[
-                    workflow.execute_activity_method(
-                        ASRActivities.postprocess,
-                        args=[flatten(inference_result_batch)],
-                        task_queue=TaskQueues.CPU,
-                        start_to_close_timeout=timedelta(minutes=10),
-                    )
-                    for inference_result_batch in inference_results
-                ]
+            for a in preprocess_args
+        )
+        logger.info("preprocessing files...")
+        preprocessed_batches = await gather(*preprocessing_acts)
+        inference_args = zip(
+            preprocessed_batches, repeat(config.inference), strict=False
+        )
+        logger.info("preprocessing complete !")
+        # Inference
+        inference_acts = [
+            execute_activity(
+                ASRActivities.infer,
+                task_queue=TaskQueues.INFERENCE_CPU,
+                args=b,
+                # TODO: in practice we should parse the config to find out
+                start_to_close_timeout=timedelta(seconds=TEN_MINUTES),
             )
-
-            serialized_transcriptions = []
-
-            # drop unnecessary fields, serialize
-            for trans in flatten(transcriptions):
-                transcription = trans.model_dump()
-
-                del transcription["input_ordering"]
-
-                serialized_transcriptions.append(transcription)
-
-            workflow.logger.info("Postprocessing complete")
-
-            # TODO: Output formatting; do we want to keep PreprocessedInput metadata
-            #  and remap results to it?
-            return ASRResponse(
-                status=WorkerResponseStatus.SUCCESS,
-                transcriptions=serialized_transcriptions,
+            for b in inference_args
+        ]
+        logger.info("running inference...")
+        inference_results = await gather(*inference_acts)
+        logger.info("inference complete !")
+        # Postprocessing
+        postprocessing_ins = list(
+            zip(
+                inference_results,
+                batched_input_paths,
+                repeat(config.postprocessing),
+                repeat(inputs.project),
+                strict=False,
             )
-        except ValueError as e:
-            workflow.logger.exception(e)
-            return ASRResponse(status=WorkerResponseStatus.ERROR, error=str(e))
+        )
+        postprocessing_acts = [
+            execute_activity(
+                ASRActivities.postprocess,
+                args=i,
+                start_to_close_timeout=timedelta(seconds=TEN_MINUTES),
+                task_queue=TaskQueues.CPU,
+            )
+            for i in postprocessing_ins
+        ]
+        logger.info("running postprocessing...")
+        await gather(*postprocessing_acts)
+        logger.info("postprocessing complete !")
+        return ASRResponse(n_transcribed=len(inputs.paths))
+
+
+REGISTRY = [ASRWorkflow]

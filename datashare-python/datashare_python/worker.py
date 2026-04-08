@@ -31,6 +31,7 @@ _ACTIVITY_THREAD_NAME_PREFIX = "datashare-activity-worker-"
 def datashare_worker(
     client: TemporalClient,
     *,
+    worker_id: str | None = None,
     workflows: list[type] | None = None,
     activities: list[Activity] | None = None,
     task_queue: str,
@@ -43,7 +44,7 @@ def datashare_worker(
     if activities is None:
         activities = []
     are_async = [a.__temporal_activity_definition.is_async for a in activities]
-    if all(not a for a in are_async):
+    if are_async and all(not a for a in are_async):
         activity_executor = ThreadPoolExecutor(
             thread_name_prefix=_ACTIVITY_THREAD_NAME_PREFIX
         )
@@ -60,6 +61,7 @@ def datashare_worker(
 
     return Worker(
         client,
+        identity=worker_id,
         workflows=workflows,
         activities=activities,
         task_queue=task_queue,

@@ -9,10 +9,6 @@ from datashare_python.types_ import ProgressRateHandler
 from datashare_python.utils import (
     ActivityWithProgress,
     activity_defn,
-    async_batches,
-    batches,
-    before_and_after,
-    once,
     to_raw_progress,
     to_scaled_progress,
 )
@@ -38,6 +34,7 @@ from icij_common.es import (
     has_id,
     must_not,
 )
+from icij_common.iter_utils import async_batches, batches, before_and_after, once
 from temporalio import activity
 from temporalio.client import Client
 from transformers import Pipeline, pipeline

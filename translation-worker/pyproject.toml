@@ -32,7 +32,6 @@ dependencies = [
     "argostranslate>=1.11.0",
     "temporalio>=1.22.0",
     "pycountry~=26.2.16",
-    "icij-common[elasticsearch]~=0.7.3",
 ]
 
 [project.entry-points."datashare.workflows"]

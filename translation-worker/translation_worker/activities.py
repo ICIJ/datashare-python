@@ -9,14 +9,7 @@ from typing import Any
 from aiostream.stream import chain
 from datashare_python.objects import Document
 from datashare_python.types_ import ProgressRateHandler
-from datashare_python.utils import (
-    ActivityWithProgress,
-    activity_defn,
-    async_iterable,
-    before_and_after,
-    once,
-    to_raw_progress,
-)
+from datashare_python.utils import ActivityWithProgress, activity_defn, to_raw_progress
 from elasticsearch._async.helpers import async_bulk
 from icij_common.es import (
     BOOL,
@@ -30,6 +23,7 @@ from icij_common.es import (
     has_id,
     must_not,
 )
+from icij_common.iter_utils import before_and_after, once
 from temporalio import activity
 from temporalio.client import Client
 
@@ -224,7 +218,7 @@ async def translate_docs(
     seen = 0
     total = 0
 
-    async for doc_id_batch in async_iterable(doc_id_batches):
+    for doc_id_batch in doc_id_batches:
         sentences_batches = _get_doc_contents_and_split_on_sentences(
             es_client,
             project,
