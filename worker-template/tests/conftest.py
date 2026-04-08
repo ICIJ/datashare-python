@@ -32,10 +32,8 @@ from datashare_python.dependencies import (
     with_dependencies,
 )
 from datashare_python.types_ import ContextManagerFactory
-from datashare_python.worker import datashare_worker
-from icij_common.es import ESClient
+from datashare_python.worker import bootstrap_worker
 from temporalio.client import Client as TemporalClient
-from temporalio.worker import Worker
 from worker_template.activities import (
     ClassifyDocs,
     CreateClassificationBatches,
@@ -80,87 +78,75 @@ async def lifetime_deps(
 
 @pytest.fixture(scope="session")
 async def io_worker(
-    test_es_client_session: ESClient,  # noqa: F811
+    test_worker_config: WorkerConfig,  # noqa: F811
     test_temporal_client_session: TemporalClient,  # noqa: F811
     event_loop: asyncio.AbstractEventLoop,  # noqa: F811
+    test_deps: list[ContextManagerFactory],  # noqa: F811
 ) -> AsyncGenerator[Worker, None]:
-    es_client = test_es_client_session
-    temporal_client = test_temporal_client_session
+    client = test_temporal_client_session
     worker_id = f"test-io-worker-{uuid.uuid4()}"
-    pong_activity = Pong(temporal_client=temporal_client, event_loop=event_loop)
-    activities = CreateTranslationBatches(
-        es_client=es_client,
-        temporal_client=temporal_client,
-        event_loop=event_loop,
-    )
+    pong_activity = Pong(temporal_client=client, event_loop=event_loop)
     io_activities = [
         pong_activity.pong,
-        activities.create_translation_batches,
-        CreateClassificationBatches(
-            es_client=es_client,
-            temporal_client=temporal_client,
-            event_loop=event_loop,
-        ).create_classification_batches,
+        CreateTranslationBatches.create_translation_batches,
+        CreateClassificationBatches.create_classification_batches,
     ]
     workflows = [PingWorkflow, TranslateAndClassifyWorkflow]
-    worker = datashare_worker(
-        temporal_client,
-        task_queue=TaskQueues.IO,
-        workflows=workflows,
+    task_queue = TaskQueues.CPU
+    async with bootstrap_worker(
+        worker_id,
         activities=io_activities,
-        worker_id=worker_id,
-    )
-    async with worker:
+        workflows=workflows,
+        bootstrap_config=test_worker_config,
+        client=client,
+        event_loop=event_loop,
+        task_queue=task_queue,
+        dependencies=test_deps,
+    ) as worker:
         yield worker
 
 
 @pytest.fixture(scope="session")
 async def translation_worker(
-    test_es_client_session: ESClient,  # noqa: F811
+    test_worker_config: WorkerConfig,  # noqa: F811
     test_temporal_client_session: TemporalClient,  # noqa: F811
     event_loop: asyncio.AbstractEventLoop,  # noqa: F811
-) -> AsyncGenerator[Worker, None]:
-    es_client = test_es_client_session
-    temporal_client = test_temporal_client_session
+    test_deps: list[ContextManagerFactory],  # noqa: F811
+) -> AsyncGenerator[None, None]:
+    client = test_temporal_client_session
     worker_id = f"test-translation-worker-{uuid.uuid4()}"
-    translation_activities = [
-        TranslateDocs(
-            es_client=es_client,
-            temporal_client=temporal_client,
-            event_loop=event_loop,
-        ).translate_docs,
-    ]
-    worker = datashare_worker(
-        temporal_client,
-        worker_id=worker_id,
-        task_queue=TaskQueues.TRANSLATE_GPU,
+    translation_activities = [TranslateDocs.translate_docs]
+    task_queue = TaskQueues.TRANSLATE_GPU
+    async with bootstrap_worker(
+        worker_id,
         activities=translation_activities,
-    )
-    async with worker:
+        bootstrap_config=test_worker_config,
+        client=client,
+        event_loop=event_loop,
+        task_queue=task_queue,
+        dependencies=test_deps,
+    ) as worker:
         yield worker
 
 
 @pytest.fixture(scope="session")
 async def classification_worker(
-    test_es_client_session: ESClient,  # noqa: F811
+    test_worker_config: WorkerConfig,
     test_temporal_client_session: TemporalClient,  # noqa: F811
     event_loop: asyncio.AbstractEventLoop,  # noqa: F811
-) -> AsyncGenerator[Worker, None]:
-    es_client = test_es_client_session
-    temporal_client = test_temporal_client_session
+    test_deps: list[ContextManagerFactory],  # noqa: F811
+) -> AsyncGenerator[None, None]:
+    client = test_temporal_client_session
     worker_id = f"test-classification-worker-{uuid.uuid4()}"
-    classification_activities = [
-        ClassifyDocs(
-            es_client=es_client,
-            temporal_client=temporal_client,
-            event_loop=event_loop,
-        ).classify_docs,
-    ]
-    worker = datashare_worker(
-        temporal_client,
-        worker_id=worker_id,
-        task_queue=TaskQueues.CLASSIFY_GPU,
+    classification_activities = [ClassifyDocs.classify_docs]
+    task_queue = TaskQueues.CLASSIFY_GPU
+    async with bootstrap_worker(
+        worker_id,
         activities=classification_activities,
-    )
-    async with worker:
+        bootstrap_config=test_worker_config,
+        client=client,
+        event_loop=event_loop,
+        task_queue=task_queue,
+        dependencies=test_deps,
+    ) as worker:
         yield worker

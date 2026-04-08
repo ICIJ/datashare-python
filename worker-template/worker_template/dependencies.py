@@ -1,10 +1,9 @@
 from datashare_python.dependencies import (
+    lifespan_es_client,  # noqa: F401
     set_es_client,
-    set_event_loop,
     set_loggers,
-    set_temporal_client,
 )
 
-BASE = [set_loggers, set_event_loop, set_es_client, set_temporal_client]
+BASE = [set_loggers, set_es_client]
 
 DEPENDENCIES = {"base": BASE}
