@@ -4,7 +4,13 @@ from icij_common.es import ESClient
 from icij_common.pydantic_utils import ICIJSettings
 from pydantic import Field, PrivateAttr
 from pydantic_settings import SettingsConfigDict
-from temporalio.contrib.pydantic import pydantic_data_converter
+from temporalio.contrib.pydantic import PydanticJSONPlainPayloadConverter, ToJsonOptions
+from temporalio.converter import (
+    CompositePayloadConverter,
+    DataConverter,
+    DefaultPayloadConverter,
+    JSONPlainPayloadConverter,
+)
 
 import datashare_python
 
@@ -64,7 +70,7 @@ class TemporalClientConfig(BaseModel):
             self._client = await TemporalClient.connect(
                 target_host=self.host,
                 namespace=self.namespace,
-                data_converter=pydantic_data_converter,
+                data_converter=PYDANTIC_DATA_CONVERTER,
             )
         return self._client
 
@@ -91,3 +97,23 @@ class WorkerConfig(ICIJSettings, LogWithWorkerIDMixin, BaseModel):
 
     async def to_temporal_client(self) -> TemporalClient:
         return await self.temporal.to_client()
+
+
+class _PydanticPayloadConverter(CompositePayloadConverter):
+    def __init__(self) -> None:
+        json_payload_converter = PydanticJSONPlainPayloadConverter(
+            ToJsonOptions(exclude_unset=False)
+        )
+        super().__init__(
+            *(
+                c
+                if not isinstance(c, JSONPlainPayloadConverter)
+                else json_payload_converter
+                for c in DefaultPayloadConverter.default_encoding_payload_converters
+            )
+        )
+
+
+PYDANTIC_DATA_CONVERTER = DataConverter(
+    payload_converter_class=_PydanticPayloadConverter
+)

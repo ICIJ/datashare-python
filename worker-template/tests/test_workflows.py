@@ -35,7 +35,7 @@ async def test_ping_workflow_e2e(
         PingWorkflow,
         args,
         id=wf_id,
-        task_queue=TaskQueues.CPU,
+        task_queue=TaskQueues.IO,
         request_eager_start=True,
     )
 
@@ -49,7 +49,7 @@ async def test_ping_e2e(
     test_task_client: DatashareTaskClient,
 ) -> None:
     # Given
-    task_group = TaskQueues.CPU
+    task_group = TaskQueues.IO
     # When
     ping_task_id = await test_task_client.create_task("ping", dict(), group=task_group)
     # Then
@@ -89,7 +89,7 @@ async def test_translate_and_classify_workflow_e2e(
         TranslateAndClassifyWorkflow.run,
         payload,
         id=wf_id,
-        task_queue=TaskQueues.CPU,
+        task_queue=TaskQueues.IO,
     )
 
     # Then

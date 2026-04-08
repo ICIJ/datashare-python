@@ -1,8 +1,13 @@
-from collections.abc import AsyncGenerator, AsyncIterable, AsyncIterator
+import uuid
+from datetime import timedelta
 
-from aiostream.stream import chain
-from datashare_python.utils import before_and_after, once, positional_args_only
-from temporalio import activity
+import pytest
+from datashare_python.types_ import TemporalClient
+from datashare_python.utils import activity_defn, positional_args_only
+from datashare_python.worker import datashare_worker
+from temporalio import activity, workflow
+from temporalio.client import WorkflowFailureError
+from temporalio.exceptions import ApplicationError
 
 
 @positional_args_only
@@ -20,27 +25,38 @@ def test_keyword_safe_activity() -> None:
         ) from e
 
 
-async def _num_gen() -> AsyncGenerator[int, None]:
-    for i in range(10):
-        yield i // 3
+@activity_defn(name="non_retriable")
+async def non_retriable() -> None:
+    raise ValueError("non retriable error occurred")
 
 
-async def test_before_and_after() -> None:
+@workflow.defn(name="non_retriable_workflow")
+class NonRetriableWorkflow:
+    @workflow.run
+    async def run(self) -> None:
+        await workflow.execute_activity(
+            non_retriable,
+            task_queue="io",
+            schedule_to_close_timeout=timedelta(seconds=30),
+        )
+
+
+async def test_retriable(test_temporal_client_session: TemporalClient) -> None:
     # Given
-    async def group_by_iterator(
-        items: AsyncIterable[int],
-    ) -> AsyncIterator[AsyncIterator[int]]:
-        while True:
-            try:
-                next_item = await anext(aiter(items))
-            except StopAsyncIteration:
-                return
-            gr, items = before_and_after(items, lambda x, next_i=next_item: x == next_i)
-            yield chain(once(next_item), gr)
-
-    # When
-    grouped = []
-    async for group in group_by_iterator(_num_gen()):
-        group = [item async for item in group]  # noqa: PLW2901
-        grouped.append(group)
-    assert grouped == [[0, 0, 0], [1, 1, 1], [2, 2, 2], [3]]
+    client = test_temporal_client_session
+    workflow_id = f"workflow_{uuid.uuid4().hex}"
+    worker = datashare_worker(
+        client,
+        task_queue="io",
+        workflows=[NonRetriableWorkflow],
+        activities=[non_retriable],
+    )
+    async with worker:
+        with pytest.raises(WorkflowFailureError) as ctx:
+            await client.execute_workflow(
+                NonRetriableWorkflow.run, id=workflow_id, task_queue="io"
+            )
+        cause = ctx.value.cause.__cause__
+        assert isinstance(cause, ApplicationError)
+        assert cause.message == "non retriable error occurred"
+        assert cause.non_retryable

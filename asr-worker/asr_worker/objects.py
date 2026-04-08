@@ -1,6 +1,6 @@
 from enum import StrEnum
 
-from datashare_python.objects import BasePayload, WorkerResponse
+from datashare_python.objects import BasePayload
 from pydantic import BaseModel, Field
 
 from .constants import ASR_CPU_TASK_QUEUE, ASR_GPU_TASK_QUEUE, PARAKEET
@@ -35,13 +35,9 @@ class ASRPipelineConfig(BaseModel):
 
 
 class ASRRequest(BasePayload):
-    """Inputs to ASR workflow"""
-
     file_paths: list[str]
     pipeline: ASRPipelineConfig
 
 
-class ASRResponse(WorkerResponse):
-    """ASR workflow response"""
-
+class ASRResponse(BasePayload):
     transcriptions: list[dict] = Field(default_factory=list)
