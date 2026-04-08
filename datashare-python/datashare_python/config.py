@@ -89,6 +89,8 @@ class WorkerConfig(ICIJSettings, LogWithWorkerIDMixin, BaseModel):
     elasticsearch: ESClientConfig = ESClientConfig()
     temporal: TemporalClientConfig = TemporalClientConfig()
 
+    max_concurrent_io_activities: int = 5
+
     def to_es_client(self) -> ESClient:
         return self.elasticsearch.to_es_client(self.datashare.api_key)
 

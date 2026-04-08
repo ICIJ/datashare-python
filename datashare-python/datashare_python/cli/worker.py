@@ -1,7 +1,5 @@
 import asyncio
 import logging
-from collections.abc import AsyncGenerator
-from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Annotated
 
@@ -10,10 +8,9 @@ import yaml
 
 from datashare_python.config import WorkerConfig
 from datashare_python.constants import DEFAULT_NAMESPACE, DEFAULT_TEMPORAL_ADDRESS
-from datashare_python.dependencies import with_dependencies
 from datashare_python.discovery import discover, discover_activities, discover_workflows
 from datashare_python.types_ import TemporalClient
-from datashare_python.worker import create_worker_id, datashare_worker, init_activity
+from datashare_python.worker import bootstrap_worker, create_worker_id
 
 from .utils import AsyncTyper
 
@@ -34,10 +31,6 @@ _START_WORKER_CONFIG_PATH_HELP = (
     " if not provided will load worker configuration from env variables"
 )
 _WORKER_QUEUE_HELP = "worker task queue"
-_WORKER_MAX_ACTIVITIES_HELP = (
-    "maximum number of concurrent activities/tasks"
-    " concurrently run by the worker. Defaults to 1 to encourage horizontal scaling."
-)
 _TEMPORAL_NAMESPACE_HELP = "worker temporal namespace"
 
 _TEMPORAL_URL_HELP = "address for temporal server"
@@ -104,9 +97,6 @@ async def start(
     namespace: Annotated[
         str, typer.Option("--temporal-namespace", "-ns", help=_TEMPORAL_NAMESPACE_HELP)
     ] = DEFAULT_NAMESPACE,
-    max_concurrent_activities: Annotated[
-        int, typer.Option("--max-activities", help=_WORKER_MAX_ACTIVITIES_HELP)
-    ] = 1,
 ) -> None:
     if config_path is not None:
         with config_path.open() as f:
@@ -115,37 +105,24 @@ async def start(
             )
     else:
         bootstrap_config = WorkerConfig()
-    wfs, acts, deps = discover(workflows, act_names=activities, deps_name=dependencies)
-    worker_id = create_worker_id(worker_id_prefix or "worker")
-    event_loop = asyncio.get_event_loop()
-    deps_cm = (
-        with_dependencies(
-            deps,
-            worker_config=bootstrap_config,
-            worker_id=worker_id,
-            event_loop=event_loop,
-        )
-        if deps
-        else _do_nothing_cm
+    registered_wfs, registered_acts, registered_deps = discover(
+        workflows, act_names=activities, deps_name=dependencies
     )
-    async with deps_cm:
-        client = await TemporalClient.connect(temporal_address, namespace=namespace)
-        acts = [init_activity(a, client=client, event_loop=event_loop) for a in acts]
-        worker = datashare_worker(
-            client,
-            worker_id,
-            workflows=wfs,
-            activities=acts,
-            task_queue=queue,
-            max_concurrent_activities=max_concurrent_activities,
-        )
+    worker_id = create_worker_id(worker_id_prefix or "worker")
+    client = await TemporalClient.connect(temporal_address, namespace=namespace)
+    event_loop = asyncio.get_event_loop()
+    async with bootstrap_worker(
+        worker_id,
+        activities=registered_acts,
+        workflows=registered_wfs,
+        dependencies=registered_deps,
+        bootstrap_config=bootstrap_config,
+        client=client,
+        event_loop=event_loop,
+        task_queue=queue,
+    ) as worker:
         try:
             await worker.run()
         except Exception as e:  # noqa: BLE001
             await worker.shutdown()
             raise e
-
-
-@asynccontextmanager
-async def _do_nothing_cm() -> AsyncGenerator[None, None]:
-    yield
