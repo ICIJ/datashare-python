@@ -147,20 +147,6 @@ services:
     networks:
       - datashare-network
 
-  datashare-workers:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      platforms:
-        - linux/amd64
-      args:
-        PREDOWNLOAD_MODELS: true
-    depends_on:
-      - temporal
-    volumes:
-      - ${PWD}/.data/temporal:/temporal/data
-    networks:
-      - datashare-network
   ############################
   # datashare
   ############################
@@ -196,10 +182,6 @@ services:
       TEMPORAL_ADDRESS: http://temporal:7233
     ports:
       - "8080:8080"
-    volumes:
-      - type: bind
-        source: ${PWD}/.data/datashare
-        target: /home/datashare/Datashare
     networks:
       - datashare-network
     command: >-
