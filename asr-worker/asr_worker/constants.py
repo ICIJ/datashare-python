@@ -20,7 +20,7 @@ TRANSCRIPTION_METADATA_VALUE = "transcription.json"
 ASR_WORKFLOW = "asr.transcription"
 GET_CONFIG_ACTIVITY = "asr.transcription.config"
 PREPROCESS_ACTIVITY = "asr.transcription.preprocess"
-SEARCH_AUDIOS_ACTIVITY = "asr.transcription.search_audios"
+SEARCH_AUDIOS_ACTIVITY = "asr.transcription.search-audios"
 RUN_INFERENCE_ACTIVITY = "asr.transcription.infer"
 POSTPROCESS_ACTIVITY = "asr.transcription.postprocess"
 

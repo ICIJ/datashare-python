@@ -18,7 +18,7 @@ _ASR_INPUTS_TYPE_ADAPTER = TypeAdapter(ASRInputs)
 
 class TaskQueues(StrEnum):
     IO = "asr.io"
-    CPU = "asr.processing.cpu"
+    CPU = "asr.preprocessing.cpu"
     INFERENCE_GPU = "asr.inference.gpu"
     INFERENCE_CPU = "asr.inference.cpu"
 
@@ -67,7 +67,7 @@ class ASRWorkflow(WorkflowWithProgress):
         inference_acts = [
             execute_activity(
                 ASRActivities.infer,
-                task_queue=TaskQueues.INFERENCE_CPU,
+                task_queue=TaskQueues.INFERENCE_GPU,
                 args=b,
                 # TODO: in practice we should parse the config to find out
                 start_to_close_timeout=timedelta(seconds=TEN_MINUTES),

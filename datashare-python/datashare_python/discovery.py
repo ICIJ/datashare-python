@@ -58,7 +58,7 @@ def discover(
         if wf_names:
             msg += "workflow patterns " + ", ".join(wf_names) + " "
         if act_names:
-            msg = "activity patterns " + ", ".join(act_names)
+            msg += "activity patterns " + ", ".join(act_names)
         raise ValueError(msg)
     deps = None
     if deps_name is not None:
