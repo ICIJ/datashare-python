@@ -5,10 +5,9 @@ from typing import Annotated
 
 import typer
 import yaml
-from config import TemporalClientConfig
 from icij_common.pydantic_utils import safe_copy
 
-from datashare_python.config import WorkerConfig
+from datashare_python.config import TemporalClientConfig, WorkerConfig
 from datashare_python.discovery import discover, discover_activities, discover_workflows
 from datashare_python.worker import bootstrap_worker, create_worker_id
 
