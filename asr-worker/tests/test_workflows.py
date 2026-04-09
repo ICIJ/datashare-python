@@ -196,14 +196,14 @@ async def mock_cpu_bound_worker(
 
 
 @pytest.fixture
-async def mock_cpu_inference_worker(
+async def mock_gpu_inference_worker(
     test_temporal_client_session: TemporalClient,
     test_worker_config: WorkerConfig,
     event_loop: AbstractEventLoop,  # noqa: F811
 ) -> AsyncGenerator[None, None]:
     client = test_temporal_client_session
     activities = MockedASRActivities(client, event_loop)
-    task_queue = TaskQueues.INFERENCE_CPU
+    task_queue = TaskQueues.INFERENCE_GPU
     worker_id = f"worker-{uuid.uuid4()}"
     async with (
         bootstrap_worker(
@@ -245,7 +245,7 @@ async def cpu_bound_worker(
 
 
 @pytest.fixture
-async def cpu_inference_worker(
+async def gpu_inference_worker(
     worker_lifetime_deps: list[ContextManagerFactory],  # noqa: ARG001
     mocked_worker_config_in_env: ASRWorkerConfig,  # noqa: ARG001
     test_temporal_client_session: TemporalClient,
@@ -254,7 +254,7 @@ async def cpu_inference_worker(
     client = test_temporal_client_session
     activities = ASRActivities(client, event_loop)
     worker_id = f"worker-{uuid.uuid4()}"
-    task_queue = TaskQueues.INFERENCE_CPU
+    task_queue = TaskQueues.INFERENCE_GPU
     async with (
         bootstrap_worker(
             worker_id,
@@ -290,7 +290,7 @@ _EXPECTED_TRANSCRIPTION_1 = Transcription(
 async def test_asr_workflow(
     test_temporal_client_session: TemporalClient,
     mock_cpu_bound_worker: Worker,  # noqa: ARG001
-    mock_cpu_inference_worker: Worker,  # noqa: ARG001
+    mock_gpu_inference_worker: Worker,  # noqa: ARG001
     io_bound_worker: Worker,  # noqa: ARG001
     mocked_worker_config_in_env: ASRWorkerConfig,
 ) -> None:
@@ -351,7 +351,7 @@ def with_audios(mocked_worker_config_in_env: ASRWorkerConfig) -> list[Path]:
 async def test_asr_workflow_e2e(
     test_temporal_client_session: TemporalClient,
     cpu_bound_worker: Worker,  # noqa: ARG001
-    cpu_inference_worker: Worker,  # noqa: ARG001
+    gpu_inference_worker: Worker,  # noqa: ARG001
     io_bound_worker: Worker,  # noqa: ARG001
     mocked_worker_config_in_env: ASRWorkerConfig,  # noqa: ARG001
     with_audios: list[Path],

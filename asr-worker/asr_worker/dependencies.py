@@ -24,5 +24,5 @@ def set_multiprocessing_start_method(**_) -> Generator[None, None, None]:
 
 REGISTRY = {
     "inference": [set_multiprocessing_start_method],
-    "search": [set_es_client],
+    "io": [set_es_client],
 }

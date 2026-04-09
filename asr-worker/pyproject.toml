@@ -26,17 +26,26 @@ authors = [
 readme = "README.md"
 requires-python = ">=3.11.0, <3.14"
 dependencies = [
+    "caul==0.2.15",
+    "datashare-python~=0.3.0",
+]
+
+[project.optional-dependencies]
+preprocessing = [
+    "torchaudio==2.10.0",
+    "torchcodec==0.10.0",
+]
+inference = [
     "caul[nemo]==0.2.15",
     "kaldialign==0.9.3",
-    "datashare-python~=0.3.0",
     "ml-dtypes==0.5.4",
     "numpy==2.3.0",
     "pyarrow==20.0.0",
-    "temporalio==1.23.0",
     "torchaudio==2.10.0",
     "torch==2.10.0",
     "torchcodec==0.10.0",
 ]
+
 [project.entry-points."datashare.workflows"]
 workflows = "asr_worker.workflows:REGISTRY"
 

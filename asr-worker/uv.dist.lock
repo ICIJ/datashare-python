@@ -235,7 +235,7 @@ dev = [
 requires-dist = [
     { name = "caul", specifier = "==0.2.15" },
     { name = "caul", extras = ["nemo"], marker = "extra == 'inference'", specifier = "==0.2.15" },
-    { name = "datashare-python", editable = "../datashare-python" },
+    { name = "datashare-python", specifier = "~=0.2.25" },
     { name = "kaldialign", marker = "extra == 'inference'", specifier = "==0.9.3" },
     { name = "ml-dtypes", marker = "extra == 'inference'", specifier = "==0.5.4" },
     { name = "numpy", marker = "extra == 'inference'", specifier = "==2.3.0" },
@@ -740,7 +740,7 @@ wheels = [
 [[package]]
 name = "datashare-python"
 version = "0.2.26"
-source = { editable = "../datashare-python" }
+source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiohttp", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
     { name = "alive-progress", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
@@ -753,34 +753,9 @@ dependencies = [
     { name = "tomlkit", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
     { name = "typer", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
 ]
-
-[package.metadata]
-requires-dist = [
-    { name = "aiohttp", specifier = "~=3.11.9" },
-    { name = "alive-progress", specifier = "~=3.2.0" },
-    { name = "hatchling", specifier = "~=1.27.0" },
-    { name = "icij-common", extras = ["elasticsearch"], specifier = "~=0.8.2" },
-    { name = "nest-asyncio", specifier = "~=1.6.0" },
-    { name = "python-json-logger", specifier = "~=4.0.0" },
-    { name = "pyyaml", specifier = "~=6.0" },
-    { name = "temporalio", specifier = "~=1.23.0" },
-    { name = "tomlkit", specifier = "~=0.14.0" },
-    { name = "typer", specifier = "~=0.15.4" },
-]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "datashare-worker-template", extras = ["ml"], editable = "../worker-template" },
-    { name = "hatch-build", specifier = "~=0.5.0" },
-    { name = "nest-asyncio", specifier = "~=1.6.0" },
-    { name = "pre-commit", specifier = "~=4.5.1" },
-    { name = "psutil", specifier = "~=6.1.0" },
-    { name = "pylint", specifier = "~=3.1.0" },
-    { name = "pytest", specifier = "~=8.1" },
-    { name = "pytest-asyncio", specifier = "~=0.24" },
-    { name = "redis", extras = ["hiredis"], specifier = "~=5.2.1" },
-    { name = "ruff", specifier = "==0.15.2" },
-    { name = "typing-extensions", specifier = "~=4.15.0" },
+sdist = { url = "https://files.pythonhosted.org/packages/6a/00/a9c803494eec8b8599b81ed3f4701f8a0b16716be8f1660eca19d8598f6c/datashare_python-0.2.26.tar.gz", hash = "sha256:8f08757230e7eecd4f10d42f06c2df576ce4b6e784d158a8f34c8dae5425a84b", size = 167254, upload-time = "2026-04-09T13:47:41.98Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/49/66/1d3552bbf13cc270a2fea327006c9aa787e6be2cea3e5bb19a59a597bc9a/datashare_python-0.2.26-py3-none-any.whl", hash = "sha256:640b53e7819008342ec0baf6797852490ee96010be7481c9ead8acd6d6109e9e", size = 172736, upload-time = "2026-04-09T13:47:40.631Z" },
 ]
 
 [[package]]
