@@ -1,6 +1,6 @@
 [project]
 name = "datashare-worker-template"
-version = "0.1.5"
+version = "0.1.6"
 description = "Datashare worker template"
 authors = [
   { name = "Clément Doumouro", email = "cdoumouro@icij.org" },
