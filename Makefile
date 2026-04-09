@@ -1,3 +1,6 @@
+lock-dist:
+	./scripts/lock-dist.sh ${project}
+
 create-venv:
 	[ -d .venv ] || uv venv --python 3.13
 
