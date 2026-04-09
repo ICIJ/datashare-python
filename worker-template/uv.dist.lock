@@ -316,11 +316,12 @@ wheels = [
 
 [[package]]
 name = "datashare-python"
-version = "0.5.0"
+version = "0.2.25"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiohttp" },
     { name = "alive-progress" },
+    { name = "datashare-worker-template", extra = ["ml"] },
     { name = "hatchling" },
     { name = "icij-common", extra = ["elasticsearch"] },
     { name = "nest-asyncio" },
@@ -330,14 +331,14 @@ dependencies = [
     { name = "tomlkit" },
     { name = "typer" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/45/24/e7b782f222ede0ccdfca04c977602c7e3c94ee4df10b87548a58943ef098/datashare_python-0.5.0.tar.gz", hash = "sha256:346a6767db42dab48c11bbe2bd98b9a878609667941386ee2c0d5bd7f361c281", size = 300042, upload-time = "2026-04-15T15:32:54.153Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/7a/64/9ef89e44cce671958b0856bc97bc6f616c16874dab0f92529810d6160f49/datashare_python-0.2.25.tar.gz", hash = "sha256:678bd45d3ff7939a8fcb0b42a4445748efde60885c0e4967a24f7605b7338439", size = 167262, upload-time = "2026-04-09T12:24:05.759Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/b3/1f/28a777b8ef32539154e2059a0ed34a74b47cc6761426cf9dbbd8cfeaa21f/datashare_python-0.5.0-py3-none-any.whl", hash = "sha256:2e8c662b8ddad4bce8a94594c47bee3152924b7893509c589a3c99f8f505c6ed", size = 305446, upload-time = "2026-04-15T15:32:53.03Z" },
+    { url = "https://files.pythonhosted.org/packages/26/6b/6bd3396f994e4b66beb6a660eaa02caed0a365ed7e45a06030a33575e33d/datashare_python-0.2.25-py3-none-any.whl", hash = "sha256:f0526dee0f1fea9521a3ff7858ff06f4fb0c6a775ad573b561ef070cb7064fb1", size = 172759, upload-time = "2026-04-09T12:24:04.425Z" },
 ]
 
 [[package]]
 name = "datashare-worker-template"
-version = "0.1.6"
+version = "0.1.5"
 source = { editable = "." }
 dependencies = [
     { name = "datashare-python" },
@@ -370,7 +371,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "datashare-python", specifier = "~=0.5.0" },
+    { name = "datashare-python", specifier = "~=0.2.25" },
     { name = "pycountry", specifier = "~=26.2.16" },
     { name = "sentencepiece", marker = "extra == 'ml'", specifier = "~=0.2.1" },
     { name = "temporalio", specifier = "~=1.23.0" },
