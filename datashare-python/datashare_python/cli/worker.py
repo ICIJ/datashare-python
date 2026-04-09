@@ -5,11 +5,11 @@ from typing import Annotated
 
 import typer
 import yaml
+from config import TemporalClientConfig
+from icij_common.pydantic_utils import safe_copy
 
 from datashare_python.config import WorkerConfig
-from datashare_python.constants import DEFAULT_NAMESPACE, DEFAULT_TEMPORAL_ADDRESS
 from datashare_python.discovery import discover, discover_activities, discover_workflows
-from datashare_python.types_ import TemporalClient
 from datashare_python.worker import bootstrap_worker, create_worker_id
 
 from .utils import AsyncTyper
@@ -92,11 +92,12 @@ async def start(
         str | None, typer.Option(help=_START_WORKER_WORKER_ID_PREFIX_HELP)
     ] = None,
     temporal_address: Annotated[
-        str, typer.Option("--temporal-address", "-a", help=_TEMPORAL_URL_HELP)
-    ] = DEFAULT_TEMPORAL_ADDRESS,
+        str | None, typer.Option("--temporal-address", "-a", help=_TEMPORAL_URL_HELP)
+    ] = None,
     namespace: Annotated[
-        str, typer.Option("--temporal-namespace", "-ns", help=_TEMPORAL_NAMESPACE_HELP)
-    ] = DEFAULT_NAMESPACE,
+        str | None,
+        typer.Option("--temporal-namespace", "-ns", help=_TEMPORAL_NAMESPACE_HELP),
+    ] = None,
 ) -> None:
     if config_path is not None:
         with config_path.open() as f:
@@ -105,11 +106,20 @@ async def start(
             )
     else:
         bootstrap_config = WorkerConfig()
+    temporal_override = dict()
+    if temporal_address is not None:
+        temporal_override["host"] = temporal_address
+    if namespace is not None:
+        temporal_override["namespace"] = namespace
+    if temporal_override:
+        temporal_config = TemporalClientConfig(**temporal_override)
+        update = {"temporal": temporal_config}
+        bootstrap_config = safe_copy(bootstrap_config, update=update)
     registered_wfs, registered_acts, registered_deps = discover(
         workflows, act_names=activities, deps_name=dependencies
     )
     worker_id = create_worker_id(worker_id_prefix or "worker")
-    client = await TemporalClient.connect(temporal_address, namespace=namespace)
+    client = await bootstrap_config.to_temporal_client()
     event_loop = asyncio.get_event_loop()
     async with bootstrap_worker(
         worker_id,

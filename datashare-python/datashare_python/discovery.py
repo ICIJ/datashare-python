@@ -31,23 +31,28 @@ def discover(
     discovered = ""
     wfs = None
     if wf_names is not None:
-        wf_names, wfs = zip(*discover_workflows(wf_names), strict=True)
-        if wf_names:
-            n_wfs = len(wf_names)
-            discovered += (
-                f"- {n_wfs} workflow{'s' if n_wfs > 1 else ''}: {', '.join(wf_names)}"
-            )
+        discovered_wfs = discover_workflows(wf_names)
+        if discovered_wfs:
+            wf_names, wfs = zip(*discovered_wfs, strict=True)
+            if wf_names:
+                n_wfs = len(wf_names)
+                discovered += (
+                    f"- {n_wfs} workflow{'s' if n_wfs > 1 else ''}:"
+                    f" {', '.join(wf_names)}"
+                )
     acts = None
     if act_names is not None:
-        act_names, acts = zip(*discover_activities(act_names), strict=True)
-        if act_names:
-            if discovered:
-                discovered += "\n"
-            n_acts = len(act_names)
-            discovered += (
-                f"- {n_acts} activit{'ies' if n_acts > 1 else 'y'}:"
-                f" {', '.join(act_names)}"
-            )
+        discovered_acts = discover_activities(act_names)
+        if discovered_acts:
+            act_names, acts = zip(*discovered_acts, strict=True)
+            if act_names:
+                if discovered:
+                    discovered += "\n"
+                n_acts = len(act_names)
+                discovered += (
+                    f"- {n_acts} activit{'ies' if n_acts > 1 else 'y'}:"
+                    f" {', '.join(act_names)}"
+                )
     if not acts and not wfs:
         raise ValueError("Couldn't find any registered activity or workflow.")
     deps = discover_dependencies(deps_name)
@@ -63,9 +68,10 @@ def discover(
     return wfs, acts, deps
 
 
-def discover_workflows(names: list[str]) -> Iterable[_RegisteredWorkflow]:
+def discover_workflows(names: list[str]) -> list[_RegisteredWorkflow]:
     pattern = None if not names else re.compile(rf"^{'|'.join(names)}$")
     impls = entry_points(group=_WORKFLOW_GROUPS)
+    registered = []
     for wf_impls in impls:
         wf_impls = wf_impls.load()  # noqa: PLW2901
         if not isinstance(wf_impls, list | tuple | set):
@@ -74,12 +80,14 @@ def discover_workflows(names: list[str]) -> Iterable[_RegisteredWorkflow]:
             wf_name = _parse_wf_name(wf_impl)
             if pattern and not pattern.match(wf_name):
                 continue
-            yield wf_name, wf_impl
+            registered.append((wf_name, wf_impl))
+    return registered
 
 
-def discover_activities(names: list[str]) -> Iterable[_RegisteredActivity]:
+def discover_activities(names: list[str]) -> list[_RegisteredActivity]:
     pattern = None if not names else re.compile(rf"^{'|'.join(names)}$")
     impls = entry_points(group=_ACTIVITIES_GROUPS)
+    registered = []
     for act_impls in impls:
         act_impls = act_impls.load()  # noqa: PLW2901
         if not isinstance(act_impls, list | tuple | set):
@@ -88,7 +96,8 @@ def discover_activities(names: list[str]) -> Iterable[_RegisteredActivity]:
             act_name = _parse_activity_name(act_impl)
             if pattern and not pattern.match(act_name):
                 continue
-            yield act_name, act_impl
+            registered.append((act_name, act_impl))
+    return registered
 
 
 def discover_dependencies(name: str | None) -> _Dependencies | None:
