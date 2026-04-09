@@ -20,9 +20,9 @@ with workflow.unsafe.imports_passed_through():
 
 
 class TaskQueues(StrEnum):
-    IO = "io"
-    TRANSLATE_GPU = "translate-gpu"
-    CLASSIFY_GPU = "classify-gpu"
+    IO = "worker-template.io"
+    TRANSLATE_GPU = "worker-template.translate-gpu"
+    CLASSIFY_GPU = "worker-template.classify-gpu"
 
 
 @workflow.defn(name="translate-and-classify")

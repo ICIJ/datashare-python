@@ -317,7 +317,7 @@ wheels = [
 [[package]]
 name = "datashare-python"
 version = "0.2.25"
-source = { editable = "../datashare-python" }
+source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiohttp" },
     { name = "alive-progress" },
@@ -331,34 +331,9 @@ dependencies = [
     { name = "tomlkit" },
     { name = "typer" },
 ]
-
-[package.metadata]
-requires-dist = [
-    { name = "aiohttp", specifier = "~=3.11.9" },
-    { name = "alive-progress", specifier = "~=3.2.0" },
-    { name = "datashare-worker-template", extras = ["ml"], editable = "." },
-    { name = "hatchling", specifier = "~=1.27.0" },
-    { name = "icij-common", extras = ["elasticsearch"], specifier = "~=0.8.2" },
-    { name = "nest-asyncio", specifier = "~=1.6.0" },
-    { name = "python-json-logger", specifier = "~=4.0.0" },
-    { name = "pyyaml", specifier = "~=6.0" },
-    { name = "temporalio", specifier = "~=1.23.0" },
-    { name = "tomlkit", specifier = "~=0.14.0" },
-    { name = "typer", specifier = "~=0.15.4" },
-]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "hatch-build", specifier = "~=0.5.0" },
-    { name = "nest-asyncio", specifier = "~=1.6.0" },
-    { name = "pre-commit", specifier = "~=4.5.1" },
-    { name = "psutil", specifier = "~=6.1.0" },
-    { name = "pylint", specifier = "~=3.1.0" },
-    { name = "pytest", specifier = "~=8.1" },
-    { name = "pytest-asyncio", specifier = "~=0.24" },
-    { name = "redis", extras = ["hiredis"], specifier = "~=5.2.1" },
-    { name = "ruff", specifier = "==0.15.2" },
-    { name = "typing-extensions", specifier = "~=4.15.0" },
+sdist = { url = "https://files.pythonhosted.org/packages/7a/64/9ef89e44cce671958b0856bc97bc6f616c16874dab0f92529810d6160f49/datashare_python-0.2.25.tar.gz", hash = "sha256:678bd45d3ff7939a8fcb0b42a4445748efde60885c0e4967a24f7605b7338439", size = 167262, upload-time = "2026-04-09T12:24:05.759Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/26/6b/6bd3396f994e4b66beb6a660eaa02caed0a365ed7e45a06030a33575e33d/datashare_python-0.2.25-py3-none-any.whl", hash = "sha256:f0526dee0f1fea9521a3ff7858ff06f4fb0c6a775ad573b561ef070cb7064fb1", size = 172759, upload-time = "2026-04-09T12:24:04.425Z" },
 ]
 
 [[package]]
@@ -396,7 +371,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "datashare-python", editable = "../datashare-python" },
+    { name = "datashare-python", specifier = "~=0.2.25" },
     { name = "pycountry", specifier = "~=26.2.16" },
     { name = "sentencepiece", marker = "extra == 'ml'", specifier = "~=0.2.1" },
     { name = "temporalio", specifier = "~=1.23.0" },
