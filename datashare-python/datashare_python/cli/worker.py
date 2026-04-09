@@ -75,9 +75,13 @@ to the documentation to learn how to do so."""
 
 @worker_app.async_command(help=_START_WORKER_HELP)
 async def start(
-    workflows: Annotated[list[str], typer.Option(help=_START_WORKER_WORKFLOWS_HELP)],
-    activities: Annotated[list[str], typer.Option(help=_START_WORKER_ACTIVITIES_HELP)],
     queue: Annotated[str, typer.Option("--queue", "-q", help=_WORKER_QUEUE_HELP)],
+    workflows: Annotated[
+        list[str] | None, typer.Option(help=_START_WORKER_WORKFLOWS_HELP)
+    ] = None,
+    activities: Annotated[
+        list[str] | None, typer.Option(help=_START_WORKER_ACTIVITIES_HELP)
+    ] = None,
     dependencies: Annotated[
         str | None, typer.Option(help=_START_WORKER_DEPS_HELP)
     ] = None,
@@ -105,6 +109,9 @@ async def start(
             )
     else:
         bootstrap_config = WorkerConfig()
+    logger.info(
+        "starting worker with config: %s", bootstrap_config.model_dump_json(indent=2)
+    )
     temporal_override = dict()
     if temporal_address is not None:
         temporal_override["host"] = temporal_address

@@ -54,8 +54,15 @@ def discover(
                     f" {', '.join(act_names)}"
                 )
     if not acts and not wfs:
-        raise ValueError("Couldn't find any registered activity or workflow.")
-    deps = discover_dependencies(deps_name)
+        msg = "Couldn't find any registered activity nor workflow matching "
+        if wf_names:
+            msg += "workflow patterns " + ", ".join(wf_names) + " "
+        if act_names:
+            msg = "activity patterns " + ", ".join(act_names)
+        raise ValueError(msg)
+    deps = None
+    if deps_name is not None:
+        deps = discover_dependencies(deps_name)
     if deps:
         n_deps = len(deps)
         discovered += "\n"
@@ -100,11 +107,9 @@ def discover_activities(names: list[str]) -> list[_RegisteredActivity]:
     return registered
 
 
-def discover_dependencies(name: str | None) -> _Dependencies | None:
+def discover_dependencies(name: str) -> _Dependencies:
     impls = entry_points(name=_DEPENDENCIES, group=_DEPENDENCIES_GROUPS)
     if not impls:
-        if name is None:
-            return None
         available_impls = entry_points(group=_DEPENDENCIES_GROUPS)
         msg = (
             f'failed to find dependency: "{name}", '
@@ -115,26 +120,15 @@ def discover_dependencies(name: str | None) -> _Dependencies | None:
         msg = f'found multiple dependencies for name "{name}": {impls}'
         raise ValueError(msg)
     deps_registry = impls[_DEPENDENCIES].load()
-    if name:
-        try:
-            return deps_registry[name]
-        except KeyError as e:
-            available = list(deps_registry)
-            msg = (
-                f'failed to find dependency for name "{name}", available dependencies: '
-                f"{available}"
-            )
-            raise LookupError(msg) from e
-    if not deps_registry:
-        raise ValueError("empty dependency registry !")
-    if len(deps_registry) > 1:
-        available = ", ".join('"' + d + '"' for d in deps_registry)
+    try:
+        return deps_registry[name]
+    except KeyError as e:
+        available = list(deps_registry)
         msg = (
-            f"dependency registry contains multiples entries {available},"
-            f" please select one by providing a name"
+            f'failed to find dependency for name "{name}", available dependencies: '
+            f"{available}"
         )
-        raise ValueError(msg)
-    return next(iter(deps_registry.values()))
+        raise LookupError(msg) from e
 
 
 def _parse_wf_name(wf_type: type) -> str:

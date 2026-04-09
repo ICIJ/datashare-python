@@ -61,6 +61,7 @@ def init_project(name: str, path: Path) -> None:
     pyproject_toml = tomlkit.loads(pyproject_toml_path.read_text())
     pyproject_toml = _update_pyproject_toml(pyproject_toml, package_name=package_name)
     pyproject_toml_path.write_text(tomlkit.dumps(pyproject_toml))
+    raise NotImplementedError("implement entry point and dockerfile init")
 
 
 _BASE_DEPS = {"datashare-python", "icij-common", "temporalio"}
