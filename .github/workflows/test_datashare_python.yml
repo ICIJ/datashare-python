@@ -1,0 +1,53 @@
+name: Test datashare-python
+
+on:
+  push:
+    branches: [ 'main' ]
+  pull_request:
+    paths:
+      - 'datashare-python'
+
+# TODO: leverage some caching here
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/ruff-action@v3
+        with:
+          args: "--version" # skips test by displaying the version
+      - name: Check formatting
+        run: ruff format --config qa/ruff.toml --check datashare-python
+      - name: Lint test
+        run: ruff check --config qa/ruff.toml datashare-python
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Python project
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Cache Docker images
+        uses: ScribeMD/docker-cache@0.5.0
+        with:
+          key: docker-${{ runner.os }}-${{ hashFiles('docker-compose.yml')  }}
+      - name: Start test services
+        run: docker compose up -d datashare temporal-post-init elasticsearch
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: ${{ env.ASTRAL_VERSION }}
+          python-version: ${{ env.PYTHON_VERSION }}
+          enable-cache: true
+          working-directory: datashare-python
+      - name: Run tests
+        run: |
+          cd datashare-python
+          uv sync --frozen --all-extras --dev 
+          uv run --frozen python -m pytest -vvv --cache-clear --show-capture=all -r A
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
