@@ -62,7 +62,7 @@ jobs:
         uses: docker/build-push-action@v7
         with:
           target: io-worker
-          context: "{{defaultContext}}:asr-worker"
+          context: "{{defaultContext}}:workers/asr-worker"
           platforms: linux/amd64
           push: true
           tags: ${{ steps.meta.outputs.tags }}
@@ -96,7 +96,7 @@ jobs:
         uses: docker/build-push-action@v7
         with:
           target: preprocessing-worker
-          context: "{{defaultContext}}:asr-worker"
+          context: "{{defaultContext}}:workers/asr-worker"
           platforms: linux/amd64
           push: true
           tags: ${{ steps.meta.outputs.tags }}
@@ -130,7 +130,7 @@ jobs:
         uses: docker/build-push-action@v7
         with:
           target: inference-gpu-worker
-          context: "{{defaultContext}}:asr-worker"
+          context: "{{defaultContext}}:workers/asr-worker"
           platforms: linux/amd64
           push: true
           tags: ${{ steps.meta.outputs.tags }}

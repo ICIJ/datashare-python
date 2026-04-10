@@ -6,7 +6,7 @@ on:
   pull_request:
     paths:
       - 'datashare-python/**'
-      - 'asr-worker/**'
+      - 'workers/asr-worker/**'
 
 # TODO: leverage some caching here
 jobs:
@@ -18,9 +18,9 @@ jobs:
         with:
           args: "--version" # skips test by displaying the version
       - name: Check formatting
-        run: ruff format --config qa/ruff.toml --check asr-worker
+        run: ruff format --config qa/ruff.toml --check workers/asr-worker
       - name: Lint test
-        run: ruff check --config qa/ruff.toml asr-worker
+        run: ruff check --config qa/ruff.toml workers/asr-worker
 
   test:
     runs-on: ubuntu-latest
@@ -45,14 +45,14 @@ jobs:
           version: ${{ env.ASTRAL_VERSION }}
           python-version: ${{ env.PYTHON_VERSION }}
           enable-cache: true
-          working-directory: asr-worker
+          working-directory: workers/asr-worker
       - name: Install ffmpeg
         run: |
           sudo apt-get update
           sudo apt-get install -y ffmpeg libavcodec-dev libavformat-dev libavutil-dev
       - name: Run tests
         run: |
-          cd asr-worker
+          cd workers/asr-worker
           uv sync --verbose --frozen --extra preprocessing --extra inference --extra cpu --dev
           uv run --frozen python -m pytest --timeout=180 -vvv --cache-clear --show-capture=all -r A
 
