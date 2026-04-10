@@ -11,24 +11,26 @@ authors = [
 readme = "README.md"
 requires-python = ">=3.11.0, <3.14"
 dependencies = [
-    "caul==0.2.15",
+    "caul==0.2.16",
     "datashare-python~=0.2.25",
 ]
 
 [project.optional-dependencies]
 preprocessing = [
-    "torchaudio==2.10.0",
-    "torchcodec==0.10.0",
+    "torchaudio==2.11.0",
+    "torchcodec==0.11.0",
 ]
 inference = [
-    "caul[nemo]==0.2.15",
+    "caul[nemo]==0.2.16",
     "kaldialign==0.9.3",
     "ml-dtypes==0.5.4",
     "numpy==2.3.0",
     "pyarrow==20.0.0",
-    "torchaudio==2.10.0",
-    "torch==2.10.0",
-    "torchcodec==0.10.0",
+    "torchaudio==2.11.0",
+    "torch==2.11.0",
+    "torchcodec==0.11.0",
+]
+gpu = [ # just a placeholder to create an extra marker used to switch to torch gpu build
 ]
 
 [project.entry-points."datashare.workflows"]
@@ -67,16 +69,16 @@ explicit = true
 
 [tool.uv.sources]
 torch = [
-  { index = "pytorch-cpu", marker = "sys_platform != 'linux' or platform_machine != 'x86_64'" },
-  { index = "pytorch-gpu", marker = "sys_platform == 'linux' and platform_machine == 'x86_64'" },
+  { index = "pytorch-gpu", marker = "extra == 'gpu'" },
+  { index = "pytorch-cpu", marker = "extra != 'gpu'"},
 ]
 torchaudio = [
-  { index = "pytorch-cpu", marker = "sys_platform != 'linux' or platform_machine != 'x86_64'" },
-  { index = "pytorch-gpu", marker = "sys_platform == 'linux' and platform_machine == 'x86_64'" },
+  { index = "pytorch-gpu", marker = "extra == 'gpu'" },
+  { index = "pytorch-cpu", marker = "extra != 'gpu'"},
 ]
 torchcodec = [
-  { index = "pytorch-cpu", marker = "sys_platform != 'linux' or platform_machine != 'x86_64'" },
-  { index = "pytorch-gpu", marker = "sys_platform == 'linux' and platform_machine == 'x86_64'" },
+  { index = "pytorch-gpu", marker = "extra == 'gpu'" },
+  { index = "pytorch-cpu", marker = "extra != 'gpu'"},
 ]
 datashare-python = { path = "../datashare-python", editable = true }
 
