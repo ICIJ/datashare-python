@@ -65,7 +65,7 @@ RUN apt-get update && apt-get install -y build-essential
 RUN --mount=type=cache,target=~/.cache/uv \
     --mount=type=bind,source=uv.dist.lock,target=uv.lock \
     --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
-    uv sync -v --frozen --no-editable --no-install-project --extra inference
+    uv sync -v --frozen --no-editable --no-install-project --extra inference --extra gpu
 
 # Then copy code
 ADD uv.dist.lock ./uv.lock
