@@ -13,7 +13,7 @@ ENV UV_LINK_MODE=copy
 ENV UV_COMPILE_BYTECODE=1
 ENV UV_NO_DEV=1
 
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+COPY --from=ghcr.io/astral-sh/uv:0.11.6 /uv /uvx /bin/
 
 WORKDIR /app
 
@@ -23,7 +23,7 @@ FROM asr-worker-builder AS io-worker
 RUN --mount=type=cache,target=~/.cache/uv \
     --mount=type=bind,source=uv.dist.lock,target=uv.lock \
     --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
-    uv sync -v --frozen --no-editable --no-install-project --no-dev
+    uv sync -v --frozen --no-editable --no-install-project
 
 # Then copy code
 ADD uv.dist.lock ./uv.lock
