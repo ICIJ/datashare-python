@@ -23,7 +23,7 @@ FROM asr-worker-builder AS io-worker
 RUN --mount=type=cache,target=~/.cache/uv \
     --mount=type=bind,source=uv.dist.lock,target=uv.lock \
     --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
-    uv sync -v --frozen --no-editable --no-install-project
+    uv sync -v --frozen --no-editable --no-install-project --no-dev
 
 # Then copy code
 ADD uv.dist.lock ./uv.lock
