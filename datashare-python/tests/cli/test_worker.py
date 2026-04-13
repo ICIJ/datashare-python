@@ -38,6 +38,8 @@ async def test_start_workers(
                 "create-translation-batches",
                 "--workflows",
                 "ping",
+                "--dependencies",
+                "base",
                 "--temporal-address",
                 "localhost:7233",
             ],
