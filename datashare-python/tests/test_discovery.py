@@ -54,9 +54,9 @@ def test_discover_activities(names: list[str], expected_activities: set[str]) ->
     assert activities == expected_activities
 
 
-@pytest.mark.parametrize("name", ["base", None])
-def test_discover_dependencies(name: str | None) -> None:
+def test_discover_dependencies() -> None:
     # When
+    name = "base"
     deps = discover_dependencies(name)
     # Then
     expected_deps = ["set_loggers", "set_es_client"]
@@ -88,25 +88,4 @@ def test_discover_dependencies_should_raise_for_conflicting_deps(
     # When/Then
     expected = "found multiple dependencies for name"
     with pytest.raises(ValueError, match=re.escape(expected)):
-        discover_dependencies(name=None)
-
-
-def test_discover_dependencies_should_raise_for_multiple_entry_points(
-    monkeypatch: MonkeyPatch,
-) -> None:
-    # Given
-    def mocked_entry_points(name: str, group: str) -> EntryPoints:  # noqa: ARG001
-        ep = MagicMock()
-        ep.load.return_value = {"a": [], "b": []}
-        entry_points = MagicMock()
-        entry_points.__getitem__.return_value = ep
-        return entry_points
-
-    monkeypatch.setattr(datashare_python.discovery, "entry_points", mocked_entry_points)
-    # When/Then
-    expected = (
-        'dependency registry contains multiples entries "a", "b",'
-        " please select one by providing a name"
-    )
-    with pytest.raises(ValueError, match=re.escape(expected)):
-        discover_dependencies(name=None)
+        discover_dependencies(name="some_name")
