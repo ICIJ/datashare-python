@@ -15,6 +15,8 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: icij/asr-transcription-io-worker
+          tags: |
+            type=match,pattern=asr-worker-(.*),group=1
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
