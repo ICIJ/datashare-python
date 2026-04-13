@@ -17,7 +17,7 @@ _ASR_INPUTS_TYPE_ADAPTER = TypeAdapter(ASRInputs)
 
 
 class TaskQueues(StrEnum):
-    IO = "asr.preprocessing.io"
+    IO = "asr.io"
     CPU = "asr.processing.cpu"
     INFERENCE_GPU = "asr.inference.gpu"
     INFERENCE_CPU = "asr.inference.cpu"
