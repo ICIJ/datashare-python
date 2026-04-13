@@ -1,4 +1,4 @@
-name: Linting test
+name: Test asr-worker
 
 on:
   push:
