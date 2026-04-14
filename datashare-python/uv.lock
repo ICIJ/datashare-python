@@ -393,12 +393,11 @@ wheels = [
 
 [[package]]
 name = "datashare-python"
-version = "0.2.24"
+version = "0.2.27"
 source = { editable = "." }
 dependencies = [
     { name = "aiohttp" },
     { name = "alive-progress" },
-    { name = "datashare-worker-template", extra = ["ml"] },
     { name = "hatchling" },
     { name = "icij-common", extra = ["elasticsearch"] },
     { name = "nest-asyncio" },
@@ -411,6 +410,7 @@ dependencies = [
 
 [package.dev-dependencies]
 dev = [
+    { name = "datashare-worker-template", extra = ["ml"] },
     { name = "hatch-build" },
     { name = "nest-asyncio" },
     { name = "pre-commit" },
@@ -427,7 +427,6 @@ dev = [
 requires-dist = [
     { name = "aiohttp", specifier = "~=3.11.9" },
     { name = "alive-progress", specifier = "~=3.2.0" },
-    { name = "datashare-worker-template", extras = ["ml"], editable = "../worker-template" },
     { name = "hatchling", specifier = "~=1.27.0" },
     { name = "icij-common", extras = ["elasticsearch"], specifier = "~=0.8.2" },
     { name = "nest-asyncio", specifier = "~=1.6.0" },
@@ -440,6 +439,7 @@ requires-dist = [
 
 [package.metadata.requires-dev]
 dev = [
+    { name = "datashare-worker-template", extras = ["ml"], editable = "../worker-template" },
     { name = "hatch-build", specifier = "~=0.5.0" },
     { name = "nest-asyncio", specifier = "~=1.6.0" },
     { name = "pre-commit", specifier = "~=4.5.1" },
@@ -454,7 +454,7 @@ dev = [
 
 [[package]]
 name = "datashare-worker-template"
-version = "0.1.5"
+version = "0.1.6"
 source = { editable = "../worker-template" }
 dependencies = [
     { name = "datashare-python" },

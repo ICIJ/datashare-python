@@ -109,8 +109,12 @@ async def start(
             )
     else:
         bootstrap_config = WorkerConfig()
+    worker_id = create_worker_id(worker_id_prefix or "worker")
     logger.info(
-        "starting worker with config: %s", bootstrap_config.model_dump_json(indent=2)
+        "starting worker %s on queue %s, with config: %s",
+        worker_id,
+        queue,
+        bootstrap_config.model_dump_json(indent=2),
     )
     temporal_override = dict()
     if temporal_address is not None:
@@ -124,7 +128,6 @@ async def start(
     registered_wfs, registered_acts, registered_deps = discover(
         workflows, act_names=activities, deps_name=dependencies
     )
-    worker_id = create_worker_id(worker_id_prefix or "worker")
     client = await bootstrap_config.to_temporal_client()
     event_loop = asyncio.get_event_loop()
     async with bootstrap_worker(
