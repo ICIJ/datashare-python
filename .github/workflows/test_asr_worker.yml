@@ -5,8 +5,8 @@ on:
     branches: [ 'main' ]
   pull_request:
     paths:
-      - 'datashare-python'
-      - 'asr-worker'
+      - 'datashare-python/**'
+      - 'asr-worker/**'
 
 # TODO: leverage some caching here
 jobs:
