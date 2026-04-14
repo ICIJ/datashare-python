@@ -28,7 +28,7 @@ requires-python = ">=3.11.0, <3.14"
 dependencies = [
     "caul[nemo]==0.2.15",
     "kaldialign==0.9.3",
-    "datashare-python~=0.2",
+    "datashare-python~=0.3.0",
     "ml-dtypes==0.5.4",
     "numpy==2.3.0",
     "pyarrow==20.0.0",

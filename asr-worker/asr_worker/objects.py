@@ -1,6 +1,6 @@
 from enum import StrEnum
 
-from datashare_python.objects import BasePayload
+from datashare_python.objects import DatashareModel
 from pydantic import BaseModel, Field
 
 from asr_worker.constants import PARAKEET
@@ -34,10 +34,10 @@ class ASRPipelineConfig(BaseModel):
     inference: InferenceConfig = Field(default_factory=InferenceConfig)
 
 
-class ASRRequest(BasePayload):
+class ASRRequest(DatashareModel):
     file_paths: list[str]
     pipeline: ASRPipelineConfig
 
 
-class ASRResponse(BasePayload):
+class ASRResponse(DatashareModel):
     transcriptions: list[dict] = Field(default_factory=list)

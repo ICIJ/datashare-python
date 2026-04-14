@@ -727,12 +727,11 @@ wheels = [
 
 [[package]]
 name = "datashare-python"
-version = "0.2.23"
+version = "0.3.0"
 source = { editable = "../datashare-python" }
 dependencies = [
     { name = "aiohttp", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
     { name = "alive-progress", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
-    { name = "datashare-worker-template", extra = ["ml"], marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
     { name = "hatchling", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
     { name = "icij-common", extra = ["elasticsearch"], marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
     { name = "nest-asyncio", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
@@ -747,7 +746,6 @@ dependencies = [
 requires-dist = [
     { name = "aiohttp", specifier = "~=3.11.9" },
     { name = "alive-progress", specifier = "~=3.2.0" },
-    { name = "datashare-worker-template", extras = ["ml"], editable = "../worker-template" },
     { name = "hatchling", specifier = "~=1.27.0" },
     { name = "icij-common", extras = ["elasticsearch"], specifier = "~=0.8.2" },
     { name = "nest-asyncio", specifier = "~=1.6.0" },
@@ -760,6 +758,7 @@ requires-dist = [
 
 [package.metadata.requires-dev]
 dev = [
+    { name = "datashare-worker-template", extras = ["ml"], editable = "../worker-template" },
     { name = "hatch-build", specifier = "~=0.5.0" },
     { name = "nest-asyncio", specifier = "~=1.6.0" },
     { name = "pre-commit", specifier = "~=4.5.1" },
@@ -770,51 +769,6 @@ dev = [
     { name = "redis", extras = ["hiredis"], specifier = "~=5.2.1" },
     { name = "ruff", specifier = "==0.15.2" },
     { name = "typing-extensions", specifier = "~=4.15.0" },
-]
-
-[[package]]
-name = "datashare-worker-template"
-version = "0.1.5"
-source = { editable = "../worker-template" }
-dependencies = [
-    { name = "datashare-python", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
-    { name = "pycountry", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
-    { name = "temporalio", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
-]
-
-[package.optional-dependencies]
-ml = [
-    { name = "sentencepiece", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
-    { name = "torch", version = "2.10.0", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "sys_platform == 'darwin'" },
-    { name = "torch", version = "2.10.0+cpu", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "sys_platform == 'linux'" },
-    { name = "transformers", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "datashare-python", editable = "../datashare-python" },
-    { name = "pycountry", specifier = "~=26.2.16" },
-    { name = "sentencepiece", marker = "extra == 'ml'", specifier = "~=0.2.1" },
-    { name = "temporalio", specifier = "~=1.23.0" },
-    { name = "torch", marker = "extra == 'ml'", specifier = "~=2.9", index = "https://download.pytorch.org/whl/cpu" },
-    { name = "transformers", marker = "extra == 'ml'", specifier = "~=4.46" },
-]
-provides-extras = ["ml"]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "black", specifier = ">=26.1.0" },
-    { name = "datashare-python", editable = "../datashare-python" },
-    { name = "nest-asyncio", specifier = ">=1.6.0" },
-    { name = "pre-commit", specifier = ">=4.5.1" },
-    { name = "psutil", specifier = ">=6.1.0" },
-    { name = "pylint", specifier = "~=3.1.0" },
-    { name = "pytest", specifier = "~=8.1" },
-    { name = "pytest-asyncio", specifier = "~=0.24" },
-    { name = "pytest-timeout", specifier = "==2.4.0" },
-    { name = "redis", extras = ["hiredis"], specifier = ">=5.2.1" },
-    { name = "ruff", specifier = "==0.15.2" },
-    { name = "typing-extensions", specifier = ">=4.15.0" },
 ]
 
 [[package]]
@@ -2831,15 +2785,6 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/29/c2/3ad40e07e96a3e74e7ed7cc8285aadfa84eb848a798c98ec0ad009eb6bcc/pyarrow-20.0.0-cp313-cp313t-manylinux_2_28_x86_64.whl", hash = "sha256:204a846dca751428991346976b914d6d2a82ae5b8316a6ed99789ebf976551e6", size = 42241743, upload-time = "2025-04-27T12:32:35.792Z" },
     { url = "https://files.pythonhosted.org/packages/eb/cb/65fa110b483339add6a9bc7b6373614166b14e20375d4daa73483755f830/pyarrow-20.0.0-cp313-cp313t-musllinux_1_2_aarch64.whl", hash = "sha256:f3b117b922af5e4c6b9a9115825726cac7d8b1421c37c2b5e24fbacc8930612c", size = 42839441, upload-time = "2025-04-27T12:32:46.64Z" },
     { url = "https://files.pythonhosted.org/packages/98/7b/f30b1954589243207d7a0fbc9997401044bf9a033eec78f6cb50da3f304a/pyarrow-20.0.0-cp313-cp313t-musllinux_1_2_x86_64.whl", hash = "sha256:e724a3fd23ae5b9c010e7be857f4405ed5e679db5c93e66204db1a69f733936a", size = 44503279, upload-time = "2025-04-27T12:32:56.503Z" },
-]
-
-[[package]]
-name = "pycountry"
-version = "26.2.16"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/de/1d/061b9e7a48b85cfd69f33c33d2ef784a531c359399ad764243399673c8f5/pycountry-26.2.16.tar.gz", hash = "sha256:5b6027d453fcd6060112b951dd010f01f168b51b4bf8a1f1fc8c95c8d94a0801", size = 7711342, upload-time = "2026-02-17T03:42:52.367Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/9c/42/7703bd45b62fecd44cd7d3495423097e2f7d28bc2e99e7c1af68892ab157/pycountry-26.2.16-py3-none-any.whl", hash = "sha256:115c4baf7cceaa30f59a4694d79483c9167dbce7a9de4d3d571c5f3ea77c305a", size = 8044600, upload-time = "2026-02-17T03:42:49.777Z" },
 ]
 
 [[package]]

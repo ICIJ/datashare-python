@@ -44,7 +44,7 @@ explicit = true
 [dependency-groups]
 dev = [
   "black>=26.1.0",
-  "datashare-python~=0.2",
+  "datashare-python~=0.3.0",
   "nest-asyncio>=1.6.0",
   "pre-commit>=4.5.1",
   "psutil>=6.1.0",

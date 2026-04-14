@@ -8,7 +8,7 @@ from argostranslate.sbd import (
 )
 from argostranslate.tokenizer import BPETokenizer, SentencePieceTokenizer
 from ctranslate2 import Translator
-from datashare_python.objects import BasePayload
+from datashare_python.objects import DatashareModel
 from pydantic import BaseModel, Field
 
 from .constants import (
@@ -37,12 +37,12 @@ class TranslationWorkerConfig(BaseModel):
     compute_type: str = "auto"  # quantization
 
 
-class TranslationRequest(BasePayload):
+class TranslationRequest(DatashareModel):
     project: str
     target_language: str
 
 
-class TranslationResponse(BasePayload):
+class TranslationResponse(DatashareModel):
     num_translations: int = 0
 
 

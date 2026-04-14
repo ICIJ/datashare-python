@@ -1,16 +1,16 @@
 import pycountry
-from datashare_python.objects import BasePayload
+from datashare_python.objects import DatashareModel
 from pydantic import Field
 
 
-class ClassificationConfig(BasePayload):
+class ClassificationConfig(DatashareModel):
     task: str = Field(default="text-classification", frozen=True)
     model: str = "distilbert/distilbert-base-uncased-finetuned-sst-2-english"
     batch_size: int = 16
     batches_per_task: int = 5
 
 
-class TranslationConfig(BasePayload):
+class TranslationConfig(DatashareModel):
     task: str = Field(default="translation", frozen=True)
     model: str = "Helsinki-NLP/opus-mt"
     batch_size: int = 16
@@ -24,17 +24,17 @@ class TranslationConfig(BasePayload):
         return as_dict
 
 
-class TranslateAndClassifyConfig(BasePayload):
+class TranslateAndClassifyConfig(DatashareModel):
     translation: TranslationConfig = TranslationConfig()
     classification: ClassificationConfig = ClassificationConfig()
 
 
-class TranslateAndClassifyRequest(BasePayload):
+class TranslateAndClassifyRequest(DatashareModel):
     project: str
     language: str
     config: TranslateAndClassifyConfig = TranslateAndClassifyConfig()
 
 
-class TranslateAndClassifyResponse(BasePayload):
+class TranslateAndClassifyResponse(DatashareModel):
     translated: int
     classified: int
