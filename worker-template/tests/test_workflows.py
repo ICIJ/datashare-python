@@ -10,7 +10,7 @@ from icij_common.test_utils import async_true_after
 from temporalio.client import Client as TemporalClient
 from temporalio.worker import Worker
 from worker_template.objects_ import (
-    TranslateAndClassifyRequest,
+    TranslateAndClassifyArgs,
     TranslateAndClassifyResponse,
 )
 from worker_template.workflows import (
@@ -81,7 +81,7 @@ async def test_translate_and_classify_workflow_e2e(
 ) -> None:
     # Given
     temporal_client = test_temporal_client_session
-    payload = TranslateAndClassifyRequest(project=TEST_PROJECT, language="ENGLISH")
+    payload = TranslateAndClassifyArgs(project=TEST_PROJECT, language="ENGLISH")
     wf_id = f"translate-and-classify-{uuid.uuid4()}"
 
     # When

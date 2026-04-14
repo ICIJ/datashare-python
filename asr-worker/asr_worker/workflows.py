@@ -8,12 +8,12 @@ from pydantic import TypeAdapter
 from temporalio import workflow
 
 from asr_worker.constants import ASR_WORKFLOW, TEN_MINUTES
-from asr_worker.models import ASRInputs, ASRResponse
+from asr_worker.models import ASRArgs, ASRResponse
 
 with workflow.unsafe.imports_passed_through():
     from asr_worker.activities import ASRActivities
 
-_ASR_INPUTS_TYPE_ADAPTER = TypeAdapter(ASRInputs)
+_ASR_INPUTS_TYPE_ADAPTER = TypeAdapter(ASRArgs)
 
 
 class TaskQueues(StrEnum):
@@ -26,13 +26,13 @@ class TaskQueues(StrEnum):
 @workflow.defn(name=ASR_WORKFLOW)  # noqa: F821
 class ASRWorkflow(WorkflowWithProgress):
     @workflow.run
-    async def run(self, inputs: ASRInputs) -> ASRResponse:
+    async def run(self, args: ASRArgs) -> ASRResponse:
         logger = workflow.logger
-        config = inputs.config
-        batch_size = inputs.batch_size
-        docs = inputs.docs
+        config = args.config
+        batch_size = args.batch_size
+        docs = args.docs
         if isinstance(docs, dict):
-            args = [inputs.project, docs, batch_size]
+            args = [args.project, docs, batch_size]
             batched_input_paths = workflow.execute_activity(
                 ASRActivities.search_audios,
                 args=args,
@@ -83,7 +83,7 @@ class ASRWorkflow(WorkflowWithProgress):
                 inference_results,
                 batched_input_paths,
                 repeat(config.postprocessing),
-                repeat(inputs.project),
+                repeat(args.project),
                 strict=False,
             )
         )
@@ -99,7 +99,7 @@ class ASRWorkflow(WorkflowWithProgress):
         logger.info("running postprocessing...")
         await gather(*postprocessing_acts)
         logger.info("postprocessing complete !")
-        return ASRResponse(n_transcribed=len(inputs.docs))
+        return ASRResponse(n_transcribed=len(args.docs))
 
 
 REGISTRY = [ASRWorkflow]

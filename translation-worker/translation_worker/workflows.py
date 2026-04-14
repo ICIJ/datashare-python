@@ -14,7 +14,7 @@ with workflow.unsafe.imports_passed_through():
     from .constants import TRANSLATION_WORKFLOW_NAME
     from .objects import (
         TaskQueues,
-        TranslationRequest,
+        TranslationArgs,
         TranslationResponse,
         TranslationWorkerConfig,
     )
@@ -23,18 +23,18 @@ with workflow.unsafe.imports_passed_through():
 @workflow.defn(name=TRANSLATION_WORKFLOW_NAME)
 class TranslationWorkflow(WorkflowWithProgress):
     @workflow.run
-    async def run(self, payload: TranslationRequest) -> TranslationResponse:
+    async def run(self, args: TranslationArgs) -> TranslationResponse:
         worker_config = TranslationWorkerConfig()
 
         target_language_alpha_code = await workflow.execute_activity(
             resolve_language_alpha_code,
-            payload.target_language,
+            args.target_language,
             task_queue=TaskQueues.CPU,
             start_to_close_timeout=timedelta(seconds=30),
         )
 
         translation_batch_args = [
-            payload.project,
+            args.project,
             target_language_alpha_code,
             worker_config.max_batch_byte_len,
         ]
@@ -50,7 +50,7 @@ class TranslationWorkflow(WorkflowWithProgress):
             (
                 id_batch,
                 target_language_alpha_code,
-                payload.project,
+                args.project,
                 worker_config,
             )
             for id_batch in translation_batches

@@ -29,7 +29,7 @@ class TranslateAndClassifyConfig(DatashareModel):
     classification: ClassificationConfig = ClassificationConfig()
 
 
-class TranslateAndClassifyRequest(DatashareModel):
+class TranslateAndClassifyArgs(DatashareModel):
     project: str
     language: str
     config: TranslateAndClassifyConfig = TranslateAndClassifyConfig()

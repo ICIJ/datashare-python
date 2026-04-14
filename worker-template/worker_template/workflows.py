@@ -16,7 +16,7 @@ with workflow.unsafe.imports_passed_through():
         Pong,
         TranslateDocs,
     )
-    from .objects_ import TranslateAndClassifyRequest, TranslateAndClassifyResponse
+    from .objects_ import TranslateAndClassifyArgs, TranslateAndClassifyResponse
 
 
 class TaskQueues(StrEnum):
@@ -28,13 +28,11 @@ class TaskQueues(StrEnum):
 @workflow.defn(name="translate-and-classify")
 class TranslateAndClassifyWorkflow(WorkflowWithProgress):
     @workflow.run
-    async def run(
-        self, payload: TranslateAndClassifyRequest
-    ) -> TranslateAndClassifyResponse:
+    async def run(self, args: TranslateAndClassifyArgs) -> TranslateAndClassifyResponse:
         translation_batch_args = [
-            payload.project,
-            payload.language,
-            payload.config.translation.batch_size,
+            args.project,
+            args.language,
+            args.config.translation.batch_size,
         ]
         # Create translation batches
         translation_batches = await workflow.execute_activity(
@@ -45,7 +43,7 @@ class TranslateAndClassifyWorkflow(WorkflowWithProgress):
         )
         # Translate
         translation_args = [
-            (b, payload.language, payload.project, payload.config.translation)
+            (b, args.language, args.project, args.config.translation)
             for b in translation_batches
         ]
         translations_activities = [
@@ -61,9 +59,9 @@ class TranslateAndClassifyWorkflow(WorkflowWithProgress):
         translated = sum(translated)
         # Create classification batches
         clf_batch_args = [
-            payload.project,
-            payload.language,
-            payload.config.classification,
+            args.project,
+            args.language,
+            args.config.classification,
         ]
         clf_batches = await workflow.execute_activity(
             CreateClassificationBatches.create_classification_batches,
@@ -73,7 +71,7 @@ class TranslateAndClassifyWorkflow(WorkflowWithProgress):
         )
         # Classify
         clf_args = [
-            (b, payload.language, payload.project, payload.config.classification)
+            (b, args.language, args.project, args.config.classification)
             for b in clf_batches
         ]
         clf_activities = [

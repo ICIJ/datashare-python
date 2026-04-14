@@ -37,7 +37,7 @@ class TranslationWorkerConfig(BaseModel):
     compute_type: str = "auto"  # quantization
 
 
-class TranslationRequest(DatashareModel):
+class TranslationArgs(DatashareModel):
     project: str
     target_language: str
 

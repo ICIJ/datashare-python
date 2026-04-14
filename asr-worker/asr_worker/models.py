@@ -34,7 +34,7 @@ _DEFAULT_PIPELINE_CONFIG = ASRPipelineConfig(
 DocumentSearchQuery = dict[str, Any]
 
 
-class ASRInputs(DatashareModel):
+class ASRArgs(DatashareModel):
     project: str
     docs: list[Path] | DocumentSearchQuery
     config: ASRPipelineConfig = Field(default=_DEFAULT_PIPELINE_CONFIG)

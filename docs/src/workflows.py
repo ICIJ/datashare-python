@@ -8,9 +8,9 @@ from .activities import hello
 @workflow.defn(name="hello-world")
 class HelloWorld:
     @workflow.run
-    async def run(self, person: str) -> str:
+    async def run(self, args: dict) -> str:
         return await workflow.execute_activity(
             hello,
-            person,
+            args["person"],
             start_to_close_timeout=timedelta(seconds=10),
         )

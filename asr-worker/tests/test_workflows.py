@@ -15,7 +15,7 @@ from asr_worker.constants import (
     RUN_INFERENCE_ACTIVITY,
 )
 from asr_worker.models import (
-    ASRInputs,
+    ASRArgs,
     ASRPipelineConfig,
     ASRResponse,
     Timestamp,
@@ -302,7 +302,7 @@ async def test_asr_workflow(
     config = ASRPipelineConfig()
     workflow_id = f"asr-{uuid.uuid4().hex}"
     project = TEST_PROJECT
-    inputs = ASRInputs(project=project, docs=path, config=config, batch_size=batch_size)
+    inputs = ASRArgs(project=project, docs=path, config=config, batch_size=batch_size)
     # When
     result = await client.execute_workflow(
         ASRWorkflow.run, inputs, id=workflow_id, task_queue=TaskQueues.IO
@@ -363,7 +363,7 @@ async def test_asr_workflow_e2e(
     batch_size = n_audios - 1
     audios = with_audios * n_audios
     project = TEST_PROJECT
-    inputs = ASRInputs(
+    inputs = ASRArgs(
         project=project, docs=audios, config=ASRPipelineConfig(), batch_size=batch_size
     )
     workflow_id = f"asr-{uuid.uuid4().hex}"
