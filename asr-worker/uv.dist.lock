@@ -235,7 +235,7 @@ dev = [
 requires-dist = [
     { name = "caul", specifier = "==0.2.16" },
     { name = "caul", extras = ["nemo"], marker = "extra == 'inference'", specifier = "==0.2.16" },
-    { name = "datashare-python", specifier = "~=0.2.27" },
+    { name = "datashare-python", specifier = "~=0.3.0" },
     { name = "kaldialign", marker = "extra == 'inference'", specifier = "==0.9.3" },
     { name = "ml-dtypes", marker = "extra == 'inference'", specifier = "==0.5.4" },
     { name = "numpy", marker = "extra == 'inference'", specifier = "==2.3.0" },
@@ -878,7 +878,7 @@ wheels = [
 
 [[package]]
 name = "datashare-python"
-version = "0.2.27"
+version = "0.3.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiohttp" },
@@ -892,9 +892,9 @@ dependencies = [
     { name = "tomlkit" },
     { name = "typer" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/b4/0a/384243695213ce34585bee331d5cbe4522a0e4fb1b96a6d509abb4a318ba/datashare_python-0.2.27.tar.gz", hash = "sha256:243624a9f13f23f218ea4d0366523e397d5a76c3be7f721aa81724c842b6d9bc", size = 167248, upload-time = "2026-04-14T13:15:39.157Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/59/fb/f99bb46c4ca312c5ed88e575d6b7a843132c56f1d266d744c6b9cd25ce3e/datashare_python-0.3.0.tar.gz", hash = "sha256:2a5050044b01a88ac79fbd8a5ff7b73a52646c7a7bdd85a156c51c50fd34ae25", size = 167078, upload-time = "2026-04-14T15:21:23.71Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/c4/59/e10fdb937a7465ec4eb812d8262f2a9bc8e8ae2ba015c9a7d424d46e621d/datashare_python-0.2.27-py3-none-any.whl", hash = "sha256:eece90fe23058708c41ffef1a3407442cbfc6c52df3c263f4ca7d2c4f3087cce", size = 172758, upload-time = "2026-04-14T13:15:38.009Z" },
+    { url = "https://files.pythonhosted.org/packages/16/ee/e68bdd9c10003d7ac4e740a134554a8b4813b9b51cbb13022e7fe8235635/datashare_python-0.3.0-py3-none-any.whl", hash = "sha256:56a707df715078af06ab29b8f2d2a6d224798b6119c07c5d80b746b1e2d9cf37", size = 172566, upload-time = "2026-04-14T15:21:22.416Z" },
 ]
 
 [[package]]
