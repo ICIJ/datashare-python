@@ -31,16 +31,8 @@ class BaseModel(_BaseModel):
     model_config = merge_configs(icij_config(), no_enum_values_config())
 
 
-class BasePayload(_BaseModel):
-    model_config = icij_config()
-
-
 class DatashareModel(BaseModel):
     model_config = merge_configs(BaseModel.model_config, lowercamel_case_config())
-
-
-class LowerCamelCaseModel(_BaseModel):
-    model_config = merge_configs(icij_config(), lowercamel_case_config())
 
 
 @unique
