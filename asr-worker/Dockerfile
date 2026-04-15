@@ -33,7 +33,7 @@ ADD entrypoints/io_worker.sh ./entrypoints/io_worker.sh
 
 # Then install service
 
-RUN cd asr_worker && uv sync -v --frozen --no-editable  --extra cpu
+RUN cd asr_worker && uv sync -v --frozen --no-editable --extra cpu
 RUN rm -rf ~/.cache/pip $(uv cache dir)
 
 ENTRYPOINT ["entrypoints/io_worker.sh"]

@@ -95,8 +95,7 @@ datashare-python = { path = "../datashare-python", editable = true }
 package = true
 override-dependencies = [
   "kaldialign>=0.9.3",
-  "torchcodec==0.10.0",
-  "torchaudio==2.10.0",
+  "torchcodec==0.10.0"
 ]
 environments = [
   "sys_platform == 'darwin'",
