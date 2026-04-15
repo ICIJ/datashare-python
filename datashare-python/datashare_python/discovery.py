@@ -13,11 +13,11 @@ logger = logging.getLogger(__name__)
 Activity = ActivityWithProgress | Callable | type
 
 _DEPENDENCIES = "dependencies"
-_WORKER_CONFIGS = "worker_configs"
+_WORKER_CONFIG_CLS = "worker_config_cls"
 _WORKFLOW_GROUP = "datashare.workflows"
 _ACTIVITIES_GROUP = "datashare.activities"
 _DEPENDENCIES_GROUP = "datashare.dependencies"
-_WORKER_CONFIGS_GROUP = "datashare.worker_configs"
+_WORKER_CONFIG_CLS_GROUP = "datashare.worker_config_cls"
 
 _RegisteredWorkflow = tuple[str, type]
 _RegisteredActivity = tuple[str, Activity]
@@ -31,11 +31,7 @@ _Discovery = tuple[
 
 
 def discover(
-    wf_names: list[str] | None,
-    *,
-    act_names: list[str] | None,
-    deps_name: str | None,
-    worker_config_name: str | None,
+    wf_names: list[str] | None, *, act_names: list[str] | None, deps_name: str | None
 ) -> _Discovery:
     discovered = ""
     wfs = None
@@ -82,11 +78,8 @@ def discover(
             f"- {n_deps} dependenc{'ies' if n_deps > 1 else 'y'}:"
             f" {', '.join(deps_names)}"
         )
-    if worker_config_name is not None:
-        worker_config_cls = discover_worker_configs(worker_config_name)
-        discovered += f"- worker config class: {worker_config_cls}"
-    else:
-        worker_config_cls = WorkerConfig
+    worker_config_cls = discover_worker_config_cls()
+    discovered += f"- worker config class: {worker_config_cls}"
     logger.info("discovered:\n%s", discovered)
     return wfs, acts, deps, worker_config_cls
 
@@ -147,28 +140,15 @@ def discover_dependencies(name: str) -> _Dependencies:
         raise LookupError(msg) from e
 
 
-def discover_worker_configs(name: str) -> type[WorkerConfig]:
-    impls = entry_points(name=_WORKER_CONFIGS, group=_WORKER_CONFIGS_GROUP)
+def discover_worker_config_cls() -> type[WorkerConfig]:
+    impls = entry_points(name=_WORKER_CONFIG_CLS, group=_WORKER_CONFIG_CLS_GROUP)
     if not impls:
-        available_impls = entry_points(group=_WORKER_CONFIGS_GROUP)
-        msg = (
-            f'failed to find worker config: "{name}", '
-            f"available dependencies: {available_impls}"
-        )
-        raise LookupError(msg)
+        return WorkerConfig
     if len(impls) > 1:
-        msg = f'found multiple worker configs for name "{name}": {impls}'
+        msg = f'found multiple registered worker configs classes": {impls}'
         raise ValueError(msg)
-    deps_registry = impls[_WORKER_CONFIGS].load()
-    try:
-        return deps_registry[name]
-    except KeyError as e:
-        available = list(deps_registry)
-        msg = (
-            f'failed to find worker config for name "{name}", available worker '
-            f"configs: {available}"
-        )
-        raise LookupError(msg) from e
+    deps_registry = impls[_WORKER_CONFIG_CLS].load()
+    return deps_registry
 
 
 def _parse_wf_name(wf_type: type) -> str:

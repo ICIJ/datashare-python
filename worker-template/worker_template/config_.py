@@ -11,4 +11,4 @@ class TranslateAndClassifyWorkerConfig(WorkerConfig):
     loggers: ClassVar[list[str]] = Field(_ALL_LOGGERS, frozen=True)
 
 
-WORKER_CONFIGS = {"base": TranslateAndClassifyWorkerConfig}
+WORKER_CONFIG_CLS = TranslateAndClassifyWorkerConfig

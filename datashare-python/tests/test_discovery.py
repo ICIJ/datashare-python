@@ -8,7 +8,7 @@ from _pytest.monkeypatch import MonkeyPatch
 from datashare_python.discovery import (
     discover_activities,
     discover_dependencies,
-    discover_worker_configs,
+    discover_worker_config_cls,
     discover_workflows,
 )
 
@@ -92,28 +92,14 @@ def test_discover_dependencies_should_raise_for_conflicting_deps(
         discover_dependencies(name="some_name")
 
 
-def test_discover_worker_configs() -> None:
-    # Given
-    name = "base"
+def test_discover_worker_config_cls() -> None:
     # When
-    worker_config_cls = discover_worker_configs(name)
+    worker_config_cls = discover_worker_config_cls()
     # Then
     assert worker_config_cls.__name__ == "TranslateAndClassifyWorkerConfig"
 
 
-def test_discover_worker_configs_should_raise_for_unknown_dep() -> None:
-    # Given
-    unknown_worker_config = "unknown_worker_config"
-    # When/Then
-    expected = (
-        'failed to find worker config for name "unknown_worker_config", '
-        "available worker configs: ['base']"
-    )
-    with pytest.raises(LookupError, match=re.escape(expected)):
-        discover_worker_configs(unknown_worker_config)
-
-
-def test_discover_worker_configs_should_raise_for_conflicting_deps(
+def test_discover_discover_worker_config_cls_should_raise_for_conflicting_deps(
     monkeypatch: MonkeyPatch,
 ) -> None:
     # Given
@@ -124,6 +110,6 @@ def test_discover_worker_configs_should_raise_for_conflicting_deps(
 
     monkeypatch.setattr(datashare_python.discovery, "entry_points", mocked_entry_points)
     # When/Then
-    expected = "found multiple worker configs for name"
+    expected = "found multiple registered worker configs classes"
     with pytest.raises(ValueError, match=re.escape(expected)):
-        discover_worker_configs(name="some_name")
+        discover_worker_config_cls()

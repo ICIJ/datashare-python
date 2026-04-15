@@ -14,3 +14,6 @@ class ASRWorkerConfig(WorkerConfig):
     audios_root: Path
     artifacts_root: Path
     workdir: Path
+
+
+WORKER_CONFIG_CLS = ASRWorkerConfig

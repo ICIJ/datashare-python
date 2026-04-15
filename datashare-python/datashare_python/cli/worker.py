@@ -24,7 +24,6 @@ _LIST_ACTIVITY_NAMES_HELP = "activity names filters (supports regexes)"
 _START_WORKER_WORKFLOWS_HELP = "workflow names run by the worker (supports regexes)"
 _START_WORKER_ACTIVITIES_HELP = "activity names run by the worker (supports regexes)"
 _START_WORKER_DEPS_HELP = "worker lifetime dependencies name in the registry"
-_START_WORKER_CONFIG_HELP = "worker config class key the worker configs registry"
 _START_WORKER_WORKER_ID_PREFIX_HELP = "worker ID prefix"
 _START_WORKER_CONFIG_PATH_HELP = (
     "path to a worker config YAML file,"
@@ -86,9 +85,6 @@ async def start(
     dependencies: Annotated[
         str | None, typer.Option(help=_START_WORKER_DEPS_HELP)
     ] = None,
-    worker_config_name: Annotated[
-        str | None, typer.Option(help=_START_WORKER_CONFIG_HELP)
-    ] = None,
     config_path: Annotated[
         Path | None,
         typer.Option(
@@ -107,10 +103,7 @@ async def start(
     ] = None,
 ) -> None:
     registered_wfs, registered_acts, registered_deps, worker_config_cls = discover(
-        workflows,
-        act_names=activities,
-        deps_name=dependencies,
-        worker_config_name=worker_config_name,
+        workflows, act_names=activities, deps_name=dependencies
     )
     if config_path is not None:
         with config_path.open() as f:
