@@ -30,6 +30,9 @@ activities = "worker_template.activities:ACTIVITIES"
 [project.entry-points."datashare.dependencies"]
 dependencies = "worker_template.dependencies:DEPENDENCIES"
 
+[project.entry-points."datashare.worker_configs"]
+worker_configs = "worker_template.config_:WORKER_CONFIGS"
+
 [tool.uv.sources]
 torch = [
   { index = "pytorch-cpu" },

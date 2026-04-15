@@ -2,7 +2,7 @@ from collections.abc import AsyncGenerator, AsyncIterable, Callable, Generator, 
 from contextlib import AbstractContextManager, contextmanager
 from itertools import tee
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from caul.objects import ASRResult, PreprocessedInput
 from caul.tasks import (
@@ -12,6 +12,7 @@ from caul.tasks import (
     Postprocessor,
     Preprocessor,
 )
+from datashare_python.dependencies import lifespan_worker_config
 from datashare_python.types_ import ProgressRateHandler
 from datashare_python.utils import (
     ActivityWithProgress,
@@ -67,7 +68,7 @@ class ASRActivities(ActivityWithProgress):
         self, project: str, query: dict[str, Any], batch_size: int
     ) -> list[Path]:
         es_client = lifespan_es_client()
-        worker_config = ASRWorkerConfig()
+        worker_config = cast(ASRWorkerConfig, lifespan_worker_config())
         batch_dir_name = activity_contextual_id()
         workdir = worker_config.workdir
         batch_root = workdir / batch_dir_name
@@ -87,7 +88,7 @@ class ASRActivities(ActivityWithProgress):
         self, paths: list[Path] | Path, config: ParakeetPreprocessorConfig
     ) -> list[Path]:
         # TODO: this shouldn't be necessary, fix this bug
-        worker_config = ASRWorkerConfig()
+        worker_config = cast(ASRWorkerConfig, lifespan_worker_config())
         audio_root = worker_config.audios_root
         workdir = worker_config.workdir
         # TODO: implement caching
@@ -120,7 +121,7 @@ class ASRActivities(ActivityWithProgress):
     ) -> list[Path]:
         # TODO: fix this temporal by, we shouldn't have to reload
         config = _INFERENCE_CONFIG_TYPE_ADAPTER.validate_python(config)
-        worker_config = ASRWorkerConfig()
+        worker_config = cast(ASRWorkerConfig, lifespan_worker_config())
         workdir = worker_config.workdir
         preprocessed_inputs = _LIST_OF_PATH_ADAPTER.validate_python(preprocessed_inputs)
         if progress is not None:
@@ -168,7 +169,7 @@ class ASRActivities(ActivityWithProgress):
         # TODO: this shouldn't be necessary, fix this bug
         input_paths = _LIST_OF_PATH_ADAPTER.validate_python(input_paths)
         config = ParakeetPostprocessorConfig.model_validate(config)
-        worker_config = ASRWorkerConfig()
+        worker_config = cast(ASRWorkerConfig, lifespan_worker_config())
         workdir = worker_config.workdir
         artifacts_root = worker_config.artifacts_root
         inference_results = _LIST_OF_PATH_ADAPTER.validate_python(inference_results)

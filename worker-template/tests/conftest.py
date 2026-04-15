@@ -28,11 +28,9 @@ from datashare_python.conftest import (  # noqa: F401
     text_1,
     worker_lifetime_deps,
 )
-from datashare_python.dependencies import (
-    with_dependencies,
-)
+from datashare_python.dependencies import with_dependencies
 from datashare_python.types_ import ContextManagerFactory
-from datashare_python.worker import bootstrap_worker
+from datashare_python.worker import worker_context
 from temporalio.client import Client as TemporalClient
 from worker_template.activities import (
     ClassifyDocs,
@@ -93,19 +91,17 @@ async def io_worker(
     ]
     workflows = [PingWorkflow, TranslateAndClassifyWorkflow]
     task_queue = TaskQueues.IO
-    async with (
-        bootstrap_worker(
-            worker_id,
-            activities=io_activities,
-            workflows=workflows,
-            bootstrap_config=test_worker_config,
-            client=client,
-            event_loop=event_loop,
-            task_queue=task_queue,
-            dependencies=test_deps,
-        ) as worker,
-        worker,
-    ):
+    worker_ctx = worker_context(
+        worker_id,
+        activities=io_activities,
+        workflows=workflows,
+        worker_config=test_worker_config,
+        client=client,
+        event_loop=event_loop,
+        task_queue=task_queue,
+        dependencies=test_deps,
+    )
+    async with worker_ctx:
         yield
 
 
@@ -120,18 +116,16 @@ async def translation_worker(
     worker_id = f"test-translation-worker-{uuid.uuid4()}"
     translation_activities = [TranslateDocs.translate_docs]
     task_queue = TaskQueues.TRANSLATE_GPU
-    async with (
-        bootstrap_worker(
-            worker_id,
-            activities=translation_activities,
-            bootstrap_config=test_worker_config,
-            client=client,
-            event_loop=event_loop,
-            task_queue=task_queue,
-            dependencies=test_deps,
-        ) as worker,
-        worker,
-    ):
+    worker_ctx = worker_context(
+        worker_id,
+        activities=translation_activities,
+        worker_config=test_worker_config,
+        client=client,
+        event_loop=event_loop,
+        task_queue=task_queue,
+        dependencies=test_deps,
+    )
+    async with worker_ctx:
         yield
 
 
@@ -146,16 +140,14 @@ async def classification_worker(
     worker_id = f"test-classification-worker-{uuid.uuid4()}"
     classification_activities = [ClassifyDocs.classify_docs]
     task_queue = TaskQueues.CLASSIFY_GPU
-    async with (
-        bootstrap_worker(
-            worker_id,
-            activities=classification_activities,
-            bootstrap_config=test_worker_config,
-            client=client,
-            event_loop=event_loop,
-            task_queue=task_queue,
-            dependencies=test_deps,
-        ) as worker,
-        worker,
-    ):
+    worker_ctx = worker_context(
+        worker_id,
+        activities=classification_activities,
+        worker_config=test_worker_config,
+        client=client,
+        event_loop=event_loop,
+        task_queue=task_queue,
+        dependencies=test_deps,
+    )
+    async with worker_ctx:
         yield

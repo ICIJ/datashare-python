@@ -5,7 +5,9 @@ from contextlib import contextmanager
 
 from datashare_python.dependencies import (  # noqa: F401
     lifespan_es_client,
+    lifespan_worker_config,
     set_es_client,
+    set_worker_config,
 )
 
 
@@ -23,6 +25,7 @@ def set_multiprocessing_start_method(**_) -> Generator[None, None, None]:
 
 
 REGISTRY = {
-    "inference": [set_multiprocessing_start_method],
-    "io": [set_es_client],
+    "inference": [set_worker_config, set_multiprocessing_start_method],
+    "io": [set_worker_config, set_es_client],
+    "preprocessing": [set_worker_config],
 }

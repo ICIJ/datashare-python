@@ -8,6 +8,7 @@ from _pytest.monkeypatch import MonkeyPatch
 from datashare_python.discovery import (
     discover_activities,
     discover_dependencies,
+    discover_worker_configs,
     discover_workflows,
 )
 
@@ -59,7 +60,7 @@ def test_discover_dependencies() -> None:
     name = "base"
     deps = discover_dependencies(name)
     # Then
-    expected_deps = ["set_loggers", "set_es_client"]
+    expected_deps = ["set_worker_config", "set_loggers", "set_es_client"]
     assert [d.__name__ for d in deps] == expected_deps
 
 
@@ -89,3 +90,40 @@ def test_discover_dependencies_should_raise_for_conflicting_deps(
     expected = "found multiple dependencies for name"
     with pytest.raises(ValueError, match=re.escape(expected)):
         discover_dependencies(name="some_name")
+
+
+def test_discover_worker_configs() -> None:
+    # Given
+    name = "base"
+    # When
+    worker_config_cls = discover_worker_configs(name)
+    # Then
+    assert worker_config_cls.__name__ == "TranslateAndClassifyWorkerConfig"
+
+
+def test_discover_worker_configs_should_raise_for_unknown_dep() -> None:
+    # Given
+    unknown_worker_config = "unknown_worker_config"
+    # When/Then
+    expected = (
+        'failed to find worker config for name "unknown_worker_config", '
+        "available worker configs: ['base']"
+    )
+    with pytest.raises(LookupError, match=re.escape(expected)):
+        discover_worker_configs(unknown_worker_config)
+
+
+def test_discover_worker_configs_should_raise_for_conflicting_deps(
+    monkeypatch: MonkeyPatch,
+) -> None:
+    # Given
+    def mocked_entry_points(name: str, group: str) -> EntryPoints:  # noqa: ARG001
+        entry_points = MagicMock()
+        entry_points.__len__.return_value = 2
+        return entry_points
+
+    monkeypatch.setattr(datashare_python.discovery, "entry_points", mocked_entry_points)
+    # When/Then
+    expected = "found multiple worker configs for name"
+    with pytest.raises(ValueError, match=re.escape(expected)):
+        discover_worker_configs(name="some_name")

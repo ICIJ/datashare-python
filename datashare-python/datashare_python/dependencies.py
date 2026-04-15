@@ -21,6 +21,7 @@ EVENT_LOOP: ContextVar[AbstractEventLoop] = ContextVar("event_loop")
 ES_CLIENT: ContextVar[ESClient] = ContextVar("es_client")
 TASK_CLIENT: ContextVar[DatashareTaskClient] = ContextVar("task_client")
 TEMPORAL_CLIENT: ContextVar[TemporalClient] = ContextVar("temporal_client")
+WORKER_CONFIG: ContextVar[WorkerConfig] = ContextVar("worker_config")
 
 
 def set_event_loop(event_loop: AbstractEventLoop) -> None:
@@ -38,6 +39,17 @@ def set_loggers(worker_config: WorkerConfig, worker_id: str) -> None:
     worker_config.setup_loggers(worker_id=worker_id)
     logger.info("worker loggers ready to log 💬")
     logger.info("app config: %s", worker_config.model_dump_json(indent=2))
+
+
+def set_worker_config(worker_config: WorkerConfig) -> None:
+    WORKER_CONFIG.set(worker_config)
+
+
+def lifespan_worker_config() -> WorkerConfig:
+    try:
+        return WORKER_CONFIG.get()
+    except LookupError as e:
+        raise DependencyInjectionError("worker config") from e
 
 
 async def set_es_client(worker_config: WorkerConfig) -> ESClient:

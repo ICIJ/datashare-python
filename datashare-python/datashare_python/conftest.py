@@ -17,7 +17,6 @@ from datashare_python.config import (
 from datashare_python.dependencies import (
     lifespan_es_client,
     lifespan_task_client,
-    lifespan_temporal_client,
     set_es_client,
     set_event_loop,
     set_loggers,
@@ -170,10 +169,11 @@ async def test_task_client(
 
 
 @pytest.fixture(scope="session")
-def test_temporal_client_session(
-    worker_lifetime_deps,  # noqa: ANN001, ARG001
-) -> TemporalClient:
-    return lifespan_temporal_client()
+async def test_temporal_client_session(
+    test_worker_config: WorkerConfig,
+    event_loop: AbstractEventLoop,  # noqa: ARG001
+) -> TemporalClient:  # noqa: ANN001
+    return await test_worker_config.to_temporal_client()
 
 
 @pytest.fixture

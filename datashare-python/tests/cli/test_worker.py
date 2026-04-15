@@ -3,11 +3,19 @@ from pathlib import Path
 from _pytest.capture import CaptureFixture
 from _pytest.monkeypatch import MonkeyPatch
 from datashare_python.cli import cli_app
-from temporalio.worker import Worker
+from datashare_python.worker import DatashareWorker
 from typer.testing import CliRunner
 
 
-async def _mock_worker_run(self) -> None:  # noqa: ANN001
+async def _mock_worker__aenter__(self) -> None:  # noqa: ANN001
+    pass
+
+
+async def _mock_worker__aexit__(self, exc_type, exc_val, exc_tb) -> None:  # noqa: ANN001
+    pass
+
+
+async def _mock_worker_is_done(self) -> None:  # noqa: ANN001
     pass
 
 
@@ -20,7 +28,9 @@ async def test_start_workers(
     # Given
     config_path = test_worker_config_path
     runner = CliRunner(mix_stderr=False)
-    monkeypatch.setattr(Worker, "run", _mock_worker_run)
+    monkeypatch.setattr(DatashareWorker, "__aenter__", _mock_worker__aenter__)
+    monkeypatch.setattr(DatashareWorker, "__aexit__", _mock_worker__aexit__)
+    monkeypatch.setattr(DatashareWorker, "is_done", _mock_worker_is_done)
     with capsys.disabled():
         # When
         result = runner.invoke(
@@ -50,5 +60,5 @@ async def test_start_workers(
     expected = """discovered:
 - 1 workflow: ping
 - 1 activity: create-translation-batches
-- 2 dependencies: set_loggers, set_es_client"""
+- 3 dependencies: set_worker_config, set_loggers, set_es_client"""
     assert expected in result.stderr
