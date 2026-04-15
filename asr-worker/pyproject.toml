@@ -49,7 +49,7 @@ activities = "asr_worker.activities:REGISTRY"
 dependencies = "asr_worker.dependencies:REGISTRY"
 
 [project.entry-points."datashare.worker_config_cls"]
-worker_config_cls = "worker_template.config:WORKER_CONFIG_CLS"
+worker_config_cls = "asr_worker.config:WORKER_CONFIG_CLS"
 
 [dependency-groups]
 dev = [
