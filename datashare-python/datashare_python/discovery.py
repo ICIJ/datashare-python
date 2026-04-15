@@ -3,6 +3,8 @@ import re
 from collections.abc import Callable, Iterable
 from importlib.metadata import entry_points
 
+from .config import WorkerConfig
+from .dependencies import set_worker_config
 from .types_ import ContextManagerFactory
 from .utils import ActivityWithProgress
 
@@ -11,9 +13,11 @@ logger = logging.getLogger(__name__)
 Activity = ActivityWithProgress | Callable | type
 
 _DEPENDENCIES = "dependencies"
-_WORKFLOW_GROUPS = "datashare.workflows"
-_ACTIVITIES_GROUPS = "datashare.activities"
-_DEPENDENCIES_GROUPS = "datashare.dependencies"
+_WORKER_CONFIGS = "worker_configs"
+_WORKFLOW_GROUP = "datashare.workflows"
+_ACTIVITIES_GROUP = "datashare.activities"
+_DEPENDENCIES_GROUP = "datashare.dependencies"
+_WORKER_CONFIGS_GROUP = "datashare.worker_configs"
 
 _RegisteredWorkflow = tuple[str, type]
 _RegisteredActivity = tuple[str, Activity]
@@ -22,11 +26,16 @@ _Discovery = tuple[
     Iterable[_RegisteredWorkflow] | None,
     Iterable[_RegisteredActivity] | None,
     _Dependencies | None,
+    type[WorkerConfig],
 ]
 
 
 def discover(
-    wf_names: list[str] | None, *, act_names: list[str] | None, deps_name: str | None
+    wf_names: list[str] | None,
+    *,
+    act_names: list[str] | None,
+    deps_name: str | None,
+    worker_config_name: str | None,
 ) -> _Discovery:
     discovered = ""
     wfs = None
@@ -60,9 +69,11 @@ def discover(
         if act_names:
             msg += "activity patterns " + ", ".join(act_names)
         raise ValueError(msg)
-    deps = None
+    deps = []
     if deps_name is not None:
         deps = discover_dependencies(deps_name)
+    if set_worker_config not in deps:
+        deps.append(set_worker_config)
     if deps:
         n_deps = len(deps)
         discovered += "\n"
@@ -71,13 +82,18 @@ def discover(
             f"- {n_deps} dependenc{'ies' if n_deps > 1 else 'y'}:"
             f" {', '.join(deps_names)}"
         )
+    if worker_config_name is not None:
+        worker_config_cls = discover_worker_configs(worker_config_name)
+        discovered += f"- worker config class: {worker_config_cls}"
+    else:
+        worker_config_cls = WorkerConfig
     logger.info("discovered:\n%s", discovered)
-    return wfs, acts, deps
+    return wfs, acts, deps, worker_config_cls
 
 
 def discover_workflows(names: list[str]) -> list[_RegisteredWorkflow]:
     pattern = None if not names else re.compile(rf"^{'|'.join(names)}$")
-    impls = entry_points(group=_WORKFLOW_GROUPS)
+    impls = entry_points(group=_WORKFLOW_GROUP)
     registered = []
     for wf_impls in impls:
         wf_impls = wf_impls.load()  # noqa: PLW2901
@@ -93,7 +109,7 @@ def discover_workflows(names: list[str]) -> list[_RegisteredWorkflow]:
 
 def discover_activities(names: list[str]) -> list[_RegisteredActivity]:
     pattern = None if not names else re.compile(rf"^{'|'.join(names)}$")
-    impls = entry_points(group=_ACTIVITIES_GROUPS)
+    impls = entry_points(group=_ACTIVITIES_GROUP)
     registered = []
     for act_impls in impls:
         act_impls = act_impls.load()  # noqa: PLW2901
@@ -108,9 +124,9 @@ def discover_activities(names: list[str]) -> list[_RegisteredActivity]:
 
 
 def discover_dependencies(name: str) -> _Dependencies:
-    impls = entry_points(name=_DEPENDENCIES, group=_DEPENDENCIES_GROUPS)
+    impls = entry_points(name=_DEPENDENCIES, group=_DEPENDENCIES_GROUP)
     if not impls:
-        available_impls = entry_points(group=_DEPENDENCIES_GROUPS)
+        available_impls = entry_points(group=_DEPENDENCIES_GROUP)
         msg = (
             f'failed to find dependency: "{name}", '
             f"available dependencies: {available_impls}"
@@ -127,6 +143,30 @@ def discover_dependencies(name: str) -> _Dependencies:
         msg = (
             f'failed to find dependency for name "{name}", available dependencies: '
             f"{available}"
+        )
+        raise LookupError(msg) from e
+
+
+def discover_worker_configs(name: str) -> type[WorkerConfig]:
+    impls = entry_points(name=_WORKER_CONFIGS, group=_WORKER_CONFIGS_GROUP)
+    if not impls:
+        available_impls = entry_points(group=_WORKER_CONFIGS_GROUP)
+        msg = (
+            f'failed to find worker config: "{name}", '
+            f"available dependencies: {available_impls}"
+        )
+        raise LookupError(msg)
+    if len(impls) > 1:
+        msg = f'found multiple worker configs for name "{name}": {impls}'
+        raise ValueError(msg)
+    deps_registry = impls[_WORKER_CONFIGS].load()
+    try:
+        return deps_registry[name]
+    except KeyError as e:
+        available = list(deps_registry)
+        msg = (
+            f'failed to find worker config for name "{name}", available worker '
+            f"configs: {available}"
         )
         raise LookupError(msg) from e
 

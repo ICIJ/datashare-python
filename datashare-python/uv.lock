@@ -393,7 +393,7 @@ wheels = [
 
 [[package]]
 name = "datashare-python"
-version = "0.2.27"
+version = "0.3.0"
 source = { editable = "." }
 dependencies = [
     { name = "aiohttp" },
@@ -484,7 +484,6 @@ provides-extras = ["ml"]
 [package.metadata.requires-dev]
 dev = [
     { name = "black", specifier = ">=26.1.0" },
-    { name = "datashare-python", editable = "." },
     { name = "nest-asyncio", specifier = ">=1.6.0" },
     { name = "pre-commit", specifier = ">=4.5.1" },
     { name = "psutil", specifier = ">=6.1.0" },

@@ -43,6 +43,13 @@ documentation for more details:
 _ACTIVITY_THREAD_NAME_PREFIX = "datashare-activity-worker-"
 
 
+class DatashareWorker(Worker):
+    async def is_done(self) -> None:
+        if self._async_context_run_task is None:
+            raise ValueError("worker is not running")
+        await self._async_context_run_task
+
+
 def datashare_worker(
     client: TemporalClient,
     worker_id: str,
@@ -53,7 +60,7 @@ def datashare_worker(
     # Scale horizontally be default for activities, each worker processes one activity
     # at a time
     max_concurrent_io_activities: int = 10,
-) -> Worker:
+) -> DatashareWorker:
     if workflows is None:
         workflows = []
     if activities is None:
@@ -77,7 +84,7 @@ def datashare_worker(
         if workflows:
             logger.warning(_SEPARATE_IO_AND_CPU_WORKERS)
 
-    return Worker(
+    return DatashareWorker(
         client,
         identity=worker_id,
         workflows=workflows,
@@ -124,21 +131,21 @@ def init_activity(
 
 
 @asynccontextmanager
-async def bootstrap_worker(
+async def worker_context(
     worker_id: str,
     *,
     activities: list[Callable[..., Any] | None] | None = None,
     workflows: list[type] | None = None,
-    bootstrap_config: WorkerConfig,
+    worker_config: WorkerConfig,
     client: TemporalClient,
     event_loop: AbstractEventLoop,
     task_queue: str,
     dependencies: list[ContextManagerFactory] | None = None,
-) -> AsyncGenerator[Worker, None]:
+) -> AsyncGenerator[DatashareWorker, None]:
     deps_cm = (
         with_dependencies(
             dependencies,
-            worker_config=bootstrap_config,
+            worker_config=worker_config,
             worker_id=worker_id,
             event_loop=event_loop,
         )
@@ -159,9 +166,10 @@ async def bootstrap_worker(
             workflows=workflows,
             activities=acts,
             task_queue=task_queue,
-            max_concurrent_io_activities=bootstrap_config.max_concurrent_io_activities,
+            max_concurrent_io_activities=worker_config.max_concurrent_io_activities,
         )
-        yield worker
+        async with worker:
+            yield worker
 
 
 @asynccontextmanager

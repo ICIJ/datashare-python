@@ -1,9 +1,8 @@
-import os
-from pathlib import Path
-
 import pytest
+from _pytest.tmpdir import TempPathFactory
 from asr_worker.config import ASRWorkerConfig
 from asr_worker.dependencies import set_multiprocessing_start_method
+from datashare_python.config import DatashareClientConfig, TemporalClientConfig
 from datashare_python.conftest import (  # noqa: F401
     TEST_PROJECT,
     doc_3,
@@ -20,7 +19,6 @@ from datashare_python.dependencies import set_es_client, set_temporal_client
 from datashare_python.objects import Document
 from datashare_python.types_ import ContextManagerFactory
 from icij_common.es import ESClient
-from icij_common.test_utils import reset_env  # noqa: F401
 
 
 @pytest.fixture(scope="session")
@@ -28,18 +26,23 @@ def test_deps() -> list[ContextManagerFactory]:
     return [set_temporal_client, set_es_client, set_multiprocessing_start_method]
 
 
-@pytest.fixture
-def mocked_worker_config_in_env(reset_env, tmp_path: Path) -> ASRWorkerConfig:  # noqa: ANN001, ARG001, F811
-    audios_path = tmp_path / "audios"
-    audios_path.mkdir()
-    os.environ["DS_WORKER_AUDIOS_ROOT"] = str(audios_path)
-    artifacts_path = tmp_path / "artifacts"
-    artifacts_path.mkdir()
-    os.environ["DS_WORKER_ARTIFACTS_ROOT"] = str(artifacts_path)
+@pytest.fixture(scope="session")
+def test_worker_config(tmp_path_factory: TempPathFactory) -> ASRWorkerConfig:  # noqa: ANN001, ARG001, F811
+    tmp_path = tmp_path_factory.mktemp("test-")
+    audios_root = tmp_path / "audios"
+    audios_root.mkdir()
+    artifacts_root = tmp_path / "artifacts"
+    artifacts_root.mkdir()
     workdir = tmp_path / "workdir"
     workdir.mkdir()
-    os.environ["DS_WORKER_WORKDIR"] = str(workdir)
-    return ASRWorkerConfig()
+    return ASRWorkerConfig(
+        log_level="DEBUG",
+        datashare=DatashareClientConfig(url="http://localhost:8080"),
+        temporal=TemporalClientConfig(host="localhost:7233"),
+        audios_root=audios_root,
+        artifacts_root=artifacts_root,
+        workdir=workdir,
+    )
 
 
 @pytest.fixture(scope="session")

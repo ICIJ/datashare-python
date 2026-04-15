@@ -50,7 +50,7 @@ jobs:
       - name: Run tests
         run: |
           cd asr-worker
-          uv sync --frozen --extra preprocessing --extra inference --dev
+          uv sync --verbose --frozen --extra preprocessing --extra inference --extra cpu --dev
           uv run --frozen python -m pytest --timeout=180 -vvv --cache-clear --show-capture=all -r A
 
 concurrency:

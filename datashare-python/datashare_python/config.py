@@ -74,10 +74,6 @@ class TemporalClientConfig(BaseModel):
             )
         return self._client
 
-    # For the lru_cache
-    def __hash__(self) -> int:
-        return id(self)
-
 
 class WorkerConfig(ICIJSettings, LogWithWorkerIDMixin, BaseModel):
     model_config = DS_WORKER_SETTINGS_CONFIG

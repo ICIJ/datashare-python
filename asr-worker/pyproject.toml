@@ -6,31 +6,36 @@ name = "asr-worker"
 dynamic = ["version"]
 description = "ASR Temporal task"
 authors = [
-    { name = "Lion Summerbell", email = "lsummerbell@icij.org" }
+  { name = "Clément Doumouro", email = "cdoumouro@icij.org" },
+  { name = "Clément Doumouro", email = "clement.doumouro@gmail.com" },
+  { name = "Lion Summerbell", email = "lsummerbell@icij.org" }
 ]
 readme = "README.md"
-requires-python = ">=3.11.0, <3.14"
+requires-python = ">=3.11.0, <3.13"
 dependencies = [
-    "caul==0.2.16",
-    "datashare-python~=0.3.0",
+  "caul==0.2.16",
+  "datashare-python~=0.3.0",
 ]
 
 [project.optional-dependencies]
-preprocessing = [
-    "torchaudio==2.11.0",
-    "torchcodec==0.11.0",
+cpu = [
+  "torch==2.10.0",
+  "torchaudio==2.10.0",
+  "torchcodec==0.10.0",
+]
+gpu = [
+  "torch==2.10.0 ; sys_platform == 'linux'",
+  "torchaudio==2.10.0 ; sys_platform == 'linux'",
+  "torchcodec==0.10.0 ; sys_platform == 'linux'",
 ]
 inference = [
-    "caul[nemo]==0.2.16",
-    "kaldialign==0.9.3",
-    "ml-dtypes==0.5.4",
-    "numpy==2.3.0",
-    "pyarrow==20.0.0",
-    "torchaudio==2.11.0",
-    "torch==2.11.0",
-    "torchcodec==0.11.0",
+  "caul[nemo]==0.2.16",
+  "kaldialign==0.9.3",
+  "ml-dtypes==0.5.4",
+  "numpy==2.3.0",
+  "pyarrow==20.0.0",
 ]
-gpu = [ # just a placeholder to create an extra marker used to switch to torch gpu build
+preprocessing = [
 ]
 
 [project.entry-points."datashare.workflows"]
@@ -44,17 +49,17 @@ dependencies = "asr_worker.dependencies:REGISTRY"
 
 [dependency-groups]
 dev = [
-    "black>=26.1.0",
-    "nest-asyncio>=1.6.0",
-    "pre-commit>=4.5.1",
-    "psutil>=6.1.0",
-    "pylint~=3.1.0",
-    "pytest~=8.1",
-    "pytest-asyncio~=0.24",
-    "pytest-timeout==2.4.0",
-    "redis[hiredis]>=5.2.1",
-    "ruff==0.15.2",
-    "typing-extensions>=4.15.0",
+  "black>=26.1.0",
+  "nest-asyncio>=1.6.0",
+  "pre-commit>=4.5.1",
+  "psutil>=6.1.0",
+  "pylint~=3.1.0",
+  "pytest~=8.1",
+  "pytest-asyncio~=0.24",
+  "pytest-timeout==2.4.0",
+  "redis[hiredis]>=5.2.1",
+  "ruff==0.15.2",
+  "typing-extensions>=4.15.0",
 ]
 
 [[tool.uv.index]]
@@ -69,24 +74,36 @@ explicit = true
 
 [tool.uv.sources]
 torch = [
-  { index = "pytorch-gpu", marker = "extra == 'gpu'" },
-  { index = "pytorch-cpu", marker = "extra != 'gpu'"},
+  { index = "pytorch-gpu", extra = "gpu" },
+  { index = "pytorch-cpu", extra = "cpu" },
 ]
 torchaudio = [
-  { index = "pytorch-gpu", marker = "extra == 'gpu'" },
-  { index = "pytorch-cpu", marker = "extra != 'gpu'"},
+  { index = "pytorch-gpu", extra = "gpu" },
+  { index = "pytorch-cpu", extra = "cpu" },
 ]
 torchcodec = [
-  { index = "pytorch-gpu", marker = "extra == 'gpu'" },
-  { index = "pytorch-cpu", marker = "extra != 'gpu'"},
+  { index = "pytorch-gpu", extra = "gpu" },
+  { index = "pytorch-cpu", extra = "cpu" },
 ]
 datashare-python = { path = "../datashare-python", editable = true }
 
 [tool.uv]
 package = true
-override-dependencies = ["kaldialign>=0.9.3"]
-
-[tool.uv.pip]
+override-dependencies = [
+  "kaldialign>=0.9.3",
+  "torchcodec==0.10.0",
+  "torchaudio==2.10.0",
+]
+environments = [
+  "sys_platform == 'darwin'",
+  "sys_platform == 'linux'",
+]
+conflicts = [
+  [
+    { extra = "cpu" },
+    { extra = "gpu" },
+  ],
+]
 prerelease = "if-necessary"
 
 
@@ -109,8 +126,8 @@ exclude = [
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "session"
 markers = [
-    "integration",
-    "pull",
+  "integration",
+  "pull",
 ]
 log_cli = 1
 log_cli_level = "DEBUG"

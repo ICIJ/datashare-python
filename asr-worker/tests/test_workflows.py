@@ -5,6 +5,7 @@ import uuid
 from asyncio import AbstractEventLoop
 from collections.abc import AsyncGenerator
 from pathlib import Path
+from typing import cast
 
 import pytest
 from asr_worker.activities import ASRActivities, write_transcription
@@ -14,6 +15,7 @@ from asr_worker.constants import (
     PREPROCESS_ACTIVITY,
     RUN_INFERENCE_ACTIVITY,
 )
+from asr_worker.dependencies import REGISTRY, lifespan_worker_config
 from asr_worker.models import (
     ASRArgs,
     ASRPipelineConfig,
@@ -28,12 +30,11 @@ from caul.objects import ASRResult, InputMetadata, PreprocessedInput
 from datashare_python.config import WorkerConfig
 from datashare_python.conftest import TEST_PROJECT
 from datashare_python.types_ import (
-    ContextManagerFactory,
     ProgressRateHandler,
     TemporalClient,
 )
 from datashare_python.utils import ActivityWithProgress, activity_defn
-from datashare_python.worker import bootstrap_worker
+from datashare_python.worker import worker_context
 from pydantic import TypeAdapter
 from temporalio.worker import Worker
 
@@ -58,7 +59,8 @@ class MockedASRActivities(ActivityWithProgress):
     def preprocess(self, paths: list[Path]) -> list[Path]:
         # TODO: this shouldn't be necessary, fix this bug
         paths = _LIST_OF_PATH_ADAPTER.validate_python(paths)
-        workdir = ASRWorkerConfig().workdir
+        worker_config = cast(ASRWorkerConfig, lifespan_worker_config())
+        workdir = worker_config.workdir
         workdir.mkdir(parents=True, exist_ok=True)
         batches = []
         for path_i, path in enumerate(paths):
@@ -85,7 +87,7 @@ class MockedASRActivities(ActivityWithProgress):
     ) -> list[Path]:  # noqa: ANN001, ARG001
         # TODO: this shouldn't be necessary, fix this bug
         preprocessed_inputs = _LIST_OF_PATH_ADAPTER.validate_python(preprocessed_inputs)
-        worker_config = ASRWorkerConfig()
+        worker_config = cast(ASRWorkerConfig, lifespan_worker_config())
         workdir = worker_config.workdir
         paths = []
         preprocessed_inputs = [
@@ -109,7 +111,7 @@ class MockedASRActivities(ActivityWithProgress):
         self,
         inference_results: list[Path],
         input_paths: list[Path],
-        config: PostprocessorConfig,
+        config: PostprocessorConfig,  # noqa: ARG002
         project: str,
         *,
         progress: ProgressRateHandler | None = None,  # noqa: ARG002
@@ -117,9 +119,9 @@ class MockedASRActivities(ActivityWithProgress):
         # TODO: this shouldn't be necessary, fix this bug
         inference_results = _LIST_OF_PATH_ADAPTER.validate_python(inference_results)
         input_paths = _LIST_OF_PATH_ADAPTER.validate_python(input_paths)
-        config = ASRWorkerConfig()
-        workdir = config.workdir
-        artifact_root = config.artifacts_root
+        worker_config = cast(ASRWorkerConfig, lifespan_worker_config())
+        workdir = worker_config.workdir
+        artifact_root = worker_config.artifacts_root
         artifact_root.mkdir(parents=True, exist_ok=True)
         inference_results = [
             ASRResult.model_validate_json((workdir / f).read_text())
@@ -151,23 +153,23 @@ class MockedASRActivities(ActivityWithProgress):
 @pytest.fixture
 async def io_bound_worker(
     test_temporal_client_session: TemporalClient,
-    test_worker_config: WorkerConfig,
+    test_worker_config: ASRWorkerConfig,
     event_loop: AbstractEventLoop,
 ) -> AsyncGenerator[None, None]:
     client = test_temporal_client_session
     worker_id = f"worker-{uuid.uuid4()}"
     task_queue = TaskQueues.IO
-    async with (
-        bootstrap_worker(
-            worker_id,
-            bootstrap_config=test_worker_config,
-            client=client,
-            event_loop=event_loop,
-            task_queue=task_queue,
-            workflows=[ASRWorkflow],
-        ) as worker,
-        worker,
-    ):
+    dependencies = REGISTRY["io"]
+    worker_ctx = worker_context(
+        worker_id,
+        worker_config=test_worker_config,
+        client=client,
+        event_loop=event_loop,
+        task_queue=task_queue,
+        workflows=[ASRWorkflow],
+        dependencies=dependencies,
+    )
+    async with worker_ctx:
         yield
 
 
@@ -181,17 +183,17 @@ async def mock_cpu_bound_worker(
     activities = MockedASRActivities(client, event_loop)
     worker_id = f"worker-{uuid.uuid4()}"
     task_queue = TaskQueues.CPU
-    async with (
-        bootstrap_worker(
-            worker_id,
-            bootstrap_config=test_worker_config,
-            client=client,
-            event_loop=event_loop,
-            task_queue=task_queue,
-            activities=[activities.preprocess, activities.postprocess],
-        ) as worker,
-        worker,
-    ):
+    dependencies = REGISTRY["preprocessing"]
+    worker_ctx = worker_context(
+        worker_id,
+        worker_config=test_worker_config,
+        client=client,
+        event_loop=event_loop,
+        task_queue=task_queue,
+        activities=[activities.preprocess, activities.postprocess],
+        dependencies=dependencies,
+    )
+    async with worker_ctx:
         yield
 
 
@@ -205,24 +207,23 @@ async def mock_gpu_inference_worker(
     activities = MockedASRActivities(client, event_loop)
     task_queue = TaskQueues.INFERENCE_GPU
     worker_id = f"worker-{uuid.uuid4()}"
-    async with (
-        bootstrap_worker(
-            worker_id,
-            bootstrap_config=test_worker_config,
-            client=client,
-            event_loop=event_loop,
-            task_queue=task_queue,
-            activities=[activities.infer],
-        ) as worker,
-        worker,
-    ):
+    dependencies = REGISTRY["inference"]
+    worker_ctx = worker_context(
+        worker_id,
+        worker_config=test_worker_config,
+        client=client,
+        event_loop=event_loop,
+        task_queue=task_queue,
+        activities=[activities.infer],
+        dependencies=dependencies,
+    )
+    async with worker_ctx:
         yield
 
 
 @pytest.fixture
 async def cpu_bound_worker(
-    worker_lifetime_deps: list[ContextManagerFactory],  # noqa: ARG001
-    mocked_worker_config_in_env: ASRWorkerConfig,  # noqa: ARG001
+    test_worker_config: ASRWorkerConfig,  # noqa: ARG001
     test_temporal_client_session: TemporalClient,
     event_loop: AbstractEventLoop,  # noqa: F811
 ) -> AsyncGenerator[None, None]:
@@ -230,24 +231,23 @@ async def cpu_bound_worker(
     activities = ASRActivities(client, event_loop)
     worker_id = f"worker-{uuid.uuid4()}"
     task_queue = TaskQueues.CPU
-    async with (
-        bootstrap_worker(
-            worker_id,
-            bootstrap_config=mocked_worker_config_in_env,
-            client=client,
-            event_loop=event_loop,
-            task_queue=task_queue,
-            activities=[activities.preprocess, activities.postprocess],
-        ) as worker,
-        worker,
-    ):
+    dependencies = REGISTRY["preprocessing"]
+    worker_ctx = worker_context(
+        worker_id,
+        worker_config=test_worker_config,
+        client=client,
+        event_loop=event_loop,
+        task_queue=task_queue,
+        activities=[activities.preprocess, activities.postprocess],
+        dependencies=dependencies,
+    )
+    async with worker_ctx:
         yield
 
 
 @pytest.fixture
 async def gpu_inference_worker(
-    worker_lifetime_deps: list[ContextManagerFactory],  # noqa: ARG001
-    mocked_worker_config_in_env: ASRWorkerConfig,  # noqa: ARG001
+    test_worker_config: ASRWorkerConfig,  # noqa: ARG001
     test_temporal_client_session: TemporalClient,
     event_loop: AbstractEventLoop,  # noqa: F811
 ) -> AsyncGenerator[None, None]:
@@ -255,17 +255,17 @@ async def gpu_inference_worker(
     activities = ASRActivities(client, event_loop)
     worker_id = f"worker-{uuid.uuid4()}"
     task_queue = TaskQueues.INFERENCE_GPU
-    async with (
-        bootstrap_worker(
-            worker_id,
-            bootstrap_config=mocked_worker_config_in_env,
-            client=client,
-            event_loop=event_loop,
-            task_queue=task_queue,
-            activities=[activities.infer],
-        ) as worker,
-        worker,
-    ):
+    dependencies = REGISTRY["inference"]
+    worker_ctx = worker_context(
+        worker_id,
+        worker_config=test_worker_config,
+        client=client,
+        event_loop=event_loop,
+        task_queue=task_queue,
+        activities=[activities.infer],
+        dependencies=dependencies,
+    )
+    async with worker_ctx:
         yield
 
 
@@ -292,10 +292,10 @@ async def test_asr_workflow(
     mock_cpu_bound_worker: Worker,  # noqa: ARG001
     mock_gpu_inference_worker: Worker,  # noqa: ARG001
     io_bound_worker: Worker,  # noqa: ARG001
-    mocked_worker_config_in_env: ASRWorkerConfig,
+    test_worker_config: ASRWorkerConfig,
 ) -> None:
     # Given
-    worker_config = mocked_worker_config_in_env
+    worker_config = test_worker_config
     client = test_temporal_client_session
     path = [Path("aabb"), Path("cc")]
     batch_size = 1
@@ -335,8 +335,8 @@ async def test_asr_workflow(
 
 
 @pytest.fixture
-def with_audios(mocked_worker_config_in_env: ASRWorkerConfig) -> list[Path]:
-    config = mocked_worker_config_in_env
+def with_audios(test_worker_config: ASRWorkerConfig) -> list[Path]:
+    config = test_worker_config
     audios = [f for f in AUDIOS_PATH.iterdir() if f.suffix == ".wav"]
     paths = []
     config.audios_root.mkdir(parents=True, exist_ok=True)
@@ -353,24 +353,24 @@ async def test_asr_workflow_e2e(
     cpu_bound_worker: Worker,  # noqa: ARG001
     gpu_inference_worker: Worker,  # noqa: ARG001
     io_bound_worker: Worker,  # noqa: ARG001
-    mocked_worker_config_in_env: ASRWorkerConfig,  # noqa: ARG001
+    test_worker_config: ASRWorkerConfig,
     with_audios: list[Path],
 ) -> None:
     # Given
-    config = mocked_worker_config_in_env
+    config = test_worker_config
     client = test_temporal_client_session
     n_audios = 3
     batch_size = n_audios - 1
     audios = with_audios * n_audios
     project = TEST_PROJECT
-    inputs = ASRArgs(
+    args = ASRArgs(
         project=project, docs=audios, config=ASRPipelineConfig(), batch_size=batch_size
     )
     workflow_id = f"asr-{uuid.uuid4().hex}"
 
     # When
     response = await client.execute_workflow(
-        ASRWorkflow.run, inputs, id=workflow_id, task_queue=TaskQueues.IO
+        ASRWorkflow.run, args, id=workflow_id, task_queue=TaskQueues.IO
     )
 
     # Then
