@@ -36,7 +36,7 @@ jobs:
         with:
           target: io-worker
           context: "{{defaultContext}}:asr-worker"
-          platforms: linux/amd64,linux/arm64
+          platforms: linux/amd64
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}

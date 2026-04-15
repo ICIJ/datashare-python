@@ -13,20 +13,20 @@ authors = [
 readme = "README.md"
 requires-python = ">=3.11.0, <3.13"
 dependencies = [
-  "caul==0.2.16",
   "datashare-python~=0.4.0",
 ]
 
 [project.optional-dependencies]
 cpu = [
+  "caul==0.2.16",
   "torch==2.10.0",
   "torchaudio==2.10.0",
   "torchcodec==0.10.0",
 ]
 gpu = [
-  "torch==2.10.0 ; sys_platform == 'linux'",
-  "torchaudio==2.10.0 ; sys_platform == 'linux'",
-  "torchcodec==0.10.0 ; sys_platform == 'linux'",
+  "torch==2.10.0+cu128; sys_platform == 'linux'",
+  "torchaudio==2.10.0+cu128; sys_platform == 'linux'",
+  "torchcodec==0.10.0+cu128; sys_platform == 'linux'",
 ]
 inference = [
   "caul[nemo]==0.2.16",
@@ -36,6 +36,7 @@ inference = [
   "pyarrow==20.0.0",
 ]
 preprocessing = [
+  "caul==0.2.16",
 ]
 
 [project.entry-points."datashare.workflows"]
@@ -96,7 +97,7 @@ override-dependencies = [
 ]
 environments = [
   "sys_platform == 'darwin'",
-  "sys_platform == 'linux'",
+  "sys_platform == 'linux' and platform_machine == 'x86_64'",
 ]
 conflicts = [
   [
