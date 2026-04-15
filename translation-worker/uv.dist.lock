@@ -412,7 +412,7 @@ wheels = [
 [[package]]
 name = "datashare-python"
 version = "0.4.0"
-source = { editable = "../datashare-python" }
+source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiohttp" },
     { name = "alive-progress" },
@@ -425,34 +425,9 @@ dependencies = [
     { name = "tomlkit" },
     { name = "typer" },
 ]
-
-[package.metadata]
-requires-dist = [
-    { name = "aiohttp", specifier = "~=3.11.9" },
-    { name = "alive-progress", specifier = "~=3.2.0" },
-    { name = "hatchling", specifier = "~=1.27.0" },
-    { name = "icij-common", extras = ["elasticsearch"], specifier = "~=0.8.2" },
-    { name = "nest-asyncio", specifier = "~=1.6.0" },
-    { name = "python-json-logger", specifier = "~=4.0.0" },
-    { name = "pyyaml", specifier = "~=6.0" },
-    { name = "temporalio", specifier = "~=1.23.0" },
-    { name = "tomlkit", specifier = "~=0.14.0" },
-    { name = "typer", specifier = "~=0.15.4" },
-]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "datashare-worker-template", extras = ["ml"], editable = "../worker-template" },
-    { name = "hatch-build", specifier = "~=0.5.0" },
-    { name = "nest-asyncio", specifier = "~=1.6.0" },
-    { name = "pre-commit", specifier = "~=4.5.1" },
-    { name = "psutil", specifier = "~=6.1.0" },
-    { name = "pylint", specifier = "~=3.1.0" },
-    { name = "pytest", specifier = "~=8.1" },
-    { name = "pytest-asyncio", specifier = "~=0.24" },
-    { name = "redis", extras = ["hiredis"], specifier = "~=5.2.1" },
-    { name = "ruff", specifier = "==0.15.2" },
-    { name = "typing-extensions", specifier = "~=4.15.0" },
+sdist = { url = "https://files.pythonhosted.org/packages/13/fa/f3d4dc0173ee49ebcc86fbb4baf92965d01d4aa06c3242cbf14b2f1f25e4/datashare_python-0.4.0.tar.gz", hash = "sha256:fcad3c6475f5bea9ee6631da512b3a75f0aa29681a896e1856ee0c65eee02892", size = 300159, upload-time = "2026-04-15T12:46:48.824Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/d9/06/b22b09476b1b4cf425d2a685fdb0a2f626a5abeecd2c385cf84a4f6bf1bc/datashare_python-0.4.0-py3-none-any.whl", hash = "sha256:df6668f903031a1e833a5bbfe1be51e974abbe195f4d20a756546fb05c3f5e6e", size = 305530, upload-time = "2026-04-15T12:46:47.534Z" },
 ]
 
 [[package]]
@@ -2152,14 +2127,14 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "argostranslate", specifier = ">=1.11.0" },
-    { name = "datashare-python", editable = "../datashare-python" },
+    { name = "datashare-python", specifier = "~=0.4.0" },
     { name = "pycountry", specifier = "~=26.2.16" },
     { name = "temporalio", specifier = ">=1.22.0" },
 ]
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "datashare-python", editable = "../datashare-python" },
+    { name = "datashare-python", specifier = "~=0.2" },
     { name = "nest-asyncio", specifier = ">=1.6.0" },
     { name = "pre-commit", specifier = ">=4.5.1" },
     { name = "psutil", specifier = ">=6.1.0" },

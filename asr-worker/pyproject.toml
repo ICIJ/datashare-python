@@ -14,7 +14,7 @@ readme = "README.md"
 requires-python = ">=3.11.0, <3.13"
 dependencies = [
   "caul==0.2.16",
-  "datashare-python~=0.3.0",
+  "datashare-python~=0.4.0",
 ]
 
 [project.optional-dependencies]
