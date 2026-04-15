@@ -23,7 +23,7 @@ FROM asr-worker-builder AS io-worker
 RUN --mount=type=cache,target=~/.cache/uv \
     --mount=type=bind,source=uv.dist.lock,target=uv.lock \
     --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
-    uv sync -v --frozen --no-editable --no-install-project
+    uv sync -v --frozen --no-editable --no-install-project --extra cpu
 
 # Then copy code
 ADD uv.dist.lock ./uv.lock
@@ -33,7 +33,7 @@ ADD entrypoints/io_worker.sh ./entrypoints/io_worker.sh
 
 # Then install service
 
-RUN cd asr_worker && uv sync -v --frozen --no-editable
+RUN cd asr_worker && uv sync -v --frozen --no-editable  --extra cpu
 RUN rm -rf ~/.cache/pip $(uv cache dir)
 
 ENTRYPOINT ["entrypoints/io_worker.sh"]
@@ -44,7 +44,7 @@ FROM asr-worker-builder AS preprocessing-worker
 RUN --mount=type=cache,target=~/.cache/uv \
     --mount=type=bind,source=uv.dist.lock,target=uv.lock \
     --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
-    uv sync -v --frozen --no-editable --no-install-project --extra preprocessing
+    uv sync -v --frozen --no-editable --no-install-project --extra preprocessing --extra cpu
 
 # Then copy code
 ADD uv.dist.lock ./uv.lock
@@ -53,7 +53,7 @@ ADD asr_worker ./asr_worker/
 ADD entrypoints/preprocessing_worker.sh ./entrypoints/preprocessing_worker.sh
 
 # Then install service
-RUN cd asr_worker && uv sync -v --frozen --no-editable --extra preprocessing
+RUN cd asr_worker && uv sync -v --frozen --no-editable --extra preprocessing --extra cpu
 RUN rm -rf ~/.cache/pip $(uv cache dir)
 
 ENTRYPOINT ["entrypoints/preprocessing_worker.sh"]
