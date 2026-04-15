@@ -15,6 +15,9 @@ ENV UV_NO_DEV=1
 
 COPY --from=ghcr.io/astral-sh/uv:0.11.6 /uv /uvx /bin/
 
+RUN apt-get update && \
+    apt-get install -y ffmpeg libavcodec-dev libavformat-dev libavutil-dev
+
 WORKDIR /app
 
 
