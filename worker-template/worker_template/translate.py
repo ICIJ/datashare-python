@@ -5,15 +5,7 @@ from functools import partial
 from aiostream.stream import chain
 from datashare_python.objects import Document
 from datashare_python.types_ import ProgressRateHandler
-from datashare_python.utils import (
-    ActivityWithProgress,
-    activity_defn,
-    async_batches,
-    batches,
-    before_and_after,
-    once,
-    to_raw_progress,
-)
+from datashare_python.utils import ActivityWithProgress, activity_defn, to_raw_progress
 from elasticsearch._async.helpers import async_bulk
 from icij_common.es import (
     BOOL,
@@ -30,6 +22,7 @@ from icij_common.es import (
     has_id,
     must_not,
 )
+from icij_common.iter_utils import async_batches, batches, before_and_after, once
 from temporalio.client import Client
 from transformers import Pipeline, pipeline
 
