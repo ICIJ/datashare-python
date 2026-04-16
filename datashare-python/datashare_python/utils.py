@@ -13,6 +13,7 @@ from datetime import timedelta
 from functools import partial, wraps
 from hashlib import sha256
 from inspect import signature
+from io import BytesIO
 from pathlib import Path
 from typing import Any, ParamSpec, TypeVar
 from uuid import uuid4
@@ -74,6 +75,15 @@ class ProgressSignal:
 
     def to_progress(self) -> Progress:
         return Progress(current=self.progress * self.weight, max_progress=self.weight)
+
+
+@dataclass(frozen=True)
+class DocArtifact:
+    project: str
+    doc_id: str
+    artifact: bytes | BytesIO
+    filename: str
+    metadata_key: str
 
 
 class ActivityWithProgress:
@@ -431,49 +441,43 @@ class LogWithWorkerIDMixin:
         return handlers
 
 
-def safe_dir(filename: str) -> Path:
-    filename = filename.split(".", maxsplit=1)[0]
-    parts = (p for p in (filename[:2], filename[2:4]) if p)
+def safe_dir(doc_id: str) -> Path:
+    if len(doc_id) < 4:
+        raise ValueError(f"expected doc_id to be at least 4, found {doc_id}")
+    parts = (p for p in (doc_id[:2], doc_id[2:4]) if p)
     return Path(*parts)
 
 
-def artifacts_dir(project: str, *, filename: str) -> Path:
-    return Path(project, safe_dir(filename), filename)
+def _artifacts_dir(doc_id: str, *, project: str) -> Path:
+    return Path(project, safe_dir(doc_id), doc_id)
 
 
-def metadata_path(filename: str, *, project: str) -> Path:
-    metadata_path = artifacts_dir(project, filename=filename) / METADATA_JSON
+def _metadata_path(doc_id: str, *, project: str) -> Path:
+    metadata_path = _artifacts_dir(doc_id, project=project) / METADATA_JSON
     return metadata_path
 
 
-def _read_artifact_metadata(root: Path, project: str, *, filename: str) -> dict:
-    m_path = root / metadata_path(filename, project=project)
+def _read_artifact_metadata(root: Path, artifact: DocArtifact) -> dict:
+    m_path = root / _metadata_path(artifact.filename, project=artifact.project)
     return json.loads(m_path.read_text())
 
 
-def write_artifact(
-    artifact: bytes,
-    root: Path,
-    *,
-    project: str,
-    filename: str,
-    metadata_key: str,
-    metadata_value: str,
-) -> Path:
-    artif_dir = root / artifacts_dir(project, filename=filename)
+def write_artifact(root: Path, artifact: DocArtifact) -> Path:
+    artif_dir = root / _artifacts_dir(artifact.doc_id, project=artifact.project)
     artif_dir.mkdir(exist_ok=True, parents=True)
     # TODO: if transcriptions are too large we could also serialize them
     #  as jsonl
-    transcription_path = artif_dir / metadata_value
-    transcription_path.write_bytes(artifact)
-    try:
-        meta = _read_artifact_metadata(root, project, filename=filename)
-    except FileNotFoundError:
-        meta = dict()
-    meta[metadata_key] = metadata_value
-    meta_path = root / artifacts_dir(project, filename=filename) / METADATA_JSON
+    artifact_path: Path = artif_dir / artifact.filename
+    if isinstance(artifact.artifact, bytes):
+        artifact_path.write_bytes(artifact.artifact)
+    elif isinstance(artifact_path, BytesIO):
+        with artifact_path.open("wb") as f:
+            f.write(artifact.artifact.read())
+    meta_path = root / _metadata_path(artifact.doc_id, project=artifact.project)
+    meta = _read_artifact_metadata(root, artifact) if meta_path.exists() else dict()
+    meta[artifact.metadata_key] = artifact.filename
     meta_path.write_text(json.dumps(meta))
-    return transcription_path.relative_to(artif_dir)
+    return artifact_path.relative_to(artif_dir)
 
 
 def debuggable_name(

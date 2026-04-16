@@ -3,6 +3,7 @@ from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from enum import StrEnum, unique
+from pathlib import Path
 from typing import Any, Literal, Self, TypeVar
 
 from temporalio import workflow
@@ -142,6 +143,7 @@ class Document(DatashareModel):
     language: str
     content: str | None = None
     content_type: str | None = None
+    path: Path | None = None
     tags: list[str] = Field(default_factory=list)
     content_translated: dict[str, str] = Field(
         default_factory=dict, alias="content_translated"

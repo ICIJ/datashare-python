@@ -200,6 +200,8 @@ def index_docs_ops(
         }
         doc = doc.model_dump(by_alias=True)  # noqa: PLW2901
         op.update(doc)
+        if "path" in op:
+            op["path"] = str(op["path"])
         op["_id"] = doc[ID]
         op["routing"] = doc[DOC_ROOT_ID]
         op["type"] = ES_DOCUMENT_TYPE

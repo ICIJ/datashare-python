@@ -1,125 +1,271 @@
 import json
-import math
 from collections.abc import AsyncGenerator, Iterable
+from itertools import cycle
 from pathlib import Path
 from typing import Self
 
 import pytest
 from aiostream import stream
 from asr_worker.activities import (
-    preprocess,
-    search_audios,
-    write_audio_search_results,
-    write_transcription,
+    infer_act,
+    postprocess_act,
+    preprocess_act,
+    read_batch,
+    search_audio_paths_act,
+    write_audio_batch,
+    write_audio_batches,
 )
-from asr_worker.constants import SUPPORTED_CONTENT_TYPES
-from asr_worker.models import Timestamp, Transcript, Transcription
+from asr_worker.models import DocId, Transcription
 from asr_worker.utils import read_jsonl
-from caul.objects import ASRResult, InputMetadata, PreprocessedInput
-from caul.tasks import Preprocessor
+from caul.objects import ASRResult, InputMetadata, PreprocessedInput, PreprocessorOutput
+from caul.tasks import InferenceRunner, Postprocessor, Preprocessor
 from datashare_python.conftest import TEST_PROJECT
 from datashare_python.objects import Document
 from icij_common.es import ESClient, ids_query, match_all
+from icij_common.iter_utils import batches
 from icij_common.registrable import RegistrableConfig
 
-PREPROCESSED_INPUT_0 = PreprocessedInput(metadata=InputMetadata(duration_s=0.0))
-PREPROCESSED_INPUT_1 = PreprocessedInput(metadata=InputMetadata(duration_s=1.0))
-PREPROCESSED_INPUT_2 = PreprocessedInput(metadata=InputMetadata(duration_s=2.0))
+PREPROCESSED_INPUT_0 = PreprocessedInput(
+    metadata=InputMetadata(
+        input_ordering=0,
+        duration_s=0.0,
+        preprocessed_file_path=Path("preprocessed_0.wav"),
+    )
+)
+PREPROCESSED_INPUT_1 = PreprocessedInput(
+    metadata=InputMetadata(
+        input_ordering=1,
+        duration_s=1.0,
+        preprocessed_file_path=Path("preprocessed_1.wav"),
+    )
+)
+PREPROCESSED_INPUT_2 = PreprocessedInput(
+    metadata=InputMetadata(
+        input_ordering=2,
+        duration_s=2.0,
+        preprocessed_file_path=Path("preprocessed_2.wav"),
+    )
+)
+
+INFERENCE_RESULTS = [
+    ASRResult(
+        input_ordering=0,
+        transcription=[(0.0, 0.0, "preprocessed_0")],
+        score=1.0,
+    ),
+    ASRResult(
+        input_ordering=1,
+        transcription=[(0.0, 1.0, "preprocessed_1")],
+        score=1.0,
+    ),
+    ASRResult(
+        input_ordering=2,
+        transcription=[(0.0, 2.0, "preprocessed_2")],
+        score=1.0,
+    ),
+]
 
 
-class MockProcessor(Preprocessor):
+class MockPeprocessor(Preprocessor):
+    def __init__(self, batch_size: int) -> None:
+        self._batch_size = batch_size
+
     @classmethod
     def _from_config(cls, config: RegistrableConfig, **kwargs) -> Self:  # noqa: ARG003
         return cls(**kwargs)
-
-    def __init__(self, batches: list[list[PreprocessedInput]]) -> None:
-        self._batches = batches
 
     def process(
         self,
         audios: Iterable[Path],  # noqa: ARG002
         **kwargs,  # noqa: ARG002
     ) -> Iterable[list[PreprocessedInput]]:
-        yield from self._batches
+        outputs = cycle(
+            [PREPROCESSED_INPUT_0, PREPROCESSED_INPUT_1, PREPROCESSED_INPUT_2]
+        )
+        outputs = [next(outputs) for _ in audios]
+        for b in batches(outputs, self._batch_size):
+            yield list(b)
 
 
-def test_preprocess(tmpdir: Path) -> None:
-    # Given
-    output_dir = Path(tmpdir)
-    batches = [[PREPROCESSED_INPUT_0, PREPROCESSED_INPUT_1], [PREPROCESSED_INPUT_2]]
-    preprocessor = MockProcessor(batches)
-    audios = []
-    # When
-    batch_files = list(preprocess(preprocessor, audios, output_dir=output_dir))
-    # Then
-    assert len(batch_files) == 2
-    written_batches = [
-        [PreprocessedInput.model_validate(d) for d in read_jsonl(f)]
-        for f in batch_files
-    ]
-    assert written_batches == batches
+class MockInferenceRunner(InferenceRunner):
+    @classmethod
+    def _from_config(cls, config: RegistrableConfig, **kwargs) -> Self:  # noqa: ARG003
+        return cls()
+
+    def process(
+        self,
+        inputs: Iterable[list[PreprocessorOutput]],
+        *args,  # noqa: ARG002
+        **kwargs,  # noqa: ARG002
+    ) -> Iterable[ASRResult]:
+        i = 0
+        for batch in inputs:
+            for preprocessed in batch:
+                transcription = (
+                    preprocessed.metadata.preprocessed_file_path.name.replace(
+                        ".wav", ""
+                    )
+                )
+                transcription = [(0.0, float(i), transcription)]
+                yield ASRResult(
+                    input_ordering=i, transcription=transcription, score=1.0
+                )
+                i += 1
 
 
-def test_write_transcription(tmpdir: Path) -> None:
-    # Given
-    asr_result = ASRResult(transcription=[(0.0, 1.0, "text")], score=math.log(0.5))
-    transcribed_filename = "0011someid"
-    artifacts_root = Path(tmpdir)
-    project = TEST_PROJECT
-    # When
-    write_transcription(
-        asr_result, transcribed_filename, artifacts_root=artifacts_root, project=project
-    )
-    # Then
-    expected_artifact_dir = artifacts_root / project / "00" / "11" / "0011someid"
-    assert expected_artifact_dir.exists()
-    metadata_path = expected_artifact_dir / "metadata.json"
-    assert metadata_path.exists()
-    metadata = json.loads(metadata_path.read_text())
-    assert metadata["transcription"] == "transcription.json"
-    transcription_path = expected_artifact_dir / metadata["transcription"]
-    assert transcription_path.exists()
-    transcription = Transcription.model_validate_json(transcription_path.read_text())
-    expected_transcription = Transcription(
-        transcripts=[
-            Transcript(text="text", timestamp=Timestamp(start_s=0.0, end_s=1.0))
-        ],
-        confidence=0.5,
-    )
-    assert transcription == expected_transcription
+class MockPostprocessor(Postprocessor):
+    @classmethod
+    def _from_config(cls, config: RegistrableConfig, **kwargs) -> Self:  # noqa: ARG003
+        return cls()
+
+    def process(
+        self,
+        inputs: Iterable[ASRResult],
+        *args,  # noqa: ARG002
+        **kwargs,  # noqa: ARG002
+    ) -> Iterable[ASRResult]:
+        yield from inputs
 
 
 @pytest.mark.parametrize(
-    ("query", "expected_docs"),
+    ("query", "expected_batches"),
     [
         # Supports empty query
-        ({}, ["doc-0", "doc-2"]),
+        ({}, [[("doc-0", Path("doc-0.wav")), ("doc-2", Path("doc-2.mp3"))]]),
         # Return all audio/video docs
-        (match_all(), ["doc-0", "doc-2"]),
-        (ids_query(["doc-0"]), ["doc-0"]),
+        (match_all(), [[("doc-0", Path("doc-0.wav")), ("doc-2", Path("doc-2.mp3"))]]),
+        (ids_query(["doc-0"]), [[("doc-0", Path("doc-0.wav"))]]),
         # Should filter non supported content type
         (ids_query(["doc-1"]), []),
     ],
 )
-async def test_search_audios(
+async def test_search_audio_paths_act(
     populate_es_with_audio: list[Document],
     test_es_client: ESClient,
     query: dict,
-    expected_docs: list[str],
+    expected_batches: list[tuple[DocId, Path]],
+    tmpdir: Path,
 ) -> None:
     # Given
-    assert len(populate_es_with_audio) == 4
+    tmpdir = Path(tmpdir)
+    batch_size = len(populate_es_with_audio)
+    assert batch_size == 4
     client = test_es_client
     # When
-    results = search_audios(
-        es_client=client,
-        project=TEST_PROJECT,
-        query=query,
-        supported_content_types=SUPPORTED_CONTENT_TYPES,
+    batch_paths = [
+        batch
+        async for batch in search_audio_paths_act(
+            es_client=client,
+            project=TEST_PROJECT,
+            query=query,
+            batch_size=batch_size,
+            output_dir=tmpdir,
+        )
+    ]
+    # Then
+    results = []
+    for b in batch_paths:
+        with b.open() as f:
+            results.append(list(read_batch(f)))
+    assert results == expected_batches
+
+
+def test_preprocess_act(tmpdir: Path) -> None:
+    # Given
+    tmpdir = Path(tmpdir)
+    n_audios = 3
+    batch_size = n_audios - 1
+    output_dir = tmpdir.joinpath("artifacts")
+    output_dir.mkdir()
+    audio_root = tmpdir.joinpath("audio_root")
+    audio_batch = tmpdir / "audio_batch.txt"
+    batch = [(f"doc-{i}", Path(str(i))) for i in range(n_audios)]
+    with audio_batch.open("w") as f:
+        write_audio_batch(batch, f)
+    preprocessor = MockPeprocessor(batch_size=batch_size)
+
+    # When
+    batch_files = preprocess_act(
+        preprocessor,
+        audio_batch=audio_batch,
+        audio_root=audio_root,
+        output_dir=output_dir,
+    )
+
+    # Then
+    assert len(batch_files) == 2
+    expected_batches = [
+        [PREPROCESSED_INPUT_0, PREPROCESSED_INPUT_1],
+        [PREPROCESSED_INPUT_2],
+    ]
+    written_batches = [
+        [PreprocessedInput.model_validate(d) for d in read_jsonl(output_dir / f)]
+        for f in batch_files
+    ]
+    assert written_batches == expected_batches
+
+
+def test_infer_act(tmpdir: Path) -> None:
+    # Given
+    inference_runner = MockInferenceRunner()
+    workdir = Path(tmpdir) / "workdir"
+    workdir.mkdir()
+    output_dir = Path(tmpdir)
+    preprocessed_inputs = [
+        PREPROCESSED_INPUT_0,
+        PREPROCESSED_INPUT_1,
+        PREPROCESSED_INPUT_2,
+    ]
+    paths = []
+    for p_i, p in enumerate(preprocessed_inputs):
+        input_path = workdir / f"{p_i}.json"
+        input_path.write_text(p.model_dump_json())
+        paths.append(input_path)
+    # When
+    asr_result_paths = infer_act(
+        inference_runner, preprocessed_inputs=paths, output_dir=output_dir
     )
     # Then
-    docs_ids = [i async for i in results]
-    assert docs_ids == expected_docs
+    asr_results = [
+        ASRResult.model_validate_json((output_dir / p).read_text())
+        for p in asr_result_paths
+    ]
+    assert asr_results == INFERENCE_RESULTS
+
+
+def test_postprocess_act(tmpdir: Path) -> None:
+    # Given
+    postprocessor = MockPostprocessor()
+    project = TEST_PROJECT
+    artifacts_root = Path(tmpdir)
+    doc_ids = [f"{str(i) * 4}-doc-{i}" for i in range(3)]
+    # When
+    postprocess_act(
+        postprocessor,
+        INFERENCE_RESULTS,
+        doc_ids=doc_ids,
+        artifacts_root=artifacts_root,
+        project=project,
+    )
+    # Then
+    expected_artifact_dirs = [
+        artifacts_root / project / "00" / "00" / "0000-doc-0",
+        artifacts_root / project / "11" / "11" / "1111-doc-1",
+        artifacts_root / project / "22" / "22" / "2222-doc-2",
+    ]
+    for res, d in zip(INFERENCE_RESULTS, expected_artifact_dirs, strict=True):
+        assert d.exists()
+        metadata_path = d / "metadata.json"
+        assert metadata_path.exists()
+        metadata = json.loads(metadata_path.read_text())
+        assert metadata["transcription"] == "transcription.json"
+        transcription_path = d / metadata["transcription"]
+        assert transcription_path.exists()
+        transcription = Transcription.model_validate_json(
+            transcription_path.read_text()
+        )
+        expected_transcription = Transcription.from_asr_handler_result(res)
+        assert transcription == expected_transcription
 
 
 async def test_write_audio_search_results(tmpdir: Path) -> None:
@@ -127,21 +273,27 @@ async def test_write_audio_search_results(tmpdir: Path) -> None:
     root = Path(tmpdir)
     batch_size = 2
 
-    async def results() -> AsyncGenerator[str, None]:
+    async def results() -> AsyncGenerator[tuple[DocId, str], None]:
         res = ["doc-0", "doc-1", "doc-2"]
         for r in res:
-            yield r
+            yield r, f"{r}.wav"
 
     # When
-    batches = write_audio_search_results(results(), root=root, batch_size=batch_size)
+    results = write_audio_batches(results(), root=root, batch_size=batch_size)
 
     # Then
     async def expected_content() -> AsyncGenerator[str, None]:
-        contents = ["doc-0\ndoc-1\n", "doc-2\n"]
-        for e in contents:
-            yield e
+        contents = [
+            [
+                '{"doc_id": "doc-0", "path": "doc-0.wav"}',
+                '{"doc_id": "doc-1", "path": "doc-1.wav"}',
+            ],
+            ['{"doc_id": "doc-2", "path": "doc-2.wav"}'],
+        ]
+        for line in contents:
+            yield "\n".join(line) + "\n"
 
-    batches_and_expected_content = stream.zip(batches, expected_content())
+    batches_and_expected_content = stream.zip(results, expected_content())
 
     async with batches_and_expected_content.stream() as streamed:
         async for p, expected_content in streamed:
