@@ -1,5 +1,4 @@
 import math
-from pathlib import Path
 from typing import Annotated, Any, Self
 
 from caul.asr_pipeline import ASRPipelineConfig
@@ -32,11 +31,12 @@ _DEFAULT_PIPELINE_CONFIG = ASRPipelineConfig(
 
 
 DocumentSearchQuery = dict[str, Any]
+DocId = str
 
 
 class ASRArgs(DatashareModel):
     project: str
-    docs: list[Path] | DocumentSearchQuery
+    docs: list[DocId] | DocumentSearchQuery
     config: ASRPipelineConfig = Field(default=_DEFAULT_PIPELINE_CONFIG)
     batch_size: int
 

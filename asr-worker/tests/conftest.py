@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import pytest
 from _pytest.tmpdir import TempPathFactory
 from asr_worker.config import ASRWorkerConfig
@@ -48,7 +50,11 @@ def test_worker_config(tmp_path_factory: TempPathFactory) -> ASRWorkerConfig:  #
 @pytest.fixture(scope="session")
 def doc_0() -> Document:
     return Document(
-        id="doc-0", root_document="root-0", language="ENGLISH", content_type="audio/wav"
+        id="doc-0",
+        root_document="root-0",
+        language="ENGLISH",
+        content_type="audio/wav",
+        path=Path("doc-0.wav"),
     )
 
 
@@ -59,13 +65,18 @@ def doc_1() -> Document:
         root_document="root-1",
         language="ENGLISH",
         content_type="application/json",
+        path=Path("doc-1.json"),
     )
 
 
 @pytest.fixture(scope="session")
 def doc_2() -> Document:
     return Document(
-        id="doc-2", root_document="root-2", language="FRENCH", content_type="audio/mpeg"
+        id="doc-2",
+        root_document="root-2",
+        language="FRENCH",
+        content_type="audio/mpeg",
+        path=Path("doc-2.mp3"),
     )
 
 

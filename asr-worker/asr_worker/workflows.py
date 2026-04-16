@@ -4,6 +4,7 @@ from enum import StrEnum
 from itertools import repeat
 
 from datashare_python.utils import WorkflowWithProgress, execute_activity
+from icij_common.es import has_id
 from pydantic import TypeAdapter
 from temporalio import workflow
 
@@ -30,24 +31,16 @@ class ASRWorkflow(WorkflowWithProgress):
         logger = workflow.logger
         config = args.config
         batch_size = args.batch_size
-        docs = args.docs
-        if isinstance(docs, dict):
-            args = [args.project, docs, batch_size]
-            batched_input_paths = workflow.execute_activity(
-                ASRActivities.search_audios,
-                args=args,
-                start_to_close_timeout=timedelta(seconds=TEN_MINUTES),
-                task_queue=TaskQueues.IO,
-            )
-        else:
-            batched_input_paths = [
-                docs[batch_start : batch_start + batch_size]
-                for batch_start in range(0, len(docs), batch_size)
-            ]
-        # Preprocessing
-        preprocess_args = zip(
-            batched_input_paths, repeat(config.preprocessing), strict=False
+        doc_query = has_id(args.docs) if isinstance(args.docs, list) else args.docs
+        search_args = [args.project, doc_query, batch_size]
+        batch_paths = await workflow.execute_activity(
+            ASRActivities.search_audio_paths,
+            args=search_args,
+            start_to_close_timeout=timedelta(seconds=TEN_MINUTES),
+            task_queue=TaskQueues.IO,
         )
+        # Preprocessing
+        preprocess_args = zip(batch_paths, repeat(config.preprocessing), strict=False)
         preprocessing_acts = (
             execute_activity(
                 ASRActivities.preprocess,
@@ -81,7 +74,7 @@ class ASRWorkflow(WorkflowWithProgress):
         postprocessing_ins = list(
             zip(
                 inference_results,
-                batched_input_paths,
+                batch_paths,
                 repeat(config.postprocessing),
                 repeat(args.project),
                 strict=False,
@@ -97,9 +90,10 @@ class ASRWorkflow(WorkflowWithProgress):
             for i in postprocessing_ins
         ]
         logger.info("running postprocessing...")
-        await gather(*postprocessing_acts)
+        n_transcribed = await gather(*postprocessing_acts)
+        n_transcribed = sum(n_transcribed)
         logger.info("postprocessing complete !")
-        return ASRResponse(n_transcribed=len(args.docs))
+        return ASRResponse(n_transcribed=n_transcribed)
 
 
 REGISTRY = [ASRWorkflow]
