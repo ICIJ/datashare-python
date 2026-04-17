@@ -12,12 +12,13 @@ from asr_worker.config import ASRWorkerConfig
 from asr_worker.constants import SUPPORTED_CONTENT_TYPES
 from asr_worker.dependencies import REGISTRY
 from asr_worker.objects import (
+    ASRArgs,
     ASRPipelineConfig,
+    DocId,
     Timestamp,
     Transcript,
     Transcription,
 )
-from asr_worker.objects import ASRArgs, DocId
 from asr_worker.workflows import ASRWorkflow, TaskQueues
 from caul.objects import ASRResult
 from datashare_python.conftest import TEST_PROJECT
