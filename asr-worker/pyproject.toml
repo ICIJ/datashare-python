@@ -16,9 +16,12 @@ dependencies = [
   "datashare-python~=0.5.0",
 ]
 
+[project.scripts]
+asr-worker = "asr_worker.__main__:main"
+
 [project.optional-dependencies]
 cpu = [
-  "caul==0.2.16",
+  "caul==0.3.0",
   "torch==2.10.0",
   "torchaudio==2.10.0",
   "torchcodec==0.10.0",
@@ -29,14 +32,14 @@ gpu = [
   "torchcodec==0.10.0+cu128; sys_platform == 'linux'",
 ]
 inference = [
-  "caul[nemo]==0.2.16",
+  "caul[nemo]==0.3.0",
   "kaldialign==0.9.3",
   "ml-dtypes==0.5.4",
   "numpy==2.3.0",
   "pyarrow==20.0.0",
 ]
 preprocessing = [
-  "caul==0.2.16",
+  "caul==0.3.0",
 ]
 
 [project.entry-points."datashare.workflows"]
@@ -90,6 +93,7 @@ torchcodec = [
   { index = "pytorch-cpu", extra = "cpu" },
 ]
 datashare-python = { path = "../datashare-python", editable = true }
+
 
 [tool.uv]
 package = true

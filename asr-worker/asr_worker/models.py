@@ -1,10 +1,11 @@
 import math
+from collections import defaultdict
+from functools import cache
 from typing import Annotated, Any, Self
 
 from caul.asr_pipeline import ASRPipelineConfig
 from caul.config import InferenceRunnerConfig as CaulInferenceRunnerConfig
-from caul.constant import ASRModel
-from caul.objects import ASRResult
+from caul.objects import ASRLanguage, ASRModel, ASRResult
 from caul.tasks import (
     ParakeetInferenceRunnerConfig,
     ParakeetPostprocessorConfig,
@@ -12,7 +13,7 @@ from caul.tasks import (
 )
 from datashare_python.objects import DatashareModel
 from icij_common.pydantic_utils import make_enum_discriminator, tagged_union
-from pydantic import Discriminator, Field
+from pydantic import Discriminator, Field, RootModel
 
 model_discriminator = make_enum_discriminator("model", ASRModel)
 InferenceRunnerConfig = Annotated[
@@ -75,3 +76,16 @@ class Transcription(DatashareModel):
         if confidence is not None:
             confidence = math.exp(asr_handler_result.score)
         return Transcription(confidence=confidence, transcripts=transcripts)
+
+
+AvailableModels = RootModel[dict[ASRLanguage, list[ASRModel]]]
+
+
+@cache
+def available_models() -> AvailableModels:
+    models = defaultdict(list)
+    for m in ASRModel:
+        for language in m.supported_languages():
+            models[language].append(m)
+    models = {k: sorted(v) for k, v in sorted(models.items())}
+    return AvailableModels.model_validate(models)
