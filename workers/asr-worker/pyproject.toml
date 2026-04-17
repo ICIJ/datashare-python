@@ -20,6 +20,9 @@ dependencies = [
 asr-worker = "asr_worker.__main__:main"
 
 [project.optional-dependencies]
+cli = [
+  "caul==0.3.1",
+]
 cpu = [
   "caul==0.3.1",
   "torch==2.10.0",
