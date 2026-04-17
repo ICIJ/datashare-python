@@ -3,6 +3,7 @@ from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from enum import StrEnum, unique
+from io import BytesIO
 from pathlib import Path
 from typing import Any, Literal, Self, TypeVar
 
@@ -161,3 +162,12 @@ class Document(DatashareModel):
             root_document=sources[DOC_ROOT_ID],
             tags=sources.get("tags", []),
         )
+
+
+@dataclass(frozen=True)
+class DocArtifact:
+    project: str
+    doc_id: str
+    artifact: bytes | BytesIO
+    filename: str
+    metadata_key: str

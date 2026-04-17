@@ -15,10 +15,10 @@ from caul.tasks import (
     Preprocessor,
 )
 from datashare_python.dependencies import lifespan_worker_config
+from datashare_python.objects import DocArtifact
 from datashare_python.types_ import ProgressRateHandler, RawProgressHandler
 from datashare_python.utils import (
     ActivityWithProgress,
-    DocArtifact,
     activity_contextual_id,
     activity_defn,
     debuggable_name,

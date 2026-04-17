@@ -35,6 +35,7 @@ from temporalio.common import RetryPolicy, SearchAttributeKey
 from temporalio.exceptions import ApplicationError
 
 from .constants import METADATA_JSON
+from .objects import DocArtifact
 from .types_ import ProgressRateHandler, RawProgressHandler
 
 DependencyLabel = str | None
@@ -75,15 +76,6 @@ class ProgressSignal:
 
     def to_progress(self) -> Progress:
         return Progress(current=self.progress * self.weight, max_progress=self.weight)
-
-
-@dataclass(frozen=True)
-class DocArtifact:
-    project: str
-    doc_id: str
-    artifact: bytes | BytesIO
-    filename: str
-    metadata_key: str
 
 
 class ActivityWithProgress:
