@@ -177,6 +177,9 @@ dependencies = [
 ]
 
 [package.optional-dependencies]
+cli = [
+    { name = "caul", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-10-asr-worker-cpu' and extra == 'extra-10-asr-worker-gpu') or sys_platform == 'darwin' or (sys_platform != 'linux' and extra == 'extra-10-asr-worker-cpu' and extra == 'extra-10-asr-worker-gpu')" },
+]
 cpu = [
     { name = "caul", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or sys_platform == 'darwin'" },
     { name = "torch", version = "2.10.0", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "(sys_platform == 'darwin' and extra == 'extra-10-asr-worker-cpu') or (extra == 'extra-10-asr-worker-cpu' and extra == 'extra-10-asr-worker-gpu')" },
@@ -218,6 +221,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "caul", marker = "extra == 'cli'", specifier = "==0.3.1" },
     { name = "caul", marker = "extra == 'cpu'", specifier = "==0.3.1" },
     { name = "caul", marker = "extra == 'preprocessing'", specifier = "==0.3.1" },
     { name = "caul", extras = ["nemo"], marker = "extra == 'inference'", specifier = "==0.3.1" },
@@ -233,7 +237,7 @@ requires-dist = [
     { name = "torchcodec", marker = "sys_platform == 'linux' and extra == 'gpu'", specifier = "==0.10.0+cu128", index = "https://download.pytorch.org/whl/cu128", conflict = { package = "asr-worker", extra = "gpu" } },
     { name = "torchcodec", marker = "extra == 'cpu'", specifier = "==0.10.0", index = "https://download.pytorch.org/whl/cpu", conflict = { package = "asr-worker", extra = "cpu" } },
 ]
-provides-extras = ["cpu", "gpu", "inference", "preprocessing"]
+provides-extras = ["cli", "cpu", "gpu", "inference", "preprocessing"]
 
 [package.metadata.requires-dev]
 dev = [
@@ -609,7 +613,7 @@ wheels = [
 
 [[package]]
 name = "datashare-python"
-version = "0.5.0"
+version = "0.6.0"
 source = { editable = "../../datashare-python" }
 dependencies = [
     { name = "aiohttp", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-10-asr-worker-cpu' and extra == 'extra-10-asr-worker-gpu') or sys_platform == 'darwin' or (sys_platform != 'linux' and extra == 'extra-10-asr-worker-cpu' and extra == 'extra-10-asr-worker-gpu')" },

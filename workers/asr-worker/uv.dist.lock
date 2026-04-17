@@ -177,6 +177,9 @@ dependencies = [
 ]
 
 [package.optional-dependencies]
+cli = [
+    { name = "caul", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-10-asr-worker-cpu' and extra == 'extra-10-asr-worker-gpu') or sys_platform == 'darwin' or (sys_platform != 'linux' and extra == 'extra-10-asr-worker-cpu' and extra == 'extra-10-asr-worker-gpu')" },
+]
 cpu = [
     { name = "caul", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or sys_platform == 'darwin'" },
     { name = "torch", version = "2.10.0", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "(sys_platform == 'darwin' and extra == 'extra-10-asr-worker-cpu') or (extra == 'extra-10-asr-worker-cpu' and extra == 'extra-10-asr-worker-gpu')" },
@@ -218,10 +221,11 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "caul", marker = "extra == 'cli'", specifier = "==0.3.1" },
     { name = "caul", marker = "extra == 'cpu'", specifier = "==0.3.1" },
     { name = "caul", marker = "extra == 'preprocessing'", specifier = "==0.3.1" },
     { name = "caul", extras = ["nemo"], marker = "extra == 'inference'", specifier = "==0.3.1" },
-    { name = "datashare-python", specifier = "~=0.5.0" },
+    { name = "datashare-python", specifier = "~=0.6.0" },
     { name = "kaldialign", marker = "extra == 'inference'", specifier = "==0.9.3" },
     { name = "ml-dtypes", marker = "extra == 'inference'", specifier = "==0.5.4" },
     { name = "numpy", marker = "extra == 'inference'", specifier = "==2.3.0" },
@@ -233,7 +237,7 @@ requires-dist = [
     { name = "torchcodec", marker = "sys_platform == 'linux' and extra == 'gpu'", specifier = "==0.10.0+cu128", index = "https://download.pytorch.org/whl/cu128", conflict = { package = "asr-worker", extra = "gpu" } },
     { name = "torchcodec", marker = "extra == 'cpu'", specifier = "==0.10.0", index = "https://download.pytorch.org/whl/cpu", conflict = { package = "asr-worker", extra = "cpu" } },
 ]
-provides-extras = ["cpu", "gpu", "inference", "preprocessing"]
+provides-extras = ["cli", "cpu", "gpu", "inference", "preprocessing"]
 
 [package.metadata.requires-dev]
 dev = [
@@ -476,7 +480,7 @@ resolution-markers = [
     "python_full_version < '3.12' and platform_machine == 'x86_64' and sys_platform == 'linux'",
 ]
 dependencies = [
-    { name = "cuda-pathfinder", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'extra-10-asr-worker-cpu') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'extra-10-asr-worker-gpu') or (platform_machine != 'x86_64' and extra == 'extra-10-asr-worker-cpu' and extra == 'extra-10-asr-worker-gpu') or (sys_platform != 'linux' and extra == 'extra-10-asr-worker-cpu' and extra == 'extra-10-asr-worker-gpu')" },
+    { name = "cuda-pathfinder", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'extra-10-asr-worker-gpu') or (platform_machine != 'x86_64' and extra == 'extra-10-asr-worker-cpu' and extra == 'extra-10-asr-worker-gpu') or (sys_platform != 'linux' and extra == 'extra-10-asr-worker-cpu' and extra == 'extra-10-asr-worker-gpu')" },
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/45/e7/b47792cc2d01c7e1d37c32402182524774dadd2d26339bd224e0e913832e/cuda_bindings-12.9.4-cp311-cp311-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:c912a3d9e6b6651853eed8eed96d6800d69c08e94052c292fec3f282c5a817c9", size = 12210593, upload-time = "2025-10-21T14:51:36.574Z" },
@@ -492,7 +496,7 @@ resolution-markers = [
     "python_full_version < '3.12' and platform_machine == 'x86_64' and sys_platform == 'linux'",
 ]
 dependencies = [
-    { name = "cuda-pathfinder", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux' and extra != 'extra-10-asr-worker-cpu' and extra != 'extra-10-asr-worker-gpu') or (extra == 'extra-10-asr-worker-cpu' and extra == 'extra-10-asr-worker-gpu')" },
+    { name = "cuda-pathfinder", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'extra-10-asr-worker-cpu') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra != 'extra-10-asr-worker-gpu') or (platform_machine != 'x86_64' and extra == 'extra-10-asr-worker-cpu' and extra == 'extra-10-asr-worker-gpu') or (sys_platform != 'linux' and extra == 'extra-10-asr-worker-cpu' and extra == 'extra-10-asr-worker-gpu')" },
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/e9/94/2748597f47bb1600cd466b20cab4159f1530a3a33fe7f70fee199b3abb9e/cuda_bindings-13.2.0-cp311-cp311-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:1eba9504ac70667dd48313395fe05157518fd6371b532790e96fbb31bbb5a5e1", size = 6313924, upload-time = "2026-03-11T00:12:39.462Z" },
@@ -609,7 +613,7 @@ wheels = [
 
 [[package]]
 name = "datashare-python"
-version = "0.5.0"
+version = "0.6.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiohttp", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-10-asr-worker-cpu' and extra == 'extra-10-asr-worker-gpu') or sys_platform == 'darwin' or (sys_platform != 'linux' and extra == 'extra-10-asr-worker-cpu' and extra == 'extra-10-asr-worker-gpu')" },
@@ -623,9 +627,9 @@ dependencies = [
     { name = "tomlkit", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-10-asr-worker-cpu' and extra == 'extra-10-asr-worker-gpu') or sys_platform == 'darwin' or (sys_platform != 'linux' and extra == 'extra-10-asr-worker-cpu' and extra == 'extra-10-asr-worker-gpu')" },
     { name = "typer", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-10-asr-worker-cpu' and extra == 'extra-10-asr-worker-gpu') or sys_platform == 'darwin' or (sys_platform != 'linux' and extra == 'extra-10-asr-worker-cpu' and extra == 'extra-10-asr-worker-gpu')" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/45/24/e7b782f222ede0ccdfca04c977602c7e3c94ee4df10b87548a58943ef098/datashare_python-0.5.0.tar.gz", hash = "sha256:346a6767db42dab48c11bbe2bd98b9a878609667941386ee2c0d5bd7f361c281", size = 300042, upload-time = "2026-04-15T15:32:54.153Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/74/7b/9ad293f21784d5bf7514c717d3a551be837f2ca37aac7d24c5b6c6b4c708/datashare_python-0.6.0.tar.gz", hash = "sha256:5f2d7b77722006a7a475dd5798e4b7e72f6500840c5de2de12ad086ed2c22ab9", size = 299305, upload-time = "2026-04-17T11:17:33.345Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/b3/1f/28a777b8ef32539154e2059a0ed34a74b47cc6761426cf9dbbd8cfeaa21f/datashare_python-0.5.0-py3-none-any.whl", hash = "sha256:2e8c662b8ddad4bce8a94594c47bee3152924b7893509c589a3c99f8f505c6ed", size = 305446, upload-time = "2026-04-15T15:32:53.03Z" },
+    { url = "https://files.pythonhosted.org/packages/70/e1/9b1874495d03e7f3b8fbb3a63172ffb407452e95157341a03afdb65f51b3/datashare_python-0.6.0-py3-none-any.whl", hash = "sha256:f6a5ba663ab786ffa904817efd42e78054f1cab4ffc0f0a4b7ccfcfb1629725e", size = 304055, upload-time = "2026-04-17T11:17:32.253Z" },
 ]
 
 [[package]]
@@ -1591,8 +1595,8 @@ name = "nemo-toolkit"
 version = "2.7.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "cuda-bindings", version = "12.9.4", source = { registry = "https://pypi.org/simple" }, marker = "(platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'extra-10-asr-worker-cpu') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'extra-10-asr-worker-gpu') or (platform_machine != 'x86_64' and extra == 'extra-10-asr-worker-cpu' and extra == 'extra-10-asr-worker-gpu') or (sys_platform != 'linux' and extra == 'extra-10-asr-worker-cpu' and extra == 'extra-10-asr-worker-gpu')" },
-    { name = "cuda-bindings", version = "13.2.0", source = { registry = "https://pypi.org/simple" }, marker = "(platform_machine == 'x86_64' and sys_platform == 'linux' and extra != 'extra-10-asr-worker-cpu' and extra != 'extra-10-asr-worker-gpu') or (extra == 'extra-10-asr-worker-cpu' and extra == 'extra-10-asr-worker-gpu')" },
+    { name = "cuda-bindings", version = "12.9.4", source = { registry = "https://pypi.org/simple" }, marker = "(platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'extra-10-asr-worker-gpu') or (platform_machine != 'x86_64' and extra == 'extra-10-asr-worker-cpu' and extra == 'extra-10-asr-worker-gpu') or (sys_platform != 'linux' and extra == 'extra-10-asr-worker-cpu' and extra == 'extra-10-asr-worker-gpu')" },
+    { name = "cuda-bindings", version = "13.2.0", source = { registry = "https://pypi.org/simple" }, marker = "(platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'extra-10-asr-worker-cpu') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra != 'extra-10-asr-worker-gpu') or (platform_machine != 'x86_64' and extra == 'extra-10-asr-worker-cpu' and extra == 'extra-10-asr-worker-gpu') or (sys_platform != 'linux' and extra == 'extra-10-asr-worker-cpu' and extra == 'extra-10-asr-worker-gpu')" },
     { name = "fsspec", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-10-asr-worker-cpu' and extra == 'extra-10-asr-worker-gpu') or sys_platform == 'darwin' or (sys_platform != 'linux' and extra == 'extra-10-asr-worker-cpu' and extra == 'extra-10-asr-worker-gpu')" },
     { name = "huggingface-hub", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-10-asr-worker-cpu' and extra == 'extra-10-asr-worker-gpu') or sys_platform == 'darwin' or (sys_platform != 'linux' and extra == 'extra-10-asr-worker-cpu' and extra == 'extra-10-asr-worker-gpu')" },
     { name = "numba", marker = "sys_platform == 'darwin' or (extra == 'extra-10-asr-worker-cpu' and extra == 'extra-10-asr-worker-gpu')" },
