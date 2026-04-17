@@ -44,7 +44,7 @@ activities = "translation_worker.activities:ACTIVITIES"
 torch = [
   { index = "pytorch-cpu" },
 ]
-datashare-python = { path = "../datashare-python", editable = true }
+datashare-python = { path = "../../datashare-python", editable = true }
 
 [[tool.uv.index]]
 name = "pytorch-cpu"
