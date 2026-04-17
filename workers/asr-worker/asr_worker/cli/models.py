@@ -1,4 +1,4 @@
-from ..models import available_models
+from ..objects import available_models
 from .utils import AsyncTyper
 
 _MODELS = "models"

@@ -15,7 +15,7 @@ from asr_worker.activities import (
     write_audio_batch,
     write_audio_batches,
 )
-from asr_worker.models import DocId, Transcription
+from asr_worker.objects import DocId, Transcription
 from asr_worker.utils import read_jsonl
 from caul.objects import ASRResult, InputMetadata, PreprocessedInput, PreprocessorOutput
 from caul.tasks import InferenceRunner, Postprocessor, Preprocessor

@@ -9,7 +9,7 @@ from pydantic import TypeAdapter
 from temporalio import workflow
 
 from asr_worker.constants import ASR_WORKFLOW, TEN_MINUTES
-from asr_worker.models import ASRArgs, ASRResponse
+from asr_worker.objects import ASRArgs, ASRResponse
 
 with workflow.unsafe.imports_passed_through():
     from asr_worker.activities import ASRActivities

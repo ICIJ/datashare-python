@@ -1,36 +1,91 @@
+import math
+from collections import defaultdict
+from functools import cache
+from typing import Annotated, Any, Self
+
+from caul.asr_pipeline import ASRPipelineConfig
+from caul.config import InferenceRunnerConfig as CaulInferenceRunnerConfig
+from caul.objects import ASRLanguage, ASRModel, ASRResult
+from caul.tasks import (
+    ParakeetInferenceRunnerConfig,
+    ParakeetPostprocessorConfig,
+    ParakeetPreprocessorConfig,
+)
 from datashare_python.objects import DatashareModel
-from pydantic import BaseModel, Field
+from icij_common.pydantic_utils import make_enum_discriminator, tagged_union
+from pydantic import Discriminator, Field, RootModel
 
-from asr_worker.constants import PARAKEET
-
-
-class BatchSize(BaseModel):
-    """Batch size helper"""
-
-    batch_size: int = 32
-
-
-class PreprocessingConfig(BatchSize):
-    """Preprocessing config"""
+model_discriminator = make_enum_discriminator("model", ASRModel)
+InferenceRunnerConfig = Annotated[
+    tagged_union(
+        CaulInferenceRunnerConfig.__subclasses__(), lambda t: t.model.default.value
+    ),
+    Discriminator(model_discriminator),
+]
 
 
-class InferenceConfig(BatchSize):
-    """Inference config"""
-
-    model_name: str = PARAKEET
-
-
-class ASRPipelineConfig(BaseModel):
-    """ASR pipeline config"""
-
-    preprocessing: PreprocessingConfig = Field(default_factory=PreprocessingConfig)
-    inference: InferenceConfig = Field(default_factory=InferenceConfig)
+_DEFAULT_PIPELINE_CONFIG = ASRPipelineConfig(
+    preprocessing=ParakeetPreprocessorConfig(),
+    inference=ParakeetInferenceRunnerConfig(),
+    postprocessing=ParakeetPostprocessorConfig(),
+)
 
 
-class ASRRequest(DatashareModel):
-    file_paths: list[str]
-    pipeline: ASRPipelineConfig
+DocumentSearchQuery = dict[str, Any]
+DocId = str
+
+
+class ASRArgs(DatashareModel):
+    project: str
+    docs: list[DocId] | DocumentSearchQuery
+    config: ASRPipelineConfig = Field(default=_DEFAULT_PIPELINE_CONFIG)
+    batch_size: int
 
 
 class ASRResponse(DatashareModel):
-    transcriptions: list[dict] = Field(default_factory=list)
+    n_transcribed: int
+
+
+class Timestamp(DatashareModel):
+    start_s: float
+    end_s: float
+
+    @classmethod
+    def from_floats(cls, start_s: float, end_s: float) -> Self:
+        return Timestamp(start_s=start_s, end_s=end_s)
+
+
+class Transcript(DatashareModel):
+    text: str
+    timestamp: Timestamp | None = None
+    speaker: str | None = None
+
+
+class Transcription(DatashareModel):
+    transcripts: list[Transcript] = Field(default_factory=list)
+    # TODO: add validation [0, 1]
+    confidence: float
+
+    @classmethod
+    def from_asr_handler_result(cls, asr_handler_result: ASRResult) -> Self:
+        transcripts = [
+            Transcript(text=text, timestamp=Timestamp(start_s=start_s, end_s=end_s))
+            for start_s, end_s, text in asr_handler_result.transcription
+        ]
+        confidence = asr_handler_result.score
+        if confidence is not None:
+            confidence = math.exp(asr_handler_result.score)
+        return Transcription(confidence=confidence, transcripts=transcripts)
+
+
+AvailableModels = RootModel[dict[ASRLanguage, list[ASRModel]]]
+
+
+@cache
+def available_models() -> AvailableModels:
+    models = defaultdict(list)
+    for m in ASRModel:
+        for language in m.supported_languages():
+            models[language].append(m)
+    models = {k: sorted(v) for k, v in sorted(models.items())}
+    return AvailableModels.model_validate(models)

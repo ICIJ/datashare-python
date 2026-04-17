@@ -1,5 +1,5 @@
 from asr_worker.cli import cli_app
-from asr_worker.models import AvailableModels
+from asr_worker.objects import AvailableModels
 from typer.testing import CliRunner
 
 

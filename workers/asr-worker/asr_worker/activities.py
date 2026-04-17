@@ -56,7 +56,7 @@ from .constants import (
     TRANSCRIPTION_METADATA_VALUE,
 )
 from .dependencies import lifespan_es_client
-from .models import DocId, InferenceRunnerConfig, Transcription
+from .objects import DocId, InferenceRunnerConfig, Transcription
 
 _BASE_WEIGHT = 1.0
 _SEARCH_AUDIOS_WEIGHT = _BASE_WEIGHT * 2
