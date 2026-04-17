@@ -25,7 +25,7 @@ jobs:
           version: ${{ env.ASTRAL_VERSION }}
           python-version: ${{ env.PYTHON_VERSION }}
           enable-cache: true
-          working-directory: asr-worker
+          working-directory: workers/asr-worker
       - name: Upload available models
         run: |
           uv run --frozen asr-worker models list-available > available-models.json
