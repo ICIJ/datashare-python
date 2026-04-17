@@ -482,14 +482,16 @@ def debuggable_name(
     return f"{uuid}-{'__'.join(displayable_file_name)}"
 
 
-def activity_contextual_id(*, wf_context: bool = False) -> str:
+def activity_contextual_id(*, wf_context: bool = True) -> str:
+    contextual_id = ""
     act_info = activity.info()
+    if wf_context:
+        wf_id = act_info.workflow_id
+        wf_run_id = act_info.workflow_run_id
+        wf_type = act_info.workflow_type
+        contextual_id += f"{wf_type}-{wf_id}-{wf_run_id}-"
     act_id = act_info.activity_id
     act_run_id = act_info.activity_id
     act_type = act_info.activity_type
     contextual_id = f"{act_type}-{act_id}-{act_run_id}"
-    if wf_context:
-        wf_id = act_info.workflow_id
-        wf_run_id = act_info.workflow_run_id
-        contextual_id += f"-{wf_id}-{wf_run_id}"
     return contextual_id
