@@ -28,7 +28,7 @@ jobs:
           working-directory: workers/asr-worker
       - name: Upload available models
         run: |
-          uv run --frozen asr-worker models list-available > available-models.json
+          uv run asr-worker models list-available > available-models.json
           gh release upload "$tag" available-models.json
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
