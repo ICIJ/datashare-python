@@ -412,7 +412,7 @@ wheels = [
 [[package]]
 name = "datashare-python"
 version = "0.5.0"
-source = { editable = "../datashare-python" }
+source = { editable = "../../datashare-python" }
 dependencies = [
     { name = "aiohttp" },
     { name = "alive-progress" },
@@ -442,7 +442,7 @@ requires-dist = [
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "datashare-worker-template", extras = ["ml"], editable = "../worker-template" },
+    { name = "datashare-worker-template", extras = ["ml"], editable = "../../worker-template" },
     { name = "hatch-build", specifier = "~=0.5.0" },
     { name = "nest-asyncio", specifier = "~=1.6.0" },
     { name = "pre-commit", specifier = "~=4.5.1" },
@@ -2152,14 +2152,14 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "argostranslate", specifier = ">=1.11.0" },
-    { name = "datashare-python", editable = "../datashare-python" },
+    { name = "datashare-python", editable = "../../datashare-python" },
     { name = "pycountry", specifier = "~=26.2.16" },
     { name = "temporalio", specifier = ">=1.22.0" },
 ]
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "datashare-python", editable = "../datashare-python" },
+    { name = "datashare-python", editable = "../../datashare-python" },
     { name = "nest-asyncio", specifier = ">=1.6.0" },
     { name = "pre-commit", specifier = ">=4.5.1" },
     { name = "psutil", specifier = ">=6.1.0" },

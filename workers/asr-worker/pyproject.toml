@@ -92,7 +92,7 @@ torchcodec = [
   { index = "pytorch-gpu", extra = "gpu" },
   { index = "pytorch-cpu", extra = "cpu" },
 ]
-datashare-python = { path = "../datashare-python", editable = true }
+datashare-python = { path = "../../datashare-python", editable = true }
 
 
 [tool.uv]
