@@ -15,6 +15,7 @@ from datashare_python.conftest import (  # noqa: F401
     test_es_client_session,
     test_temporal_client_session,
     test_worker_config,
+    typer_asyncio_patch,
     worker_lifetime_deps,
 )
 from datashare_python.dependencies import set_es_client, set_temporal_client
