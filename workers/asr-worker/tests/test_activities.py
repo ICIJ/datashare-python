@@ -10,17 +10,16 @@ from asr_worker.activities import (
     infer_act,
     postprocess_act,
     preprocess_act,
-    read_batch,
     search_audio_paths_act,
-    write_audio_batch,
     write_audio_batches,
 )
+from asr_worker.config import ASRWorkerConfig
 from asr_worker.objects import DocId, Transcription
 from asr_worker.utils import read_jsonl
 from caul.objects import ASRResult, InputMetadata, PreprocessedInput, PreprocessorOutput
 from caul.tasks import InferenceRunner, Postprocessor, Preprocessor
 from datashare_python.conftest import TEST_PROJECT
-from datashare_python.objects import Document
+from datashare_python.objects import DocumentLocation, FilesystemDocument
 from icij_common.es import ESClient, ids_query, match_all
 from icij_common.iter_utils import batches
 from icij_common.registrable import RegistrableConfig
@@ -65,8 +64,23 @@ INFERENCE_RESULTS = [
     ),
 ]
 
+FS_DOCUMENT_0 = FilesystemDocument(
+    id="doc-0",
+    path=Path(TEST_PROJECT, "symlinks", "do", "c-", "doc-0", "raw.wav"),
+    index=TEST_PROJECT,
+    location=DocumentLocation.WORKDIR,
+    resource_name="doc-0.wav",
+)
+DS_DOCUMENT_2 = FilesystemDocument(
+    id="doc-2",
+    path=Path("doc-2.mp3"),
+    index=TEST_PROJECT,
+    location=DocumentLocation.ORIGINAL,
+    resource_name="doc-2.mp3",
+)
 
-class MockPeprocessor(Preprocessor):
+
+class MockPreprocessor(Preprocessor):
     def __init__(self, batch_size: int) -> None:
         self._batch_size = batch_size
 
@@ -131,25 +145,26 @@ class MockPostprocessor(Postprocessor):
     ("query", "expected_batches"),
     [
         # Supports empty query
-        ({}, [[("doc-0", Path("doc-0.wav")), ("doc-2", Path("doc-2.mp3"))]]),
+        ({}, [[FS_DOCUMENT_0, DS_DOCUMENT_2]]),
         # Return all audio/video docs
-        (match_all(), [[("doc-0", Path("doc-0.wav")), ("doc-2", Path("doc-2.mp3"))]]),
-        (ids_query(["doc-0"]), [[("doc-0", Path("doc-0.wav"))]]),
+        (match_all(), [[FS_DOCUMENT_0, DS_DOCUMENT_2]]),
+        (ids_query(["doc-0"]), [[FS_DOCUMENT_0]]),
         # Should filter non supported content type
         (ids_query(["doc-1"]), []),
     ],
 )
 async def test_search_audio_paths_act(
-    populate_es_with_audio: list[Document],
+    with_audio_docs: list[FilesystemDocument],
     test_es_client: ESClient,
     query: dict,
     expected_batches: list[tuple[DocId, Path]],
+    test_worker_config: ASRWorkerConfig,
     tmpdir: Path,
 ) -> None:
     # Given
     tmpdir = Path(tmpdir)
-    batch_size = len(populate_es_with_audio)
-    assert batch_size == 4
+    worker_config = test_worker_config
+    batch_size = len(with_audio_docs)
     client = test_es_client
     # When
     batch_paths = [
@@ -160,35 +175,44 @@ async def test_search_audio_paths_act(
             query=query,
             batch_size=batch_size,
             output_dir=tmpdir,
+            config=worker_config,
         )
     ]
     # Then
     results = []
     for b in batch_paths:
-        with b.open() as f:
-            results.append(list(read_batch(f)))
+        results.append(
+            [FilesystemDocument.model_validate(fs_doc) for fs_doc in read_jsonl(b)]
+        )
     assert results == expected_batches
 
 
-def test_preprocess_act(tmpdir: Path) -> None:
+def test_preprocess_act(test_worker_config: ASRWorkerConfig, tmpdir: Path) -> None:
     # Given
-    tmpdir = Path(tmpdir)
+    output_dir = Path(tmpdir)
     n_audios = 3
     batch_size = n_audios - 1
-    output_dir = tmpdir.joinpath("artifacts")
-    output_dir.mkdir()
-    audio_root = tmpdir.joinpath("audio_root")
     audio_batch = tmpdir / "audio_batch.txt"
-    batch = [(f"doc-{i}", Path(str(i))) for i in range(n_audios)]
+    batch = [
+        FilesystemDocument(
+            id=f"doc-{i}",
+            path=Path(str(i)),
+            location=DocumentLocation.ARTIFACTS,
+            index=TEST_PROJECT,
+            resource_name=f"doc-{i}.wav",
+        )
+        for i in range(n_audios)
+    ]
     with audio_batch.open("w") as f:
-        write_audio_batch(batch, f)
-    preprocessor = MockPeprocessor(batch_size=batch_size)
+        for fs_doc in batch:
+            f.write(fs_doc.model_dump_json() + "\n")
+    preprocessor = MockPreprocessor(batch_size=batch_size)
 
     # When
     batch_files = preprocess_act(
         preprocessor,
         audio_batch=audio_batch,
-        audio_root=audio_root,
+        worker_config=test_worker_config,
         output_dir=output_dir,
     )
 
@@ -273,10 +297,17 @@ async def test_write_audio_search_results(tmpdir: Path) -> None:
     root = Path(tmpdir)
     batch_size = 2
 
-    async def results() -> AsyncGenerator[tuple[DocId, str], None]:
+    async def results() -> AsyncGenerator[FilesystemDocument, None]:
         res = ["doc-0", "doc-1", "doc-2"]
         for r in res:
-            yield r, f"{r}.wav"
+            fs_doc = FilesystemDocument(
+                id=r,
+                path=Path(f"{r}.wav"),
+                index=TEST_PROJECT,
+                location=DocumentLocation.WORKDIR,
+                resource_name=f"{r}.wav",
+            )
+            yield fs_doc
 
     # When
     results = write_audio_batches(results(), root=root, batch_size=batch_size)
@@ -285,10 +316,12 @@ async def test_write_audio_search_results(tmpdir: Path) -> None:
     async def expected_content() -> AsyncGenerator[str, None]:
         contents = [
             [
-                '{"doc_id": "doc-0", "path": "doc-0.wav"}',
-                '{"doc_id": "doc-1", "path": "doc-1.wav"}',
+                '{"id":"doc-0","path":"doc-0.wav","index":"test-project","location":"workdir","resource_name":"doc-0.wav"}',
+                '{"id":"doc-1","path":"doc-1.wav","index":"test-project","location":"workdir","resource_name":"doc-1.wav"}',
             ],
-            ['{"doc_id": "doc-2", "path": "doc-2.wav"}'],
+            [
+                '{"id":"doc-2","path":"doc-2.wav","index":"test-project","location":"workdir","resource_name":"doc-2.wav"}'
+            ],
         ]
         for line in contents:
             yield "\n".join(line) + "\n"

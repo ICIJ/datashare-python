@@ -5,12 +5,24 @@ from datetime import UTC, datetime
 from enum import StrEnum, unique
 from io import BytesIO
 from pathlib import Path
-from typing import Any, Literal, Self, TypeVar
+from typing import Any, Literal, Self, TypeVar, cast
 
 from temporalio import workflow
 
+from .constants import TIKA_METADATA_RESOURCENAME
+
 with workflow.unsafe.imports_passed_through():
-    from icij_common.es import DOC_CONTENT, DOC_LANGUAGE, DOC_ROOT_ID, ID_, SOURCE
+    from icij_common.es import (
+        DOC_CONTENT,
+        DOC_CONTENT_TRANSLATED,
+        DOC_LANGUAGE,
+        DOC_METADATA,
+        DOC_PATH,
+        DOC_ROOT_ID,
+        ID_,
+        INDEX_,
+        SOURCE,
+    )
 
 from icij_common.pydantic_utils import (
     icij_config,
@@ -137,11 +149,48 @@ class Task(Message):
 class TaskGroup:
     name: str
 
+    @property
+    @classmethod
+    def python(cls) -> Self:
+        return cls(name="PYTHON")
+
+
+@unique
+class DocumentLocation(StrEnum):
+    ORIGINAL = "original"
+    ARTIFACTS = "artifacts"
+    WORKDIR = "workdir"
+
+
+class FilesystemDocument(DatashareModel):
+    id: str
+    path: Path
+    index: str
+    location: DocumentLocation
+    resource_name: str
+
+    def locate(
+        self, original_root: Path, *, artifacts_root: Path, workdir: Path
+    ) -> Path:
+        from datashare_python.utils import artifacts_dir  # noqa: PLC0415
+
+        project = self.index
+        match self.location:
+            case DocumentLocation.ORIGINAL:
+                return original_root / self.path
+            case DocumentLocation.ARTIFACTS:
+                return artifacts_root / artifacts_dir(self.id, project=project) / "raw"
+            case DocumentLocation.WORKDIR:
+                return workdir / self.path
+            case _:
+                raise ValueError(f"invalid location: {self.path}")
+
 
 class Document(DatashareModel):
     id: str
-    root_document: str
     language: str
+    index: str | None = None
+    root_document: str | None = None
     content: str | None = None
     content_type: str | None = None
     path: Path | None = None
@@ -149,6 +198,7 @@ class Document(DatashareModel):
     content_translated: dict[str, str] = Field(
         default_factory=dict, alias="content_translated"
     )
+    metadata: dict[str, Any] | None = None
     type: str = Field(default="Document", frozen=True)
 
     @classmethod
@@ -156,11 +206,42 @@ class Document(DatashareModel):
         sources = es_doc[SOURCE]
         return cls(
             id=es_doc[ID_],
-            content=sources[DOC_CONTENT],
-            content_translated=sources.get("content_translated", dict()),
+            index=es_doc.get(INDEX_),
+            content=sources.get(DOC_CONTENT),
+            content_translated=sources.get(DOC_CONTENT_TRANSLATED, dict()),
             language=sources[DOC_LANGUAGE],
             root_document=sources[DOC_ROOT_ID],
             tags=sources.get("tags", []),
+            path=sources.get(DOC_PATH),
+            metadata=sources.get(DOC_METADATA),
+        )
+
+    def to_filesystem(self) -> FilesystemDocument:
+        from .utils import artifacts_dir  # noqa: PLC0415
+
+        if self.metadata is None:
+            raise ValueError(
+                "can't compute filesyste path for document withtout metadata"
+            )
+        resource_name = cast(str, self.metadata[TIKA_METADATA_RESOURCENAME])
+        if self.root_document is None:
+            path = self.path
+            location = DocumentLocation.ORIGINAL
+        else:
+            if self.index is None:
+                msg = (
+                    f"can't compute filesystem path for embedded doc {self.id} without"
+                    f" index"
+                )
+                raise ValueError(msg)
+            path = artifacts_dir(doc_id=self.id, project=self.index) / "raw"
+            location = DocumentLocation.ARTIFACTS
+        return FilesystemDocument(
+            id=self.id,
+            path=path,
+            index=self.index,
+            location=location,
+            resource_name=resource_name,
         )
 
 

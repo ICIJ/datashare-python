@@ -440,12 +440,12 @@ def safe_dir(doc_id: str) -> Path:
     return Path(*parts)
 
 
-def _artifacts_dir(doc_id: str, *, project: str) -> Path:
+def artifacts_dir(doc_id: str, *, project: str) -> Path:
     return Path(project, safe_dir(doc_id), doc_id)
 
 
 def _metadata_path(doc_id: str, *, project: str) -> Path:
-    metadata_path = _artifacts_dir(doc_id, project=project) / METADATA_JSON
+    metadata_path = artifacts_dir(doc_id, project=project) / METADATA_JSON
     return metadata_path
 
 
@@ -455,7 +455,7 @@ def _read_artifact_metadata(root: Path, artifact: DocArtifact) -> dict:
 
 
 def write_artifact(root: Path, artifact: DocArtifact) -> Path:
-    artif_dir = root / _artifacts_dir(artifact.doc_id, project=artifact.project)
+    artif_dir = root / artifacts_dir(artifact.doc_id, project=artifact.project)
     artif_dir.mkdir(exist_ok=True, parents=True)
     # TODO: if transcriptions are too large we could also serialize them
     #  as jsonl
@@ -479,19 +479,23 @@ def debuggable_name(
     displayable_file_name = [c[:component_size_limit] for c in path.parts]
     uuid = sha256(str(path).encode()).hexdigest() if deterministic else uuid4().hex
     uuid = uuid[:20]
-    return f"{uuid}-{'__'.join(displayable_file_name)}"
+    return f"{uuid}-{'--'.join(displayable_file_name)}"
 
 
-def activity_contextual_id(*, wf_context: bool = True) -> str:
-    contextual_id = ""
+def activity_contextual_id(
+    *, wf_context: bool = True, act_context: bool = False, run_context: bool = False
+) -> str:
+    contextual_id = []
     act_info = activity.info()
+    if not wf_context and not act_context:
+        raise ValueError("at least one of wf_context and act_context must be True")
     if wf_context:
-        wf_id = act_info.workflow_id
-        wf_run_id = act_info.workflow_run_id
-        wf_type = act_info.workflow_type
-        contextual_id += f"{wf_type}-{wf_id}-{wf_run_id}-"
-    act_id = act_info.activity_id
-    act_run_id = act_info.activity_id
-    act_type = act_info.activity_type
-    contextual_id = f"{act_type}-{act_id}-{act_run_id}"
-    return contextual_id
+        contextual_id.append(act_info.workflow_id)
+        if run_context:
+            contextual_id.append(act_info.workflow_run_id)
+    if act_context:
+        contextual_id.append(act_info.activity_type)
+        contextual_id.append(act_info.activity_id)
+        if run_context:
+            contextual_id.append(act_info.activity_run_id)
+    return "-".join(contextual_id)

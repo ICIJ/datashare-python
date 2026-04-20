@@ -262,6 +262,7 @@ def doc_2() -> Document:
 def doc_3() -> Document:
     return Document(
         id="doc-3",
+        index=TEST_PROJECT,
         root_document="root-3",
         language="SPANISH",
         content="traduce este texto al inglés",

@@ -1,6 +1,5 @@
 import json
 import math
-import shutil
 import uuid
 from asyncio import AbstractEventLoop
 from collections.abc import AsyncGenerator
@@ -9,12 +8,10 @@ from pathlib import Path
 import pytest
 from asr_worker.activities import ASRActivities
 from asr_worker.config import ASRWorkerConfig
-from asr_worker.constants import SUPPORTED_CONTENT_TYPES
 from asr_worker.dependencies import REGISTRY
 from asr_worker.objects import (
     ASRArgs,
     ASRPipelineConfig,
-    DocId,
     Timestamp,
     Transcript,
     Transcription,
@@ -22,13 +19,11 @@ from asr_worker.objects import (
 from asr_worker.workflows import ASRWorkflow, TaskQueues
 from caul.objects import ASRResult
 from datashare_python.conftest import TEST_PROJECT
-from datashare_python.objects import Document
+from datashare_python.objects import FilesystemDocument
 from datashare_python.types_ import TemporalClient
 from datashare_python.worker import worker_context
 from pydantic import TypeAdapter
 from temporalio.worker import Worker
-
-from . import AUDIOS_PATH
 
 _LIST_OF_PATH_ADAPTER = TypeAdapter(list[Path])
 
@@ -135,23 +130,6 @@ _EXPECTED_TRANSCRIPTION_1 = Transcription(
 )
 
 
-@pytest.fixture
-def with_audio_docs(
-    populate_es_with_audio: list[Document], test_worker_config: ASRWorkerConfig
-) -> list[tuple[DocId, Path]]:
-    config = test_worker_config
-    docs = [
-        d for d in populate_es_with_audio if d.content_type in SUPPORTED_CONTENT_TYPES
-    ]
-    paths = []
-    config.audios_root.mkdir(parents=True, exist_ok=True)
-    audio_path = AUDIOS_PATH / "asr_test.wav"
-    for doc in docs:
-        shutil.copy(audio_path, config.audios_root / doc.path)
-        paths.append((doc.id, doc.path))
-    return paths
-
-
 @pytest.mark.e2e
 async def test_asr_workflow_e2e(
     test_temporal_client_session: TemporalClient,
@@ -159,7 +137,7 @@ async def test_asr_workflow_e2e(
     gpu_inference_worker: Worker,  # noqa: ARG001
     io_bound_worker: Worker,  # noqa: ARG001
     test_worker_config: ASRWorkerConfig,
-    with_audio_docs: list[tuple[DocId, Path]],  # noqa: ARG001
+    with_audio_docs: list[FilesystemDocument],  # noqa: ARG001
 ) -> None:
     # Given
     config = test_worker_config
@@ -168,8 +146,7 @@ async def test_asr_workflow_e2e(
     n_audios = len(with_audio_docs)
     batch_size = n_audios - 1
     project = TEST_PROJECT
-    doc_ids, _ = zip(*with_audio_docs, strict=True)
-    doc_ids = list(doc_ids)
+    doc_ids = [d.id for d in with_audio_docs]
     args = ASRArgs(
         project=project, docs=doc_ids, config=ASRPipelineConfig(), batch_size=batch_size
     )

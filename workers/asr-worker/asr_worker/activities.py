@@ -1,10 +1,9 @@
-import json
+import os
 from asyncio import AbstractEventLoop
-from collections.abc import AsyncGenerator, AsyncIterable, Generator, Iterable
-from io import TextIOWrapper
+from collections.abc import AsyncGenerator, AsyncIterable, Iterable
 from itertools import tee
 from pathlib import Path
-from typing import Any, TextIO, cast
+from typing import Any, cast
 
 from caul.objects import ASRResult, PreprocessedInput
 from caul.tasks import (
@@ -15,7 +14,12 @@ from caul.tasks import (
     Preprocessor,
 )
 from datashare_python.dependencies import lifespan_worker_config
-from datashare_python.objects import DocArtifact
+from datashare_python.objects import (
+    DocArtifact,
+    Document,
+    DocumentLocation,
+    FilesystemDocument,
+)
 from datashare_python.types_ import ProgressRateHandler, RawProgressHandler
 from datashare_python.utils import (
     ActivityWithProgress,
@@ -28,12 +32,13 @@ from datashare_python.utils import (
 )
 from icij_common.es import (
     DOC_CONTENT_TYPE,
+    DOC_LANGUAGE,
+    DOC_METADATA,
     DOC_PATH,
+    DOC_ROOT_ID,
     ES_DOCUMENT_TYPE,
     HITS,
-    ID_,
     QUERY,
-    SOURCE,
     ESClient,
     and_query,
     has_type,
@@ -56,7 +61,7 @@ from .constants import (
     TRANSCRIPTION_METADATA_VALUE,
 )
 from .dependencies import lifespan_es_client
-from .objects import DocId, InferenceRunnerConfig, Transcription
+from .objects import InferenceRunnerConfig, Transcription
 
 _BASE_WEIGHT = 1.0
 _SEARCH_AUDIOS_WEIGHT = _BASE_WEIGHT * 2
@@ -81,7 +86,12 @@ class ASRActivities(ActivityWithProgress):
         batch_paths = [
             p.relative_to(workdir)
             async for p in search_audio_paths_act(
-                project, es_client, query, output_dir, batch_size
+                project,
+                es_client,
+                query,
+                config=worker_config,
+                output_dir=output_dir,
+                batch_size=batch_size,
             )
         ]
         return batch_paths
@@ -92,7 +102,6 @@ class ASRActivities(ActivityWithProgress):
     ) -> list[Path]:
         # TODO: this shouldn't be necessary, fix this bug
         worker_config = cast(ASRWorkerConfig, lifespan_worker_config())
-        audio_root = worker_config.audios_root
         workdir = worker_config.workdir
         # TODO: implement caching
         preprocessor = Preprocessor.from_config(config)
@@ -104,7 +113,7 @@ class ASRActivities(ActivityWithProgress):
             batch_paths = preprocess_act(
                 preprocessor,
                 audio_batch,
-                audio_root=audio_root,
+                worker_config=worker_config,
                 output_dir=output_dir,
             )
             batches = [p.relative_to(workdir) for p in batch_paths]
@@ -114,6 +123,7 @@ class ASRActivities(ActivityWithProgress):
     def infer(
         self,
         preprocessed_inputs: list[Path],
+        project: str,
         config: InferenceRunnerConfig,
         *,
         progress: ProgressRateHandler | None = None,
@@ -122,6 +132,9 @@ class ASRActivities(ActivityWithProgress):
         config = _INFERENCE_CONFIG_TYPE_ADAPTER.validate_python(config)
         worker_config = cast(ASRWorkerConfig, lifespan_worker_config())
         workdir = worker_config.workdir
+        contextual_id = activity_contextual_id()
+        output_dir = workdir / project / contextual_id
+        output_dir.mkdir(parents=True, exist_ok=True)
         preprocessed_inputs = _LIST_OF_PATH_ADAPTER.validate_python(preprocessed_inputs)
         preprocessed_inputs = [workdir / p for p in preprocessed_inputs]
         if progress is not None:
@@ -131,7 +144,7 @@ class ASRActivities(ActivityWithProgress):
             paths = infer_act(
                 inference_runner,
                 preprocessed_inputs,
-                workdir,
+                output_dir=output_dir,
                 event_loop=self._event_loop,
                 progress=progress,
             )
@@ -161,8 +174,11 @@ class ASRActivities(ActivityWithProgress):
         # TODO: implement caching
         postprocessor = Postprocessor.from_config(config)
         with postprocessor:
-            with audio_batch.open() as f:
-                doc_ids = [doc_id for doc_id, _ in read_batch(f)]
+            docs = (
+                FilesystemDocument.model_validate(fs_doc)
+                for fs_doc in read_jsonl(audio_batch)
+            )
+            doc_ids = [doc.id for doc in docs]
             if progress is not None:
                 progress = to_raw_progress(progress, max_progress=len(doc_ids))
             return postprocess_act(
@@ -180,14 +196,17 @@ async def search_audio_paths_act(
     project: str,
     es_client: ESClient,
     query: dict[str, Any],
+    *,
+    config: ASRWorkerConfig,
     output_dir: Path,
     batch_size: int,
 ) -> AsyncIterable[Path]:
     # TODO: supported content types should be args
-    query = _search_audio_paths(
+    docs = _search_audio_paths(
         es_client, project, query, supported_content_types=SUPPORTED_CONTENT_TYPES
     )
-    async for p in write_audio_batches(query, output_dir, batch_size):
+    docs = create_symlinks_for_embedded_audios(docs, config)
+    async for p in write_audio_batches(docs, output_dir, batch_size):
         yield p
 
 
@@ -195,15 +214,28 @@ def preprocess_act(
     preprocessor: Preprocessor,
     audio_batch: Path,
     *,
-    audio_root: Path,
+    worker_config: ASRWorkerConfig,
     output_dir: Path,
 ) -> list[Path]:
-    with audio_batch.open() as f:
-        audios = read_batch(f)
-        audios = (str(audio_root / p) for _, p in audios)
-        # TODO: implement a caching strategy here, we could avoid processing files
-        #  which have already been preprocessed
-        return list(_preprocess(preprocessor, audios, output_dir))
+    audios_root = worker_config.audios_root
+    artifacts_root = worker_config.artifacts_root
+    workdir = worker_config.workdir
+    audios = (
+        FilesystemDocument.model_validate(fs_doc) for fs_doc in read_jsonl(audio_batch)
+    )
+    audios = (
+        str(
+            fs_doc.locate(
+                original_root=audios_root,
+                artifacts_root=artifacts_root,
+                workdir=workdir,
+            )
+        )
+        for fs_doc in audios
+    )
+    # TODO: implement a caching strategy here, we could avoid processing files
+    #  which have already been preprocessed
+    return list(_preprocess(preprocessor, audios, output_dir))
 
 
 def infer_act(
@@ -305,25 +337,20 @@ def _relative_input(
 
 
 async def write_audio_batches(
-    ids_and_paths: AsyncIterable[tuple[DocId, str]], root: Path, batch_size: int
+    docs: AsyncIterable[FilesystemDocument], root: Path, batch_size: int
 ) -> AsyncIterable[Path]:
     batch_id = 0
-    async for batch in async_batches(ids_and_paths, batch_size):
+    async for batch in async_batches(docs, batch_size):
         batch_path = root / f"{batch_id}.txt"
         with batch_path.open("w") as f:
-            write_audio_batch(batch, f)
+            for fs_doc in batch:
+                f.write(f"{fs_doc.model_dump_json()}\n")
         yield batch_path
         batch_id += 1
 
 
-def write_audio_batch(batch: Iterable[tuple[DocId, Path]], f: TextIOWrapper) -> None:
-    for doc_id, path in batch:
-        data = {"doc_id": doc_id, "path": str(path)}
-        f.write(f"{json.dumps(data)}\n")
-
-
 _DOC_TYPE_QUERY = has_type(type_field="type", type_value=ES_DOCUMENT_TYPE)
-_DOC_CONTENT_SOURCES = [DOC_PATH]
+_DOC_CONTENT_SOURCES = [DOC_PATH, DOC_ROOT_ID, DOC_LANGUAGE, DOC_METADATA, DOC_PATH]
 
 
 async def _search_audio_paths(
@@ -331,13 +358,13 @@ async def _search_audio_paths(
     project: str,
     query: dict[str, Any],
     supported_content_types: set[str],
-) -> AsyncGenerator[tuple[DocId, str], None]:
+) -> AsyncGenerator[FilesystemDocument, None]:
     body = _with_audio_content(query, supported_content_types)
     async for page in es_client.poll_search_pages(
         index=project, body=body, sort="_doc:asc", _source_includes=_DOC_CONTENT_SOURCES
     ):
         for hit in page[HITS][HITS]:
-            yield hit[ID_], hit[SOURCE][DOC_PATH]
+            yield Document.from_es(hit).to_filesystem()
 
 
 def _content_type_query(supported_content_types: set[str]) -> dict[str, Any]:
@@ -355,10 +382,33 @@ def _with_audio_content(
     return and_query(query, type_query[QUERY])
 
 
-def read_batch(f: TextIO) -> Generator[tuple[DocId, Path], None, None]:
-    for line in f:
-        data = json.loads(line)
-        yield data["doc_id"], Path(data["path"])
+async def create_symlinks_for_embedded_audios(
+    docs: AsyncIterable[FilesystemDocument], config: ASRWorkerConfig
+) -> AsyncIterable[FilesystemDocument]:
+    workdir = config.workdir
+    artifacts_root = config.artifacts_root
+    symlinks_dir = None
+    async for d in docs:
+        if d.location == DocumentLocation.ARTIFACTS:
+            if symlinks_dir is None:
+                symlinks_dir = workdir / d.index / "symlinks"
+                symlinks_dir.mkdir(parents=True, exist_ok=True)
+            artifact_path = artifacts_root / d.path
+            audio_ext = Path(d.resource_name).suffix
+            symlink_path = d.path.relative_to(Path(d.index))
+            symlink_path = symlinks_dir / f"{symlink_path}{audio_ext}"
+            symlink_path.parent.mkdir(parents=True, exist_ok=True)
+            os.symlink(artifact_path, symlink_path)
+            symlink = FilesystemDocument(
+                path=symlink_path.relative_to(workdir),
+                id=d.id,
+                location=DocumentLocation.WORKDIR,
+                index=d.index,
+                resource_name=d.resource_name,
+            )
+            yield symlink
+        else:
+            yield d
 
 
 REGISTRY = [
