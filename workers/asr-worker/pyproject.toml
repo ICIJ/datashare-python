@@ -13,7 +13,7 @@ authors = [
 readme = "README.md"
 requires-python = ">=3.11.0, <3.13"
 dependencies = [
-  "datashare-python~=0.6.0",
+  "datashare-python~=0.6.1",
 ]
 
 [project.scripts]
