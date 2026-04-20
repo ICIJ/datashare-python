@@ -53,7 +53,10 @@ class ASRWorkflow(WorkflowWithProgress):
         logger.info("preprocessing files...")
         preprocessed_batches = await gather(*preprocessing_acts)
         inference_args = zip(
-            preprocessed_batches, repeat(config.inference), strict=False
+            preprocessed_batches,
+            repeat(args.project),
+            repeat(config.inference),
+            strict=False,
         )
         logger.info("preprocessing complete !")
         # Inference

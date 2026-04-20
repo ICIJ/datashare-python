@@ -10,8 +10,7 @@ import typer
 from alive_progress import alive_bar
 
 from datashare_python.cli.utils import AsyncTyper, eprint
-from datashare_python.constants import PYTHON_TASK_GROUP
-from datashare_python.objects import READY_STATES, Task, TaskError, TaskState
+from datashare_python.objects import READY_STATES, Task, TaskError, TaskGroup, TaskState
 from datashare_python.task_client import DatashareTaskClient
 
 logger = logging.getLogger(__name__)
@@ -41,7 +40,7 @@ async def start(
     group: Annotated[
         str | None,
         typer.Option("--group", "-g", help=_GROUP_HELP),
-    ] = PYTHON_TASK_GROUP.name,
+    ] = TaskGroup.python,  # noqa: F821
     ds_address: Annotated[
         str, typer.Option("--ds-address", "-a", help=_DS_URL_HELP)
     ] = DEFAULT_DS_ADDRESS,

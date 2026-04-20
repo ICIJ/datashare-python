@@ -1,3 +1,4 @@
+from pathlib import Path
 from typing import ClassVar
 
 from icij_common.es import ESClient
@@ -86,6 +87,10 @@ class WorkerConfig(ICIJSettings, LogWithWorkerIDMixin, BaseModel):
     temporal: TemporalClientConfig = TemporalClientConfig()
 
     max_concurrent_io_activities: int = 5
+
+    docs_root: Path | None = None
+    artifacts_root: Path | None = None
+    workdir: Path | None = None
 
     def to_es_client(self) -> ESClient:
         return self.elasticsearch.to_es_client(self.datashare.api_key)
