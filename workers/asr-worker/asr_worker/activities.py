@@ -1,5 +1,4 @@
 import contextlib
-import logging
 import os
 from asyncio import AbstractEventLoop
 from collections.abc import AsyncGenerator, AsyncIterable, Iterable
@@ -219,12 +218,7 @@ def preprocess_act(
     worker_config: ASRWorkerConfig,
     output_dir: Path,
 ) -> list[Path]:
-    # TODO: remove this debug code
-    import datashare_python  # noqa: PLC0415
-
-    logger = logging.getLogger(datashare_python.__name__)
-    logger.info("worker_config: %s", worker_config)
-    audios_root = worker_config.audios_root
+    docs_root = worker_config.docs_root
     artifacts_root = worker_config.artifacts_root
     workdir = worker_config.workdir
     audios = (
@@ -232,13 +226,10 @@ def preprocess_act(
     )
     audios = (
         fs_doc.locate(
-            original_root=audios_root, artifacts_root=artifacts_root, workdir=workdir
+            original_root=docs_root, artifacts_root=artifacts_root, workdir=workdir
         )
         for fs_doc in audios
     )
-    # TODO: removeme
-    audios = list(audios)
-    logger.info("audios: %s", audios)
     audios = (str(a) for a in audios)
     # TODO: implement a caching strategy here, we could avoid processing files
     #  which have already been preprocessed

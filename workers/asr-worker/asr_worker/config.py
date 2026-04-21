@@ -15,7 +15,6 @@ class ASRWorkerConfig(WorkerConfig):
     artifacts_root: Path
     workdir: Path
 
-    @property
     def audios_root(self) -> Path:
         return self.docs_root
 
