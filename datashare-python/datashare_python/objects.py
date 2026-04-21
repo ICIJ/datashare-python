@@ -210,7 +210,7 @@ class Document(DatashareModel):
             content=sources.get(DOC_CONTENT),
             content_translated=sources.get(DOC_CONTENT_TRANSLATED, dict()),
             language=sources[DOC_LANGUAGE],
-            root_document=sources[DOC_ROOT_ID],
+            root_document=sources.get(DOC_ROOT_ID),
             tags=sources.get("tags", []),
             path=sources.get(DOC_PATH),
             metadata=sources.get(DOC_METADATA),
