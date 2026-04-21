@@ -1,3 +1,4 @@
+import contextlib
 import os
 from asyncio import AbstractEventLoop
 from collections.abc import AsyncGenerator, AsyncIterable, Iterable
@@ -397,8 +398,8 @@ async def create_symlinks_for_embedded_audios(
             audio_ext = Path(d.resource_name).suffix
             symlink_path = d.path.relative_to(Path(d.index))
             symlink_path = symlinks_dir / f"{symlink_path}{audio_ext}"
-            if not symlink_path.exists():
-                symlink_path.parent.mkdir(parents=True, exist_ok=True)
+            symlink_path.parent.mkdir(parents=True, exist_ok=True)
+            with contextlib.suppress(FileExistsError):
                 os.symlink(artifact_path, symlink_path)
             symlink = FilesystemDocument(
                 path=symlink_path.relative_to(workdir),
