@@ -67,7 +67,7 @@ class TranslationWorkflow(WorkflowWithProgress):
         translations = await asyncio.gather(*translations_activities)
         num_translations = sum(translations)
 
-        return TranslationResponse(num_translations=num_translations)
+        return TranslationResponse(n_translations=num_translations)
 
 
 WORKFLOWS = [TranslationWorkflow]

@@ -43,7 +43,7 @@ class TranslationArgs(DatashareModel):
 
 
 class TranslationResponse(DatashareModel):
-    num_translations: int = 0
+    n_translations: int = 0
 
 
 class BatchSentence(BaseModel):

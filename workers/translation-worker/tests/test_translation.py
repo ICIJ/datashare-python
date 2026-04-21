@@ -31,7 +31,7 @@ async def test_translate_docs(
             TranslationWorkflow.run, req, id="test-001", task_queue=TaskQueues.CPU
         )
 
-        assert res.num_translations == 2
+        assert res.n_translations == 2
 
         body = {"query": has_type(type_field="type", type_value="Document")}
         sort = "_doc:asc"
