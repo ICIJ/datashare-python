@@ -225,7 +225,7 @@ requires-dist = [
     { name = "caul", marker = "extra == 'cpu'", specifier = "==0.3.1" },
     { name = "caul", marker = "extra == 'preprocessing'", specifier = "==0.3.1" },
     { name = "caul", extras = ["nemo"], marker = "extra == 'inference'", specifier = "==0.3.1" },
-    { name = "datashare-python", specifier = "~=0.6.1" },
+    { name = "datashare-python", specifier = "~=0.6.2" },
     { name = "kaldialign", marker = "extra == 'inference'", specifier = "==0.9.3" },
     { name = "ml-dtypes", marker = "extra == 'inference'", specifier = "==0.5.4" },
     { name = "numpy", marker = "extra == 'inference'", specifier = "==2.3.0" },
@@ -613,7 +613,7 @@ wheels = [
 
 [[package]]
 name = "datashare-python"
-version = "0.6.1"
+version = "0.6.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiohttp", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-10-asr-worker-cpu' and extra == 'extra-10-asr-worker-gpu') or sys_platform == 'darwin' or (sys_platform != 'linux' and extra == 'extra-10-asr-worker-cpu' and extra == 'extra-10-asr-worker-gpu')" },
@@ -627,9 +627,9 @@ dependencies = [
     { name = "tomlkit", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-10-asr-worker-cpu' and extra == 'extra-10-asr-worker-gpu') or sys_platform == 'darwin' or (sys_platform != 'linux' and extra == 'extra-10-asr-worker-cpu' and extra == 'extra-10-asr-worker-gpu')" },
     { name = "typer", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-10-asr-worker-cpu' and extra == 'extra-10-asr-worker-gpu') or sys_platform == 'darwin' or (sys_platform != 'linux' and extra == 'extra-10-asr-worker-cpu' and extra == 'extra-10-asr-worker-gpu')" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/b4/fd/ca6a4b47ee4c5bb36f71dc31b4c7745c7284d95997c91a7b5f186a9f84a0/datashare_python-0.6.1.tar.gz", hash = "sha256:80d57f9b6d7e792014434f32bd6a7e821c478a4871402cf1700d0b80091af7cb", size = 299927, upload-time = "2026-04-20T15:39:05.967Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/a0/20/095049cb543235e81c3d0fe9bce31666a3b799782df9fb88198abbea9757/datashare_python-0.6.2.tar.gz", hash = "sha256:2630969c77602a427cb0a784d0896c83e2a071729f440cee25b3945f7f9caba6", size = 299884, upload-time = "2026-04-21T11:58:44.616Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/6d/93/7cab73a0e0361684b0faadd6dde840a353d3e948249cd33394fd2f4e4ce6/datashare_python-0.6.1-py3-none-any.whl", hash = "sha256:5b1953c35958150dda2879fc704370e2604289ddb7b0f347ffd81435ef226b82", size = 304766, upload-time = "2026-04-20T15:39:04.591Z" },
+    { url = "https://files.pythonhosted.org/packages/18/fd/00cdbcdb2325b62aec3ec78199864531ff08b77ff1f3b33942a79f142908/datashare_python-0.6.2-py3-none-any.whl", hash = "sha256:5578c92b12c321ef1f0dc42473c106cbbe6068d134f866896a4236105a342d66", size = 304735, upload-time = "2026-04-21T11:58:43.504Z" },
 ]
 
 [[package]]
