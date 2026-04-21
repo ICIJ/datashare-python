@@ -411,7 +411,7 @@ wheels = [
 
 [[package]]
 name = "datashare-python"
-version = "0.6.2"
+version = "0.6.3"
 source = { editable = "../../datashare-python" }
 dependencies = [
     { name = "aiohttp" },
