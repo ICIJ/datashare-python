@@ -236,6 +236,9 @@ def preprocess_act(
         )
         for fs_doc in audios
     )
+    # TODO: removeme
+    audios = list(audios)
+    logger.info("audios: %s", audios)
     audios = (str(a) for a in audios)
     # TODO: implement a caching strategy here, we could avoid processing files
     #  which have already been preprocessed
