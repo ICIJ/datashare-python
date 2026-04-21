@@ -1,11 +1,12 @@
 import logging
+import os
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from enum import StrEnum, unique
 from io import BytesIO
 from pathlib import Path
-from typing import Any, Literal, Self, TypeVar, cast
+from typing import Annotated, Any, Literal, Self, TypeVar, cast
 
 from temporalio import workflow
 
@@ -30,8 +31,8 @@ from icij_common.pydantic_utils import (
     merge_configs,
     no_enum_values_config,
 )
+from pydantic import AfterValidator, Field
 from pydantic import BaseModel as _BaseModel
-from pydantic import Field
 from pydantic.main import IncEx
 
 logger = logging.getLogger(__name__)
@@ -162,9 +163,17 @@ class DocumentLocation(StrEnum):
     WORKDIR = "workdir"
 
 
+def _is_relative(value: Path) -> Path:
+    if value.is_absolute():
+        raise ValueError(
+            f"FilesystemDocument path should always be relative, found {value}"
+        )
+    return value
+
+
 class FilesystemDocument(DatashareModel):
     id: str
-    path: Path
+    path: Annotated[Path, AfterValidator(_is_relative)]
     index: str
     location: DocumentLocation
     resource_name: str
@@ -174,11 +183,11 @@ class FilesystemDocument(DatashareModel):
     ) -> Path:
         from datashare_python.utils import artifacts_dir  # noqa: PLC0415
 
-        project = self.index
         match self.location:
             case DocumentLocation.ORIGINAL:
                 return original_root / self.path
             case DocumentLocation.ARTIFACTS:
+                project = self.index
                 return artifacts_root / artifacts_dir(self.id, project=project) / "raw"
             case DocumentLocation.WORKDIR:
                 return workdir / self.path
@@ -236,6 +245,10 @@ class Document(DatashareModel):
                 raise ValueError(msg)
             path = artifacts_dir(doc_id=self.id, project=self.index) / "raw"
             location = DocumentLocation.ARTIFACTS
+        # The filesystem dod is alway relative to the base location, let's make sure
+        # we store a relative path otherwise joining with the location will fail
+        if path.parts and path.parts[0] == os.path.sep:
+            path = Path(*path.parts[1:])
         return FilesystemDocument(
             id=self.id,
             path=path,

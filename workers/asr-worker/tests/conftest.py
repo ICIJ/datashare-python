@@ -125,8 +125,8 @@ def with_audio_docs(
     audio_path = AUDIOS_PATH / "asr_test.wav"
     for doc in docs:
         if doc.root_document is None:
-            config.audios_root.mkdir(parents=True, exist_ok=True)
-            shutil.copy(audio_path, config.audios_root / doc.path)
+            config.docs_root.mkdir(parents=True, exist_ok=True)
+            shutil.copy(audio_path, config.docs_root / doc.path)
         else:
             artifact_path = (
                 config.artifacts_root / artifacts_dir(doc.id, project=doc.index) / "raw"
