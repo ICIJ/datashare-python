@@ -12,20 +12,17 @@ from pythonjsonlogger.orjson import OrjsonFormatter
 from temporalio import activity, workflow
 
 from .config import LogLevel
+from .interceptors import get_trace_context
 
-_ACT_LOGGER_ATTRS = [
-    "activity_type",
-    "activity_id",
-    "activity_run_id",
-]
-
-_WF_LOGGED_ATTRS = [
-    "workflow_type",
-    "workflow_id",
-    "workflow_run_id",
-]
+_ACT_LOGGER_ATTRS = ["activity_type", "activity_id", "activity_run_id"]
+_WF_LOGGED_ATTRS = ["workflow_type", "workflow_id", "workflow_run_id"]
+_TRACE_CONTEXT_ATTRS = ["trace_id", "parent_id", "traceparent"]
 _LOGGED_ATTRIBUTES = (
-    copy(RESERVED_ATTRS) + _WF_LOGGED_ATTRS + _ACT_LOGGER_ATTRS + ["worker_id"]
+    copy(RESERVED_ATTRS)
+    + _WF_LOGGED_ATTRS
+    + _ACT_LOGGER_ATTRS
+    + _TRACE_CONTEXT_ATTRS
+    + ["worker_id"]
 )
 
 
@@ -75,6 +72,10 @@ class WorkerFilter(logging.Filter):
             act_info = activity.info()
             for attr in _ACT_LOGGER_ATTRS:
                 setattr(record, attr, getattr(act_info, attr))
+        trace_context = get_trace_context()
+        if trace_context is not None:
+            for attr in _TRACE_CONTEXT_ATTRS:
+                setattr(record, attr, getattr(trace_context, attr))
         return True
 
 
