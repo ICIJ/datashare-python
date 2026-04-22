@@ -12,6 +12,7 @@ from temporalio import workflow
 
 from datashare_python.config import (
     DatashareClientConfig,
+    LoggingConfig,
     TemporalClientConfig,
     WorkerConfig,
 )
@@ -19,10 +20,7 @@ from datashare_python.dependencies import (
     lifespan_es_client,
     lifespan_task_client,
     set_es_client,
-    set_event_loop,
-    set_loggers,
     set_task_client,
-    set_temporal_client,
     with_dependencies,
 )
 from datashare_python.objects import Document, TaskState
@@ -78,13 +76,7 @@ class MockedWorkflow:
 
 @pytest.fixture(scope="session")
 def test_deps() -> list[ContextManagerFactory]:
-    return [
-        set_loggers,
-        set_event_loop,
-        set_es_client,
-        set_temporal_client,
-        set_task_client,
-    ]
+    return [set_es_client, set_task_client]
 
 
 @pytest.fixture(scope="session")
@@ -99,8 +91,16 @@ def event_loop(
 
 @pytest.fixture(scope="session")
 def test_worker_config() -> WorkerConfig:
+    logging_config = LoggingConfig(
+        log_in_json=False,
+        loggers={
+            "datashare_python": "DEBUG",
+            "icij_common": "DEBUG",
+            "worker_template": "DEBUG",
+        },
+    )
     return WorkerConfig(
-        log_level="DEBUG",
+        logging=logging_config,
         datashare=DatashareClientConfig(url="http://localhost:8080"),
         temporal=TemporalClientConfig(host="localhost:7233"),
     )

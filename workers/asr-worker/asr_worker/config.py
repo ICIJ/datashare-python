@@ -1,15 +1,15 @@
 from pathlib import Path
-from typing import ClassVar
+from typing import Annotated
 
 import datashare_python
-from datashare_python.config import WorkerConfig
+from datashare_python.config import LoggingConfig, WorkerConfig
 from pydantic import Field
 
-_ALL_LOGGERS = [datashare_python.__name__, __name__, "__main__"]
+_LOGGERS = {datashare_python.__name__: "INFO", __name__: "INFO"}
 
 
 class ASRWorkerConfig(WorkerConfig):
-    loggers: ClassVar[list[str]] = Field(_ALL_LOGGERS, frozen=True)
+    logging: Annotated[LoggingConfig, Field(frozen=True)] = _LOGGERS
 
     docs_root: Path = Field(alias="audios_root")
     artifacts_root: Path

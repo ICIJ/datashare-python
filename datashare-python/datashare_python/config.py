@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import ClassVar
+from typing import Annotated, Literal
 
 from icij_common.es import ESClient
 from icij_common.pydantic_utils import ICIJSettings
@@ -18,7 +18,6 @@ import datashare_python
 from .objects import BaseModel
 from .task_client import DatashareTaskClient
 from .types_ import TemporalClient
-from .utils import LogWithWorkerIDMixin
 
 _ALL_LOGGERS = [datashare_python.__name__]
 
@@ -76,11 +75,20 @@ class TemporalClientConfig(BaseModel):
         return self._client
 
 
-class WorkerConfig(ICIJSettings, LogWithWorkerIDMixin, BaseModel):
+LogLevel = Literal["CRITICAL", "ERROR", "WARNING", "INFO", "DEBUG"]
+
+
+class LoggingConfig(BaseModel):
+    log_in_json: bool = False
+    loggers: dict[str, LogLevel]
+
+
+class WorkerConfig(ICIJSettings, BaseModel):
     model_config = DS_WORKER_SETTINGS_CONFIG
 
-    loggers: ClassVar[list[str]] = Field(_ALL_LOGGERS, frozen=True)
-    log_level: str = Field(default="INFO")
+    logging: Annotated[LoggingConfig, Field(frozen=True)] = {
+        datashare_python.__name__: "INFO"
+    }
 
     datashare: DatashareClientConfig = DatashareClientConfig()
     elasticsearch: ESClientConfig = ESClientConfig()

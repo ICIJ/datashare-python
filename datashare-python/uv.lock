@@ -401,6 +401,7 @@ dependencies = [
     { name = "hatchling" },
     { name = "icij-common", extra = ["elasticsearch"] },
     { name = "nest-asyncio" },
+    { name = "orjson" },
     { name = "python-json-logger" },
     { name = "pyyaml" },
     { name = "temporalio" },
@@ -425,14 +426,15 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "aiohttp", specifier = "~=3.11.9" },
-    { name = "alive-progress", specifier = "~=3.2.0" },
-    { name = "hatchling", specifier = "~=1.27.0" },
+    { name = "aiohttp", specifier = "~=3.11" },
+    { name = "alive-progress", specifier = "~=3.2" },
+    { name = "hatchling", specifier = "~=1.27" },
     { name = "icij-common", extras = ["elasticsearch"], specifier = "~=0.8.2" },
-    { name = "nest-asyncio", specifier = "~=1.6.0" },
-    { name = "python-json-logger", specifier = "~=4.0.0" },
+    { name = "nest-asyncio", specifier = "~=1.6" },
+    { name = "orjson", specifier = "~=3.11" },
+    { name = "python-json-logger", specifier = "~=4.0" },
     { name = "pyyaml", specifier = "~=6.0" },
-    { name = "temporalio", specifier = "~=1.23.0" },
+    { name = "temporalio", specifier = "~=1.23" },
     { name = "tomlkit", specifier = "~=0.14.0" },
     { name = "typer", specifier = "~=0.15.4" },
 ]

@@ -9,8 +9,9 @@ from typing import Any
 
 from icij_common.es import ESClient
 
-from .config import WorkerConfig
+from .config import LogLevel, WorkerConfig
 from .exceptions import DependencyInjectionError
+from .logging_ import setup_worker_loggers
 from .task_client import DatashareTaskClient
 from .types_ import ContextManagerFactory, TemporalClient
 
@@ -35,10 +36,13 @@ def lifespan_event_loop() -> AbstractEventLoop:
         raise DependencyInjectionError("event loop") from e
 
 
-def set_loggers(worker_config: WorkerConfig, worker_id: str) -> None:
-    worker_config.setup_loggers(worker_id=worker_id)
+def set_loggers(
+    worker_config: WorkerConfig, worker_id: str, loggers: dict[str, LogLevel]
+) -> None:
+    setup_worker_loggers(
+        loggers=loggers, worker_id=worker_id, in_json=worker_config.logging.log_in_json
+    )
     logger.info("worker loggers ready to log 💬")
-    logger.info("app config: %s", worker_config.model_dump_json(indent=2))
 
 
 def set_worker_config(worker_config: WorkerConfig) -> None:

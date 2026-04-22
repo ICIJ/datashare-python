@@ -4,9 +4,11 @@ from asyncio import AbstractEventLoop
 from collections.abc import AsyncGenerator
 from typing import Any
 
+import datashare_python
 import pytest
 from datashare_python.config import (
     DatashareClientConfig,
+    LoggingConfig,
     TemporalClientConfig,
     WorkerConfig,
 )
@@ -49,8 +51,11 @@ from worker_template.workflows import (
 
 @pytest.fixture(scope="session")
 def test_worker_config() -> TranslateAndClassifyWorkerConfig:
+    logging_config = LoggingConfig(
+        loggers={datashare_python.__name__: "INFO", __name__: "INFO"}, log_in_json=False
+    )
     return TranslateAndClassifyWorkerConfig(
-        log_level="DEBUG",
+        logging=logging_config,
         datashare=DatashareClientConfig(url="http://localhost:8080"),
         temporal=TemporalClientConfig(host="localhost:7233"),
     )
