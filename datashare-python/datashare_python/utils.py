@@ -338,6 +338,8 @@ def activity_defn(
     retriables: set[type[Exception]] = None,
 ) -> Callable[[Callable[P, T]], Callable[P, T]]:
     def decorator(activity_fn: Callable[P, T]) -> Callable[P, T]:
+        # TODO: some of these could probably be reimplemented more elegantly using
+        #  temporal interceptors: https://docs.temporal.io/develop/python/workers/interceptors
         activity_fn = positional_args_only(activity_fn)
         activity_fn = with_retriables(retriables)(activity_fn)
         if supports_progress(activity_fn):
