@@ -4,7 +4,7 @@ from collections.abc import Callable, Iterable
 from importlib.metadata import entry_points
 
 from .config import WorkerConfig
-from .dependencies import set_worker_config
+from .dependencies import set_loggers, set_worker_config
 from .types_ import ContextManagerFactory
 from .utils import ActivityWithProgress
 
@@ -28,6 +28,8 @@ _Discovery = tuple[
     _Dependencies | None,
     type[WorkerConfig],
 ]
+
+_MANDATORY_DEPS = [set_worker_config, set_loggers]
 
 
 def discover(
@@ -68,8 +70,9 @@ def discover(
     deps = []
     if deps_name is not None:
         deps = discover_dependencies(deps_name)
-    if set_worker_config not in deps:
-        deps.append(set_worker_config)
+    for mandatory in _MANDATORY_DEPS:
+        if mandatory not in deps:
+            deps.append(mandatory)
     if deps:
         n_deps = len(deps)
         discovered += "\n"

@@ -1,4 +1,5 @@
 import contextlib
+import logging
 import os
 from asyncio import AbstractEventLoop
 from collections.abc import AsyncGenerator, AsyncIterable, Iterable
@@ -47,7 +48,6 @@ from icij_common.es import (
 from icij_common.iter_utils import async_batches
 from icij_common.pydantic_utils import safe_copy
 from pydantic import TypeAdapter
-from temporalio import activity
 
 from asr_worker.utils import read_jsonl
 
@@ -63,6 +63,8 @@ from .constants import (
 )
 from .dependencies import lifespan_es_client
 from .objects import InferenceRunnerConfig, Transcription
+
+logger = logging.getLogger(__name__)
 
 _BASE_WEIGHT = 1.0
 _SEARCH_AUDIOS_WEIGHT = _BASE_WEIGHT * 2
@@ -261,6 +263,9 @@ def infer_act(
         filename = f"{debuggable_name(path.name)}-transcript.json"
         transcript_path = output_dir / safe_dir(filename) / filename
         transcript_path.parent.mkdir(parents=True, exist_ok=True)
+        logger.debug(
+            "run inference for %s, writing result to %s", path, transcript_path
+        )
         transcript_path.write_text(asr_res.model_dump_json())
         paths.append(transcript_path)
         if progress is not None and event_loop is not None:
@@ -286,7 +291,7 @@ def postprocess_act(
         t_path = write_transcription(
             doc_id, asr_result, artifacts_root=artifacts_root, project=project
         )
-        activity.logger.debug("wrote transcription for %s", t_path)
+        logger.debug("wrote transcription for %s", t_path)
         if progress is not None and event_loop is not None:
             event_loop.run_until_complete(progress(i))
     return n_docs
@@ -301,6 +306,7 @@ def _preprocess(
         # TODO: we might to create safe subdirs to avoid creating too many
         #  files in the same dir
         batch_file = output_dir / f"{batch_i}.jsonl"
+        logger.debug("writing batch to %s", batch_file)
         with batch_file.open("w") as f:
             for processed in batch:
                 f.write(processed.model_dump_json() + "\n")

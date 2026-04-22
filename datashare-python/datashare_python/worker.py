@@ -8,6 +8,7 @@ from asyncio import AbstractEventLoop
 from collections.abc import AsyncGenerator, Callable
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import asynccontextmanager
+from copy import copy
 from typing import Any
 
 from temporalio.worker import PollerBehaviorSimpleMaximum, Worker
@@ -142,12 +143,27 @@ async def worker_context(
     task_queue: str,
     dependencies: list[ContextManagerFactory] | None = None,
 ) -> AsyncGenerator[DatashareWorker, None]:
+    discovered = []
+    if activities is not None:
+        discovered.extend(activities)
+    if workflows is not None:
+        discovered.extend(workflows)
+    if dependencies is not None:
+        discovered.extend(dependencies)
+    discovered.append(worker_config)
+    loggers = copy(worker_config.logging.loggers)
+    discovered_loggers = {_get_object_package(o).__name__ for o in discovered}
+    for logger in discovered_loggers:
+        if logger not in loggers:
+            # Log in info by default
+            loggers[logger] = "INFO"
     deps_cm = (
         with_dependencies(
             dependencies,
             worker_config=worker_config,
             worker_id=worker_id,
             event_loop=event_loop,
+            loggers=loggers,
         )
         if dependencies
         else _do_nothing_cm()
@@ -181,3 +197,9 @@ def _get_class_from_method(method: Callable) -> type:
     class_name = method.__qualname__.rsplit(".", 1)[0]
     module = sys.modules[method.__module__]
     return getattr(module, class_name)
+
+
+def _get_object_package(obj: Any) -> Any:
+    mod = inspect.getmodule(obj)
+    base, _, _ = mod.__name__.partition(".")
+    return sys.modules[base]

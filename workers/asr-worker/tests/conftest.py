@@ -1,12 +1,18 @@
 import shutil
 from pathlib import Path
 
+import asr_worker
+import datashare_python
 import pytest
 from _pytest.tmpdir import TempPathFactory
 from asr_worker.config import ASRWorkerConfig
 from asr_worker.constants import SUPPORTED_CONTENT_TYPES
 from asr_worker.dependencies import set_multiprocessing_start_method
-from datashare_python.config import DatashareClientConfig, TemporalClientConfig
+from datashare_python.config import (
+    DatashareClientConfig,
+    LoggingConfig,
+    TemporalClientConfig,
+)
 from datashare_python.conftest import (  # noqa: F401
     TEST_PROJECT,
     doc_3,
@@ -43,8 +49,12 @@ def test_worker_config(tmp_path_factory: TempPathFactory) -> ASRWorkerConfig:  #
     artifacts_root.mkdir()
     workdir = tmp_path / "workdir"
     workdir.mkdir()
+    logging_config = LoggingConfig(
+        loggers={datashare_python.__name__: "INFO", asr_worker.__name__: "INFO"},
+        log_in_json=False,
+    )
     return ASRWorkerConfig(
-        log_level="DEBUG",
+        logging=logging_config,
         datashare=DatashareClientConfig(url="http://localhost:8080"),
         temporal=TemporalClientConfig(host="localhost:7233"),
         audios_root=audios_root,

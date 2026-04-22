@@ -1,3 +1,4 @@
+import logging
 from asyncio import gather
 from datetime import timedelta
 from enum import StrEnum
@@ -16,6 +17,8 @@ with workflow.unsafe.imports_passed_through():
 
 _ASR_INPUTS_TYPE_ADAPTER = TypeAdapter(ASRArgs)
 
+logger = logging.getLogger(__name__)
+
 
 class TaskQueues(StrEnum):
     IO = "asr.io"
@@ -28,11 +31,11 @@ class TaskQueues(StrEnum):
 class ASRWorkflow(WorkflowWithProgress):
     @workflow.run
     async def run(self, args: ASRArgs) -> ASRResponse:
-        logger = workflow.logger
         config = args.config
         batch_size = args.batch_size
         doc_query = has_id(args.docs) if isinstance(args.docs, list) else args.docs
         search_args = [args.project, doc_query, batch_size]
+        logger.info("searching files to process...")
         batch_paths = await workflow.execute_activity(
             ASRActivities.search_audio_paths,
             args=search_args,
