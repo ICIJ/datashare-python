@@ -16,6 +16,7 @@ from temporalio.worker import PollerBehaviorSimpleMaximum, Worker
 from .config import WorkerConfig
 from .dependencies import with_dependencies
 from .discovery import Activity
+from .interceptors import TraceContextInterceptor
 from .types_ import ContextManagerFactory, TemporalClient
 
 logger = logging.getLogger(__name__)
@@ -84,9 +85,10 @@ def datashare_worker(
         max_concurrent_activities = 1
         if workflows:
             logger.warning(_SEPARATE_IO_AND_CPU_WORKERS)
-
+    interceptors = [TraceContextInterceptor()]
     return DatashareWorker(
         client,
+        interceptors=interceptors,
         identity=worker_id,
         workflows=workflows,
         activities=activities,
