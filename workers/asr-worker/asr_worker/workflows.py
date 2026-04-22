@@ -17,7 +17,7 @@ with workflow.unsafe.imports_passed_through():
 
 _ASR_INPUTS_TYPE_ADAPTER = TypeAdapter(ASRArgs)
 
-logger = logging.getLogger(__name__)
+logger = logging.get_logger(__name__)
 
 
 class TaskQueues(StrEnum):
