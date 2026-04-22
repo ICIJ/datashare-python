@@ -64,7 +64,7 @@ from .constants import (
 from .dependencies import lifespan_es_client
 from .objects import InferenceRunnerConfig, Transcription
 
-logger = logging.get_logger(__name__)
+logger = logging.getLogger(__name__)
 
 _BASE_WEIGHT = 1.0
 _SEARCH_AUDIOS_WEIGHT = _BASE_WEIGHT * 2
