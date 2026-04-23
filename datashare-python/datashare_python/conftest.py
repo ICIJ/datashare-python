@@ -8,6 +8,7 @@ import nest_asyncio
 import pytest
 from elasticsearch._async.helpers import async_streaming_bulk
 from icij_common.es import DOC_ROOT_ID, ES_DOCUMENT_TYPE, ID, ESClient
+from icij_common.test_utils import reset_env  # noqa: F401
 from temporalio import workflow
 
 from datashare_python.config import (
