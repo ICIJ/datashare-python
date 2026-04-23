@@ -223,6 +223,7 @@ def preprocess_act(
     docs_root = worker_config.docs_root
     artifacts_root = worker_config.artifacts_root
     workdir = worker_config.workdir
+    logger.debug("locating files...")
     audios = (
         FilesystemDocument.model_validate(fs_doc) for fs_doc in read_jsonl(audio_batch)
     )
@@ -235,6 +236,7 @@ def preprocess_act(
     audios = (str(a) for a in audios)
     # TODO: implement a caching strategy here, we could avoid processing files
     #  which have already been preprocessed
+    logger.debug("starting preprocessing...")
     return list(_preprocess(preprocessor, audios, output_dir))
 
 
