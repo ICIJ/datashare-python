@@ -6,11 +6,6 @@ from typing import Annotated, Any, Self
 from caul.asr_pipeline import ASRPipelineConfig
 from caul.config import InferenceRunnerConfig as CaulInferenceRunnerConfig
 from caul.objects import ASRLanguage, ASRModel, ASRResult
-from caul.tasks import (
-    ParakeetInferenceRunnerConfig,
-    ParakeetPostprocessorConfig,
-    ParakeetPreprocessorConfig,
-)
 from datashare_python.objects import DatashareModel
 from icij_common.pydantic_utils import make_enum_discriminator, tagged_union
 from pydantic import Discriminator, Field, RootModel
@@ -24,13 +19,6 @@ InferenceRunnerConfig = Annotated[
 ]
 
 
-_DEFAULT_PIPELINE_CONFIG = ASRPipelineConfig(
-    preprocessing=ParakeetPreprocessorConfig(),
-    inference=ParakeetInferenceRunnerConfig(),
-    postprocessing=ParakeetPostprocessorConfig(),
-)
-
-
 DocumentSearchQuery = dict[str, Any]
 DocId = str
 
@@ -38,7 +26,7 @@ DocId = str
 class ASRArgs(DatashareModel):
     project: str
     docs: list[DocId] | DocumentSearchQuery
-    config: ASRPipelineConfig = Field(default=_DEFAULT_PIPELINE_CONFIG)
+    config: ASRPipelineConfig = Field(default_factory=ASRPipelineConfig.parakeet)
     batch_size: int
 
 

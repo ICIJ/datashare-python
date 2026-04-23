@@ -150,7 +150,7 @@ async def test_asr_workflow_e2e(
     args = ASRArgs(
         project=project,
         docs=doc_ids,
-        config=ASRPipelineConfig.parakeet,
+        config=ASRPipelineConfig.parakeet(),
         batch_size=batch_size,
     )
     workflow_id = f"asr-{uuid.uuid4().hex}"
