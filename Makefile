@@ -1,6 +1,6 @@
 lock-all:
 	./scripts/lock-dist.sh worker-template
-	./scripts/lock-dist.sh asr-python
+	./scripts/lock-dist.sh asr-worker
 	./scripts/lock-dist.sh translation-worker
 
 lock-dist:
