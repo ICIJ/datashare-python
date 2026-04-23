@@ -45,7 +45,7 @@ def _get_worker_handlers(
 ) -> list[logging.Handler]:
     stream_handler = logging.StreamHandler(sys.stderr)
     if in_json:
-        fmt = _json_formatter(datefmt=DATE_FMT, worker_id=worker_id)
+        fmt = _json_formatter(datefmt=DATE_FMT)
     else:
         if worker_id is not None:
             fmt = STREAM_HANDLER_FMT_WITH_WORKER_ID
@@ -79,10 +79,8 @@ class WorkerFilter(logging.Filter):
         return True
 
 
-def _json_formatter(datefmt: str, worker_id: str) -> BaseJsonFormatter:
+def _json_formatter(datefmt: str) -> BaseJsonFormatter:
     fmt = OrjsonFormatter(  # let's keep logging as fast as possible
-        _LOGGED_ATTRIBUTES,
-        extra={"worker_id": worker_id},
-        datefmt=datefmt,
+        _LOGGED_ATTRIBUTES, datefmt=datefmt
     )
     return fmt
