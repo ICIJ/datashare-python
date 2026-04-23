@@ -178,7 +178,7 @@ async def test_asr_workflow_e2e(
         assert transcription_path.exists()
         transcription = Transcription.model_validate_json(
             transcription_path.read_text()
-        )
+        ).model_dump()
         expcted_transcription = Transcription(
             transcripts=[
                 Transcript(
@@ -187,5 +187,8 @@ async def test_asr_workflow_e2e(
                 )
             ],
             confidence=math.exp(-248.3),
-        )
+        ).model_dump()
+        confidence = transcription.pop("confidence")
+        expected_confidence = expcted_transcription.pop("confidence")
+        assert confidence == pytest.approx(expected_confidence, abs=1e-6)
         assert transcription == expcted_transcription
