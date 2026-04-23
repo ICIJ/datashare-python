@@ -1,9 +1,9 @@
 from pathlib import Path
-from typing import Annotated, Literal
+from typing import Literal
 
 from icij_common.es import ESClient
 from icij_common.pydantic_utils import ICIJSettings
-from pydantic import Field, PrivateAttr
+from pydantic import PrivateAttr
 from pydantic_settings import SettingsConfigDict
 from temporalio.contrib.pydantic import PydanticJSONPlainPayloadConverter, ToJsonOptions
 from temporalio.converter import (
@@ -83,12 +83,14 @@ class LoggingConfig(BaseModel):
     loggers: dict[str, LogLevel]
 
 
+_DEFAULT_LOGGERS = {datashare_python.__name__: "INFO"}
+_DEFAULT_LOGGING_CONFIG = LoggingConfig(log_in_json=True, loggers=_DEFAULT_LOGGERS)
+
+
 class WorkerConfig(ICIJSettings, BaseModel):
     model_config = DS_WORKER_SETTINGS_CONFIG
 
-    logging: Annotated[LoggingConfig, Field(frozen=True)] = {
-        datashare_python.__name__: "INFO"
-    }
+    logging: LoggingConfig = _DEFAULT_LOGGING_CONFIG
 
     datashare: DatashareClientConfig = DatashareClientConfig()
     elasticsearch: ESClientConfig = ESClientConfig()
