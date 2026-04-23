@@ -1,3 +1,8 @@
+lock-all:
+	./scripts/lock-dist.sh worker-template
+	./scripts/lock-dist.sh asr-python
+	./scripts/lock-dist.sh translation-worker
+
 lock-dist:
 	./scripts/lock-dist.sh ${project}
 
