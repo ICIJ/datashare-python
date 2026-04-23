@@ -28,7 +28,7 @@ authors = [
 readme = "README.md"
 requires-python = ">=3.11.0, <3.14"
 dependencies = [
-    "datashare-python~=0.7.0",
+    "datashare-python~=0.7.1",
     "argostranslate>=1.11.0",
     "temporalio>=1.22.0",
     "pycountry~=26.2.16",

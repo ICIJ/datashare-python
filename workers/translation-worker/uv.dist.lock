@@ -411,7 +411,7 @@ wheels = [
 
 [[package]]
 name = "datashare-python"
-version = "0.7.0"
+version = "0.7.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiohttp" },
@@ -426,9 +426,9 @@ dependencies = [
     { name = "tomlkit" },
     { name = "typer" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/f7/0b/70b1ce2b1813295600209c48bf0278ea0998bf0e6e755e81a2b26ad199b6/datashare_python-0.7.0.tar.gz", hash = "sha256:1b87a58f75f9395d8fe3ee8bc0cafbfbe0822ab05070f43e4bc4551c55fa0688", size = 306872, upload-time = "2026-04-23T07:58:45.526Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/03/58/c3c8e1dd3996b4cbd6b0a6de6e32fe65b10cc0fa68c8354a08841c878465/datashare_python-0.7.1.tar.gz", hash = "sha256:86d59d26117778bd0db3d0307919717799c4d50783e7b41cb704618b74c56314", size = 314398, upload-time = "2026-04-23T09:26:53.767Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/4a/3d/223d9565c5e288ad3dad4614650d5840924c7a2e17c9c797c76b61853b21/datashare_python-0.7.0-py3-none-any.whl", hash = "sha256:857401c002ad6160720b25516fc95001a7b600d813abe9bfdce279c68e2e78c7", size = 311757, upload-time = "2026-04-23T07:58:44.015Z" },
+    { url = "https://files.pythonhosted.org/packages/a4/32/998d807b1c23fb186a0def9d2aeae1598a9b3a795f84d7c14d5b3908b800/datashare_python-0.7.1-py3-none-any.whl", hash = "sha256:c81a8b16e643c167014fec439e128d1a3c2fb6209adc3a7f8702e06b6ff2b5be", size = 320478, upload-time = "2026-04-23T09:26:51.429Z" },
 ]
 
 [[package]]
@@ -2181,7 +2181,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "argostranslate", specifier = ">=1.11.0" },
-    { name = "datashare-python", specifier = "~=0.7.0" },
+    { name = "datashare-python", specifier = "~=0.7.1" },
     { name = "pycountry", specifier = "~=26.2.16" },
     { name = "temporalio", specifier = ">=1.22.0" },
 ]
