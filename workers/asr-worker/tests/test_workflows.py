@@ -148,7 +148,10 @@ async def test_asr_workflow_e2e(
     project = TEST_PROJECT
     doc_ids = [d.id for d in with_audio_docs]
     args = ASRArgs(
-        project=project, docs=doc_ids, config=ASRPipelineConfig(), batch_size=batch_size
+        project=project,
+        docs=doc_ids,
+        config=ASRPipelineConfig.parakeet,
+        batch_size=batch_size,
     )
     workflow_id = f"asr-{uuid.uuid4().hex}"
 
