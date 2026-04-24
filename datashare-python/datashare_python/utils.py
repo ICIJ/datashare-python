@@ -141,6 +141,7 @@ async def progress_handler(
         activity_id=activity_id, run_id=run_id, progress=progress, weight=weight
     )
     await handle.signal("update_progress", signal)
+    activity.heartbeat()
 
 
 def get_activity_progress_handler_async(
