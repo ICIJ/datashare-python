@@ -143,7 +143,12 @@ class ASRActivities(ActivityWithProgress):
         if progress is not None:
             progress = to_raw_progress(progress, max_progress=len(preprocessed_inputs))
         inference_runner = InferenceRunner.from_config(config)
+        logger.info("loading model %s", config.model)
         with inference_runner:
+            logger.info(
+                "model loaded, starting inference on %s audio chunks !",
+                len(preprocessed_inputs),
+            )
             paths = infer_act(
                 inference_runner,
                 preprocessed_inputs,
