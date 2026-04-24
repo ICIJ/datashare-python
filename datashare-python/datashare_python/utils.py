@@ -1,12 +1,10 @@
 import asyncio
+import contextlib
+import contextvars
 import inspect
 import json
-import logging
-import sys
-from collections.abc import (
-    Callable,
-    Coroutine,
-)
+import threading
+from collections.abc import Awaitable, Callable, Coroutine
 from copy import deepcopy
 from dataclasses import dataclass
 from datetime import timedelta
@@ -20,15 +18,6 @@ from uuid import uuid4
 
 import nest_asyncio
 import temporalio
-from icij_common.logging_utils import (
-    DATE_FMT,
-    STREAM_HANDLER_FMT,
-    STREAM_HANDLER_FMT_WITH_WORKER_ID,
-    WorkerIdFilter,
-)
-from icij_common.pydantic_utils import get_field_default_value
-from pydantic.fields import FieldInfo
-from pythonjsonlogger.json import JsonFormatter
 from temporalio import activity, workflow
 from temporalio.client import Client, WorkflowHandle
 from temporalio.common import RetryPolicy, SearchAttributeKey
@@ -123,6 +112,7 @@ async def execute_activity(
     *,
     args: list | None = None,
     start_to_close_timeout: timedelta | None = None,
+    heartbeat_timeout: timedelta = timedelta(seconds=10),
     retry_policy: temporalio.common.RetryPolicy | None = None,
 ) -> Any:
     if args is None:
@@ -135,6 +125,7 @@ async def execute_activity(
         start_to_close_timeout=start_to_close_timeout,
         task_queue=task_queue,
         retry_policy=retry_policy,
+        heartbeat_timeout=heartbeat_timeout,
     )
 
 
@@ -227,6 +218,70 @@ def with_progress(weight: float = 1.0) -> Callable[P, T]:
         return wrapper
 
     return decorator
+
+
+def with_async_heartbeat(
+    activity_fn: Callable[P, Awaitable[T]], n_missed_before_timeout: int
+) -> Callable[P, Awaitable[T]]:
+    # Copied from
+    # https://github.com/temporalio/samples-python/blob/main/custom_decorator/activity_utils.py
+    @wraps(activity_fn)
+    async def wrapper(*args, **kwargs) -> T:
+        heartbeat_timeout = activity.info().heartbeat_timeout
+        heartbeat_task = None
+        if heartbeat_timeout:
+            period = heartbeat_timeout.total_seconds() / n_missed_before_timeout
+            heartbeat_task = asyncio.create_task(_async_heartbeat_every(period))
+        try:
+            return await activity_fn(*args, **kwargs)
+        finally:
+            if heartbeat_task:
+                heartbeat_task.cancel()
+                await asyncio.wait([heartbeat_task])
+
+    return wrapper
+
+
+async def _async_heartbeat_every(period: float, *details: Any) -> None:
+    while True:
+        await asyncio.sleep(period)
+        with contextlib.suppress(RuntimeError):
+            activity.heartbeat(*details)
+
+
+def with_sync_heartbeat(
+    activity_fn: Callable[P, T], n_missed_before_timeout: int
+) -> Callable[P, T]:
+    @wraps(activity_fn)
+    def wrapper(*args, **kwargs) -> T:
+        heartbeat_timeout = activity.info().heartbeat_timeout
+        heartbeat_thread, stop_event = None, None
+        if heartbeat_timeout:
+            period = heartbeat_timeout.total_seconds() / n_missed_before_timeout
+            stop_event = threading.Event()
+            ctx = contextvars.copy_context()
+            args = (_sync_heartbeat_every, period, stop_event)
+            # TODO: use thread
+            heartbeat_thread, stop_event = (
+                threading.Thread(target=ctx.run, args=args),
+                threading.Event(),
+            )
+            heartbeat_thread.start()
+        try:
+            return activity_fn(*args, **kwargs)
+        finally:
+            if heartbeat_thread:
+                stop_event.set()
+                heartbeat_thread.join()
+
+    return wrapper
+
+
+def _sync_heartbeat_every(
+    period: float, stop_event: threading.Event, *details: Any
+) -> None:
+    while not stop_event.wait(period):
+        activity.heartbeat(*details)
 
 
 def positional_args_only(activity_fn: Callable[P, T]) -> Callable[P, T]:
@@ -336,10 +391,17 @@ def activity_defn(
     name: str,
     progress_weight: float = 1.0,
     retriables: set[type[Exception]] = None,
+    n_missed_heartbeats_before_timeout: int = 5,
 ) -> Callable[[Callable[P, T]], Callable[P, T]]:
     def decorator(activity_fn: Callable[P, T]) -> Callable[P, T]:
         # TODO: some of these could probably be reimplemented more elegantly using
         #  temporal interceptors: https://docs.temporal.io/develop/python/workers/interceptors
+        is_async = asyncio.iscoroutinefunction(activity_fn)
+        activity_fn = (
+            with_async_heartbeat(activity_fn, n_missed_heartbeats_before_timeout)
+            if is_async
+            else with_sync_heartbeat(activity_fn, n_missed_heartbeats_before_timeout)
+        )
         activity_fn = positional_args_only(activity_fn)
         activity_fn = with_retriables(retriables)(activity_fn)
         if supports_progress(activity_fn):
@@ -380,59 +442,6 @@ def to_scaled_progress(
         await progress(start + p * (end - start))
 
     return _scaled
-
-
-class LogWithWorkerIDMixin:
-    def setup_loggers(self, worker_id: str | None = None) -> None:
-        # Ugly work around the Pydantic V1 limitations...
-        all_loggers = self.loggers
-        if isinstance(all_loggers, FieldInfo):
-            all_loggers = get_field_default_value(all_loggers)
-        all_loggers.append(__name__)
-        loggers = sorted(set(all_loggers))
-        log_level = self.log_level
-        if isinstance(log_level, FieldInfo):
-            log_level = get_field_default_value(log_level)
-        force_warning = getattr(self, "force_warning_loggers", [])
-        if isinstance(force_warning, FieldInfo):
-            force_warning = get_field_default_value(force_warning)
-        force_warning = set(force_warning)
-        worker_id_filter = None
-        if worker_id is not None:
-            worker_id_filter = WorkerIdFilter(worker_id)
-        handlers = self._handlers(worker_id_filter, log_level)
-        for logger_ in loggers:
-            logger_ = logging.getLogger(logger_)  # noqa: PLW2901
-            level = getattr(logging, log_level)
-            if logger_.name in force_warning:
-                level = max(logging.WARNING, level)
-            logger_.setLevel(level)
-            logger_.handlers = []
-            for handler in handlers:
-                logger_.addHandler(handler)
-
-    def _handlers(
-        self, worker_id_filter: logging.Filter | None, log_level: int
-    ) -> list[logging.Handler]:
-        stream_handler = logging.StreamHandler(sys.stderr)
-        if worker_id_filter is not None:
-            fmt = STREAM_HANDLER_FMT_WITH_WORKER_ID
-        else:
-            fmt = STREAM_HANDLER_FMT
-        log_in_json = getattr(self, "log_in_json", False)
-        if isinstance(log_in_json, FieldInfo):
-            log_in_json = get_field_default_value(log_in_json)
-        if log_in_json:
-            fmt = JsonFormatter(fmt, DATE_FMT)
-        else:
-            fmt = logging.Formatter(fmt, DATE_FMT)
-        stream_handler.setFormatter(fmt)
-        handlers = [stream_handler]
-        for handler in handlers:
-            if worker_id_filter is not None:
-                handler.addFilter(worker_id_filter)
-            handler.setLevel(log_level)
-        return handlers
 
 
 def safe_dir(doc_id: str) -> Path:
