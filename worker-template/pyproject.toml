@@ -9,7 +9,7 @@ authors = [
 readme = "README.md"
 requires-python = ">=3.11,<4"
 dependencies = [
-  "datashare-python~=0.7.3",
+  "datashare-python~=0.8.0",
   "pycountry~=26.2.16",
   "temporalio~=1.23.0",
 ]
