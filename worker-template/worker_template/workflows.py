@@ -1,4 +1,5 @@
 import asyncio
+import logging
 from datetime import timedelta
 from enum import StrEnum
 
@@ -16,6 +17,8 @@ with workflow.unsafe.imports_passed_through():
     )
     from .objects_ import TranslateAndClassifyArgs, TranslateAndClassifyResponse
 
+logger = logging.getLogger(__name__)
+
 
 class TaskQueues(StrEnum):
     IO = "worker-template.io"
@@ -27,6 +30,7 @@ class TaskQueues(StrEnum):
 class TranslateAndClassifyWorkflow(WorkflowWithProgress):
     @workflow.run
     async def run(self, args: TranslateAndClassifyArgs) -> TranslateAndClassifyResponse:
+        logger.info("creating translation batches...")
         translation_batch_args = [
             args.project,
             args.language,
@@ -42,6 +46,7 @@ class TranslateAndClassifyWorkflow(WorkflowWithProgress):
             heartbeat_timeout=heartbeat_timeout,
         )
         # Translate
+        logger.info("translating...")
         translation_args = [
             (b, args.language, args.project, args.config.translation)
             for b in translation_batches
@@ -59,6 +64,7 @@ class TranslateAndClassifyWorkflow(WorkflowWithProgress):
         translated = await asyncio.gather(*translations_activities)
         translated = sum(translated)
         # Create classification batches
+        logger.info("creating classification batches...")
         clf_batch_args = [
             args.project,
             args.language,
@@ -72,6 +78,7 @@ class TranslateAndClassifyWorkflow(WorkflowWithProgress):
             heartbeat_timeout=heartbeat_timeout,
         )
         # Classify
+        logger.info("classifying...")
         clf_args = [
             (b, args.language, args.project, args.config.classification)
             for b in clf_batches
@@ -88,6 +95,7 @@ class TranslateAndClassifyWorkflow(WorkflowWithProgress):
         ]
         classified = await asyncio.gather(*clf_activities)
         classified = sum(classified)
+        logger.info("done !")
         return TranslateAndClassifyResponse(
             translated=translated, classified=classified
         )
@@ -97,6 +105,7 @@ class TranslateAndClassifyWorkflow(WorkflowWithProgress):
 class PingWorkflow(WorkflowWithProgress):
     @workflow.run
     async def run(self, arg: dict) -> str:  # noqa: ARG002
+        logger.info("pinging !")
         return await execute_activity(
             Pong.pong,
             task_queue=TaskQueues.IO,

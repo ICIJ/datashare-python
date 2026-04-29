@@ -73,8 +73,8 @@ class WorkerFilter(logging.Filter):
             wf_info = workflow.info()
             wf_info = {
                 "workflow_run_id": wf_info.run_id,
-                "workflow_id": self.workflow_id,
-                "workflow_type": self.workflow_type,
+                "workflow_id": wf_info.workflow_id,
+                "workflow_type": wf_info.workflow_type,
             }
             for attr in _WF_LOGGED_ATTRS:
                 setattr(record, attr, wf_info[attr])
