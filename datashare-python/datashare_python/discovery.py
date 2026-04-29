@@ -70,9 +70,8 @@ def discover(
     deps = []
     if deps_name is not None:
         deps = discover_dependencies(deps_name)
-    for mandatory in _MANDATORY_DEPS:
-        if mandatory not in deps:
-            deps.append(mandatory)
+    missing = [m for m in _MANDATORY_DEPS if m not in deps]
+    deps = missing + deps
     if deps:
         n_deps = len(deps)
         discovered += "\n"
