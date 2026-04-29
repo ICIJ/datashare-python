@@ -221,10 +221,10 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "caul", marker = "extra == 'cli'", specifier = "==0.3.9" },
-    { name = "caul", marker = "extra == 'cpu'", specifier = "==0.3.9" },
-    { name = "caul", marker = "extra == 'preprocessing'", specifier = "==0.3.9" },
-    { name = "caul", extras = ["nemo"], marker = "extra == 'inference'", specifier = "==0.3.9" },
+    { name = "caul", marker = "extra == 'cli'", specifier = "==0.4.0" },
+    { name = "caul", marker = "extra == 'cpu'", specifier = "==0.4.0" },
+    { name = "caul", marker = "extra == 'preprocessing'", specifier = "==0.4.0" },
+    { name = "caul", extras = ["nemo"], marker = "extra == 'inference'", specifier = "==0.4.0" },
     { name = "datashare-python", editable = "../../datashare-python" },
     { name = "kaldialign", marker = "extra == 'inference'", specifier = "==0.9.3" },
     { name = "ml-dtypes", marker = "extra == 'inference'", specifier = "==0.5.4" },
@@ -333,7 +333,7 @@ wheels = [
 
 [[package]]
 name = "caul"
-version = "0.3.9"
+version = "0.4.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "icij-common", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-10-asr-worker-cpu' and extra == 'extra-10-asr-worker-gpu') or sys_platform == 'darwin' or (sys_platform != 'linux' and extra == 'extra-10-asr-worker-cpu' and extra == 'extra-10-asr-worker-gpu')" },
@@ -348,9 +348,9 @@ dependencies = [
     { name = "torchaudio", version = "2.11.0", source = { registry = "https://pypi.org/simple" }, marker = "(platform_machine == 'x86_64' and sys_platform == 'linux' and extra != 'extra-10-asr-worker-cpu' and extra != 'extra-10-asr-worker-gpu') or (sys_platform == 'darwin' and extra == 'extra-10-asr-worker-gpu') or (sys_platform == 'darwin' and extra != 'extra-10-asr-worker-cpu') or (extra == 'extra-10-asr-worker-cpu' and extra == 'extra-10-asr-worker-gpu')" },
     { name = "torchcodec", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-10-asr-worker-cpu' and extra == 'extra-10-asr-worker-gpu') or sys_platform == 'darwin' or (sys_platform != 'linux' and extra == 'extra-10-asr-worker-cpu' and extra == 'extra-10-asr-worker-gpu')" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/2c/06/8e1bcda05f3dfce415ea67abd79e0357787a6e8b54a45dc4b60e6a1d2187/caul-0.3.9.tar.gz", hash = "sha256:a3c1af7ce3a650f8754816e85204b2a7951e8f961fca417d9ad1c44a7304e6e4", size = 475121, upload-time = "2026-04-23T16:00:57.346Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/f6/f4/032ad1c8978edcb7ed2d08c24f7c7e776af733d52c1bc962c6cc0d39e4be/caul-0.4.0.tar.gz", hash = "sha256:80c2573a7165cfc111555d5af0b671bc86a070bd2c4278f7ab873ff6281c4a2f", size = 822735, upload-time = "2026-04-29T12:22:48.847Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/c8/74/944aa049b817c1bf7115502b2500e3d6fec87c4601e947b26c8e9ec4c48e/caul-0.3.9-py3-none-any.whl", hash = "sha256:6415d0b61cea65d3088346906bf097a8ef5475cc4eeec8ffa7e9b37794ff5380", size = 27495, upload-time = "2026-04-23T16:00:58.85Z" },
+    { url = "https://files.pythonhosted.org/packages/1e/ac/1e6907305d48223c2014480d61048ef231a794dfea64467998a74405f6ae/caul-0.4.0-py3-none-any.whl", hash = "sha256:10b0e66c12175af51d86df679e16f84f1cd3e77f23beff6834bd35db3a310a26", size = 33695, upload-time = "2026-04-29T12:22:50.157Z" },
 ]
 
 [package.optional-dependencies]
