@@ -2,5 +2,5 @@
 
 uv run --no-sync datashare-python worker start \
     --dependencies inference \
-    --queue worker-template.classify-gpu \
+    --queue asr.inference.gpu \
     --activities asr.transcription.infer
