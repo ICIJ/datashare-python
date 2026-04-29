@@ -59,6 +59,7 @@ async def io_bound_worker(
         workflows=[ASRWorkflow],
         activities=[activities.search_audio_paths],
         dependencies=dependencies,
+        sandboxed=False,
     )
     async with worker_ctx:
         yield
@@ -83,6 +84,7 @@ async def cpu_bound_worker(
         task_queue=task_queue,
         activities=[activities.preprocess, activities.postprocess],
         dependencies=dependencies,
+        sandboxed=False,
     )
     async with worker_ctx:
         yield
@@ -107,6 +109,7 @@ async def gpu_inference_worker(
         task_queue=task_queue,
         activities=[activities.infer],
         dependencies=dependencies,
+        sandboxed=False,
     )
     async with worker_ctx:
         yield

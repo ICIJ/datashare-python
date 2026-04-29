@@ -83,7 +83,7 @@ class CreateClassificationBatches(ActivityWithProgress):
 
 class TranslateDocs(ActivityWithProgress):
     @activity_defn(name="translate-docs")
-    def translate_docs(
+    async def translate_docs(
         self,
         docs: list[str],
         target_language: str,
@@ -93,15 +93,13 @@ class TranslateDocs(ActivityWithProgress):
         progress: ProgressRateHandler | None = None,
     ) -> int:
         es_client = lifespan_es_client()
-        return self._event_loop.run_until_complete(
-            translate_docs(
-                docs,
-                target_language=target_language,
-                project=project,
-                es_client=es_client,
-                config=config,
-                progress=progress,
-            )
+        return await translate_docs(
+            docs,
+            target_language=target_language,
+            project=project,
+            es_client=es_client,
+            config=config,
+            progress=progress,
         )
 
 
