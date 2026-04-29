@@ -67,6 +67,8 @@ class WorkerFilter(logging.Filter):
         self.worker_id = worker_id
 
     def filter(self, record: logging.LogRecord) -> bool:
+        if not hasattr(record, "message") and record.msg is not None:
+            setattr(record, "msg", record.msg)  # noqa: B010
         if self.worker_id is not None:
             record.worker_id = self.worker_id
         if workflow.in_workflow():
