@@ -1,3 +1,4 @@
+import asyncio
 import contextlib
 import logging
 import os
@@ -123,7 +124,7 @@ class ASRActivities(ActivityWithProgress):
         return batches
 
     @activity_defn(name=RUN_INFERENCE_ACTIVITY, progress_weight=_INFERENCE_WEIGHT)
-    def infer(
+    async def infer(
         self,
         preprocessed_inputs: list[Path],
         project: str,
@@ -149,14 +150,14 @@ class ASRActivities(ActivityWithProgress):
                 "model loaded, starting inference on %s audio chunks !",
                 len(preprocessed_inputs),
             )
-            paths = infer_act(
+            inference_res = infer_act(
                 inference_runner,
                 preprocessed_inputs,
                 output_dir=output_dir,
-                event_loop=self._event_loop,
                 progress=progress,
             )
-        return [p.relative_to(workdir) for p in paths]
+            inference_res = [p.relative_to(workdir) async for p in inference_res]
+        return inference_res
 
     @activity_defn(name=POSTPROCESS_ACTIVITY, progress_weight=_BASE_WEIGHT)
     def postprocess(
@@ -245,13 +246,13 @@ def preprocess_act(
     return list(_preprocess(preprocessor, audios, output_dir))
 
 
-def infer_act(
+async def infer_act(
     inference_runner: InferenceRunner,
     preprocessed_inputs: list[Path],
     output_dir: Path,
     event_loop: AbstractEventLoop | None = None,
     progress: RawProgressHandler | None = None,
-) -> list[Path]:
+) -> AsyncIterable[Path]:
     # Audios paths in the input are relative to the batch file directory
     inputs = (
         [
@@ -263,9 +264,11 @@ def infer_act(
     audio_paths, inputs = tee(inputs)
     audio_paths = (i.metadata.preprocessed_file_path for b in audio_paths for i in b)
     # TODO: implement caching
-    paths = []
+    inference_results = await asyncio.to_thread(
+        _transcribe_as_list, inference_runner, list(inputs)
+    )
     for res_i, (path, asr_res) in enumerate(
-        zip(audio_paths, inference_runner.process(inputs), strict=True)
+        zip(audio_paths, inference_results, strict=True)
     ):
         filename = f"{debuggable_name(path.name)}-transcript.json"
         transcript_path = output_dir / safe_dir(filename) / filename
@@ -274,10 +277,15 @@ def infer_act(
             "run inference for %s, writing result to %s", path, transcript_path
         )
         transcript_path.write_text(asr_res.model_dump_json())
-        paths.append(transcript_path)
+        yield transcript_path
         if progress is not None and event_loop is not None:
-            event_loop.run_until_complete(progress(res_i))
-    return paths
+            await progress(res_i)
+
+
+def _transcribe_as_list(
+    inference_runner: InferenceRunner, inputs: Iterable[list[PreprocessedInput]]
+) -> list[ASRResult]:
+    return list(inference_runner.process(inputs))
 
 
 def postprocess_act(

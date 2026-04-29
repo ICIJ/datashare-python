@@ -5,9 +5,7 @@ from enum import StrEnum
 from temporalio import workflow
 
 with workflow.unsafe.imports_passed_through():
-    from datashare_python.utils import (
-        WorkflowWithProgress,
-    )
+    from datashare_python.utils import WorkflowWithProgress, execute_activity
 
     from .activities import (
         ClassifyDocs,
@@ -35,11 +33,13 @@ class TranslateAndClassifyWorkflow(WorkflowWithProgress):
             args.config.translation.batch_size,
         ]
         # Create translation batches
-        translation_batches = await workflow.execute_activity(
+        heartbeat_timeout = timedelta(seconds=10)
+        translation_batches = await execute_activity(
             CreateTranslationBatches.create_translation_batches,
             args=translation_batch_args,
             task_queue=TaskQueues.IO,
             start_to_close_timeout=timedelta(hours=1),
+            heartbeat_timeout=heartbeat_timeout,
         )
         # Translate
         translation_args = [
@@ -47,11 +47,12 @@ class TranslateAndClassifyWorkflow(WorkflowWithProgress):
             for b in translation_batches
         ]
         translations_activities = [
-            workflow.execute_activity(
+            execute_activity(
                 TranslateDocs.translate_docs,
                 args=args,
                 task_queue=TaskQueues.TRANSLATE_GPU,
                 start_to_close_timeout=timedelta(hours=1),
+                heartbeat_timeout=heartbeat_timeout,
             )
             for args in translation_args
         ]
@@ -63,11 +64,12 @@ class TranslateAndClassifyWorkflow(WorkflowWithProgress):
             args.language,
             args.config.classification,
         ]
-        clf_batches = await workflow.execute_activity(
+        clf_batches = await execute_activity(
             CreateClassificationBatches.create_classification_batches,
             args=clf_batch_args,
             task_queue=TaskQueues.IO,
             start_to_close_timeout=timedelta(days=1),
+            heartbeat_timeout=heartbeat_timeout,
         )
         # Classify
         clf_args = [
@@ -75,11 +77,12 @@ class TranslateAndClassifyWorkflow(WorkflowWithProgress):
             for b in clf_batches
         ]
         clf_activities = [
-            workflow.execute_activity(
+            execute_activity(
                 ClassifyDocs.classify_docs,
                 args=args,
                 task_queue=TaskQueues.CLASSIFY_GPU,
                 start_to_close_timeout=timedelta(days=1),
+                heartbeat_timeout=heartbeat_timeout,
             )
             for args in clf_args
         ]
@@ -94,7 +97,7 @@ class TranslateAndClassifyWorkflow(WorkflowWithProgress):
 class PingWorkflow(WorkflowWithProgress):
     @workflow.run
     async def run(self, arg: dict) -> str:  # noqa: ARG002
-        return await workflow.execute_activity(
+        return await execute_activity(
             Pong.pong,
             task_queue=TaskQueues.IO,
             start_to_close_timeout=timedelta(hours=1),

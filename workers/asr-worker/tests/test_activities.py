@@ -229,7 +229,7 @@ def test_preprocess_act(test_worker_config: ASRWorkerConfig, tmpdir: Path) -> No
     assert written_batches == expected_batches
 
 
-def test_infer_act(tmpdir: Path) -> None:
+async def test_infer_act(tmpdir: Path) -> None:
     # Given
     inference_runner = MockInferenceRunner()
     workdir = Path(tmpdir) / "workdir"
@@ -252,7 +252,7 @@ def test_infer_act(tmpdir: Path) -> None:
     # Then
     asr_results = [
         ASRResult.model_validate_json((output_dir / p).read_text())
-        for p in asr_result_paths
+        async for p in asr_result_paths
     ]
     assert asr_results == INFERENCE_RESULTS
 

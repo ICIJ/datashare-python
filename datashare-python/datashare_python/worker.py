@@ -11,7 +11,12 @@ from contextlib import asynccontextmanager
 from copy import copy
 from typing import Any
 
-from temporalio.worker import PollerBehaviorSimpleMaximum, Worker
+from temporalio.worker import (
+    PollerBehaviorSimpleMaximum,
+    UnsandboxedWorkflowRunner,
+    Worker,
+)
+from temporalio.worker.workflow_sandbox import SandboxedWorkflowRunner
 
 from .config import WorkerConfig
 from .dependencies import with_dependencies
@@ -62,6 +67,7 @@ def datashare_worker(
     # Scale horizontally be default for activities, each worker processes one activity
     # at a time
     max_concurrent_io_activities: int = 10,
+    sandboxed: bool = True,
 ) -> DatashareWorker:
     if workflows is None:
         workflows = []
@@ -86,6 +92,7 @@ def datashare_worker(
         if workflows:
             logger.warning(_SEPARATE_IO_AND_CPU_WORKERS)
     interceptors = [TraceContextInterceptor()]
+    wf_runner = SandboxedWorkflowRunner() if sandboxed else UnsandboxedWorkflowRunner()
     return DatashareWorker(
         client,
         interceptors=interceptors,
@@ -101,6 +108,7 @@ def datashare_worker(
         # Workflow tasks are assumed to be very lightweight and fast we can reserve
         # several of them
         workflow_task_poller_behavior=PollerBehaviorSimpleMaximum(5),
+        workflow_runner=wf_runner,
     )
 
 
@@ -144,6 +152,7 @@ async def worker_context(
     event_loop: AbstractEventLoop,
     task_queue: str,
     dependencies: list[ContextManagerFactory] | None = None,
+    sandboxed: bool = True,
 ) -> AsyncGenerator[DatashareWorker, None]:
     discovered = []
     if activities is not None:
@@ -185,6 +194,7 @@ async def worker_context(
             activities=acts,
             task_queue=task_queue,
             max_concurrent_io_activities=worker_config.max_concurrent_io_activities,
+            sandboxed=sandboxed,
         )
         async with worker:
             yield worker

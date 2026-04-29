@@ -1,7 +1,7 @@
 [project]
 name = "datashare-python"
 version = "0.7.2"
-description = "Manage Pythoœn tasks and local resources in Datashare"
+description = "Manage Python tasks and local resources in Datashare"
 authors = [
   { name = "Clément Doumouro", email = "cdoumouro@icij.org" },
   { name = "Clément Doumouro", email = "clement.doumouro@gmail.com" },
