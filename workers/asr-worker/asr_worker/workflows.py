@@ -70,6 +70,7 @@ class ASRWorkflow(WorkflowWithProgress):
                 args=b,
                 # TODO: in practice we should parse the config to find out
                 start_to_close_timeout=timedelta(seconds=TEN_MINUTES),
+                heartbeat_timeout=timedelta(minutes=3),
             )
             for b in inference_args
         ]
