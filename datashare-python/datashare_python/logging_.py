@@ -47,7 +47,7 @@ _STREAM_HANDLER_FMT_WITH_WORKER_ID = (
 
 
 def setup_worker_loggers(
-    loggers: dict[str, LogLevel], *, worker_id: str | None, format: LogFormat
+    loggers: dict[str, LogLevel], *, worker_id: str | None, log_format: LogFormat
 ) -> None:
     worker_filter = WorkerFilter(worker_id)
     for logger_name, level_str in loggers.items():
@@ -55,7 +55,9 @@ def setup_worker_loggers(
         logger = logging.getLogger(logger_name)
         logger.setLevel(level)
         logger.handlers = []
-        for handler in _get_worker_handlers(level, worker_filter, format=format):
+        for handler in _get_worker_handlers(
+            level, worker_filter, log_format=log_format
+        ):
             logger.addHandler(handler)
 
 
@@ -83,10 +85,10 @@ class WorkerFilter(logging.Filter):
 
 
 def _get_worker_handlers(
-    level: int, worker_filter: WorkerFilter, *, format: LogFormat
+    level: int, worker_filter: WorkerFilter, *, log_format: LogFormat
 ) -> list[logging.Handler]:
     stream_handler = logging.StreamHandler(sys.stderr)
-    match format:
+    match log_format:
         case LogFormat.JSON:
             fmt = _json_formatter(datefmt=DATE_FMT)
         case LogFormat.LOGFMT:
@@ -98,7 +100,7 @@ def _get_worker_handlers(
                 fmt = STREAM_HANDLER_FMT
             fmt = logging.Formatter(fmt, DATE_FMT)
         case _:
-            raise NotImplementedError(f"invalid log format: {format}")
+            raise NotImplementedError(f"invalid log format: {log_format}")
     stream_handler.setFormatter(fmt)
     stream_handler.setLevel(level)
     stream_handler.addFilter(worker_filter)

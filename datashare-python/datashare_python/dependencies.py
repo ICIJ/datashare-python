@@ -40,7 +40,7 @@ def set_loggers(
     worker_config: WorkerConfig, worker_id: str, loggers: dict[str, LogLevel]
 ) -> None:
     setup_worker_loggers(
-        loggers=loggers, worker_id=worker_id, format=worker_config.logging.format
+        loggers=loggers, worker_id=worker_id, log_format=worker_config.logging.format
     )
     logger.info("worker loggers ready to log 💬")
 
