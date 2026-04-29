@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 @contextmanager
 def set_multiprocessing_start_method(**_) -> Generator[None, None, None]:
     logger.info("setting multiprocessing start method...")
-    multiprocessing.set_start_method("spawn")
+    multiprocessing.set_start_method("spawn", force=True)
     if platform.system() != "Darwin":
         logger.info("nothing to do !")
         yield

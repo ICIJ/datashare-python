@@ -1,11 +1,13 @@
 from pathlib import Path
 
 import datashare_python
-from datashare_python.config import LoggingConfig, WorkerConfig
+from datashare_python.config import LogFormat, LoggingConfig, WorkerConfig
 from pydantic import Field
 
 _DEFAULT_LOGGERS = {datashare_python.__name__: "INFO", __name__: "INFO"}
-_DEFAULT_LOGGING_CONFIG = LoggingConfig(log_in_json=True, loggers=_DEFAULT_LOGGERS)
+_DEFAULT_LOGGING_CONFIG = LoggingConfig(
+    format=LogFormat.DEFAULT, loggers=_DEFAULT_LOGGERS
+)
 
 
 class ASRWorkerConfig(WorkerConfig):

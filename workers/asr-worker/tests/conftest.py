@@ -10,6 +10,7 @@ from asr_worker.constants import SUPPORTED_CONTENT_TYPES
 from asr_worker.dependencies import set_multiprocessing_start_method
 from datashare_python.config import (
     DatashareClientConfig,
+    LogFormat,
     LoggingConfig,
     TemporalClientConfig,
 )
@@ -51,7 +52,7 @@ def test_worker_config(tmp_path_factory: TempPathFactory) -> ASRWorkerConfig:  #
     workdir.mkdir()
     logging_config = LoggingConfig(
         loggers={datashare_python.__name__: "INFO", asr_worker.__name__: "INFO"},
-        log_in_json=False,
+        format=LogFormat.DEFAULT,
     )
     return ASRWorkerConfig(
         logging=logging_config,

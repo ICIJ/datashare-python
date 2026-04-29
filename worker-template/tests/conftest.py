@@ -8,6 +8,7 @@ import datashare_python
 import pytest
 from datashare_python.config import (
     DatashareClientConfig,
+    LogFormat,
     LoggingConfig,
     TemporalClientConfig,
     WorkerConfig,
@@ -52,7 +53,8 @@ from worker_template.workflows import (
 @pytest.fixture(scope="session")
 def test_worker_config() -> TranslateAndClassifyWorkerConfig:
     logging_config = LoggingConfig(
-        loggers={datashare_python.__name__: "INFO", __name__: "INFO"}, log_in_json=False
+        loggers={datashare_python.__name__: "INFO", __name__: "INFO"},
+        format=LogFormat.DEFAULT,
     )
     return TranslateAndClassifyWorkerConfig(
         logging=logging_config,
