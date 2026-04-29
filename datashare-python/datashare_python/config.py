@@ -1,3 +1,4 @@
+from enum import StrEnum
 from pathlib import Path
 from typing import Literal
 
@@ -78,13 +79,21 @@ class TemporalClientConfig(BaseModel):
 LogLevel = Literal["CRITICAL", "ERROR", "WARNING", "INFO", "DEBUG"]
 
 
+class LogFormat(StrEnum):
+    JSON = "json"
+    LOGFMT = "logfmt"
+    DEFAULT = "default"
+
+
 class LoggingConfig(BaseModel):
-    log_in_json: bool = False
+    format: LogFormat = LogFormat.DEFAULT
     loggers: dict[str, LogLevel]
 
 
 _DEFAULT_LOGGERS = {datashare_python.__name__: "INFO"}
-_DEFAULT_LOGGING_CONFIG = LoggingConfig(log_in_json=True, loggers=_DEFAULT_LOGGERS)
+_DEFAULT_LOGGING_CONFIG = LoggingConfig(
+    format=LogFormat.DEFAULT, loggers=_DEFAULT_LOGGERS
+)
 
 
 class WorkerConfig(ICIJSettings, BaseModel):

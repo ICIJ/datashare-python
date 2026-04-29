@@ -13,6 +13,7 @@ from temporalio import workflow
 
 from datashare_python.config import (
     DatashareClientConfig,
+    LogFormat,
     LoggingConfig,
     TemporalClientConfig,
     WorkerConfig,
@@ -93,7 +94,7 @@ def event_loop(
 @pytest.fixture(scope="session")
 def test_worker_config() -> WorkerConfig:
     logging_config = LoggingConfig(
-        log_in_json=False,
+        format=LogFormat.DEFAULT,
         loggers={
             "datashare_python": "DEBUG",
             "icij_common": "DEBUG",

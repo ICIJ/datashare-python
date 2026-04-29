@@ -1,20 +1,39 @@
 import logging
+import numbers
 import sys
 from copy import copy
+from typing import Any
 
+import orjson
 from icij_common.logging_utils import DATE_FMT, STREAM_HANDLER_FMT
-from pythonjsonlogger.core import RESERVED_ATTRS, BaseJsonFormatter
+from pythonjsonlogger.core import BaseJsonFormatter
 from pythonjsonlogger.orjson import OrjsonFormatter
 from temporalio import activity, workflow
 
-from .config import LogLevel
+from .config import LogFormat, LogLevel
 from .interceptors import get_trace_context
 
+_BASE_ATTRS = [
+    "asctime",
+    "exc_info",
+    "filename",
+    "funcName",
+    "levelname",
+    "levelno",
+    "lineno",
+    "module",
+    "msecs",
+    "message",
+    "msg",
+    "name",
+    "pathname",
+]
 _ACT_LOGGER_ATTRS = ["activity_type", "activity_id", "activity_run_id"]
 _WF_LOGGED_ATTRS = ["workflow_type", "workflow_id", "workflow_run_id"]
 _TRACE_CONTEXT_ATTRS = ["trace_id", "parent_id", "traceparent"]
+
 _LOGGED_ATTRIBUTES = (
-    copy(RESERVED_ATTRS)
+    copy(_BASE_ATTRS)
     + _WF_LOGGED_ATTRS
     + _ACT_LOGGER_ATTRS
     + _TRACE_CONTEXT_ATTRS
@@ -28,7 +47,7 @@ _STREAM_HANDLER_FMT_WITH_WORKER_ID = (
 
 
 def setup_worker_loggers(
-    loggers: dict[str, LogLevel], *, worker_id: str | None, in_json: bool
+    loggers: dict[str, LogLevel], *, worker_id: str | None, format: LogFormat
 ) -> None:
     worker_filter = WorkerFilter(worker_id)
     for logger_name, level_str in loggers.items():
@@ -36,7 +55,7 @@ def setup_worker_loggers(
         logger = logging.getLogger(logger_name)
         logger.setLevel(level)
         logger.handlers = []
-        for handler in _get_worker_handlers(level, worker_filter, in_json=in_json):
+        for handler in _get_worker_handlers(level, worker_filter, format=format):
             logger.addHandler(handler)
 
 
@@ -64,21 +83,48 @@ class WorkerFilter(logging.Filter):
 
 
 def _get_worker_handlers(
-    level: int, worker_filter: WorkerFilter, *, in_json: bool
+    level: int, worker_filter: WorkerFilter, *, format: LogFormat
 ) -> list[logging.Handler]:
     stream_handler = logging.StreamHandler(sys.stderr)
-    if in_json:
-        fmt = _json_formatter(datefmt=DATE_FMT)
-    else:
-        if worker_filter.worker_id is not None:
-            fmt = _STREAM_HANDLER_FMT_WITH_WORKER_ID
-        else:
-            fmt = STREAM_HANDLER_FMT
-        fmt = logging.Formatter(fmt, DATE_FMT)
+    match format:
+        case LogFormat.JSON:
+            fmt = _json_formatter(datefmt=DATE_FMT)
+        case LogFormat.LOGFMT:
+            fmt = LogFmtFormatter(datefmt=DATE_FMT)
+        case LogFormat.DEFAULT:
+            if worker_filter.worker_id is not None:
+                fmt = _STREAM_HANDLER_FMT_WITH_WORKER_ID
+            else:
+                fmt = STREAM_HANDLER_FMT
+            fmt = logging.Formatter(fmt, DATE_FMT)
+        case _:
+            raise NotImplementedError(f"invalid log format: {format}")
     stream_handler.setFormatter(fmt)
     stream_handler.setLevel(level)
     stream_handler.addFilter(worker_filter)
     return [stream_handler]
+
+
+class LogFmtFormatter(logging.Formatter):
+    def format(self, record: logging.LogRecord) -> str:
+        logged = dict()
+        if record.exc_info and not record.exc_text:
+            record.exc_text = self.formatException(record.exc_info)
+            logged["exc_info"] = record.exc_text
+        for k, v in record.__dict__.items():
+            if k in _LOGGED_ATTRIBUTES and k != "exc_info":
+                logged[k] = _encode_value(v)
+        return " ".join(f"{k}={v}" for k, v in sorted(logged.items()))
+
+
+def _encode_value(value: Any) -> str:
+    if value is None:
+        return ""
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    if isinstance(value, numbers.Number):
+        return str(value)
+    return orjson.dumps(value).decode()
 
 
 def _json_formatter(datefmt: str) -> BaseJsonFormatter:
