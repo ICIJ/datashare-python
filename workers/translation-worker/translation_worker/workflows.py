@@ -4,66 +4,52 @@ from datetime import timedelta
 from temporalio import workflow
 
 with workflow.unsafe.imports_passed_through():
-    from datashare_python.utils import WorkflowWithProgress
+    from datashare_python.utils import WorkflowWithProgress, execute_activity
 
-    from .activities import (
-        CreateTranslationBatches,
-        TranslateDocs,
-        resolve_language_alpha_code,
-    )
-    from .constants import TRANSLATION_WORKFLOW_NAME
-    from .objects import (
-        TaskQueues,
-        TranslationArgs,
-        TranslationResponse,
-        TranslationWorkerConfig,
-    )
+    from .activities import TranslationActivities
+    from .config import TranslationWorkerConfig
+    from .constants import TRANSLATION_WORKFLOW_NAME, TaskQueue
+    from .objects import TranslationArgs, TranslationResponse
 
 
 @workflow.defn(name=TRANSLATION_WORKFLOW_NAME)
 class TranslationWorkflow(WorkflowWithProgress):
     @workflow.run
     async def run(self, args: TranslationArgs) -> TranslationResponse:
-        worker_config = TranslationWorkerConfig()
-
-        target_language_alpha_code = await workflow.execute_activity(
-            resolve_language_alpha_code,
-            args.target_language,
-            task_queue=TaskQueues.CPU,
-            start_to_close_timeout=timedelta(seconds=30),
+        # Read config this can't be done here directly since it involves
+        # non-deterministic IO
+        translation_worker_config: TranslationWorkerConfig = await execute_activity(
+            TranslationActivities.translation_worker_config,
+            task_queue=TaskQueue.IO,
+            start_to_close_timeout=timedelta(minutes=1),
         )
+        inference_queue = translation_worker_config.device.inference_queue
 
-        translation_batch_args = [
-            args.project,
-            target_language_alpha_code,
-            worker_config.max_batch_byte_len,
-        ]
         # Create translation batches
-        translation_batches: list[list[str]] = await workflow.execute_activity(
-            CreateTranslationBatches.create_translation_batches,
+        target_language = args.target_language.alpha2
+        translation_batch_args = [args.project, target_language]
+        translation_batches: list[tuple[str, list[list[str]]]]
+        translation_batches = await execute_activity(
+            TranslationActivities.create_translation_batches,
             args=translation_batch_args,
-            task_queue=TaskQueues.CPU,
+            task_queue=TaskQueue.IO,
             start_to_close_timeout=timedelta(hours=1),
         )
+
         # Translate
         translation_args = [
-            (
-                id_batch,
-                target_language_alpha_code,
-                args.project,
-                worker_config,
-            )
+            (id_batch, target_language, args.project)
             for id_batch in translation_batches
         ]
-        translations_activities = [
-            workflow.execute_activity(
-                TranslateDocs.translate_docs,
+        translations_activities = (
+            execute_activity(
+                TranslationActivities.translate_docs,
                 args=args,
-                task_queue=TaskQueues.GPU,
+                task_queue=inference_queue,
                 start_to_close_timeout=timedelta(hours=1),
             )
             for args in translation_args
-        ]
+        )
         translations = await asyncio.gather(*translations_activities)
         num_translations = sum(translations)
 

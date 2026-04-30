@@ -1,7 +1,7 @@
-from translation_worker.constants import CPU
+from .constants import TorchDevice
 
 
-def find_device(device_name: str = CPU) -> str:
+def find_device(device_name: str = TorchDevice.CPU) -> TorchDevice.CPU:
     """Check if a device is available; if not, return cpu
 
     :param device_name: device name
@@ -16,4 +16,4 @@ def find_device(device_name: str = CPU) -> str:
     ):
         return device_name
 
-    return CPU
+    return TorchDevice.CPU
