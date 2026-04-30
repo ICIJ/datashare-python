@@ -3,7 +3,6 @@ from collections.abc import Generator
 
 import argostranslate
 import ctranslate2
-import pycountry
 from argostranslate.package import Package
 from argostranslate.translate import (
     CachedTranslation,
@@ -22,38 +21,13 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-def language_alpha_codes(*languages: str) -> list[str] | str:
-    alpha_codes = []
-
-    for language in languages:
-        try:
-            alpha2 = pycountry.languages.get(name=language).alpha_2
-            alpha_codes.append(alpha2)
-        except AttributeError:
-            logger.warning("%s language not found by pycountry; skipping.", language)
-            continue
-
-    if len(alpha_codes) == 0:
-        return list(languages)
-
-    if len(alpha_codes) == 1:
-        return alpha_codes[0]
-
-    return alpha_codes
-
-
 def translate_as_list(
     sentence_batch: list[BatchSentence],
     translation_ensemble: TranslationEnsemble,
     beam_size: int,
 ) -> list[str]:
-    return list(
-        _translate(
-            [s.sentence for s in sentence_batch],
-            translation_ensemble,
-            beam_size,
-        )
-    )
+    sentence_batch = [s.sentence for s in sentence_batch]
+    return list(_translate(sentence_batch, translation_ensemble, beam_size))
 
 
 def _translate(
