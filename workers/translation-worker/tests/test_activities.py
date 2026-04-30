@@ -204,7 +204,7 @@ async def test__create_translation_batches__returns_empty_list_when_no_docs() ->
     ):
         result = await create_translation_batches(
             project=TEST_PROJECT,
-            target_language_alpha_code=EN,
+            target_language=EN,
         )
 
     assert result == []
@@ -221,7 +221,7 @@ async def test__create_translation_batches__single_doc_creates_one_batch() -> No
     ):
         result = await create_translation_batches(
             project=TEST_PROJECT,
-            target_language_alpha_code=EN,
+            target_language=EN,
         )
 
     assert len(result) == 1
@@ -241,7 +241,7 @@ async def test__create_translation_batches__multiple_docs_same_lang_one_batch() 
     ):
         result = await create_translation_batches(
             project=TEST_PROJECT,
-            target_language_alpha_code=EN,
+            target_language=EN,
         )
 
     assert len(result) == 1
@@ -264,7 +264,7 @@ async def test__create_translation_batches__multiple_langs_yield_separate_entrie
     ):
         result = await create_translation_batches(
             project=TEST_PROJECT,
-            target_language_alpha_code=EN,
+            target_language=EN,
         )
 
     langs = [lang for lang, _ in result]
@@ -292,7 +292,7 @@ async def test__create_translation_batches__splits_batch_if_max_byte_len_exceede
         "translation_worker.activities._get_es_docs", side_effect=mock_get_es_docs
     ):
         result = await create_translation_batches(
-            project=TEST_PROJECT, target_language_alpha_code=EN, max_batch_byte_len=1000
+            project=TEST_PROJECT, target_language=EN, max_batch_byte_len=1000
         )
 
     _, batches = result[0]
