@@ -28,8 +28,14 @@ from icij_common.iter_utils import before_and_after, once
 from pydantic_extra_types.language_code import LanguageAlpha2, LanguageName
 
 from .constants import BATCHING_DOC_SOURCES, CONTENT_LENGTH, TRANSLATION_DOC_SOURCES
-from .core import get_translation_ensemble, has_language, translate_as_list
-from .objects import BatchSentence, TranslationEnsemble, TranslationWorkerConfig
+from .core import (
+    Sentencizer,
+    TranslationEnsemble,
+    get_translation_ensemble,
+    has_language,
+    translate_as_list,
+)
+from .objects import BatchSentence, TranslationWorkerConfig
 
 logger = logging.getLogger(__name__)
 
@@ -59,7 +65,7 @@ class TranslationActivities(ActivityWithProgress):
     async def translate_docs(
         self,
         doc_id_batch_with_lang: tuple[str, list[list[str]]],
-        target_language: str,
+        target_language: LanguageAlpha2,
         *,
         project: str,
         progress: ProgressRateHandler | None = None,
@@ -184,7 +190,7 @@ async def translate_docs(
             es_client,
             project,
             doc_id_batch,
-            translation_ensemble,
+            translation_ensemble.sentencizer,
             worker_config.batch_size,
         )
 
@@ -268,7 +274,7 @@ async def _get_doc_contents_and_split_on_sentences(
     es_client: ESClient,
     project: str,
     doc_ids: list[str],
-    translation_ensemble: TranslationEnsemble,
+    sentencizer: Sentencizer,
     sentence_batch_size: int = 16,
 ) -> AsyncGenerator[list[BatchSentence] | None, Any]:
     if len(doc_ids) == 0:
@@ -281,24 +287,20 @@ async def _get_doc_contents_and_split_on_sentences(
         source_includes=TRANSLATION_DOC_SOURCES,
     )
 
-    async for batch in _iter_sentences(
-        batch_gen, translation_ensemble, sentence_batch_size
-    ):
+    async for batch in _iter_sentences(batch_gen, sentencizer, sentence_batch_size):
         yield batch
 
 
 async def _iter_sentences(
     doc_iter: AsyncGenerator[dict, None],
-    translation_ensemble: TranslationEnsemble,
+    sentencizer: Sentencizer,
     sentence_batch_size: int = 16,
 ) -> AsyncGenerator[list[BatchSentence], None]:
     sentence_batch = []
 
     async for doc in doc_iter:
         es_doc = Document.from_es(doc)
-        sentences = await asyncio.to_thread(
-            translation_ensemble.sentencizer.split_sentences, es_doc.content
-        )
+        sentences = await asyncio.to_thread(sentencizer, es_doc.content)
         for idx, sentence in enumerate(sentences):
             sentence_batch.append(
                 BatchSentence(
@@ -430,6 +432,7 @@ async def _async_query_es(
 
 
 ACTIVITIES = [
+    TranslationActivities.translation_worker_config,
     TranslationActivities.create_translation_batches,
     TranslationActivities.translate_docs,
 ]
