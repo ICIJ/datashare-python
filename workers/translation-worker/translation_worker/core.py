@@ -1,24 +1,36 @@
 import logging
-from collections.abc import Generator
+from collections.abc import Generator, Iterable
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, Protocol
 
-import argostranslate
-import ctranslate2
-from argostranslate.package import Package
-from argostranslate.translate import (
-    CachedTranslation,
-    PackageTranslation,
-    get_installed_languages,
-)
 from icij_common.es import DOC_LANGUAGE, SOURCE
-from spacy import Language
 
 from .constants import CONTENT_LENGTH
-from .objects import BatchSentence, TranslationEnsemble
+from .objects import BatchSentence
 from .utils import find_device
+
+if TYPE_CHECKING:
+    from argostranslate.package import Package
+    from argostranslate.tokenizer import BPETokenizer, SentencePieceTokenizer
+    from argostranslate.translate import CachedTranslation, PackageTranslation
+    from ctranslate2 import Translator
+    from spacy import Language
 
 logging.basicConfig(level=logging.INFO)
 
 logger = logging.getLogger(__name__)
+
+
+class Sentencizer(Protocol):
+    def __call__(self, text: str) -> Iterable[str]: ...
+
+
+@dataclass(frozen=True)
+class TranslationEnsemble:
+    tokenizer: "SentencePieceTokenizer | BPETokenizer"
+    sentencizer: "Sentencizer"
+    translator: "Translator"
+    target_prefix: str = ""
 
 
 def translate_as_list(
@@ -32,7 +44,7 @@ def translate_as_list(
 
 def _translate(
     sentence_batch: list[str],
-    translation_ensemble: TranslationEnsemble,
+    translation_ensemble: "TranslationEnsemble",
     beam_size: int,
 ) -> Generator[str, None, None]:
     tokenized_sentences = [
@@ -84,9 +96,10 @@ def _has_language_or_exceeds_max_len(
 
 
 def _get_argos_package(
-    source_language_alpha_code: str,
-    target_language_alpha_code: str,
-) -> Package | None:
+    source_language_alpha_code: str, target_language_alpha_code: str
+) -> "Package | None":
+    import argostranslate  # noqa: PLC0415
+
     available_packages = argostranslate.package.get_installed_packages()
     return next(
         filter(
@@ -102,7 +115,9 @@ def _get_argos_package(
 
 def _get_argos_languages(
     *languages_to_find: str,
-) -> tuple[Language, ...]:
+) -> tuple["Language", ...]:
+    from argostranslate.translate import get_installed_languages  # noqa: PLC0415
+
     if not isinstance(languages_to_find, (list, tuple)):
         languages_to_find = [languages_to_find]
 
@@ -123,9 +138,10 @@ def _get_argos_languages(
 
 
 def _get_or_download_argos_languages(
-    source_language_alpha_code: str,
-    target_language_alpha_code: str,
-) -> tuple[Language, ...]:
+    source_language_alpha_code: str, target_language_alpha_code: str
+) -> tuple["Language", ...]:
+    import argostranslate  # noqa: PLC0415
+
     package = _get_argos_package(source_language_alpha_code, target_language_alpha_code)
 
     if package is None:
@@ -163,7 +179,7 @@ def get_translation_ensemble(
     inter_threads: int = 1,
     intra_threads: int = 0,
     compute_type: str = "auto",
-) -> TranslationEnsemble | None:
+) -> "TranslationEnsemble | None":
     # Create batches per language
     language_packages = _get_or_download_argos_languages(
         source_language_alpha_code, target_language_alpha_code
@@ -205,12 +221,14 @@ def get_translation_ensemble(
 
 
 def _get_translation_ensemble_from_argos_package(
-    argos_package: PackageTranslation,
+    argos_package: "PackageTranslation",
     device: str,
     inter_threads: int,
     intra_threads: int,
     compute_type: str,
-) -> TranslationEnsemble:
+) -> "TranslationEnsemble":
+    import ctranslate2  # noqa: PLC0415
+
     model_path = str(argos_package.pkg.package_path / "model")
     device = find_device(device)
     translator = ctranslate2.Translator(

@@ -30,7 +30,6 @@ requires-python = ">=3.11.0, <3.13"
 
 dependencies = [
   "datashare-python~=0.8.4",
-  "argostranslate==1.11.0",
   "pydantic-extra-types[pycountry]==2.11.1",
 ]
 
@@ -40,6 +39,11 @@ workflows = "translation_worker.workflows:WORKFLOWS"
 [project.entry-points."datashare.activities"]
 activities = "translation_worker.activities:ACTIVITIES"
 
+[project.entry-points."datashare.dependencies"]
+dependencies = "translation_worker.dependencies:REGISTRY"
+
+[project.entry-points."datashare.worker_config_cls"]
+worker_config_cls = "translation_worker.objects:WORKER_CONFIG_CLS"
 
 [project.optional-dependencies]
 cpu = [
@@ -47,6 +51,9 @@ cpu = [
 ]
 gpu = [
   "torch==2.10.0+cu128; sys_platform == 'linux'",
+]
+inference = [
+  "argostranslate==1.11.0",
 ]
 
 [[tool.uv.index]]
