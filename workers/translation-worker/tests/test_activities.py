@@ -113,20 +113,11 @@ async def test__iter_sentences__yields_sentences_with_correct_indices() -> None:
         DOC_ID_1, "Hello world. How are you? I'm fine.", EN, ROOT_DOCUMENT_1
     )
 
-    sentencizer = MagicMock()
-    sentencizer.split_sentences.return_value = [
-        "Hello world.",
-        "How are you?",
-        "I'm fine.",
-    ]
-    translation_ensemble = MagicMock()
-    translation_ensemble.sentencizer = sentencizer
+    sentences = ["Hello world.", "How are you?", "I'm fine."]
+    sentencizer = MagicMock(return_value=sentences)
 
     batches = await _collect_async(
-        _iter_sentences(
-            _single_doc_iter(es_doc),
-            translation_ensemble,
-        )
+        _iter_sentences(_single_doc_iter(es_doc), sentencizer)
     )
 
     non_empty = [b for b in batches if b]
@@ -136,16 +127,11 @@ async def test__iter_sentences__yields_sentences_with_correct_indices() -> None:
 
 
 async def test__iter_sentences__doc_id_and_root_document_are_preserved() -> None:
-    sentencizer = MagicMock()
-    sentencizer.split_sentences.return_value = [FR_DOC_1_TEXT]
-    translation_ensemble = MagicMock()
-    translation_ensemble.sentencizer = sentencizer
+    sentences = [FR_DOC_1_TEXT]
+    sentencizer = MagicMock(return_value=sentences)
 
     batches = await _collect_async(
-        _iter_sentences(
-            _single_doc_iter(FR_DOC_1),
-            translation_ensemble,
-        )
+        _iter_sentences(_single_doc_iter(FR_DOC_1), sentencizer)
     )
 
     non_empty = [b for b in batches if b]
@@ -161,12 +147,10 @@ async def test__iter_sentences__multiple_docs_sentences_collected_into_one_batch
         yield EN_DOC_1
         yield EN_DOC_2
 
-    sentencizer = MagicMock()
-    sentencizer.split_sentences.side_effect = [[EN_DOC_1_TEXT], [EN_DOC_2_TEXT]]
-    translation_ensemble = MagicMock()
-    translation_ensemble.sentencizer = sentencizer
+    sentences = [[EN_DOC_1_TEXT], [EN_DOC_2_TEXT]]
+    sentencizer = MagicMock(side_effect=sentences)
 
-    batches = await _collect_async(_iter_sentences(docs_iter(), translation_ensemble))
+    batches = await _collect_async(_iter_sentences(docs_iter(), sentencizer))
 
     non_empty = [b for b in batches if b]
     assert len(non_empty) == 1
@@ -725,10 +709,7 @@ async def test__get_doc_contents_and_split_on_sentences__yields_sents_from_doc()
     None
 ):
     mock_es_client = MagicMock()
-    sentencizer = MagicMock()
-    sentencizer.split_sentences.return_value = [FR_DOC_1_TEXT]
-    translation_ensemble = MagicMock()
-    translation_ensemble.sentencizer = sentencizer
+    sentencizer = MagicMock(return_value=[FR_DOC_1_TEXT])
 
     async def mock_poll_search_pages(*args, **kwargs):
         yield {HITS: {HITS: [FR_DOC_1]}}
@@ -738,10 +719,7 @@ async def test__get_doc_contents_and_split_on_sentences__yields_sents_from_doc()
 
     batches = await _collect_async(
         _get_doc_contents_and_split_on_sentences(
-            mock_es_client,
-            TEST_PROJECT,
-            [DOC_ID_1],
-            translation_ensemble,
+            mock_es_client, TEST_PROJECT, [DOC_ID_1], sentencizer
         )
     )
 
@@ -754,10 +732,8 @@ async def test__get_doc_contents_and_split_on_sentences__yields_last_batch() -> 
     # batch_size is 16 but the doc has only 2 sentences — partial batch must
     # still be yielded
     mock_es_client = MagicMock()
-    sentencizer = MagicMock()
-    sentencizer.split_sentences.return_value = ["Sentence one.", "Sentence two."]
-    translation_ensemble = MagicMock()
-    translation_ensemble.sentencizer = sentencizer
+    sentences = ["Sentence one.", "Sentence two."]
+    sentencizer = MagicMock(return_value=sentences)
 
     async def mock_poll_search_pages(*args, **kwargs):
         yield {HITS: {HITS: [FR_DOC_1]}}
@@ -767,10 +743,7 @@ async def test__get_doc_contents_and_split_on_sentences__yields_last_batch() -> 
 
     batches = await _collect_async(
         _get_doc_contents_and_split_on_sentences(
-            mock_es_client,
-            TEST_PROJECT,
-            [DOC_ID_1],
-            translation_ensemble,
+            mock_es_client, TEST_PROJECT, [DOC_ID_1], sentencizer
         )
     )
 
@@ -783,10 +756,7 @@ async def test__get_doc_contents_and_split_on_sentences__many_batches_batch_size
 ):
     mock_es_client = MagicMock()
     sentences = ["One.", "Two.", "Three."]
-    sentencizer = MagicMock()
-    sentencizer.split_sentences.return_value = sentences
-    translation_ensemble = MagicMock()
-    translation_ensemble.sentencizer = sentencizer
+    sentencizer = MagicMock(return_value=sentences)
 
     async def mock_poll_search_pages(*args, **kwargs):
         yield {HITS: {HITS: [FR_DOC_1]}}
@@ -799,7 +769,7 @@ async def test__get_doc_contents_and_split_on_sentences__many_batches_batch_size
             mock_es_client,
             TEST_PROJECT,
             [DOC_ID_1],
-            translation_ensemble,
+            sentencizer,
             sentence_batch_size=2,
         )
     )
