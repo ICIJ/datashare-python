@@ -36,8 +36,8 @@ ADD entrypoints/io_worker.sh ./entrypoints/io_worker.sh
 
 # Then install service
 
-RUN cd asr_worker && uv sync -v --frozen --no-editable --extra cpu
-RUN rm -rf ~/.cache/pip $(uv cache dir)
+RUN --mount=type=cache,target=~/.cache/uv uv sync -v --frozen --no-editable --extra cpu
+RUN rm -rf ~/.cache/pip /root/.cache/uv
 
 ENTRYPOINT ["entrypoints/io_worker.sh"]
 
@@ -56,8 +56,8 @@ ADD asr_worker ./asr_worker/
 ADD entrypoints/preprocessing_worker.sh ./entrypoints/preprocessing_worker.sh
 
 # Then install service
-RUN cd asr_worker && uv sync -v --frozen --no-editable --extra preprocessing --extra cpu
-RUN rm -rf ~/.cache/pip $(uv cache dir)
+RUN --mount=type=cache,target=~/.cache/uv uv sync -v --frozen --no-editable --extra preprocessing --extra cpu
+RUN rm -rf ~/.cache/pip /root/.cache/uv
 
 ENTRYPOINT ["entrypoints/preprocessing_worker.sh"]
 
@@ -77,7 +77,7 @@ ADD asr_worker ./asr_worker/
 ADD entrypoints/inference_gpu_worker.sh ./entrypoints/inference_gpu_worker.sh
 
 # Then install service
-RUN cd asr_worker && uv sync -v --frozen --no-editable --extra inference
-RUN rm -rf ~/.cache/pip $(uv cache dir)
+RUN --mount=type=cache,target=~/.cache/uv uv sync -v --frozen --no-editable --extra inference
+RUN rm -rf ~/.cache/pip /root/.cache/uv
 
 ENTRYPOINT ["entrypoints/inference_gpu_worker.sh"]
