@@ -37,7 +37,7 @@ ADD entrypoints/io_worker.sh ./entrypoints/io_worker.sh
 # Then install service
 
 RUN --mount=type=cache,target=~/.cache/uv uv sync -v --frozen --no-editable --extra cpu
-RUN rm -rf ~/.cache/pip /root/.cache/uv
+RUN rm -rf ~/.cache/pip
 
 ENTRYPOINT ["entrypoints/io_worker.sh"]
 
@@ -57,7 +57,7 @@ ADD entrypoints/preprocessing_worker.sh ./entrypoints/preprocessing_worker.sh
 
 # Then install service
 RUN --mount=type=cache,target=~/.cache/uv uv sync -v --frozen --no-editable --extra preprocessing --extra cpu
-RUN rm -rf ~/.cache/pip /root/.cache/uv
+RUN rm -rf ~/.cache/pip
 
 ENTRYPOINT ["entrypoints/preprocessing_worker.sh"]
 
@@ -78,6 +78,6 @@ ADD entrypoints/inference_gpu_worker.sh ./entrypoints/inference_gpu_worker.sh
 
 # Then install service
 RUN --mount=type=cache,target=~/.cache/uv uv sync -v --frozen --no-editable --extra inference
-RUN rm -rf ~/.cache/pip /root/.cache/uv
+RUN rm -rf ~/.cache/pip
 
 ENTRYPOINT ["entrypoints/inference_gpu_worker.sh"]
