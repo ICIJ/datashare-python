@@ -24,7 +24,7 @@ async def test_translation_workflow(
     args = TranslationArgs(
         project=TEST_PROJECT, target_language=LanguageName("ENGLISH")
     )
-    workflow_id = f"asr-{uuid.uuid4().hex}"
+    workflow_id = f"translation-{uuid.uuid4().hex}"
 
     # When
     res = await test_temporal_client_session.execute_workflow(
