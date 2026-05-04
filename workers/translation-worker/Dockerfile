@@ -28,8 +28,8 @@ ADD translation_worker ./translation_worker/
 ADD entrypoints/io_worker.sh ./entrypoints/io_worker.sh
 
 # Then install service
-RUN cd translation_worker && uv sync -v --frozen --no-editable
-RUN rm -rf ~/.cache/pip $(uv cache dir)
+RUN --mount=type=cache,target=~/.cache/uv uv sync -v --frozen --no-editable
+RUN rm -rf ~/.cache/pip /root/.cache/uv
 
 ENTRYPOINT ["entrypoints/io_worker.sh"]
 
@@ -48,8 +48,8 @@ ADD translation_worker ./translation_worker/
 ADD entrypoints/inference_cpu_worker.sh ./entrypoints/inference_cpu_worker.sh
 
 # Then install service
-RUN cd translation_worker && uv sync -v --frozen --no-editable --extra inference --extra cpu
-RUN rm -rf ~/.cache/pip $(uv cache dir)
+RUN --mount=type=cache,target=~/.cache/uv uv sync -v --frozen --no-editable --extra inference --extra cpu
+RUN rm -rf ~/.cache/pip /root/.cache/uv
 
 ENTRYPOINT ["entrypoints/inference_cpu_worker.sh"]
 
@@ -69,7 +69,7 @@ ADD translation_worker ./translation_worker/
 ADD entrypoints/inference_gpu_worker.sh ./entrypoints/inference_gpu_worker.sh
 
 # Then install service
-RUN cd translation_worker && uv sync -v --frozen --no-editable --extra inference --extra gpu
-RUN rm -rf ~/.cache/pip $(uv cache dir)
+RUN --mount=type=cache,target=~/.cache/uv uv sync -v --frozen --no-editable --extra inference --extra gpu
+RUN rm -rf ~/.cache/pip /root/.cache/uv
 
 ENTRYPOINT ["entrypoints/inference_gpu_worker.sh"]
