@@ -1337,6 +1337,24 @@ wheels = [
 ]
 
 [[package]]
+name = "pydantic-extra-types"
+version = "2.11.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "pydantic" },
+    { name = "typing-extensions" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/66/71/dba38ee2651f84f7842206adbd2233d8bbdb59fb85e9fa14232486a8c471/pydantic_extra_types-2.11.1.tar.gz", hash = "sha256:46792d2307383859e923d8fcefa82108b1a141f8a9c0198982b3832ab5ef1049", size = 172002, upload-time = "2026-03-16T08:08:03.92Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/17/c1/3226e6d7f5a4f736f38ac11a6fbb262d701889802595cdb0f53a885ac2e0/pydantic_extra_types-2.11.1-py3-none-any.whl", hash = "sha256:1722ea2bddae5628ace25f2aa685b69978ef533123e5638cfbddb999e0100ec1", size = 79526, upload-time = "2026-03-16T08:08:02.533Z" },
+]
+
+[package.optional-dependencies]
+pycountry = [
+    { name = "pycountry" },
+]
+
+[[package]]
 name = "pydantic-settings"
 version = "2.13.1"
 source = { registry = "https://pypi.org/simple" }
@@ -1999,9 +2017,8 @@ wheels = [
 name = "translation-worker"
 source = { editable = "." }
 dependencies = [
-    { name = "argostranslate" },
     { name = "datashare-python" },
-    { name = "pycountry" },
+    { name = "pydantic-extra-types", extra = ["pycountry"] },
 ]
 
 [package.optional-dependencies]
@@ -2011,6 +2028,9 @@ cpu = [
 ]
 gpu = [
     { name = "torch", version = "2.10.0+cu128", source = { registry = "https://download.pytorch.org/whl/cu128" }, marker = "sys_platform == 'linux'" },
+]
+inference = [
+    { name = "argostranslate" },
 ]
 
 [package.dev-dependencies]
@@ -2029,13 +2049,13 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "argostranslate", specifier = "==1.11.0" },
+    { name = "argostranslate", marker = "extra == 'inference'", specifier = "==1.11.0" },
     { name = "datashare-python", specifier = "~=0.8.4" },
-    { name = "pycountry", specifier = "==26.2.16" },
+    { name = "pydantic-extra-types", extras = ["pycountry"], specifier = "==2.11.1" },
     { name = "torch", marker = "sys_platform == 'linux' and extra == 'gpu'", specifier = "==2.10.0+cu128", index = "https://download.pytorch.org/whl/cu128", conflict = { package = "translation-worker", extra = "gpu" } },
     { name = "torch", marker = "extra == 'cpu'", specifier = "==2.10.0", index = "https://download.pytorch.org/whl/cpu", conflict = { package = "translation-worker", extra = "cpu" } },
 ]
-provides-extras = ["cpu", "gpu"]
+provides-extras = ["cpu", "gpu", "inference"]
 
 [package.metadata.requires-dev]
 dev = [

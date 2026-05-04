@@ -1,13 +1,5 @@
-from dataclasses import dataclass
 from typing import Annotated, Any
 
-from argostranslate.sbd import (
-    MiniSBDSentencizer,
-    SpacySentencizerSmall,
-    StanzaSentencizer,
-)
-from argostranslate.tokenizer import BPETokenizer, SentencePieceTokenizer
-from ctranslate2 import Translator
 from datashare_python.config import WorkerConfig
 from datashare_python.objects import DatashareModel
 from pydantic import BaseModel, BeforeValidator, Field
@@ -27,6 +19,9 @@ class TranslationWorkerConfig(WorkerConfig):
     inter_threads: int = 1
     intra_threads: int = 0
     compute_type: str = "auto"  # quantization
+
+
+WORKER_CONFIG_CLS = TranslationWorkerConfig
 
 
 def _to_language_name(value: Any) -> Any:
@@ -49,11 +44,3 @@ class BatchSentence(BaseModel):
     root_document: str
     sentence_index: int
     sentence: str
-
-
-@dataclass(frozen=True)
-class TranslationEnsemble:
-    tokenizer: SentencePieceTokenizer | BPETokenizer
-    sentencizer: StanzaSentencizer | MiniSBDSentencizer | SpacySentencizerSmall
-    translator: Translator
-    target_prefix: str = ""
