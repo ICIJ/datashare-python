@@ -1,21 +1,3 @@
-[build-system]
-requires = ["hatchling", "uv-dynamic-versioning"]
-build-backend = "hatchling.build"
-
-[tool.hatch.version]
-source = "uv-dynamic-versioning"
-
-[tool.hatch.build.targets.wheel]
-packages = ["translation_worker"]
-
-[tool.hatch.build.targets.sdist]
-exclude = [
-  "tests"
-]
-
-[tool.uv-dynamic-versioning]
-fallback-version = "0.0.0"
-
 [project]
 name = "translation-worker"
 dynamic = ["version"]
@@ -74,12 +56,16 @@ torch = [
 datashare-python = { path = "../../datashare-python", editable = true }
 
 [tool.uv]
+package = true
 conflicts = [
   [
     { extra = "cpu" },
     { extra = "gpu" },
   ],
 ]
+
+[tool.uv-dynamic-versioning]
+fallback-version = "0.0.0"
 
 [dependency-groups]
 dev = [
@@ -93,6 +79,21 @@ dev = [
   "redis[hiredis]>=5.2.1",
   "ruff==0.15.2",
   "typing-extensions>=4.15.0",
+]
+
+[build-system]
+requires = ["hatchling", "uv-dynamic-versioning"]
+build-backend = "hatchling.build"
+
+[tool.hatch.version]
+source = "uv-dynamic-versioning"
+
+[tool.hatch.build.targets.wheel]
+packages = ["translation_worker"]
+
+[tool.hatch.build.targets.sdist]
+exclude = [
+  "tests"
 ]
 
 [tool.pytest.ini_options]

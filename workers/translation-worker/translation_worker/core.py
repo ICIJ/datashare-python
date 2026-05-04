@@ -12,7 +12,7 @@ from .utils import find_device
 if TYPE_CHECKING:
     from argostranslate.package import Package
     from argostranslate.tokenizer import BPETokenizer, SentencePieceTokenizer
-    from argostranslate.translate import CachedTranslation, PackageTranslation
+    from argostranslate.translate import PackageTranslation
     from ctranslate2 import Translator
     from spacy import Language
 
@@ -98,9 +98,9 @@ def _has_language_or_exceeds_max_len(
 def _get_argos_package(
     source_language_alpha_code: str, target_language_alpha_code: str
 ) -> "Package | None":
-    import argostranslate  # noqa: PLC0415
+    from argostranslate.package import get_installed_packages  # noqa: PLC0415
 
-    available_packages = argostranslate.package.get_installed_packages()
+    available_packages = get_installed_packages()
     return next(
         filter(
             lambda x: (
@@ -140,7 +140,11 @@ def _get_argos_languages(
 def _get_or_download_argos_languages(
     source_language_alpha_code: str, target_language_alpha_code: str
 ) -> tuple["Language", ...]:
-    import argostranslate  # noqa: PLC0415
+    from argostranslate.package import (  # noqa: PLC0415
+        get_available_packages,
+        install_from_path,
+        update_package_index,
+    )
 
     package = _get_argos_package(source_language_alpha_code, target_language_alpha_code)
 
@@ -150,8 +154,8 @@ def _get_or_download_argos_languages(
             source_language_alpha_code,
             target_language_alpha_code,
         )
-        argostranslate.package.update_package_index()
-        available_packages = argostranslate.package.get_available_packages()
+        update_package_index()
+        available_packages = get_available_packages()
         package_to_install = next(
             filter(
                 lambda x: (
@@ -165,7 +169,7 @@ def _get_or_download_argos_languages(
 
         if package_to_install is not None:
             logger.info("Downloading argos package %s", package_to_install)
-            argostranslate.package.install_from_path(package_to_install.download())
+            install_from_path(package_to_install.download())
 
             _get_argos_package(source_language_alpha_code, target_language_alpha_code)
 
@@ -180,6 +184,8 @@ def get_translation_ensemble(
     intra_threads: int = 0,
     compute_type: str = "auto",
 ) -> "TranslationEnsemble | None":
+    from argostranslate.translate import CachedTranslation  # noqa: PLC0415
+
     # Create batches per language
     language_packages = _get_or_download_argos_languages(
         source_language_alpha_code, target_language_alpha_code
@@ -240,7 +246,7 @@ def _get_translation_ensemble_from_argos_package(
     )
 
     return TranslationEnsemble(
-        sentencizer=argos_package.sentencizer,
+        sentencizer=argos_package.sentencizer.split_sentences,
         tokenizer=argos_package.pkg.tokenizer,
         translator=translator,
         target_prefix=argos_package.pkg.target_prefix,
