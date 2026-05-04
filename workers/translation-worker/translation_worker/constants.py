@@ -5,8 +5,8 @@ from icij_common.es import DOC_CONTENT, DOC_LANGUAGE, DOC_ROOT_ID
 
 class TaskQueue(StrEnum):
     IO = "translation.io"
-    INFERENCE_GPU = "translation.inference.gpu"
     INFERENCE_CPU = "translation.inference.cpu"
+    INFERENCE_GPU = "translation.inference.gpu"
 
 
 class TorchDevice(StrEnum):
