@@ -127,7 +127,7 @@ async def io_worker(
     test_deps: list[ContextManagerFactory],  # noqa: F811
 ) -> AsyncGenerator[None, None]:
     client = test_temporal_client_session
-    worker_id = f"test-io-worker-{uuid.uuid4()}"
+    worker_id = f"test-translation-io-worker-{uuid.uuid4()}"
     translation_activities = TranslationActivities(
         temporal_client=client, event_loop=event_loop
     )
@@ -159,7 +159,7 @@ async def translation_cpu_worker(
     test_deps: list[ContextManagerFactory],  # noqa: F811
 ) -> AsyncGenerator[None, None]:
     client = test_temporal_client_session
-    worker_id = f"test-io-worker-{uuid.uuid4()}"
+    worker_id = f"test-translation-cpu-worker-{uuid.uuid4()}"
     create_translation_batches = TranslationActivities(
         temporal_client=client, event_loop=event_loop
     )
