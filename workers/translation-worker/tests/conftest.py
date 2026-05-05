@@ -152,7 +152,7 @@ async def io_worker(
 
 
 @pytest.fixture(scope="session")
-async def translation_cpu_worker(
+async def translation_inference_worker(
     test_worker_config: TranslationWorkerConfig,  # noqa: F811
     test_temporal_client_session: TemporalClient,  # noqa: F811
     event_loop: asyncio.AbstractEventLoop,  # noqa: F811
@@ -164,7 +164,7 @@ async def translation_cpu_worker(
         temporal_client=client, event_loop=event_loop
     )
     translation_activities = [create_translation_batches.translate_docs]
-    task_queue = TaskQueue.INFERENCE_CPU
+    task_queue = TaskQueue.INFERENCE
     worker_ctx = worker_context(
         worker_id,
         activities=translation_activities,
