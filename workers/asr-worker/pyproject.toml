@@ -102,19 +102,14 @@ datashare-python = { path = "../../datashare-python", editable = true }
 package = true
 exclude-dependencies = [
   "graphviz",
-  "matplotlib",
-  "pyarrow",
-  "nvidia-cuda-cupti-cu12",
   "nvidia-cuda-nvrtc-cu12",
   "nvidia-cusolver-cu12",
-  "nvidia-cusparselt-cu12",
-  "nvidia-nccl-cu12",
-  "nvidia-nvshmem-cu12",
   "sentry_sdk",
   "tensorboard",
   "tensorboard_data_server",
   "triton",
-  "werkzeug"
+  "wandb",
+  "werkzeug",
 ]
 override-dependencies = [
   "kaldialign==0.9.3",
