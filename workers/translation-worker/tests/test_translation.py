@@ -18,7 +18,7 @@ async def test_translation_workflow(
     index_translation_documents: list[Document],  # noqa: ARG001
     test_es_client: ESClient,
     io_worker: Worker,  # noqa: ARG001
-    translation_cpu_worker: Worker,  # noqa: ARG001
+    translation_inference_worker: Worker,  # noqa: ARG001
 ) -> None:
     # Given
     args = TranslationArgs(
