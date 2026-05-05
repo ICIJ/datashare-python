@@ -1,14 +1,21 @@
 import asyncio
 import uuid
 from collections.abc import AsyncGenerator
-from concurrent.futures import ThreadPoolExecutor
 
+import datashare_python
 import pytest
+import translation_worker
+from _pytest.tmpdir import TempPathFactory
+from datashare_python.config import (
+    DatashareClientConfig,
+    LogFormat,
+    LoggingConfig,
+    TemporalClientConfig,
+)
 from datashare_python.conftest import (  # noqa: F401
     TEST_PROJECT,
     event_loop,
     index_docs,
-    test_deps,
     test_es_client,
     test_es_client_session,
     test_task_client,
@@ -18,16 +25,44 @@ from datashare_python.conftest import (  # noqa: F401
     worker_lifetime_deps,
 )
 from datashare_python.objects import Document
-from datashare_python.types_ import TemporalClient
+from datashare_python.types_ import ContextManagerFactory, TemporalClient
+from datashare_python.worker import worker_context
 from icij_common.es import ESClient
-from temporalio.worker import Worker
-from translation_worker.activities import (
-    CreateTranslationBatches,
-    TranslateDocs,
-    resolve_language_alpha_code,
-)
-from translation_worker.objects import TaskQueues, TranslationWorkerConfig
-from translation_worker.workflows import TranslationWorkflow
+from translation_worker.activities import TranslationActivities
+from translation_worker.dependencies import set_es_client, set_worker_config
+from translation_worker.objects import TranslationWorkerConfig
+from translation_worker.workflows import TaskQueue, TranslationWorkflow
+
+
+@pytest.fixture(scope="session")
+def test_deps() -> list[ContextManagerFactory]:
+    return [set_worker_config, set_es_client]
+
+
+@pytest.fixture(scope="session")
+def test_worker_config(tmp_path_factory: TempPathFactory) -> TranslationWorkerConfig:  # noqa: ANN001, ARG001, F811
+    tmp_path = tmp_path_factory.mktemp("test-")
+    audios_root = tmp_path / "audios"
+    audios_root.mkdir()
+    artifacts_root = tmp_path / "artifacts"
+    artifacts_root.mkdir()
+    workdir = tmp_path / "workdir"
+    workdir.mkdir()
+    logging_config = LoggingConfig(
+        loggers={
+            datashare_python.__name__: "DEBUG",
+            translation_worker.__name__: "DEBUG",
+        },
+        format=LogFormat.DEFAULT,
+    )
+    return TranslationWorkerConfig(
+        logging=logging_config,
+        datashare=DatashareClientConfig(url="http://localhost:8080"),
+        temporal=TemporalClientConfig(host="localhost:7233"),
+        artifacts_root=artifacts_root,
+        workdir=workdir,
+    )
+
 
 EN = "en"
 FR = "fr"
@@ -85,72 +120,59 @@ def translation_worker_config() -> TranslationWorkerConfig:
 
 
 @pytest.fixture(scope="session")
-async def batching_worker(
-    test_es_client_session: ESClient,  # noqa: F811
+async def io_worker(
+    test_worker_config: TranslationWorkerConfig,  # noqa: F811
     test_temporal_client_session: TemporalClient,  # noqa: F811
     event_loop: asyncio.AbstractEventLoop,  # noqa: F811
-) -> AsyncGenerator[Worker, None]:
-    es_client = test_es_client_session
-    temporal_client = test_temporal_client_session
-    batching_worker_id = f"test-translation-batching-worker-{uuid.uuid4()}"
-    create_translation_batches = CreateTranslationBatches(
-        es_client=es_client,
-        temporal_client=temporal_client,
-        event_loop=event_loop,
+    test_deps: list[ContextManagerFactory],  # noqa: F811
+) -> AsyncGenerator[None, None]:
+    client = test_temporal_client_session
+    worker_id = f"test-translation-io-worker-{uuid.uuid4()}"
+    translation_activities = TranslationActivities(
+        temporal_client=client, event_loop=event_loop
     )
     batching_activities = [
-        resolve_language_alpha_code,
-        create_translation_batches.create_translation_batches,
+        translation_activities.translation_worker_config,
+        translation_activities.create_translation_batches,
     ]
     workflows = [TranslationWorkflow]
-    batching_worker = Worker(
-        temporal_client,
-        identity=batching_worker_id,
-        task_queue=TaskQueues.CPU,
+    task_queue = TaskQueue.IO
+    worker_ctx = worker_context(
+        worker_id,
         activities=batching_activities,
         workflows=workflows,
+        worker_config=test_worker_config,
+        client=client,
+        event_loop=event_loop,
+        task_queue=task_queue,
+        dependencies=test_deps,
     )
-    async with batching_worker:
-        t = None
-        try:
-            t = asyncio.create_task(batching_worker.run())
-            yield
-        except Exception as e:  # noqa: BLE001
-            if t is not None:
-                t.cancel()
-            raise e
+    async with worker_ctx:
+        yield
 
 
 @pytest.fixture(scope="session")
-async def translation_worker(
-    test_es_client_session: ESClient,  # noqa: F811
+async def translation_inference_worker(
+    test_worker_config: TranslationWorkerConfig,  # noqa: F811
     test_temporal_client_session: TemporalClient,  # noqa: F811
     event_loop: asyncio.AbstractEventLoop,  # noqa: F811
+    test_deps: list[ContextManagerFactory],  # noqa: F811
 ) -> AsyncGenerator[None, None]:
-    es_client = test_es_client_session
-    temporal_client = test_temporal_client_session
-    translation_worker_id = f"test-translation-translate-worker-{uuid.uuid4()}"
-    translation_activities = [
-        TranslateDocs(
-            es_client=es_client,
-            temporal_client=temporal_client,
-            event_loop=event_loop,
-        ).translate_docs,
-    ]
-    with ThreadPoolExecutor() as executor:
-        translation_worker = Worker(
-            temporal_client,
-            identity=translation_worker_id,
-            task_queue=TaskQueues.GPU,
-            activities=translation_activities,
-            activity_executor=executor,
-        )
-        async with translation_worker:
-            t = None
-            try:
-                t = asyncio.create_task(translation_worker.run())
-                yield
-            except Exception as e:  # noqa: BLE001
-                if t is not None:
-                    t.cancel()
-                raise e
+    client = test_temporal_client_session
+    worker_id = f"test-translation-cpu-worker-{uuid.uuid4()}"
+    create_translation_batches = TranslationActivities(
+        temporal_client=client, event_loop=event_loop
+    )
+    translation_activities = [create_translation_batches.translate_docs]
+    task_queue = TaskQueue.INFERENCE
+    worker_ctx = worker_context(
+        worker_id,
+        activities=translation_activities,
+        worker_config=test_worker_config,
+        client=client,
+        event_loop=event_loop,
+        task_queue=task_queue,
+        dependencies=test_deps,
+    )
+    async with worker_ctx:
+        yield

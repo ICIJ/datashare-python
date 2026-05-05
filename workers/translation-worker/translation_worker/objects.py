@@ -1,32 +1,16 @@
-from dataclasses import dataclass
-from enum import StrEnum
+from typing import Annotated, Any
 
-from argostranslate.sbd import (
-    MiniSBDSentencizer,
-    SpacySentencizerSmall,
-    StanzaSentencizer,
-)
-from argostranslate.tokenizer import BPETokenizer, SentencePieceTokenizer
-from ctranslate2 import Translator
+from datashare_python.config import WorkerConfig
 from datashare_python.objects import DatashareModel
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, BeforeValidator, Field
+from pydantic_extra_types.language_code import LanguageName
 
-from .constants import (
-    CPU,
-    TRANSLATION_CPU_TASK_QUEUE,
-    TRANSLATION_GPU_TASK_QUEUE,
-    TRANSLATION_TASK_NAME,
-)
+from translation_worker.constants import TorchDevice
 
 
-class TaskQueues(StrEnum):
-    CPU = TRANSLATION_CPU_TASK_QUEUE
-    GPU = TRANSLATION_GPU_TASK_QUEUE
+class TranslationWorkerConfig(WorkerConfig):
+    device: TorchDevice = Field(default=TorchDevice.CPU, frozen=True)
 
-
-class TranslationWorkerConfig(BaseModel):
-    task: str = Field(default=TRANSLATION_TASK_NAME, frozen=True)
-    device: str = Field(default=CPU, frozen=True)
     batch_size: int = 16
     max_parallel_batches: int = 8
     max_batch_byte_len: int = 1000000
@@ -37,9 +21,18 @@ class TranslationWorkerConfig(BaseModel):
     compute_type: str = "auto"  # quantization
 
 
+WORKER_CONFIG_CLS = TranslationWorkerConfig
+
+
+def _to_language_name(value: Any) -> Any:
+    if isinstance(value, str):
+        return value.title()
+    return value
+
+
 class TranslationArgs(DatashareModel):
     project: str
-    target_language: str
+    target_language: Annotated[LanguageName, BeforeValidator(_to_language_name)]
 
 
 class TranslationResponse(DatashareModel):
@@ -51,11 +44,3 @@ class BatchSentence(BaseModel):
     root_document: str
     sentence_index: int
     sentence: str
-
-
-@dataclass(frozen=True)
-class TranslationEnsemble:
-    tokenizer: SentencePieceTokenizer | BPETokenizer
-    sentencizer: StanzaSentencizer | MiniSBDSentencizer | SpacySentencizerSmall
-    translator: Translator
-    target_prefix: str = ""

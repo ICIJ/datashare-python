@@ -1,3 +1,63 @@
+[project]
+name = "translation-worker"
+dynamic = ["version"]
+description = "Translation worker implementation in Temporal"
+authors = [
+  { name = "Clément Doumouro", email = "cdoumouro@icij.org" },
+  { name = "Clément Doumouro", email = "clement.doumouro@gmail.com" },
+  { name = "Lion Summerbell", email = "lsummerbell@icij.org" }
+]
+readme = "README.md"
+requires-python = ">=3.11.0, <3.13"
+
+dependencies = [
+  "datashare-python~=0.8.4",
+  "pydantic-extra-types[pycountry]==2.11.1",
+]
+
+[project.entry-points."datashare.workflows"]
+workflows = "translation_worker.workflows:WORKFLOWS"
+
+[project.entry-points."datashare.activities"]
+activities = "translation_worker.activities:ACTIVITIES"
+
+[project.entry-points."datashare.dependencies"]
+dependencies = "translation_worker.dependencies:REGISTRY"
+
+[project.entry-points."datashare.worker_config_cls"]
+worker_config_cls = "translation_worker.objects:WORKER_CONFIG_CLS"
+
+[project.optional-dependencies]
+inference = [
+  "argostranslate==1.11.0",
+]
+
+[tool.uv.sources]
+datashare-python = { path = "../../datashare-python", editable = true }
+
+[tool.uv]
+package = true
+exclude-dependencies = [
+  "torch",
+]
+
+[tool.uv-dynamic-versioning]
+fallback-version = "0.0.0"
+
+[dependency-groups]
+dev = [
+  "datashare-python~=0.2",
+  "nest-asyncio>=1.6.0",
+  "pre-commit>=4.5.1",
+  "psutil>=6.1.0",
+  "pytest~=8.1",
+  "pytest-asyncio~=0.24",
+  "pytest-timeout==2.4.0",
+  "redis[hiredis]>=5.2.1",
+  "ruff==0.15.2",
+  "typing-extensions>=4.15.0",
+]
+
 [build-system]
 requires = ["hatchling", "uv-dynamic-versioning"]
 build-backend = "hatchling.build"
@@ -13,64 +73,12 @@ exclude = [
   "tests"
 ]
 
-[tool.uv-dynamic-versioning]
-fallback-version = "0.0.0"
-
-[project]
-name = "translation-worker"
-dynamic = ["version"]
-description = "Translation worker implementation in Temporal"
-authors = [
-    { name = "Clément Doumouro", email = "cdoumouro@icij.org" },
-    { name = "Clément Doumouro", email = "clement.doumouro@gmail.com" },
-    { name = "Lion Summerbell", email = "lsummerbell@icij.org" }
-]
-readme = "README.md"
-requires-python = ">=3.11.0, <3.14"
-dependencies = [
-    "datashare-python~=0.8.4",
-    "argostranslate>=1.11.0",
-    "temporalio>=1.22.0",
-    "pycountry~=26.2.16",
-]
-
-[project.entry-points."datashare.workflows"]
-workflows = "translation_worker.workflows:WORKFLOWS"
-
-[project.entry-points."datashare.activities"]
-activities = "translation_worker.activities:ACTIVITIES"
-
-[tool.uv.sources]
-torch = [
-  { index = "pytorch-cpu" },
-]
-datashare-python = { path = "../../datashare-python", editable = true }
-
-[[tool.uv.index]]
-name = "pytorch-cpu"
-url = "https://download.pytorch.org/whl/cpu"
-explicit = true
-
-[dependency-groups]
-dev = [
-    "datashare-python~=0.2",
-    "nest-asyncio>=1.6.0",
-    "pre-commit>=4.5.1",
-    "psutil>=6.1.0",
-    "pytest~=8.1",
-    "pytest-asyncio~=0.24",
-    "pytest-timeout==2.4.0",
-    "redis[hiredis]>=5.2.1",
-    "ruff==0.15.2",
-    "typing-extensions>=4.15.0",
-]
-
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "session"
 markers = [
-    "integration",
-    "pull",
+  "integration",
+  "pull",
 ]
 log_cli = 1
 log_cli_level = "DEBUG"

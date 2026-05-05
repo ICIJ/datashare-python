@@ -49,7 +49,7 @@ jobs:
       - name: Run tests
         run: |
           cd workers/translation-worker
-          uv sync --frozen --all-extras
+          uv sync --frozen --all-extras --dev
           uv run --frozen python -m pytest --timeout=180 -vvv --cache-clear --show-capture=all -r A
 
 
