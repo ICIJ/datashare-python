@@ -34,42 +34,21 @@ RUN rm -rf ~/.cache/pip
 ENTRYPOINT ["entrypoints/io_worker.sh"]
 
 
-FROM translation-worker-builder AS inference-cpu-worker
+FROM translation-worker-builder AS inference-worker
 # Install deps first to optimize layer cache
 RUN --mount=type=cache,target=~/.cache/uv \
     --mount=type=bind,source=uv.dist.lock,target=uv.lock \
     --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
-    uv sync -v --frozen --no-editable --no-install-project --extra inference --extra cpu
+    uv sync -v --frozen --no-editable --no-install-project --extra inference
 
 # Then copy code
 ADD uv.dist.lock ./uv.lock
 ADD pyproject.toml README.md ./
 ADD translation_worker ./translation_worker/
-ADD entrypoints/inference_cpu_worker.sh ./entrypoints/inference_cpu_worker.sh
+ADD entrypoints/inference_worker.sh ./entrypoints/inference_worker.sh
 
 # Then install service
-RUN --mount=type=cache,target=~/.cache/uv uv sync -v --frozen --no-editable --extra inference --extra cpu
+RUN --mount=type=cache,target=~/.cache/uv uv sync -v --frozen --no-editable --extra inference
 RUN rm -rf ~/.cache/pip
 
-ENTRYPOINT ["entrypoints/inference_cpu_worker.sh"]
-
-
-FROM translation-worker-builder AS inference-gpu-worker
-RUN apt-get update && apt-get install -y build-essential
-# Install deps first to optimize layer cache
-RUN --mount=type=cache,target=~/.cache/uv \
-    --mount=type=bind,source=uv.dist.lock,target=uv.lock \
-    --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
-    uv sync -v --frozen --no-editable --no-install-project --extra inference --extra gpu
-
-# Then copy code
-ADD uv.dist.lock ./uv.lock
-ADD pyproject.toml README.md ./
-ADD translation_worker ./translation_worker/
-ADD entrypoints/inference_gpu_worker.sh ./entrypoints/inference_gpu_worker.sh
-
-# Then install service
-RUN --mount=type=cache,target=~/.cache/uv uv sync -v --frozen --no-editable --extra inference --extra gpu
-RUN rm -rf ~/.cache/pip
-
-ENTRYPOINT ["entrypoints/inference_gpu_worker.sh"]
+ENTRYPOINT ["entrypoints/inference_worker.sh"]
