@@ -33,5 +33,5 @@ def set_multiprocessing_start_method(**_) -> Generator[None, None, None]:
 REGISTRY = {
     "inference": [set_worker_config, set_multiprocessing_start_method],
     "io": [set_worker_config, set_es_client],
-    "preprocessing": [set_worker_config],
+    "cpu": [set_worker_config],
 }

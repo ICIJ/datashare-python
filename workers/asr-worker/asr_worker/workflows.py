@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 
 class TaskQueues(StrEnum):
     IO = "asr.io"
-    CPU = "asr.preprocessing.cpu"
+    CPU = "asr.cpu"
     INFERENCE_GPU = "asr.inference.gpu"
     INFERENCE_CPU = "asr.inference.cpu"
 

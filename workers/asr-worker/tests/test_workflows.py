@@ -75,7 +75,7 @@ async def cpu_bound_worker(
     activities = ASRActivities(client, event_loop)
     worker_id = f"worker-{uuid.uuid4()}"
     task_queue = TaskQueues.CPU
-    dependencies = REGISTRY["preprocessing"]
+    dependencies = REGISTRY["cpu"]
     worker_ctx = worker_context(
         worker_id,
         worker_config=test_worker_config,

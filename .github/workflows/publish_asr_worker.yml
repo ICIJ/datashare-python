@@ -42,7 +42,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: icij/asr-transcription-io-worker
+          images: icij/datashare-asr-transcription-io-worker
           tags: |
             type=match,pattern=asr-worker-(.*),group=1
 
@@ -66,14 +66,14 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
 
-  publish-preprocessing-worker:
+  publish-cpu-worker:
     runs-on: ubuntu-latest
     steps:
       - name: Docker meta
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: icij/asr-transcription-preprocessing-worker
+          images: icij/datashare-asr-transcription-cpu-worker
           tags: |
             type=match,pattern=asr-worker-(.*),group=1
 
@@ -90,7 +90,7 @@ jobs:
       - name: Build and push image
         uses: docker/build-push-action@v7
         with:
-          target: preprocessing-worker
+          target: cpu-worker
           context: "{{defaultContext}}:workers/asr-worker"
           platforms: linux/amd64
           push: true
@@ -104,9 +104,9 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: icij/asr-transcription-inference-gpu-worker
+          images: icij/datashare-asr-transcription-inference-gpu-worker
           tags: |
-            type=match,pattern=asr-worker-(.*),group=1
+            type=match,pattern=asr-worker-(.*),group=1@
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3

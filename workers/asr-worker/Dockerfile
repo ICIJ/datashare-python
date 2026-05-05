@@ -42,7 +42,7 @@ RUN rm -rf ~/.cache/pip
 ENTRYPOINT ["entrypoints/io_worker.sh"]
 
 
-FROM asr-worker-builder AS preprocessing-worker
+FROM asr-worker-builder AS cpu-worker
 # Install deps first to optimize layer cache
 RUN --mount=type=cache,target=~/.cache/uv \
     --mount=type=bind,source=uv.dist.lock,target=uv.lock \
@@ -53,13 +53,13 @@ RUN --mount=type=cache,target=~/.cache/uv \
 ADD uv.dist.lock ./uv.lock
 ADD pyproject.toml README.md ./
 ADD asr_worker ./asr_worker/
-ADD entrypoints/preprocessing_worker.sh ./entrypoints/preprocessing_worker.sh
+ADD entrypoints/cpu_worker.sh ./entrypoints/cpu_worker.sh
 
 # Then install service
 RUN --mount=type=cache,target=~/.cache/uv uv sync -v --frozen --no-editable --extra preprocessing --extra cpu
 RUN rm -rf ~/.cache/pip
 
-ENTRYPOINT ["entrypoints/preprocessing_worker.sh"]
+ENTRYPOINT ["entrypoints/cpu_worker.sh"]
 
 
 FROM asr-worker-builder AS inference-gpu-worker
