@@ -30,9 +30,10 @@ cpu = [
   "torchcodec==0.10.0",
 ]
 gpu = [
-  "torch==2.10.0+cu128; sys_platform == 'linux'",
-  "torchaudio==2.10.0+cu128; sys_platform == 'linux'",
-  "torchcodec==0.10.0+cu128; sys_platform == 'linux'",
+  "cuda-bindings==12.9.4; sys_platform == 'linux'",
+  "torch==2.10.0+cu129; sys_platform == 'linux'",
+  "torchaudio==2.10.0+cu129; sys_platform == 'linux'",
+  "torchcodec==0.10.0+cu129; sys_platform == 'linux'",
 ]
 inference = [
   "caul[nemo]==0.4.1",
@@ -79,7 +80,7 @@ explicit = true
 
 [[tool.uv.index]]
 name = "pytorch-gpu"
-url = "https://download.pytorch.org/whl/cu128"
+url = "https://download.pytorch.org/whl/cu129"
 explicit = true
 
 [tool.uv.sources]
