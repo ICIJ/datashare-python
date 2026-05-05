@@ -28,40 +28,17 @@ dependencies = "translation_worker.dependencies:REGISTRY"
 worker_config_cls = "translation_worker.objects:WORKER_CONFIG_CLS"
 
 [project.optional-dependencies]
-cpu = [
-  "torch==2.10.0",
-]
-gpu = [
-  "torch==2.10.0+cu128; sys_platform == 'linux'",
-]
 inference = [
   "argostranslate==1.11.0",
 ]
 
-[[tool.uv.index]]
-name = "pytorch-cpu"
-url = "https://download.pytorch.org/whl/cpu"
-explicit = true
-
-[[tool.uv.index]]
-name = "pytorch-gpu"
-url = "https://download.pytorch.org/whl/cu128"
-explicit = true
-
 [tool.uv.sources]
-torch = [
-  { index = "pytorch-gpu", extra = "gpu" },
-  { index = "pytorch-cpu", extra = "cpu" },
-]
 datashare-python = { path = "../../datashare-python", editable = true }
 
 [tool.uv]
 package = true
-conflicts = [
-  [
-    { extra = "cpu" },
-    { extra = "gpu" },
-  ],
+exclude-dependencies = [
+  "torch",
 ]
 
 [tool.uv-dynamic-versioning]
