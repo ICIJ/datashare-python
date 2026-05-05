@@ -27,7 +27,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: icij/translation-io-worker
+          images: icij/datashare-translation-io-worker
           tags: |
             type=match,pattern=translation-worker-(.*),group=1
 
@@ -58,7 +58,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: icij/translation-inference-cpu-worker
+          images: icij/datashare-translation-inference-cpu-worker
           tags: |
             type=match,pattern=translation-worker-(.*),group=1
 
@@ -89,7 +89,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: icij/translation-inference-gpu-worker
+          images: icij/datashare-translation-inference-gpu-worker
           tags: |
             type=match,pattern=translation-worker-(.*),group=1
 
