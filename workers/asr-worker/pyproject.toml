@@ -21,10 +21,10 @@ asr-worker = "asr_worker.__main__:main"
 
 [project.optional-dependencies]
 cli = [
-  "caul==0.5.0",
+  "caul==0.5.1",
 ]
 cpu = [
-  "caul==0.5.0",
+  "caul==0.5.1",
   "torch==2.10.0",
   "torchaudio==2.10.0",
   "torchcodec==0.10.0",
@@ -36,14 +36,14 @@ gpu = [
   "torchcodec==0.10.0+cu129; sys_platform == 'linux'",
 ]
 inference = [
-  "caul[nemo]==0.5.0",
+  "caul[nemo]==0.5.1",
   "kaldialign==0.9.3",
   "ml-dtypes==0.5.4",
   "numpy==2.3.0",
   "pyarrow==20.0.0",
 ]
 preprocessing = [
-  "caul==0.5.0",
+  "caul==0.5.1",
 ]
 
 [project.entry-points."datashare.workflows"]
@@ -115,6 +115,7 @@ exclude-dependencies = [
 override-dependencies = [
   "kaldialign==0.9.3",
   "torchcodec==0.10.0",
+  "huggingface-hub==0.36.2",
 ]
 environments = [
   "sys_platform == 'darwin'",

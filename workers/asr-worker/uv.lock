@@ -23,6 +23,7 @@ prerelease-mode = "if-necessary"
 
 [manifest]
 overrides = [
+    { name = "huggingface-hub", specifier = "==0.36.2" },
     { name = "kaldialign", specifier = "==0.9.3" },
     { name = "torchcodec", specifier = "==0.10.0" },
 ]
@@ -242,10 +243,10 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "caul", marker = "extra == 'cli'", specifier = "==0.5.0" },
-    { name = "caul", marker = "extra == 'cpu'", specifier = "==0.5.0" },
-    { name = "caul", marker = "extra == 'preprocessing'", specifier = "==0.5.0" },
-    { name = "caul", extras = ["nemo"], marker = "extra == 'inference'", specifier = "==0.5.0" },
+    { name = "caul", marker = "extra == 'cli'", specifier = "==0.5.1" },
+    { name = "caul", marker = "extra == 'cpu'", specifier = "==0.5.1" },
+    { name = "caul", marker = "extra == 'preprocessing'", specifier = "==0.5.1" },
+    { name = "caul", extras = ["nemo"], marker = "extra == 'inference'", specifier = "==0.5.1" },
     { name = "cuda-bindings", marker = "sys_platform == 'linux' and extra == 'gpu'", specifier = "==12.9.4" },
     { name = "datashare-python", editable = "../../datashare-python" },
     { name = "kaldialign", marker = "extra == 'inference'", specifier = "==0.9.3" },
@@ -355,9 +356,10 @@ wheels = [
 
 [[package]]
 name = "caul"
-version = "0.5.0"
+version = "0.5.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
+    { name = "huggingface-hub", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-10-asr-worker-cpu' and extra == 'extra-10-asr-worker-gpu') or sys_platform == 'darwin' or (sys_platform != 'linux' and extra == 'extra-10-asr-worker-cpu' and extra == 'extra-10-asr-worker-gpu')" },
     { name = "icij-common", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-10-asr-worker-cpu' and extra == 'extra-10-asr-worker-gpu') or sys_platform == 'darwin' or (sys_platform != 'linux' and extra == 'extra-10-asr-worker-cpu' and extra == 'extra-10-asr-worker-gpu')" },
     { name = "kaldialign", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-10-asr-worker-cpu' and extra == 'extra-10-asr-worker-gpu') or sys_platform == 'darwin' or (sys_platform != 'linux' and extra == 'extra-10-asr-worker-cpu' and extra == 'extra-10-asr-worker-gpu')" },
     { name = "langcodes", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-10-asr-worker-cpu' and extra == 'extra-10-asr-worker-gpu') or sys_platform == 'darwin' or (sys_platform != 'linux' and extra == 'extra-10-asr-worker-cpu' and extra == 'extra-10-asr-worker-gpu')" },
@@ -367,9 +369,9 @@ dependencies = [
     { name = "torchcodec", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-10-asr-worker-cpu' and extra == 'extra-10-asr-worker-gpu') or sys_platform == 'darwin' or (sys_platform != 'linux' and extra == 'extra-10-asr-worker-cpu' and extra == 'extra-10-asr-worker-gpu')" },
     { name = "typer", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-10-asr-worker-cpu' and extra == 'extra-10-asr-worker-gpu') or sys_platform == 'darwin' or (sys_platform != 'linux' and extra == 'extra-10-asr-worker-cpu' and extra == 'extra-10-asr-worker-gpu')" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/de/eb/f7d170533ebbde6ee3ae270f9dbcd8b854723cb1f67c14861cfc536dc44a/caul-0.5.0.tar.gz", hash = "sha256:97a54933d4d77568f0dcab48df9c58aafeb85dff173314114c2f1e259ec058de", size = 826196, upload-time = "2026-05-06T12:16:12.258Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/f0/d5/ba097010d1c127a8fe38b3cd3ceb95f327b3895949cdecdb794024d2a2c3/caul-0.5.1.tar.gz", hash = "sha256:37cce078626e85b8a13335362a16852be49f2b630b29f6e57e5d7230a70feda5", size = 826187, upload-time = "2026-05-06T12:31:24.17Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/01/30/05ed4e4f6c0f91eaac2bc478d1bd44fb2f99fe1e426dcc8b1a11fc283ef5/caul-0.5.0-py3-none-any.whl", hash = "sha256:8c0a112aae109c2fd0142245cd38dc8907b65f2e6f881839d127d489d66f66dc", size = 37130, upload-time = "2026-05-06T12:16:11.017Z" },
+    { url = "https://files.pythonhosted.org/packages/fe/de/333b79cc3fe7b09b2ea43d34fcf136c9498127da74f6d9a6248c0afac99d/caul-0.5.1-py3-none-any.whl", hash = "sha256:e26eaf4c37f9d1292ac6ed73b9e3f1c7501cf04be246b5659383c9ca216af1b8", size = 37129, upload-time = "2026-05-06T12:31:22.634Z" },
 ]
 
 [package.optional-dependencies]
