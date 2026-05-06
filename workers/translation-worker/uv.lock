@@ -411,7 +411,7 @@ wheels = [
 
 [[package]]
 name = "datashare-python"
-version = "0.8.4"
+version = "0.8.5"
 source = { editable = "../../datashare-python" }
 dependencies = [
     { name = "aiohttp" },
@@ -439,7 +439,7 @@ requires-dist = [
     { name = "pyyaml", specifier = "~=6.0" },
     { name = "temporalio", specifier = "~=1.23" },
     { name = "tomlkit", specifier = "~=0.14.0" },
-    { name = "typer", specifier = "~=0.15.4" },
+    { name = "typer", specifier = ">=0.15.4,<0.25.1" },
 ]
 
 [package.metadata.requires-dev]
