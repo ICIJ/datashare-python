@@ -1,5 +1,5 @@
 [project]
-name = "translation-worker"
+name = "datashare-translation-worker"
 dynamic = ["version"]
 description = "Translation worker implementation in Temporal"
 authors = [
@@ -44,6 +44,8 @@ exclude-dependencies = [
 
 [tool.uv-dynamic-versioning]
 fallback-version = "0.0.0"
+pattern-prefix = "translation-worker-"
+pattern = "default-unprefixed"
 
 [dependency-groups]
 dev = [
