@@ -1,5 +1,5 @@
 [project]
-name = "asr-worker"
+name = "datashare-asr-worker"
 dynamic = ["version"]
 description = "ASR Temporal task"
 authors = [
@@ -72,6 +72,8 @@ dev = [
 
 [tool.uv-dynamic-versioning]
 fallback-version = "0.0.0"
+pattern-prefix = "asr-worker-"
+pattern = "default-unprefixed"
 
 [[tool.uv.index]]
 name = "pytorch-cpu"
