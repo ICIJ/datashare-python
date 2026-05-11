@@ -27,7 +27,7 @@ async def test_start_workers(
 ) -> None:
     # Given
     config_path = test_worker_config_path
-    runner = CliRunner(mix_stderr=False)
+    runner = CliRunner()
     monkeypatch.setattr(DatashareWorker, "__aenter__", _mock_worker__aenter__)
     monkeypatch.setattr(DatashareWorker, "__aexit__", _mock_worker__aexit__)
     monkeypatch.setattr(DatashareWorker, "is_done", _mock_worker_is_done)

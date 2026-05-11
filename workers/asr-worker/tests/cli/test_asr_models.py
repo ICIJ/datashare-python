@@ -7,7 +7,7 @@ async def test_list_models(
     typer_asyncio_patch,  # noqa: ANN001, ARG001
 ) -> None:
     # Given
-    runner = CliRunner(mix_stderr=False)
+    runner = CliRunner()
     cmd = ["models", "list-available"]
     # When
     result = runner.invoke(cli_app, cmd, catch_exceptions=False)

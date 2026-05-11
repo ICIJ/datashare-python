@@ -85,6 +85,9 @@ class MockPreprocessor(Preprocessor):
         self._batch_size = batch_size
 
     @classmethod
+    def cache_models(cls, cache_dir: Path | None = None) -> None: ...
+
+    @classmethod
     def _from_config(cls, config: RegistrableConfig, **kwargs) -> Self:  # noqa: ARG003
         return cls(**kwargs)
 
@@ -105,6 +108,9 @@ class MockInferenceRunner(InferenceRunner):
     @classmethod
     def _from_config(cls, config: RegistrableConfig, **kwargs) -> Self:  # noqa: ARG003
         return cls()
+
+    @classmethod
+    def cache_models(cls, cache_dir: Path | None = None) -> None: ...
 
     def process(
         self,

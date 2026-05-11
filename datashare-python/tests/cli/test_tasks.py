@@ -50,7 +50,7 @@ async def test_task_create_task(
 
     monkeypatch.setattr(cli_task, "DatashareTaskClient", MockedClient)
     # When
-    runner = CliRunner(mix_stderr=False)
+    runner = CliRunner()
     with caplog.at_level(logging.INFO):
         result = runner.invoke(
             cli_app, ["task", "start", "hello_world"], catch_exceptions=False
@@ -131,7 +131,7 @@ async def test_task_watch(
 
     monkeypatch.setattr(cli_task, "DatashareTaskClient", MockedClient)
     # When
-    runner = CliRunner(mix_stderr=False)
+    runner = CliRunner()
     result = runner.invoke(
         cli_app, ["task", "watch", task_id, "-p", 0.001], catch_exceptions=False
     )
@@ -185,7 +185,7 @@ async def test_task_watch_error(
 
     monkeypatch.setattr(cli_task, "DatashareTaskClient", MockedClient)
     # When
-    runner = CliRunner(mix_stderr=False)
+    runner = CliRunner()
     result = runner.invoke(
         cli_app, ["task", "watch", task_id, "-p", 0.001], catch_exceptions=False
     )
@@ -230,7 +230,7 @@ async def test_task_watch_cancelled(
 
     monkeypatch.setattr(cli_task, "DatashareTaskClient", MockedClient)
     # When
-    runner = CliRunner(mix_stderr=False)
+    runner = CliRunner()
     result = runner.invoke(
         cli_app, ["task", "watch", task_id, "-p", 0.001], catch_exceptions=False
     )

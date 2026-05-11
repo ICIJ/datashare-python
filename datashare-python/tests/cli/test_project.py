@@ -10,7 +10,7 @@ async def test_init_project(
     tmp_path: Path,
 ) -> None:
     # Given
-    runner = CliRunner(mix_stderr=False)
+    runner = CliRunner()
     test_worker_project = "test-project"
     # When
     args = ["project", "init", str(test_worker_project), "-p", str(tmp_path)]
