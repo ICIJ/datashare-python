@@ -1,0 +1,6 @@
+*
+!asr_worker
+!entrypoints
+!pyproject.toml
+!uv.dist.lock
+!uv.lock

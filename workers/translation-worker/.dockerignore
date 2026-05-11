@@ -1,0 +1,6 @@
+*
+!entrypoints
+!pyproject.toml
+!translation_worker
+!uv.dist.lock
+!uv.lock
