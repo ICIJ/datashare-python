@@ -1,0 +1,4 @@
+*
+!all_workflows_worker_entrypoint.sh
+!pyproject.toml
+!uv.dist.lock
