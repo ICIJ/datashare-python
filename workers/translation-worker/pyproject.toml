@@ -38,7 +38,8 @@ datashare-python = { path = "../../datashare-python", editable = true }
 [tool.uv]
 package = true
 exclude-dependencies = [
-  "torch",
+    # TODO: put me back when this is solved: https://github.com/argosopentech/argos-translate/pull/521
+    #  "torch",
 ]
 
 [tool.uv-dynamic-versioning]
