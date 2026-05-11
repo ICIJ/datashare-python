@@ -11,6 +11,6 @@ logger = logging.getLogger(__name__)
 
 
 REGISTRY = {
-    "inference": [set_worker_config, set_es_client],
-    "io": [set_worker_config, set_es_client],
+    "translation.inference": [set_worker_config, set_es_client],
+    "translation.io": [set_worker_config, set_es_client],
 }

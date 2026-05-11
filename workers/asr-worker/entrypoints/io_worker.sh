@@ -2,7 +2,7 @@
 set -e
 
 uv run --no-sync datashare-python worker start \
-    --dependencies io \
+    --dependencies asr.io \
     --queue asr.io \
-    --activities asr.transcription.search-audios \
-    --workflows asr.transcription
+    --activity asr.transcription.search-audios \
+    --workflow asr.transcription

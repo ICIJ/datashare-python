@@ -2,8 +2,8 @@
 set -e
 
 uv run --no-sync datashare-python worker start \
-    --dependencies io \
+    --dependencies translation.io \
     --queue translation.io \
-    --activities translation.worker_config \
-    --activities translation.create_translation_batches \
-    --workflows translation
+    --activity translation.worker_config \
+    --activity translation.create_translation_batches \
+    --workflow translation

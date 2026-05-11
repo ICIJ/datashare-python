@@ -1,6 +1,6 @@
 #!/bin/bash
 
 uv run --no-sync datashare-python worker start \
-    --dependencies inference \
+    --dependencies translation.inference \
     --queue translation.inference.cpu \
-    --activities translation.translate_docs
+    --activity translation.translate_docs

@@ -2,7 +2,7 @@
 set -e
 
 uv run --no-sync datashare-python worker start \
-    --dependencies cpu \
+    --dependencies asr.cpu \
     --queue asr.cpu \
-    --activities asr.transcription.preprocess \
-    --activities asr.transcription.postprocess
+    --activity asr.transcription.preprocess \
+    --activity asr.transcription.postprocess

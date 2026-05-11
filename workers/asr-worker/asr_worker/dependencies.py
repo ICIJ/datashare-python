@@ -31,7 +31,7 @@ def set_multiprocessing_start_method(**_) -> Generator[None, None, None]:
 
 
 REGISTRY = {
-    "inference": [set_worker_config, set_multiprocessing_start_method],
-    "io": [set_worker_config, set_es_client],
-    "cpu": [set_worker_config],
+    "asr.inference": [set_worker_config, set_multiprocessing_start_method],
+    "asr.io": [set_worker_config, set_es_client],
+    "asr.cpu": [set_worker_config],
 }
