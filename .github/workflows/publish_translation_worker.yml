@@ -102,6 +102,21 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
 
+  trigger-workflows-worker-publication:
+    needs:
+      - publish-translation-worker-to-pypi
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Trigger workflow worker release
+        run: |
+          worker_version="${worker_version/translation-worker-/}"
+          gh workflow run .github/workflows/publish_workflows_worker.yml -f worker=$worker -f worker_version="$worker_version" --ref ${{ github.ref_name }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          worker_version: ${{ github.ref_name }}
+          worker: translation-worker
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: false
