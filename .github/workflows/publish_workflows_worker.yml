@@ -29,6 +29,10 @@ jobs:
         with:
           ref: ${{ inputs.worker }}-${{ inputs.worker_version }}
           token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
       - name: Install uv
         uses: astral-sh/setup-uv@v7
         with:
