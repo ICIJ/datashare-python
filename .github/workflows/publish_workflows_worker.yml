@@ -27,7 +27,8 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
-          ref: ${{ inputs.worker }}-${{ inputs.worker_version }}
+          # We checkout main to avoid creating a tag from a detached head
+          ref: main
           token: ${{ secrets.GITHUB_TOKEN }}
       - name: Configure Git
         run: |
@@ -65,7 +66,9 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
-          ref: ${{ needs.bump-workflows-worker.outputs.workflows_worker_version }}
+          # We checkout main to avoid creating a tag from a detached head
+          ref: main
+          token: ${{ secrets.GITHUB_TOKEN }}
       - name: Docker meta
         id: meta
         uses: docker/metadata-action@v5

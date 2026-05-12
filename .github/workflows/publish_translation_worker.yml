@@ -111,7 +111,7 @@ jobs:
       - name: Trigger workflow worker release
         run: |
           worker_version="${worker_version/translation-worker-/}"
-          gh workflow run .github/workflows/publish_workflows_worker.yml -f worker=$worker -f worker_version="$worker_version" --ref ${{ github.ref_name }}
+          gh workflow run .github/workflows/publish_workflows_worker.yml -f worker=$worker -f worker_version="$worker_version" --ref main
         env:
           GH_TOKEN: ${{ github.token }}
           worker_version: ${{ github.ref_name }}
