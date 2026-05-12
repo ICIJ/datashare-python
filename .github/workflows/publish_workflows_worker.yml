@@ -1,0 +1,90 @@
+name: Publish workflows-worker
+
+on:
+  workflow_dispatch:
+    inputs:
+      worker:
+        description: 'Worker app to update'
+        required: true
+        type: choice
+        options:
+          - asr-worker
+          - translation-worker
+      worker_version:
+        description: 'New version of the worker app'
+        required: true
+        type: string
+
+env:
+  WORKER: ${{ inputs.worker }}
+  WORKER_VERSION: ${{ inputs.worker_version }}
+  PYTHON_VERSION: 3.12
+  ASTRAL_VERSION: 0.11.6
+
+jobs:
+  bump-workflows-worker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.worker }}-${{ inputs.version }}
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: ${{ env.ASTRAL_VERSION }}
+          python-version: ${{ env.PYTHON_VERSION }}
+          enable-cache: true
+          working-directory: workers/workflows-worker
+      - name: Bump workflows worker and
+        run: |
+          cd workers/workflows-worker
+          WORKFLOWS_WORKER_VERSION=workflows-worker-$(run --frozen main.py datashare-"$WORKER" "$WORKER_VERSION")
+          echo workflows_worker_version="$WORKFLOWS_WORKER_VERSION" >> "$GITHUB_OUTPUT"
+          echo WORKFLOWS_WORKER_VERSION="$WORKFLOWS_WORKER_VERSION" >> "$GITHUB_ENV"
+          ./bump_workflow.sh "$WORKER" "$WORKER_VERSION"
+          git tag "$WORKFLOWS_WORKER_VERSION"
+          git push --tags
+      - name: Create GH release
+        run: gh release create "$WORKFLOWS_WORKER_VERSION" --generate-notes
+
+  publish-workflows-worker:
+    runs-on: ubuntu-latest
+    needs: bump-workflows-worker
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.bump-workflows-worker.outputs.workflows_worker_version }}
+      - name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: icij/datashare-workflows-worker
+          tags: |
+            type=match,pattern=workflows-worker-(.*),group=1
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          # You'll need to set these secrets
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push image
+        uses: docker/build-push-action@v7
+        with:
+          target: io-worker
+          context: "{{defaultContext}}:workers/workflows-worker"
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
