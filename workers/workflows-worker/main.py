@@ -1,6 +1,7 @@
 import json
 import sys
 from dataclasses import asdict, dataclass
+from enum import StrEnum
 from importlib.metadata import version
 from typing import Any
 
@@ -14,6 +15,12 @@ class _VersionEncoder(json.JSONEncoder):
         if isinstance(o, Version):
             return str(o)
         return super().default(o)
+
+
+class BumpType(StrEnum):
+    MAJOR = "major"
+    MINOR = "minor"
+    PATCH = "patch"
 
 
 @dataclass(frozen=True)
@@ -37,23 +44,24 @@ class Bumped:
 class BumpInfo:
     current: Version
     next: Version
+    bump_type: BumpType
     bumped: Bumped
 
     current_version = ""
 
 
-def _bump_version(current: Version, *, breaking: bool) -> Version:
+def _bump_version(current: Version, *, breaking: bool) -> tuple[Version, BumpType]:
     release = current.release
     major = release[0]
     minor = release[1]
     patch = release[2]
     if current < _1_0_0:
         if breaking:
-            return Version(f"0.{minor + 1}.{patch}")
-        return Version(f"0.{minor}.{patch + 1}")
+            return Version(f"0.{minor + 1}.{patch}"), BumpType.MINOR
+        return Version(f"0.{minor}.{patch + 1}"), BumpType.PATCH
     if breaking:
-        return Version(f"{major + 1}.{minor}.{patch}")
-    return Version(f"{major}.{minor + 1}.{patch}")
+        return Version(f"{major + 1}.{minor}.{patch}"), BumpType.MAJOR
+    return Version(f"{major}.{minor + 1}.{patch}"), BumpType.MINOR
 
 
 def _validate_version(current: Version) -> None:
@@ -72,8 +80,12 @@ def _get_bump_info(worker: str, next_worker_version: Version) -> BumpInfo:
     _validate_version(bumped_current)
 
     bumped = Bumped(name=worker, next=next_worker_version, current=bumped_current)
-    next_workflow_version = _bump_version(current, breaking=bumped.is_breaking)
-    return BumpInfo(current=current, next=next_workflow_version, bumped=bumped)
+    next_workflow_version, bump_type = _bump_version(
+        current, breaking=bumped.is_breaking
+    )
+    return BumpInfo(
+        current=current, next=next_workflow_version, bumped=bumped, bump_type=bump_type
+    )
 
 
 def main() -> None:

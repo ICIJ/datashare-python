@@ -46,15 +46,21 @@ jobs:
         run: |
           cd workers/workflows-worker
           worker=datashare-"$WORKER"
-          workflows_worker_version_info=$(uv run --frozen main.py "$worker" "$WORKER_VERSION")
-          workflows_worker_version=$(echo $workflows_worker_version_info | jq -r .next)
-          echo workflows_worker_version="$workflows_worker_version" >> "$GITHUB_ENV"
+          workflows_worker_version_bump_info=$(uv run --frozen main.py "$worker" "$WORKER_VERSION")
+          echo workflows_worker_version_bump_info="$workflows_worker_version_bump_info" >> "$GITHUB_ENV"
           ./bump_workflow.sh "$worker" "$WORKER_VERSION"
-      - name: Create a workflows worker tags
+      - name: Create a new workflows worker tags
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          workflows_worker_version=workflows-worker-"$(echo $workflows_worker_version_bump_info | jq -r .next)"
+          bump_type="$(echo $workflows_worker_version_bump_info | jq -r .bump_type)"
+          uv version --bump $bump_type
+          cd ../..
+          make lock-dist project=workflows-worker
+          git add workers/workflows-worker/*.lock workers/workflows-worker/*.toml
           tag=workflows-version-"$workflows_worker_version"
+          git commit -m "release(workflows-worker): bump version to `$tag`"
           git pull --rebase
           git tag "$tag" 
           git push && git push --tags
