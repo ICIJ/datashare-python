@@ -69,6 +69,7 @@ jobs:
           # We checkout main to avoid creating a tag from a detached head
           ref: main
           token: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Docker meta
         id: meta
         uses: docker/metadata-action@v5
@@ -93,7 +94,7 @@ jobs:
       - name: Build and push image
         uses: docker/build-push-action@v7
         with:
-          target: io-worker
+          target: datashare-workflows-worker
           context: "{{defaultContext}}:workers/workflows-worker"
           platforms: linux/amd64,linux/arm64
           push: true
