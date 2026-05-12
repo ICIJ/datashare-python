@@ -11,22 +11,13 @@ COPY --from=ghcr.io/astral-sh/uv:0.11.6 /uv /uvx /bin/
 WORKDIR /app
 
 
-FROM worker-builder AS datashare-workflow-worker
+FROM worker-builder AS datashare-workflows-worker
+
+ADD pyproject.toml README.md main.py all_workflows_worker_entrypoint.sh ./
+ADD uv.dist.lock ./uv.lock
+
 # Install deps first to optimize layer cache
-RUN --mount=type=cache,target=~/.cache/uv \
-    --mount=type=bind,source=datashare-python/uv.dist.lock,target=uv.lock \
-    --mount=type=bind,source=datashare-python/pyproject.toml,target=pyproject.toml \
-    uv sync -v --frozen --no-editable --no-install-project
-
-# Then copy code
-ADD datashare-python/uv.dist.lock ./uv.lock
-ADD pyproject.toml README.md ./
-ADD asr_worker ./asr_worker/
-ADD entrypoints/io_worker.sh ./entrypoints/io_worker.sh
-
-# Then install service
-
-RUN --mount=type=cache,target=~/.cache/uv uv sync -v --frozen --no-editable --extra cpu
+RUN uv sync -v --frozen --no-editable
 RUN rm -rf ~/.cache/pip
 
-ENTRYPOINT ["scripts/all_workflows_worker_entrypoint.sh"]
+ENTRYPOINT ["./all_workflows_worker_entrypoint.sh"]
