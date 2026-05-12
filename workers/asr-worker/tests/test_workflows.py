@@ -48,7 +48,7 @@ async def io_bound_worker(
     client = test_temporal_client_session
     worker_id = f"worker-{uuid.uuid4()}"
     task_queue = TaskQueues.IO
-    dependencies = REGISTRY["io"]
+    dependencies = REGISTRY["asr.io"]
     activities = ASRActivities(client, event_loop)
     worker_ctx = worker_context(
         worker_id,
@@ -75,7 +75,7 @@ async def cpu_bound_worker(
     activities = ASRActivities(client, event_loop)
     worker_id = f"worker-{uuid.uuid4()}"
     task_queue = TaskQueues.CPU
-    dependencies = REGISTRY["cpu"]
+    dependencies = REGISTRY["asr.cpu"]
     worker_ctx = worker_context(
         worker_id,
         worker_config=test_worker_config,
@@ -100,7 +100,7 @@ async def gpu_inference_worker(
     activities = ASRActivities(client, event_loop)
     worker_id = f"worker-{uuid.uuid4()}"
     task_queue = TaskQueues.INFERENCE_GPU
-    dependencies = REGISTRY["inference"]
+    dependencies = REGISTRY["asr.inference"]
     worker_ctx = worker_context(
         worker_id,
         worker_config=test_worker_config,
