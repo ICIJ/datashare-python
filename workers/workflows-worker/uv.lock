@@ -202,15 +202,15 @@ wheels = [
 
 [[package]]
 name = "datashare-translation-worker"
-version = "0.5.16"
+version = "0.5.17"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "datashare-python" },
     { name = "pydantic-extra-types", extra = ["pycountry"] },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/72/5d/8e11b5d2f91a6b37695597a030df2a5c51ee11e6d544f72683caba7353e8/datashare_translation_worker-0.5.16.tar.gz", hash = "sha256:8738641e8746f870821ee54d409895ce8680f013d781c1a7a55faef54a4a234f", size = 189289, upload-time = "2026-05-12T16:36:05.181Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/6d/2b/ce8d9aa72a7ddf511dbddd15ade46e9f7262fd78a369760747bec9538004/datashare_translation_worker-0.5.17.tar.gz", hash = "sha256:eb1e9ca5d870f5f4b13db02a1f6d92403a6a92741f7205a518feb3a11a42ae3b", size = 189288, upload-time = "2026-05-12T16:40:03.717Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/49/e4/942a887280404d44725733f0ec031b0badbf008947a5fd91fb69b311d00d/datashare_translation_worker-0.5.16-py3-none-any.whl", hash = "sha256:c1aeb3fb2cc62c42b7dbe017efe1995b79556c65a6ea2eafa1e5ebdf9c8e30eb", size = 10992, upload-time = "2026-05-12T16:36:06.318Z" },
+    { url = "https://files.pythonhosted.org/packages/12/16/a6da0c5d4975b43a9837eb1465c388e1adcdbe197efbca5864be7ab8a2e9/datashare_translation_worker-0.5.17-py3-none-any.whl", hash = "sha256:0602a4fcb4ca12fb240842434a67d24d70d0da4f3a376e448d99f0c80ba045d4", size = 10992, upload-time = "2026-05-12T16:40:02.599Z" },
 ]
 
 [[package]]
@@ -226,7 +226,7 @@ dependencies = [
 requires-dist = [
     { name = "datashare-asr-worker" },
     { name = "datashare-python", specifier = "==0.8.5" },
-    { name = "datashare-translation-worker", specifier = "==0.5.16" },
+    { name = "datashare-translation-worker", specifier = "==0.5.17" },
 ]
 
 [[package]]
