@@ -46,20 +46,18 @@ jobs:
         run: |
           cd workers/workflows-worker
           worker=datashare-"$WORKER"
-          WORKFLOWS_WORKER_VERSION_INFO=workflows-worker-$(uv run --frozen main.py "$worker" "$WORKER_VERSION")
-          echo workflows_worker_version_info="$WORKFLOWS_WORKER_VERSION_INFO" >> "$GITHUB_OUTPUT"
-          echo WORKFLOWS_WORKER_VERSION_INFO="$WORKFLOWS_WORKER_VERSION_INFO" >> "$GITHUB_ENV"
+          workflows_worker_version_info=workflows-worker-$(uv run --frozen main.py "$worker" "$WORKER_VERSION")
+          workflows_worker_version=$(echo $workflows_worker_version_info | jq -r .next)
+          echo workflows_worker_version="$workflows_worker_version" >> "$GITHUB_ENV"
           ./bump_workflow.sh "$worker" "$WORKER_VERSION"
       - name: Create a workflows worker tags
         run: |
           git pull --rebase
-          git tag "$WORKFLOWS_WORKER_VERSION"
+          git tag "$workflows_worker_version"
           git push && git push --tags
-          gh release create "$WORKFLOWS_WORKER_VERSION" --generate-notes
-        env:
-          WORKFLOWS_WORKER_VERSION: ${{ fromJSON(steps.bump-workflows-worker.outputs.workflows_worker_version_info).next }}
+          gh release create "$workflows_worker_version" --generate-notes
       - name: Create GH release
-        run: gh release create "$WORKFLOWS_WORKER_VERSION" --generate-notes
+        run: gh release create "$workflows_worker_version" --generate-notes
 
   publish-workflows-worker:
     runs-on: ubuntu-latest
