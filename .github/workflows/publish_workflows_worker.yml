@@ -36,14 +36,20 @@ jobs:
           enable-cache: true
           working-directory: workers/workflows-worker
       - name: Bump workflows worker and
+        id: bump-workflows-worker
         run: |
           cd workers/workflows-worker
-          WORKFLOWS_WORKER_VERSION=workflows-worker-$(run --frozen main.py datashare-"$WORKER" "$WORKER_VERSION")
-          echo workflows_worker_version="$WORKFLOWS_WORKER_VERSION" >> "$GITHUB_OUTPUT"
-          echo WORKFLOWS_WORKER_VERSION="$WORKFLOWS_WORKER_VERSION" >> "$GITHUB_ENV"
+          WORKFLOWS_WORKER_VERSION_INFO=workflows-worker-$(run --frozen main.py datashare-"$WORKER" "$WORKER_VERSION")
+          echo workflows_worker_version_info="$WORKFLOWS_WORKER_VERSION_INFO" >> "$GITHUB_OUTPUT"
+          echo WORKFLOWS_WORKER_VERSION_INFO="$WORKFLOWS_WORKER_VERSION_INFO" >> "$GITHUB_ENV"
           ./bump_workflow.sh "$WORKER" "$WORKER_VERSION"
+      - name: Create a workflows worker tags
+        run: |
           git tag "$WORKFLOWS_WORKER_VERSION"
           git push --tags
+          gh release create "$WORKFLOWS_WORKER_VERSION" --generate-notes
+        env:
+          WORKFLOWS_WORKER_VERSION: ${{ fromJSON(steps.bump-workflows-worker.outputs.workflows_worker_version_info).next }}
       - name: Create GH release
         run: gh release create "$WORKFLOWS_WORKER_VERSION" --generate-notes
 
