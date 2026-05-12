@@ -51,6 +51,8 @@ jobs:
           echo workflows_worker_version="$workflows_worker_version" >> "$GITHUB_ENV"
           ./bump_workflow.sh "$worker" "$WORKER_VERSION"
       - name: Create a workflows worker tags
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           tag=workflows-version-"$workflows_worker_version"
           git pull --rebase
