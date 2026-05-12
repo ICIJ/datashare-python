@@ -80,7 +80,7 @@ def main() -> None:
     worker_app, worker_version = sys.argv[1:]
     worker_version = Version(worker_version)
     info = _get_bump_info(worker_app, worker_version)
-    print(json.dumps(asdict(info), indent=2, cls=_VersionEncoder))
+    print(json.dumps(asdict(info), cls=_VersionEncoder))
 
 
 if __name__ == "__main__":
