@@ -65,10 +65,13 @@ def _validate_version(current: Version) -> None:
 
 
 def _get_bump_info(worker: str, next_worker_version: Version) -> BumpInfo:
+    _validate_version(next_worker_version)
     current = Version(version("datashare-workflows-worker"))
     _validate_version(current)
-    _validate_version(next_worker_version)
-    bumped = Bumped(name=worker, next=next_worker_version, current=current)
+    bumped_current = Version(version(worker))
+    _validate_version(bumped_current)
+
+    bumped = Bumped(name=worker, next=next_worker_version, current=bumped_current)
     next_workflow_version = _bump_version(current, breaking=bumped.is_breaking)
     return BumpInfo(current=current, next=next_workflow_version, bumped=bumped)
 
