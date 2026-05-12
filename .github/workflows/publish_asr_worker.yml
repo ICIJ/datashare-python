@@ -152,7 +152,14 @@ jobs:
     needs:
       - publish-asr-worker-to-pypi
     runs-on: ubuntu-latest
-
+    steps:
+      - uses: actions/checkout@v6
+      - name: Trigger workflow worker release
+        run: gh workflow run .github/workflows/publish_workflows_worker.yml -f worker=$worker -f worker_version="$worker_version"
+        env:
+          GH_TOKEN: ${{ github.token }}
+          worker_version: ${{ github.ref_name }}
+          worker: asr-worker
 
 
 concurrency:
