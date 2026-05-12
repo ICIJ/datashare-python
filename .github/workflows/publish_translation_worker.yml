@@ -20,7 +20,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           tag: ${{ github.ref_name }}
 
-  publish-datashare-python-to-pypi:
+  publish-translation-worker-to-pypi:
     runs-on: ubuntu-latest
     permissions:
       id-token: write
