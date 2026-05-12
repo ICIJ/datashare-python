@@ -54,7 +54,7 @@ jobs:
         run: |
           tag=workflows-version-"$workflows_worker_version"
           git pull --rebase
-          git "$tag" 
+          git tag "$tag" 
           git push && git push --tags
           gh release create "$tag" --generate-notes
 
