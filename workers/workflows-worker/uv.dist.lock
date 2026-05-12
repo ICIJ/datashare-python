@@ -202,19 +202,20 @@ wheels = [
 
 [[package]]
 name = "datashare-translation-worker"
-version = "0.4.2"
+version = "0.5.21"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "datashare-python" },
     { name = "pydantic-extra-types", extra = ["pycountry"] },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/a3/f3/566e6b0541e811245862d58dc3038cbec98500cfe42323429df7c77babd8/datashare_translation_worker-0.4.2.tar.gz", hash = "sha256:7c75c5c63730fc8ef66ee03589dfe3fbf07b891bf972473bd22f9ea4edf8e75b", size = 189363, upload-time = "2026-05-11T16:17:21.982Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/92/5d/1998f341aa049d7592d2d687d19f2049f951f59f024e76bbf5db70993925/datashare_translation_worker-0.5.21.tar.gz", hash = "sha256:2f67945dcf509e24f95a20159a6219753927ddc733c11745b9afa83d02fc89f9", size = 189290, upload-time = "2026-05-12T17:16:32.368Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/98/00/9129deb865a300a1fa658b6378ded90dba8fa21d48f1c0d97f4b2de5119f/datashare_translation_worker-0.4.2-py3-none-any.whl", hash = "sha256:d304b357389983d2a6bb269f58fd9986498cdc4db9975ad9ab2885d6ce0c3887", size = 10976, upload-time = "2026-05-11T16:17:22.869Z" },
+    { url = "https://files.pythonhosted.org/packages/cb/58/f454fa67af2fd5c3d9687ce9c96cd85aaf148a7f4253bd0ffbc8804024aa/datashare_translation_worker-0.5.21-py3-none-any.whl", hash = "sha256:e645ca1306bc8a50452eaa69ed0f89240e38cd005a12570c60341eb26c169b46", size = 10993, upload-time = "2026-05-12T17:16:33.192Z" },
 ]
 
 [[package]]
 name = "datashare-workflows-worker"
+version = "0.2.1"
 source = { editable = "." }
 dependencies = [
     { name = "datashare-asr-worker" },
@@ -224,9 +225,9 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "datashare-asr-worker", specifier = "==0.6.10" },
+    { name = "datashare-asr-worker" },
     { name = "datashare-python", specifier = "==0.8.5" },
-    { name = "datashare-translation-worker", specifier = "==0.4.2" },
+    { name = "datashare-translation-worker", specifier = "==0.5.21" },
 ]
 
 [[package]]
