@@ -52,8 +52,9 @@ jobs:
           ./bump_workflow.sh "$worker" "$WORKER_VERSION"
       - name: Create a workflows worker tags
         run: |
+          git pull --rebase
           git tag "$WORKFLOWS_WORKER_VERSION"
-          git push --tags
+          git push && git push --tags
           gh release create "$WORKFLOWS_WORKER_VERSION" --generate-notes
         env:
           WORKFLOWS_WORKER_VERSION: ${{ fromJSON(steps.bump-workflows-worker.outputs.workflows_worker_version_info).next }}
