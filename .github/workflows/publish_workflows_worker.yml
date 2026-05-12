@@ -61,6 +61,7 @@ jobs:
           make lock-dist project=workflows-worker
           git add workers/workflows-worker/*.lock workers/workflows-worker/*.toml
           tag=workflows-version-"$workflows_worker_version"
+          echo tag="$tag" >> "$GITHUB_OUTPUT"
           git commit -m "release(workflows-worker): bump version to `$tag`"
           git pull --rebase
           git tag "$tag" 
@@ -74,7 +75,7 @@ jobs:
       - uses: actions/checkout@v6
         with:
           # We checkout main to avoid creating a tag from a detached head
-          ref: main
+          ref: ${{ needs.bump-workflows-worker.outputs.tag }}
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Docker meta
@@ -82,8 +83,7 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: icij/datashare-workflows-worker
-          tags: |
-            type=match,pattern=workflows-worker-(.*),group=1
+          tags: ${{ needs.bump-workflows-worker.outputs.tag }}
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v4
