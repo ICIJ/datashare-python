@@ -46,7 +46,7 @@ jobs:
         run: |
           cd workers/workflows-worker
           worker=datashare-"$WORKER"
-          workflows_worker_version_info=workflows-worker-$(uv run --frozen main.py "$worker" "$WORKER_VERSION")
+          workflows_worker_version_info=$(uv run --frozen main.py "$worker" "$WORKER_VERSION")
           workflows_worker_version=$(echo $workflows_worker_version_info | jq -r .next)
           echo workflows_worker_version="$workflows_worker_version" >> "$GITHUB_ENV"
           ./bump_workflow.sh "$worker" "$WORKER_VERSION"
