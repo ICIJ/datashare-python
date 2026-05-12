@@ -55,6 +55,7 @@ jobs:
         run: |
           workflows_worker_version=workflows-worker-"$(echo $workflows_worker_version_bump_info | jq -r .next)"
           bump_type="$(echo $workflows_worker_version_bump_info | jq -r .bump_type)"
+          cd workers/workflows-worker
           uv version --bump $bump_type
           cd ../..
           make lock-dist project=workflows-worker
