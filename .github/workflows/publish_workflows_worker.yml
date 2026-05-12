@@ -52,12 +52,11 @@ jobs:
           ./bump_workflow.sh "$worker" "$WORKER_VERSION"
       - name: Create a workflows worker tags
         run: |
+          tag=workflows-version-"$workflows_worker_version"
           git pull --rebase
-          git tag "$workflows_worker_version"
+          git "$tag" 
           git push && git push --tags
-          gh release create "$workflows_worker_version" --generate-notes
-      - name: Create GH release
-        run: gh release create "$workflows_worker_version" --generate-notes
+          gh release create "$tag" --generate-notes
 
   publish-workflows-worker:
     runs-on: ubuntu-latest
