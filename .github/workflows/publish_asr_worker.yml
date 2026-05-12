@@ -35,7 +35,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           tag: ${{ github.ref_name }}
 
-  publish-datashare-python-to-pypi:
+  publish-asr-worker-to-pypi:
     runs-on: ubuntu-latest
     permissions:
       id-token: write
@@ -147,6 +147,13 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+
+  trigger-workflows-worker-publication:
+    needs:
+      - publish-asr-worker-to-pypi
+    runs-on: ubuntu-latest
+
+
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
