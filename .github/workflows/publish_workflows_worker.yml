@@ -35,15 +35,15 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
           enable-cache: true
           working-directory: workers/workflows-worker
-      - name: Bump workflows worker and
+      - name: Bump workflows worker
         id: bump-workflows-worker
         run: |
           cd workers/workflows-worker
-          uv sync -n --frozen || uv sync -n --frozen  
-          WORKFLOWS_WORKER_VERSION_INFO=workflows-worker-$(uv run --frozen main.py datashare-"$WORKER" "$WORKER_VERSION")
+          worker=datashare-"$WORKER"
+          WORKFLOWS_WORKER_VERSION_INFO=workflows-worker-$(uv run --frozen main.py "$worker" "$WORKER_VERSION")
           echo workflows_worker_version_info="$WORKFLOWS_WORKER_VERSION_INFO" >> "$GITHUB_OUTPUT"
           echo WORKFLOWS_WORKER_VERSION_INFO="$WORKFLOWS_WORKER_VERSION_INFO" >> "$GITHUB_ENV"
-          ./bump_workflow.sh "$WORKER" "$WORKER_VERSION"
+          ./bump_workflow.sh "$worker" "$WORKER_VERSION"
       - name: Create a workflows worker tags
         run: |
           git tag "$WORKFLOWS_WORKER_VERSION"
