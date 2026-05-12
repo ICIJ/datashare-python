@@ -1,0 +1,29 @@
+name: Test workflows-worker
+
+on:
+  push:
+    branches: [ 'main' ]
+  pull_request:
+    paths:
+      - 'workers/workflows-worker/**'
+
+env:
+  PYTHON_VERSION: 3.12
+  ASTRAL_VERSION: 0.11.6
+  
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: astral-sh/ruff-action@v3
+        with:
+          args: "--version" # skips test by displaying the version
+      - name: Check formatting
+        run: ruff format --config qa/ruff.toml --check workers/workflows-worker
+      - name: Lint test
+        run: ruff check --config qa/ruff.toml workers/workflows-worker
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
