@@ -11,7 +11,7 @@ requires-python = ">=3.11.0, <3.13"
 dependencies = [
   "datashare-asr-worker==0.8.0",
   "datashare-python==0.8.5",
-  "datashare-translation-worker==0.5.23",
+  "datashare-translation-worker==0.6.0",
 ]
 
 [tool.hatch.build.targets.wheel]
