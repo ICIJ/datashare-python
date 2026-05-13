@@ -27,6 +27,7 @@ from icij_common.es import (
 from icij_common.iter_utils import before_and_after, once
 from pydantic_extra_types.language_code import LanguageAlpha2, LanguageName
 
+from .config import TranslationWorkerConfig
 from .constants import BATCHING_DOC_SOURCES, CONTENT_LENGTH, TRANSLATION_DOC_SOURCES
 from .core import (
     Sentencizer,
@@ -35,7 +36,7 @@ from .core import (
     has_language,
     translate_as_list,
 )
-from .objects import BatchSentence, TranslationWorkerConfig
+from .objects import BatchSentence
 
 logger = logging.getLogger(__name__)
 

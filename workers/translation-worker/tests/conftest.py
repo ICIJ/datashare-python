@@ -29,8 +29,8 @@ from datashare_python.types_ import ContextManagerFactory, TemporalClient
 from datashare_python.worker import worker_context
 from icij_common.es import ESClient
 from translation_worker.activities import TranslationActivities
+from translation_worker.config import TranslationWorkerConfig
 from translation_worker.dependencies import set_es_client, set_worker_config
-from translation_worker.objects import TranslationWorkerConfig
 from translation_worker.workflows import TaskQueue, TranslationWorkflow
 
 

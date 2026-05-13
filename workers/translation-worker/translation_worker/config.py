@@ -1,7 +1,6 @@
+from constants import TorchDevice
 from datashare_python.config import WorkerConfig
 from pydantic import Field
-
-from .constants import TorchDevice
 
 
 class TranslationWorkerConfig(WorkerConfig):
@@ -15,3 +14,6 @@ class TranslationWorkerConfig(WorkerConfig):
     inter_threads: int = 1
     intra_threads: int = 0
     compute_type: str = "auto"  # quantization
+
+
+WORKER_CONFIG_CLS = TranslationWorkerConfig

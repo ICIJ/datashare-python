@@ -25,12 +25,10 @@ from translation_worker.activities import (
     create_translation_batches,
     translate_docs,
 )
+from translation_worker.config import TranslationWorkerConfig
 from translation_worker.constants import CONTENT_LENGTH
 from translation_worker.core import get_translation_ensemble
-from translation_worker.objects import (
-    BatchSentence,
-    TranslationWorkerConfig,
-)
+from translation_worker.objects import BatchSentence
 
 from tests.conftest import (
     DOC_ID_1,

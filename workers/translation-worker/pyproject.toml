@@ -25,7 +25,7 @@ activities = "translation_worker.activities:ACTIVITIES"
 dependencies = "translation_worker.dependencies:REGISTRY"
 
 [project.entry-points."datashare.worker_config_cls"]
-worker_config_cls = "translation_worker.objects:WORKER_CONFIG_CLS"
+worker_config_cls = "translation_worker.config:WORKER_CONFIG_CLS"
 
 [project.optional-dependencies]
 inference = [
