@@ -61,7 +61,7 @@ jobs:
           make lock-dist project=workflows-worker
           git add workers/workflows-worker/*.lock workers/workflows-worker/*.toml
           tag=workflows-version-"$workflows_worker_version"
-          echo workflows_worker_tag="$tag" >> "$GITHUB_OUTPUT"
+          echo "workflows_worker_tag=$tag" >> "$GITHUB_OUTPUT"
           git commit -m "release(workflows-worker): bump version to `$tag`"
           git pull --rebase
           git tag "$tag" 
@@ -73,7 +73,9 @@ jobs:
     needs: bump-workflows-worker
     steps:
       - name: "debug version"
-        run: echo ${{ needs.bump-workflows-worker.outputs.workflows_worker_tag }}
+        run: echo $workflows_worker_tag
+        env:
+          workflows_worker_tag: ${{ needs.bump-workflows-worker.outputs.workflows_worker_tag }}
 
       - uses: actions/checkout@v6
         with:
