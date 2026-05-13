@@ -84,8 +84,8 @@ jobs:
         uses: docker/metadata-action@v6
         with:
           images: icij/datashare-workflows-worker
-          tags: ${{ needs.bump-workflows-worker.outputs.tag }}
-
+          tags: |
+            type=raw,value=${{ needs.bump-workflows-worker.outputs.workflows_worker_tag }}
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v4
 
