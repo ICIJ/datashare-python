@@ -24,7 +24,7 @@ from datashare_python.conftest import (  # noqa: F401
     test_worker_config,
     worker_lifetime_deps,
 )
-from datashare_python.objects import Document
+from datashare_python.objects import DatashareLanguage, Document
 from datashare_python.types_ import ContextManagerFactory, TemporalClient
 from datashare_python.worker import worker_context
 from icij_common.es import ESClient
@@ -64,21 +64,17 @@ def test_worker_config(tmp_path_factory: TempPathFactory) -> TranslationWorkerCo
     )
 
 
-EN = "en"
-FR = "fr"
-ES = "es"
-ENGLISH = "english"
-FRENCH = "french"
-SPANISH = "spanish"
+ENGLISH = "ENGLISH"
+FRENCH = "FRENCH"
+SPANISH = "SPANISH"
 DOC_ID_1 = "doc_id_1"
 DOC_ID_2 = "doc_id_2"
 ROOT_DOCUMENT_1 = "root_document_1"
 ROOT_DOCUMENT_2 = "root_document_2"
+DS_ENGLISH = DatashareLanguage(ENGLISH)
+DS_FRENCH = DatashareLanguage(FRENCH)
+DS_SPANISH = DatashareLanguage(SPANISH)
 
-MOCK_TRANSLATIONS = [
-    (DOC_ID_1, ROOT_DOCUMENT_1, "1"),
-    (DOC_ID_2, ROOT_DOCUMENT_2, "2"),
-]
 
 FRENCH_TEXT = (
     "Dans le port d'Amsterdam, il y a des marins qui chantent les rêves "
@@ -94,7 +90,7 @@ SPANISH_TEXT = (
 
 
 def _create_doc(
-    doc_id: str, root_doc: str, text: str, language: str = "ENGLISH"
+    doc_id: str, root_doc: str, text: str, language: DatashareLanguage = DS_ENGLISH
 ) -> Document:
     return Document(id=doc_id, root_document=root_doc, language=language, content=text)
 

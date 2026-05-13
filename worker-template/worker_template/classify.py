@@ -2,7 +2,7 @@ import asyncio
 import logging
 from collections.abc import AsyncGenerator, Generator, Iterable
 
-from datashare_python.objects import Document
+from datashare_python.objects import Document, Translation
 from datashare_python.types_ import ProgressRateHandler
 from datashare_python.utils import (
     ActivityWithProgress,
@@ -34,7 +34,7 @@ from temporalio import activity
 from temporalio.client import Client
 from transformers import Pipeline, pipeline
 
-from .objects_ import ClassificationConfig
+from .objects import ClassificationConfig
 
 
 class CreateClassificationBatches(ActivityWithProgress):
@@ -229,7 +229,7 @@ if( !ctx._source.tags.contains(params.tag) ) {
 
 async def _add_classification_tags(
     es_client: ESClient,
-    tags: Iterable[tuple[Document, str]],
+    tags: Iterable[tuple[Document, Translation]],
     project: str,
     *,
     model: str,

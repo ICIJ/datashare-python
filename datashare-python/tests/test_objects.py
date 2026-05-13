@@ -6,13 +6,14 @@ import pytest
 from datashare_python.conftest import TEST_PROJECT
 from datashare_python.constants import TIKA_METADATA_RESOURCENAME
 from datashare_python.objects import (
+    DatashareLanguage,
     Document,
     DocumentLocation,
     FilesystemDocument,
     Task,
     TaskState,
 )
-from pydantic import ValidationError
+from pydantic import TypeAdapter, ValidationError
 
 
 def test_task_ser() -> None:
@@ -67,3 +68,29 @@ def test_document_to_filesystem_document_use_relative_path() -> None:
     fs_doc = doc.to_filesystem()
     relative_path = Path("some/absolute/path/resource.file")
     assert fs_doc.path == relative_path
+
+
+def test_datashare_language() -> None:
+    # Given
+    language = "ENGLISH"
+    type_adapter = TypeAdapter(DatashareLanguage)
+    # When
+    ds_language = type_adapter.validate_python(language)
+    # Then
+    assert isinstance(ds_language, DatashareLanguage)
+    assert ds_language == language
+
+
+@pytest.mark.parametrize(
+    ("language", "expected_msg"),
+    [("English", "expected uppercase"), ("AAAA", "Unknown")],
+)
+def test_invalid_datashare_language_should_raise(
+    language: str, expected_msg: str
+) -> None:
+    # Given
+    type_adapter = TypeAdapter(DatashareLanguage)
+
+    # When/Then
+    with pytest.raises(ValidationError, match=expected_msg):
+        type_adapter.validate_python(language)

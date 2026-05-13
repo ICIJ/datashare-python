@@ -417,8 +417,10 @@ dependencies = [
     { name = "alive-progress" },
     { name = "hatchling" },
     { name = "icij-common", extra = ["elasticsearch"] },
+    { name = "langcodes" },
     { name = "nest-asyncio" },
     { name = "orjson" },
+    { name = "pydantic-extra-types", extra = ["pycountry"] },
     { name = "python-json-logger" },
     { name = "pyyaml" },
     { name = "temporalio" },
@@ -432,8 +434,10 @@ requires-dist = [
     { name = "alive-progress", specifier = "~=3.2" },
     { name = "hatchling", specifier = "~=1.27" },
     { name = "icij-common", extras = ["elasticsearch"], specifier = "~=0.8.2" },
+    { name = "langcodes", specifier = "~=3.5" },
     { name = "nest-asyncio", specifier = "~=1.6" },
     { name = "orjson", specifier = "~=3.11" },
+    { name = "pydantic-extra-types", extras = ["pycountry"], specifier = ">=2.11.1" },
     { name = "python-json-logger", specifier = "~=4.0" },
     { name = "pyyaml", specifier = "~=6.0" },
     { name = "temporalio", specifier = "~=1.23" },
@@ -766,6 +770,15 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/41/f2/d34e8b3a08a9cc79a50b2208a93dce981fe615b64d5a4d4abee421d898df/joblib-1.5.3.tar.gz", hash = "sha256:8561a3269e6801106863fd0d6d84bb737be9e7631e33aaed3fb9ce5953688da3", size = 331603, upload-time = "2025-12-15T08:41:46.427Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/7b/91/984aca2ec129e2757d1e4e3c81c3fcda9d0f85b74670a094cc443d9ee949/joblib-1.5.3-py3-none-any.whl", hash = "sha256:5fc3c5039fc5ca8c0276333a188bbd59d6b7ab37fe6632daa76bc7f9ec18e713", size = 309071, upload-time = "2025-12-15T08:41:44.973Z" },
+]
+
+[[package]]
+name = "langcodes"
+version = "3.5.1"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/a9/75/f9edc5d72945019312f359e69ded9f82392a81d49c5051ed3209b100c0d2/langcodes-3.5.1.tar.gz", hash = "sha256:40bff315e01b01d11c2ae3928dd4f5cbd74dd38f9bd912c12b9a3606c143f731", size = 191084, upload-time = "2025-12-02T16:22:01.627Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/dd/c1/d10b371bcba7abce05e2b33910e39c33cfa496a53f13640b7b8e10bb4d2b/langcodes-3.5.1-py3-none-any.whl", hash = "sha256:b6a9c25c603804e2d169165091d0cdb23934610524a21d226e4f463e8e958a72", size = 183050, upload-time = "2025-12-02T16:21:59.954Z" },
 ]
 
 [[package]]

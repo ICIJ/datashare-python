@@ -5,7 +5,7 @@ from functools import partial
 from typing import TYPE_CHECKING
 
 from aiostream.stream import chain
-from datashare_python.objects import Document
+from datashare_python.objects import Document, Language, Translation
 from datashare_python.types_ import ProgressRateHandler
 from datashare_python.utils import (
     ActivityWithProgress,
@@ -23,7 +23,6 @@ from icij_common.es import (
     DOC_ROOT_ID,
     HITS,
     ID_,
-    MUST_NOT,
     QUERY,
     SHOULD,
     SOURCE,
@@ -43,7 +42,7 @@ from worker_template.dependencies import lifespan_es_client
 if TYPE_CHECKING:
     from transformers import Pipeline
 
-from .objects_ import ClassificationConfig, TranslationConfig
+from .objects import ClassificationConfig, TranslationConfig
 
 
 class Pong(ActivityWithProgress):
@@ -195,7 +194,7 @@ _TRANSLATION_DOC_SOURCES = [DOC_CONTENT, DOC_ROOT_ID, DOC_LANGUAGE]
 
 async def translate_docs(
     docs: list[str],
-    target_language: str,
+    target_language: Language,
     *,
     project: str,
     es_client: ESClient | None = None,
@@ -228,6 +227,8 @@ async def translate_docs(
     # We batch the data ourselves, ideally, we should use an async version of:
     # https://huggingface.co/docs/datasets/v3.1.0/en/package_reference/main_classes#datasets.Dataset.from_generator
     for batch in batches(docs, batch_size=config.batch_size):
+        if not batch:
+            continue
         batch_docs = []
         async for page in es_client.poll_search_pages(
             body={QUERY: has_id(batch)},
@@ -243,6 +244,15 @@ async def translate_docs(
         # Load the classification pipeline
         contents = [d.content for d in batch_docs]
         translations = await asyncio.to_thread(_translate_as_list, pipe, contents)
+        translations = [
+            Translation(
+                source_language=source_language,
+                target_language=target_language,
+                translator=kwargs["model"],
+                content=t,
+            )
+            for t in translations
+        ]
         await _add_translation(
             es_client,
             zip(batch_docs, translations, strict=False),
@@ -358,17 +368,18 @@ async def _untranslated_by_language(
         yield chain(once(next_doc), language_docs)
 
 
-_TRANSLATION_SCRIPT_SOURCES = """
-if( !ctx._source.containsKey("content_translated") ) {
-    ctx._source.content_translated = new HashMap();
-}
-ctx._source.content_translated[params.language] = params.translation;
+_TRANSLATION_SCRIPT_SOURCES = f"""
+if( !ctx._source.containsKey("{DOC_CONTENT_TRANSLATED}")
+ || ctx._source.{DOC_CONTENT_TRANSLATED} == null) {{
+    ctx._source.{DOC_CONTENT_TRANSLATED} = [];
+}}
+ctx._source.{DOC_CONTENT_TRANSLATED}.add(params.translation);
 """
 
 
 async def _add_translation(
     es_client: ESClient,
-    translations: Iterable[tuple[Document, str]],
+    translations: Iterable[tuple[Document, Translation]],
     project: str,
     *,
     target_language: str,
@@ -382,7 +393,10 @@ async def _add_translation(
             "script": {
                 "source": _TRANSLATION_SCRIPT_SOURCES,
                 "lang": "painless",
-                "params": {"language": target_language, "translation": translation},
+                "params": {
+                    "language": target_language,
+                    "translation": translation.model_dump(by_alias=True),
+                },
             },
         }
         for doc, translation in translations
@@ -394,7 +408,7 @@ def _untranslated_query(target_language: str) -> dict:
     query = {
         "query": {
             BOOL: must_not(
-                {"exists": {"field": f"content_translated.{target_language}"}},
+                {"exists": {"field": f"{DOC_CONTENT_TRANSLATED}.{target_language}"}},
                 {TERM: {DOC_LANGUAGE: target_language}},
             )
         }
@@ -437,7 +451,12 @@ def _classify_as_list(pipe: "Pipeline", texts: list[str]) -> list[str]:
 def _get_language_content(doc: Document, language: str) -> str | None:
     if doc.language == language:
         return doc.content
-    return doc.content_translated.get(language)
+    translated = next(
+        t for t in doc.content_translated if t.target_language == language
+    )
+    if translated is not None:
+        return translated.content
+    return translated
 
 
 _CLASSIFICATION_SCRIPT_SOURCES = """
@@ -475,21 +494,13 @@ async def _add_classification_tags(
 
 
 def _unclassified_query(model: str, language: str) -> dict:
-    queries = (
-        # Get documents which aren't tagged yet
-        {BOOL: {MUST_NOT: {"prefix": {"tags": {"value": f"classified:{model}:"}}}}},
-        # And which are either in the model language or are translated in the model
-        # language
-        {
-            BOOL: {
-                SHOULD: [
-                    {"exists": {"field": f"{DOC_CONTENT_TRANSLATED}.{language}"}},
-                    {TERM: {DOC_LANGUAGE: language}},
-                ]
-            }
-        },
-    )
-    query = and_query(*queries)
+    already_classified = {"prefix": {"tags": {"value": f"classified:{model}:"}}}
+    is_target_language = {TERM: {DOC_LANGUAGE: language}}
+    has_translation = {
+        TERM: {f"{DOC_CONTENT_TRANSLATED}.target_language.keyword": language}
+    }
+    has_language_content = {BOOL: {SHOULD: [has_translation, is_target_language]}}
+    query = and_query({BOOL: must_not(already_classified)}, has_language_content)
     return query
 
 

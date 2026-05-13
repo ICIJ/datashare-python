@@ -53,7 +53,6 @@ _INDEX_BODY = {
             "join": {"type": "join", "relations": {"Document": "NamedEntity"}},
             "contentType": {"type": "keyword"},
             "content": {"type": "text"},
-            "contentTranslated": {"type": "text"},
         }
     }
 }
@@ -197,10 +196,7 @@ def index_docs_ops(
     docs: list[Document], index_name: str
 ) -> Generator[dict, None, None]:
     for doc in docs:
-        op = {
-            "_op_type": "index",
-            "_index": index_name,
-        }
+        op = {"_op_type": "index", "_index": index_name}
         doc = doc.model_dump(by_alias=True)  # noqa: PLW2901
         op.update(doc)
         if "path" in op:
