@@ -61,7 +61,7 @@ jobs:
           make lock-dist project=workflows-worker
           git add workers/workflows-worker/*.lock workers/workflows-worker/*.toml
           tag=workflows-version-"$workflows_worker_version"
-          echo tag="$tag" >> "$GITHUB_OUTPUT"
+          echo workflows_worker_tag="$tag" >> "$GITHUB_OUTPUT"
           git commit -m "release(workflows-worker): bump version to `$tag`"
           git pull --rebase
           git tag "$tag" 
@@ -72,10 +72,13 @@ jobs:
     runs-on: ubuntu-latest
     needs: bump-workflows-worker
     steps:
+      - name: "debug version"
+        run: echo ${{ needs.bump-workflows-worker.outputs.workflows_worker_tag }}
+
       - uses: actions/checkout@v6.0.2
         with:
           # We checkout main to avoid creating a tag from a detached head
-          ref: ${{ needs.bump-workflows-worker.outputs.tag }}
+          ref: ${{ needs.bump-workflows-worker.outputs.workflows_worker_tag }}
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Docker meta
