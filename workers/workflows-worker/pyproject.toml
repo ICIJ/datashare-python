@@ -9,7 +9,7 @@ authors = [
 readme = "README.md"
 requires-python = ">=3.11.0, <3.13"
 dependencies = [
-  "datashare-asr-worker",
+  "datashare-asr-worker==0.8.0",
   "datashare-python==0.8.5",
   "datashare-translation-worker==0.5.23",
 ]
