@@ -55,14 +55,15 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          workflows_worker_version=workflows-worker-"$(echo $workflows_worker_version_bump_info | jq -r .next)"
+          raw_version=$(echo $workflows_worker_version_bump_info | jq -r .next)
+          workflows_worker_version="workflows-worker-$raw_version"
           bump_type="$(echo $workflows_worker_version_bump_info | jq -r .bump_type)"
           cd workers/workflows-worker
           uv version --bump $bump_type
           cd ../..
           make lock-dist project=workflows-worker
           git add workers/workflows-worker/*.lock workers/workflows-worker/*.toml
-          echo "workflows_worker_tag=${workflows_worker_version/workflow-worker-/}" >> "$GITHUB_OUTPUT"
+          echo "workflows_worker_tag=$raw_version" >> "$GITHUB_OUTPUT"
           git commit -m "release(workflows-worker): bump version to `$workflows_worker_version`"
           git pull --rebase
           git tag "$workflows_worker_version" 
