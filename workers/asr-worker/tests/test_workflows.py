@@ -40,6 +40,27 @@ _TRANSCRIPTIONS = [Transcription.from_asr_handler_result(res) for res in _MODEL_
 
 
 @pytest.fixture
+async def workflows_worker(
+    test_temporal_client_session: TemporalClient,
+    test_worker_config: ASRWorkerConfig,
+    event_loop: AbstractEventLoop,
+) -> AsyncGenerator[None, None]:
+    client = test_temporal_client_session
+    worker_id = f"worker-{uuid.uuid4()}"
+    task_queue = TaskQueues.WORKFLOWS
+    worker_ctx = worker_context(
+        worker_id,
+        worker_config=test_worker_config,
+        client=client,
+        event_loop=event_loop,
+        task_queue=task_queue,
+        workflows=[ASRWorkflow],
+    )
+    async with worker_ctx:
+        yield
+
+
+@pytest.fixture
 async def io_bound_worker(
     test_temporal_client_session: TemporalClient,
     test_worker_config: ASRWorkerConfig,
@@ -56,10 +77,8 @@ async def io_bound_worker(
         client=client,
         event_loop=event_loop,
         task_queue=task_queue,
-        workflows=[ASRWorkflow],
         activities=[activities.search_audio_paths],
         dependencies=dependencies,
-        sandboxed=False,
     )
     async with worker_ctx:
         yield
@@ -84,7 +103,6 @@ async def cpu_bound_worker(
         task_queue=task_queue,
         activities=[activities.preprocess, activities.postprocess],
         dependencies=dependencies,
-        sandboxed=False,
     )
     async with worker_ctx:
         yield
@@ -109,7 +127,6 @@ async def gpu_inference_worker(
         task_queue=task_queue,
         activities=[activities.infer],
         dependencies=dependencies,
-        sandboxed=False,
     )
     async with worker_ctx:
         yield
@@ -138,6 +155,7 @@ async def test_asr_workflow_e2e(
     test_temporal_client_session: TemporalClient,
     cpu_bound_worker: Worker,  # noqa: ARG001
     gpu_inference_worker: Worker,  # noqa: ARG001
+    workflows_worker: Worker,  # noqa: ARG001
     io_bound_worker: Worker,  # noqa: ARG001
     test_worker_config: ASRWorkerConfig,
     with_audio_docs: list[FilesystemDocument],  # noqa: ARG001
@@ -160,7 +178,7 @@ async def test_asr_workflow_e2e(
 
     # When
     response = await client.execute_workflow(
-        ASRWorkflow.run, args, id=workflow_id, task_queue=TaskQueues.IO
+        ASRWorkflow.run, args, id=workflow_id, task_queue=TaskQueues.WORKFLOWS
     )
 
     # Then

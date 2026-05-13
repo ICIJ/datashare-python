@@ -17,6 +17,7 @@ async def test_translation_workflow(
     test_temporal_client_session: TemporalClient,  # noqa: ARG001
     index_translation_documents: list[Document],  # noqa: ARG001
     test_es_client: ESClient,
+    workflows_worker: Worker,  # noqa: ARG001
     io_worker: Worker,  # noqa: ARG001
     translation_inference_worker: Worker,  # noqa: ARG001
 ) -> None:
@@ -28,7 +29,7 @@ async def test_translation_workflow(
 
     # When
     res = await test_temporal_client_session.execute_workflow(
-        TranslationWorkflow.run, args, id=workflow_id, task_queue=TaskQueue.IO
+        TranslationWorkflow.run, args, id=workflow_id, task_queue=TaskQueue.WORKFLOWS
     )
 
     assert res.n_translations == 2

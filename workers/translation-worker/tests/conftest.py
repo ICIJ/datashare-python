@@ -120,6 +120,28 @@ def translation_worker_config() -> TranslationWorkerConfig:
 
 
 @pytest.fixture(scope="session")
+async def workflows_worker(
+    test_worker_config: TranslationWorkerConfig,  # noqa: F811
+    test_temporal_client_session: TemporalClient,  # noqa: F811
+    event_loop: asyncio.AbstractEventLoop,  # noqa: F811
+) -> AsyncGenerator[None, None]:
+    client = test_temporal_client_session
+    worker_id = f"test-translation-io-worker-{uuid.uuid4()}"
+    workflows = [TranslationWorkflow]
+    task_queue = TaskQueue.WORKFLOWS
+    worker_ctx = worker_context(
+        worker_id,
+        workflows=workflows,
+        worker_config=test_worker_config,
+        client=client,
+        event_loop=event_loop,
+        task_queue=task_queue,
+    )
+    async with worker_ctx:
+        yield
+
+
+@pytest.fixture(scope="session")
 async def io_worker(
     test_worker_config: TranslationWorkerConfig,  # noqa: F811
     test_temporal_client_session: TemporalClient,  # noqa: F811

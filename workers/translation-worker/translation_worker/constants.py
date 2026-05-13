@@ -4,6 +4,7 @@ from icij_common.es import DOC_CONTENT, DOC_LANGUAGE, DOC_ROOT_ID
 
 
 class TaskQueue(StrEnum):
+    WORKFLOWS = "datashare.workflows"
     IO = "translation.io"
     INFERENCE = "translation.inference"
 

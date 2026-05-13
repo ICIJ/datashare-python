@@ -269,7 +269,7 @@ wheels = [
 
 [[package]]
 name = "caul"
-version = "0.5.1"
+version = "0.5.4"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "huggingface-hub", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu') or sys_platform == 'darwin' or (sys_platform != 'linux' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu')" },
@@ -279,12 +279,11 @@ dependencies = [
     { name = "librosa", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu') or sys_platform == 'darwin' or (sys_platform != 'linux' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu')" },
     { name = "numpy", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu') or sys_platform == 'darwin' or (sys_platform != 'linux' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu')" },
     { name = "pydantic-extra-types", extra = ["pycountry"], marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu') or sys_platform == 'darwin' or (sys_platform != 'linux' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu')" },
-    { name = "torchcodec", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu') or sys_platform == 'darwin' or (sys_platform != 'linux' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu')" },
     { name = "typer", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu') or sys_platform == 'darwin' or (sys_platform != 'linux' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu')" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/f0/d5/ba097010d1c127a8fe38b3cd3ceb95f327b3895949cdecdb794024d2a2c3/caul-0.5.1.tar.gz", hash = "sha256:37cce078626e85b8a13335362a16852be49f2b630b29f6e57e5d7230a70feda5", size = 826187, upload-time = "2026-05-06T12:31:24.17Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/74/31/96c56a7483df3464405b51d189cb73b6793c86fd49c96819d50a0d97d46e/caul-0.5.4.tar.gz", hash = "sha256:4bfb9790ea4bccec2ee1307c48918081060a0846667262eace58991a6d53f134", size = 826526, upload-time = "2026-05-13T07:29:48.601Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/fe/de/333b79cc3fe7b09b2ea43d34fcf136c9498127da74f6d9a6248c0afac99d/caul-0.5.1-py3-none-any.whl", hash = "sha256:e26eaf4c37f9d1292ac6ed73b9e3f1c7501cf04be246b5659383c9ca216af1b8", size = 37129, upload-time = "2026-05-06T12:31:22.634Z" },
+    { url = "https://files.pythonhosted.org/packages/35/52/1e3183a377b9bce82925e0374e9d3c9663080141c6fe4f7c364c118d8b29/caul-0.5.4-py3-none-any.whl", hash = "sha256:e7a9c142568b428271bd8344ee7e23d66b123e54d83e61e37ba43c7955276e4b", size = 37149, upload-time = "2026-05-13T07:29:47.638Z" },
 ]
 
 [package.optional-dependencies]
@@ -294,10 +293,6 @@ nemo = [
     { name = "torch", version = "2.10.0+cpu", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "(platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'extra-20-datashare-asr-worker-cpu') or (platform_machine != 'x86_64' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu') or (sys_platform != 'linux' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu')" },
     { name = "torch", version = "2.10.0+cu129", source = { registry = "https://download.pytorch.org/whl/cu129" }, marker = "(platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'extra-20-datashare-asr-worker-gpu') or (platform_machine != 'x86_64' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu') or (sys_platform != 'linux' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu')" },
     { name = "torch", version = "2.11.0", source = { registry = "https://pypi.org/simple" }, marker = "(platform_machine == 'x86_64' and sys_platform == 'linux' and extra != 'extra-20-datashare-asr-worker-cpu' and extra != 'extra-20-datashare-asr-worker-gpu') or (sys_platform == 'darwin' and extra == 'extra-20-datashare-asr-worker-gpu') or (sys_platform == 'darwin' and extra != 'extra-20-datashare-asr-worker-cpu') or (extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu')" },
-    { name = "torchaudio", version = "2.10.0", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "(sys_platform == 'darwin' and extra == 'extra-20-datashare-asr-worker-cpu') or (extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu')" },
-    { name = "torchaudio", version = "2.10.0+cpu", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "(platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'extra-20-datashare-asr-worker-cpu') or (platform_machine != 'x86_64' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu') or (sys_platform != 'linux' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu')" },
-    { name = "torchaudio", version = "2.10.0+cu129", source = { registry = "https://download.pytorch.org/whl/cu129" }, marker = "(platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'extra-20-datashare-asr-worker-gpu') or (platform_machine != 'x86_64' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu') or (sys_platform != 'linux' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu')" },
-    { name = "torchaudio", version = "2.11.0", source = { registry = "https://pypi.org/simple" }, marker = "(platform_machine == 'x86_64' and sys_platform == 'linux' and extra != 'extra-20-datashare-asr-worker-cpu' and extra != 'extra-20-datashare-asr-worker-gpu') or (sys_platform == 'darwin' and extra == 'extra-20-datashare-asr-worker-gpu') or (sys_platform == 'darwin' and extra != 'extra-20-datashare-asr-worker-cpu') or (extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu')" },
 ]
 
 [[package]]
@@ -603,10 +598,10 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "caul", marker = "extra == 'cli'", specifier = "==0.5.1" },
-    { name = "caul", marker = "extra == 'cpu'", specifier = "==0.5.1" },
-    { name = "caul", marker = "extra == 'preprocessing'", specifier = "==0.5.1" },
-    { name = "caul", extras = ["nemo"], marker = "extra == 'inference'", specifier = "==0.5.1" },
+    { name = "caul", marker = "extra == 'cli'", specifier = "==0.5.4" },
+    { name = "caul", marker = "extra == 'cpu'", specifier = "==0.5.4" },
+    { name = "caul", marker = "extra == 'preprocessing'", specifier = "==0.5.4" },
+    { name = "caul", extras = ["nemo"], marker = "extra == 'inference'", specifier = "==0.5.4" },
     { name = "cuda-bindings", marker = "sys_platform == 'linux' and extra == 'gpu'", specifier = "==12.9.4" },
     { name = "datashare-python", specifier = "~=0.8.4" },
     { name = "kaldialign", marker = "extra == 'inference'", specifier = "==0.9.3" },
@@ -639,7 +634,7 @@ dev = [
 
 [[package]]
 name = "datashare-python"
-version = "0.8.5"
+version = "0.8.6"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiohttp", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu') or sys_platform == 'darwin' or (sys_platform != 'linux' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu')" },
@@ -654,9 +649,9 @@ dependencies = [
     { name = "tomlkit", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu') or sys_platform == 'darwin' or (sys_platform != 'linux' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu')" },
     { name = "typer", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu') or sys_platform == 'darwin' or (sys_platform != 'linux' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu')" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/95/db/68c76a32a2ed6d7734d83ed60302c97fbbfd56961e7a76c44d29febbc0e9/datashare_python-0.8.5.tar.gz", hash = "sha256:b9934d74be40470e2e63c369abd4503a73e50ac2776f1afb7d1ab9352470ca46", size = 315410, upload-time = "2026-05-06T12:21:52.029Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/ea/e8/4344511bcfa1befa35c53428de8a36db29ba06cf79e93c2c06e739956bc1/datashare_python-0.8.6.tar.gz", hash = "sha256:6cdf20db643ff3298eff318089c7d27fba907061dcfc1b81df888b8ecf3921d5", size = 315396, upload-time = "2026-05-12T12:30:29.33Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/0b/de/150767a572972571190130ffaf02ae9932252497d0779af77b58b1bee3c2/datashare_python-0.8.5-py3-none-any.whl", hash = "sha256:3d07402f0d034724edbbce8e183999bfe09ae0f12327e484c3a2408c4637af7a", size = 321385, upload-time = "2026-05-06T12:21:53.33Z" },
+    { url = "https://files.pythonhosted.org/packages/bd/c9/5179e84999de174a1a770996789ac1e9361e305114790165dde31c9ca672/datashare_python-0.8.6-py3-none-any.whl", hash = "sha256:c9a5ea12363ca4590222a727d7b22eef58091112547c9137e5a891f97d03153b", size = 321379, upload-time = "2026-05-12T12:30:27.947Z" },
 ]
 
 [[package]]
@@ -3207,7 +3202,7 @@ resolution-markers = [
     "python_full_version < '3.12' and platform_machine == 's390x' and sys_platform == 'darwin'",
 ]
 dependencies = [
-    { name = "torch", version = "2.10.0", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "(sys_platform == 'darwin' and extra == 'extra-20-datashare-asr-worker-cpu') or (extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu')" },
+    { name = "torch", version = "2.10.0", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "sys_platform == 'darwin'" },
 ]
 wheels = [
     { url = "https://download-r2.pytorch.org/whl/cpu/torchaudio-2.10.0-cp311-cp311-macosx_11_0_arm64.whl", hash = "sha256:28813664c4c86557921f0ae0ef0f624e065132b02c525bff599e7656e19ef727", upload-time = "2026-01-21T15:05:38Z" },
@@ -3223,7 +3218,7 @@ resolution-markers = [
     "python_full_version < '3.12' and platform_machine == 'x86_64' and sys_platform == 'linux'",
 ]
 dependencies = [
-    { name = "torch", version = "2.10.0+cpu", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "(platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'extra-20-datashare-asr-worker-cpu') or (platform_machine != 'x86_64' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu') or (sys_platform != 'linux' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu')" },
+    { name = "torch", version = "2.10.0+cpu", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
 ]
 wheels = [
     { url = "https://download-r2.pytorch.org/whl/cpu/torchaudio-2.10.0%2Bcpu-cp311-cp311-manylinux_2_28_x86_64.whl", hash = "sha256:d578c9bc636623c83103054d797c3a889d7f733c1375fedf48d0be4dd9ff0031", upload-time = "2026-01-21T15:05:37Z" },
@@ -3239,30 +3234,11 @@ resolution-markers = [
     "python_full_version < '3.12' and platform_machine == 'x86_64' and sys_platform == 'linux'",
 ]
 dependencies = [
-    { name = "torch", version = "2.10.0+cu129", source = { registry = "https://download.pytorch.org/whl/cu129" }, marker = "(platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'extra-20-datashare-asr-worker-gpu') or (platform_machine != 'x86_64' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu') or (sys_platform != 'linux' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu')" },
+    { name = "torch", version = "2.10.0+cu129", source = { registry = "https://download.pytorch.org/whl/cu129" }, marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
 ]
 wheels = [
     { url = "https://download-r2.pytorch.org/whl/cu129/torchaudio-2.10.0%2Bcu129-cp311-cp311-manylinux_2_28_x86_64.whl", hash = "sha256:c24e7a2389276208d85077f6663735d406532214d5365bf2e5c15ae91a894415", upload-time = "2026-01-21T15:05:50Z" },
     { url = "https://download-r2.pytorch.org/whl/cu129/torchaudio-2.10.0%2Bcu129-cp312-cp312-manylinux_2_28_x86_64.whl", hash = "sha256:5072f6c901ddc234b8d5d472d42fbe97445c6bb3433337c3945d00b012642969", upload-time = "2026-01-21T15:05:50Z" },
-]
-
-[[package]]
-name = "torchaudio"
-version = "2.11.0"
-source = { registry = "https://pypi.org/simple" }
-resolution-markers = [
-    "python_full_version >= '3.12' and platform_machine != 's390x' and sys_platform == 'darwin'",
-    "python_full_version >= '3.12' and platform_machine == 's390x' and sys_platform == 'darwin'",
-    "python_full_version < '3.12' and platform_machine != 's390x' and sys_platform == 'darwin'",
-    "python_full_version < '3.12' and platform_machine == 's390x' and sys_platform == 'darwin'",
-    "python_full_version >= '3.12' and platform_machine == 'x86_64' and sys_platform == 'linux'",
-    "python_full_version < '3.12' and platform_machine == 'x86_64' and sys_platform == 'linux'",
-]
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/94/77/0eec7f175d88f312296bd5b11c23bd58da37c1021f53da3db4df449ce3ee/torchaudio-2.11.0-cp311-cp311-macosx_11_0_arm64.whl", hash = "sha256:492dd64645e9d0bb843e94f1d9a4d1e31426262ffc594fafecc1697df9df5eb9", size = 684142, upload-time = "2026-03-23T18:13:36.805Z" },
-    { url = "https://files.pythonhosted.org/packages/ac/70/17408e0d154d0c894537a88dcbadc48e8ad3b6e1ef4a1dabda5d40245ee0/torchaudio-2.11.0-cp311-cp311-manylinux_2_28_x86_64.whl", hash = "sha256:1a07ec72fd6f26a588c39b5f029e0130d16bb40bc4221635580bf8fb18fcbc80", size = 1771930, upload-time = "2026-03-23T18:13:37.963Z" },
-    { url = "https://files.pythonhosted.org/packages/f1/b1/77658817acacd01a72b714440c62f419efc4d90170e704e8e7a2c0918988/torchaudio-2.11.0-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:a1cf1acc883bee9cb906a933572fed6a8a933f86ef34e9ea7d803f72317e8c1b", size = 684226, upload-time = "2026-03-23T18:13:40.023Z" },
-    { url = "https://files.pythonhosted.org/packages/88/d8/d6d0f896e064aa67377484efef4911cdcc07bce2929474e1417cc0af18c2/torchaudio-2.11.0-cp312-cp312-manylinux_2_28_x86_64.whl", hash = "sha256:6503c0bdb29daf2e6281bb70ea2dfe2c3553b782b619eb5d73bdadd8a3f7cecf", size = 1771992, upload-time = "2026-03-23T18:13:33.188Z" },
 ]
 
 [[package]]

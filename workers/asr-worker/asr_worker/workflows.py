@@ -21,6 +21,7 @@ logger = logging.getLogger(__name__)
 
 
 class TaskQueues(StrEnum):
+    WORKFLOWS = "datashare.workflows"
     IO = "asr.io"
     CPU = "asr.cpu"
     INFERENCE_GPU = "asr.inference.gpu"
