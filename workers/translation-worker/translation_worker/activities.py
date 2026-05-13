@@ -1,19 +1,17 @@
 import asyncio
 import logging
-from collections import defaultdict
-from collections.abc import AsyncGenerator, AsyncIterator, Iterable
-from copy import deepcopy
+from collections.abc import AsyncGenerator, AsyncIterator, Callable, Iterable
 from functools import partial
 from typing import Any, cast
 
 from aiostream.stream import chain
 from datashare_python.dependencies import lifespan_es_client, lifespan_worker_config
-from datashare_python.objects import Document
+from datashare_python.objects import DatashareLanguage, Document, Translation
 from datashare_python.types_ import ProgressRateHandler
 from datashare_python.utils import ActivityWithProgress, activity_defn, to_raw_progress
 from elasticsearch._async.helpers import async_bulk
 from icij_common.es import (
-    BOOL,
+    DOC_CONTENT_TRANSLATED,
     DOC_LANGUAGE,
     HITS,
     ID_,
@@ -21,328 +19,275 @@ from icij_common.es import (
     SOURCE,
     TERM,
     ESClient,
+    bool_query,
     has_id,
     must_not,
 )
-from icij_common.iter_utils import before_and_after, once
-from pydantic_extra_types.language_code import LanguageAlpha2, LanguageName
+from icij_common.iter_utils import async_batches, before_and_after, once
+from pydantic import TypeAdapter
+
+from translation_worker.constants import DOC_CONTENT_TEXT_LENGTH
 
 from .config import TranslationWorkerConfig
-from .constants import BATCHING_DOC_SOURCES, CONTENT_LENGTH, TRANSLATION_DOC_SOURCES
-from .core import (
-    Sentencizer,
-    TranslationEnsemble,
-    get_translation_ensemble,
-    has_language,
-    translate_as_list,
-)
-from .objects import BatchSentence
+from .constants import BATCHING_DOC_SOURCES, TRANSLATION_DOC_SOURCES
+from .objects import Language, TranslationConfig
+from .processors import SentenceSplitter, Translator
 
 logger = logging.getLogger(__name__)
+
+DocId = str
+Batch = list[DocId]
+
+_LANGUAGE_TYPE_ADAPTER = TypeAdapter(Language)
 
 
 class TranslationActivities(ActivityWithProgress):
     @activity_defn(name="translation.worker-config")
     async def translation_worker_config(self) -> TranslationWorkerConfig:
+        logger.info("loading worker configuration...")
         worker_config = cast(TranslationWorkerConfig, lifespan_worker_config())
         return worker_config
 
     @activity_defn(name="translation.create-translation-batches")
     async def create_translation_batches(
-        self, project: str, target_language: LanguageAlpha2
-    ) -> list[tuple[str, list[list[str]]]]:
+        self, project: str, target: Language
+    ) -> list[tuple[Language, list[Batch]]]:
         es_client = lifespan_es_client()
         worker_config = cast(TranslationWorkerConfig, lifespan_worker_config())
-        max_batch_byte_len = worker_config.max_batch_byte_len
-        batches = await create_translation_batches(
-            project=project,
-            target_language=target_language,
-            max_batch_byte_len=max_batch_byte_len,
-            es_client=es_client,
-        )
+        batch_text_length = worker_config.batch_text_length
+        logger.info("creating translation batches...")
+        batches = [
+            b
+            async for b in create_translation_batches_act(
+                project=project,
+                target=target,
+                batch_text_length=batch_text_length,
+                es_client=es_client,
+            )
+        ]
+        logger.info("translation batches created !")
         return batches
 
     @activity_defn(name="translation.translate-docs")
     async def translate_docs(
         self,
-        doc_id_batch_with_lang: tuple[str, list[list[str]]],
-        target_language: LanguageAlpha2,
+        batches: list[Batch],
         *,
+        source: DatashareLanguage,
+        target: Language,
+        config: TranslationConfig,
         project: str,
         progress: ProgressRateHandler | None = None,
     ) -> int:
         es_client = lifespan_es_client()
         worker_config = cast(TranslationWorkerConfig, lifespan_worker_config())
-        n_translated = await translate_docs(
-            doc_id_batch_with_lang,
-            target_language=target_language,
-            project=project,
-            es_client=es_client,
-            progress=progress,
-            worker_config=worker_config,
-        )
+        # TODO: make a generic fix using interceptors,
+        #  see https://github.com/temporalio/sdk-python/issues/360
+        source = _LANGUAGE_TYPE_ADAPTER.validate_python(source)
+        target = _LANGUAGE_TYPE_ADAPTER.validate_python(target)
+        if isinstance(config, dict):
+            config = TranslationConfig.model_validate(config)
+        # TODO: perform some caching here to avoid reloading
+        translator = config.to_translator()
+        sentence_splitter = config.to_sentence_splitter()
+        # Load the translator first to install the SBD, then load the splitter
+        logger.debug("loading %s -> %s translator...", source, target)
+        with translator.load(source, target=target, worker_config=worker_config):
+            logger.debug("loading %s sentence splitter...", source)
+            with sentence_splitter.load(source):
+                logger.info("translating %s batches...", len(batches))
+                n_translated = await translate_docs_act(
+                    batches,
+                    project=project,
+                    es_client=es_client,
+                    progress=progress,
+                    worker_config=worker_config,
+                    translator=translator,
+                    sentence_splitter=sentence_splitter,
+                )
+                logger.info("done translating !")
         return n_translated
 
 
-async def create_translation_batches(
+async def create_translation_batches_act(
     *,
     project: str,
-    target_language: LanguageAlpha2,
-    max_batch_byte_len: int = 1000000,
+    target: Language,
+    batch_text_length: int = 1000000,
     es_client: ESClient | None = None,
-) -> list[tuple[str, list[list[str]]]]:
-    """Batch doc ids by language and/or total batch byte length
-
-    :param project: Project name
-    :param target_language: Target language
-    :param max_batch_byte_len: Maximum batch byte length
-    :param es_client: ES client
-    :return: list of batches keyed by language
-    """
+) -> AsyncGenerator[tuple[DatashareLanguage, list[Batch]], None]:
     # Retrieve unprocessed docs.
     es_docs = _get_es_docs(
-        es_client,
-        project,
-        target_language_alpha_code=target_language,
-        source_includes=BATCHING_DOC_SOURCES,
+        es_client, project, target=target, source_includes=BATCHING_DOC_SOURCES
     )
-    all_results = {}
-    current_batch = []
-    current_batch_byte_len = 0
+    async for language_docs in es_docs:
+        language_batches: list[Batch] = []
+        current_batch = []
+        current_length = 0
+        current_language = None
 
-    async for es_doc_id_batch in es_docs:
-        first_doc = await anext(es_doc_id_batch, None)
-        if first_doc is None:
-            continue
+        async for doc in language_docs:
+            doc_id: str = doc[ID_]
+            doc_length = doc[SOURCE][DOC_CONTENT_TEXT_LENGTH]
+            if current_language is None:
+                current_language = DatashareLanguage(doc[SOURCE][DOC_LANGUAGE])
+                logger.debug("creating batches for %s docs...", current_language)
 
-        source_alpha_2 = LanguageName(first_doc[SOURCE][DOC_LANGUAGE].title()).alpha2
-        all_results[source_alpha_2] = []
-        current_batch.append(first_doc[ID_])
-
-        async for item in es_doc_id_batch:
-            doc_id = item[ID_]
-            doc_byte_len = item[SOURCE][CONTENT_LENGTH]
-
-            if 0 < max_batch_byte_len < current_batch_byte_len + doc_byte_len:
-                all_results[source_alpha_2].append(deepcopy(current_batch))
+            next_length = current_length + doc_length
+            if next_length > batch_text_length:
+                language_batches.append(list(current_batch))
                 current_batch = []
-                current_batch_byte_len = 0
 
             current_batch.append(doc_id)
-            current_batch_byte_len += doc_byte_len
+            current_length = next_length
 
-        if len(current_batch) > 0:
-            all_results[source_alpha_2].append(deepcopy(current_batch))
-            current_batch = []
-            current_batch_byte_len = 0
+        if current_batch:
+            language_batches.append(list(current_batch))
+        if current_language is None:
+            continue
+        yield current_language, language_batches
 
-    return list(all_results.items())
 
-
-async def translate_docs(
-    doc_id_batch_with_lang: tuple[str, list[list[str]]],
-    target_language: LanguageAlpha2,
+async def translate_docs_act(
+    batches: list[Batch],
     *,
     project: str,
-    es_client: ESClient | None = None,
-    worker_config: TranslationWorkerConfig | None = None,
+    translator: Translator,
+    sentence_splitter: SentenceSplitter,
+    worker_config: TranslationWorkerConfig,
+    es_client: ESClient,
     progress: ProgressRateHandler | None = None,  # noqa: F821
 ) -> int:
-    """Translate sentence batches and reconstruct translations from original
-    sentence ordering, inserting them into ES
-
-    :param doc_id_batch_with_lang: doc_ids keyed by document language alpha code
-    :param target_language: Target language alpha2 code
-    :param project: Project name
-    :param es_client: ES client
-    :param progress: ProgressRateHandler
-    :param worker_config: worker config
-    :return: number of documents translated
-    """
-    if worker_config is None:
-        worker_config = TranslationWorkerConfig()
-
     # TODO: this should not happen
     if not isinstance(worker_config, TranslationWorkerConfig):
         worker_config = TranslationWorkerConfig.model_validate(worker_config)
-
-    source_language_alpha_code, doc_id_batches = doc_id_batch_with_lang
-
-    # Get documents
-    translation_ensemble = get_translation_ensemble(
-        source_language_alpha_code=source_language_alpha_code,
-        target_language_alpha_code=target_language,
-        device=worker_config.device,
-        inter_threads=worker_config.inter_threads,
-        intra_threads=worker_config.intra_threads,
-        compute_type=worker_config.compute_type,
+    es_queue = asyncio.Queue()
+    publisher = _translate_and_queue(
+        batches,
+        es_queue,
+        project,
+        translator,
+        sentence_splitter,
+        worker_config,
+        es_client,
+        progress,
     )
+    publisher = asyncio.create_task(publisher)
+    publisher_callback = lambda: es_queue.put_nowait(None)  # noqa: E731
+    consumer = asyncio.create_task(
+        _write_translations_to_es(es_client, queue=es_queue, project=project)
+    )
+    n_docs, _ = await _publish_and_consume(
+        publisher, publisher_callback, consumer=consumer
+    )
+    return n_docs
 
-    all_sentences = []
-    all_translations = []
-    translation_tasks = []
 
-    # unit here is a sentence
+async def _translate_and_queue(
+    batches: list[Batch],
+    queue: asyncio.Queue,
+    project: str,
+    translator: Translator,
+    sentence_splitter: SentenceSplitter,
+    worker_config: TranslationWorkerConfig,
+    es_client: ESClient,
+    progress: ProgressRateHandler | None = None,  # noqa: F821
+) -> int:
+    n_docs = sum(len(b) for b in batches)
+    if not n_docs:
+        return n_docs
+    if progress is not None:
+        progress = to_raw_progress(progress, max_progress=n_docs)
+    source = translator.source
+    target = translator.target
+    model = translator.registered_name
+    translation_factory = partial(
+        Translation, source_language=source, target_language=target, translator=model
+    )
     seen = 0
-    total = 0
-
-    for doc_id_batch in doc_id_batches:
-        sentences_batches = _get_doc_contents_and_split_on_sentences(
+    buffer = []
+    current_doc = None
+    current_doc_translation = []
+    n_batches = len(batches)
+    for batch_i, doc_ids in enumerate(batches):
+        logger.debug("translating batch %s / %s", batch_i, n_batches)
+        docs = _poll_from_es(
             es_client,
             project,
-            doc_id_batch,
-            translation_ensemble.sentencizer,
-            worker_config.batch_size,
+            body={QUERY: has_id(doc_ids)},
+            source_includes=TRANSLATION_DOC_SOURCES,
         )
-
-        # Create translation tasks
-        async for sentences_batch in sentences_batches:
-            n_sentences = len(sentences_batch)
-            if not n_sentences:
-                continue
-
-            # Convert the progress to a "raw" progress to update the progress
-            # incrementally rather than setting the progress rate
-            if progress is not None:
-                progress = to_raw_progress(progress, max_progress=n_sentences)
-            total += n_sentences
-
-            # Translate
-            translation_tasks.append(
-                asyncio.create_task(
-                    _translate_batch(
-                        sentences_batch, translation_ensemble, worker_config.beam_size
-                    )
-                )
-            )
-
-            all_sentences += sentences_batch
-
-    # Run translation tasks
-    for task in asyncio.as_completed(translation_tasks):
-        translation_batch = await task
-        all_translations.extend(translation_batch)
-
-        seen += len(translation_batch)
-
-        if progress is not None:
-            await progress(int(seen / total))
-
-    all_translations = await asyncio.gather(*translation_tasks)
-    all_translations = [
-        translation for batch in all_translations for translation in batch
-    ]
-
-    # Reconstruct documents from sentences
-    # TODO: separate into a function for testing
-    reconstructed_docs = defaultdict(dict)
-
-    for batch_sentence, translation in zip(
-        all_sentences, all_translations, strict=False
-    ):
-        key = batch_sentence.doc_id, batch_sentence.root_document
-        reconstructed_docs[key][batch_sentence.sentence_index] = translation
-
-    # Combine sentences into translations and key with doc_id and root_document
-    # for insertion
-    translations_with_doc_ids_and_root_doc = []
-
-    for (doc_id, root_document), sentence_idx_mapping in reconstructed_docs.items():
-        ordered_translation = " ".join(
-            [translation for (_, translation) in sorted(sentence_idx_mapping.items())]
-        )
-        seen += len(ordered_translation)
-
-        translations_with_doc_ids_and_root_doc.append(
-            (doc_id, root_document, ordered_translation)
-        )
-
-        if progress is not None:
-            await progress(int(seen / total))
-
-    await _add_translation(
-        es_client,
-        translations_with_doc_ids_and_root_doc,
-        project,
-        target_language_alpha_code=target_language,
-    )
-    # Return the number of translated documents
-    return len(reconstructed_docs)
+        doc_sents = _split_sentences(docs, sentence_splitter)
+        # TODO: ideally we should aim at having almost constant size batches,
+        #  by using some sort of binarization / binning. That will also improve add
+        #  context to translate short sentences. A split strategy
+        #  like adding min and max batch_item length should help
+        doc_sent_batches = async_batches(doc_sents, batch_size=worker_config.batch_size)
+        async for batch in doc_sent_batches:
+            batch_docs, sents = zip(*batch, strict=False)
+            # Run translation 1 batch at the time, parallelization is controlled
+            # via the batch_size
+            translated_sents = await asyncio.to_thread(translator.translate, sents)
+            for doc, translated_sent in zip(batch_docs, translated_sents, strict=True):
+                if current_doc is not None and doc.id != current_doc.id:
+                    translation = translation_factory(content=current_doc_translation)
+                    buffer.append((current_doc, translation))
+                    if len(buffer) >= worker_config.es_buffer_size:
+                        queue.put_nowait(buffer)
+                        buffer = []
+                    seen += 1
+                    if progress is not None:
+                        await progress(seen)
+                    current_doc_translation = []
+                current_doc = doc
+                current_doc_translation.append(translated_sent)
+        logger.debug("batch %s / %s translated !", batch_i, n_batches)
+    # Empty the buffer
+    if current_doc_translation:
+        translation = translation_factory(content=current_doc_translation)
+        buffer.append((current_doc, translation))
+        queue.put_nowait(buffer)
+    return n_docs
 
 
-# async
-async def _get_doc_contents_and_split_on_sentences(
-    es_client: ESClient,
-    project: str,
-    doc_ids: list[str],
-    sentencizer: Sentencizer,
-    sentence_batch_size: int = 16,
-) -> AsyncGenerator[list[BatchSentence] | None, Any]:
-    if len(doc_ids) == 0:
-        return
-
-    batch_gen = _async_query_es(
-        es_client,
-        project,
-        body={QUERY: has_id(doc_ids)},
-        source_includes=TRANSLATION_DOC_SOURCES,
-    )
-
-    async for batch in _iter_sentences(batch_gen, sentencizer, sentence_batch_size):
-        yield batch
+async def _write_translations_to_es(
+    es_client: ESClient, queue: asyncio.Queue, project: str
+) -> None:
+    while True:
+        translated_docs = await queue.get()
+        if translated_docs is None:
+            logger.debug("popped poison pill from the queue, exiting !")
+            queue.task_done()
+            return
+        logger.debug("writing translations to the index..")
+        await _update_docs_translation(es_client, translated_docs, project=project)
+        logger.debug("translation written !")
+        queue.task_done()
 
 
-async def _iter_sentences(
-    doc_iter: AsyncGenerator[dict, None],
-    sentencizer: Sentencizer,
-    sentence_batch_size: int = 16,
-) -> AsyncGenerator[list[BatchSentence], None]:
-    sentence_batch = []
-
+async def _split_sentences(
+    doc_iter: AsyncGenerator[dict, None], sentence_splitter: SentenceSplitter
+) -> AsyncGenerator[tuple[Document, str], None]:
     async for doc in doc_iter:
         es_doc = Document.from_es(doc)
-        sentences = await asyncio.to_thread(sentencizer, es_doc.content)
-        for idx, sentence in enumerate(sentences):
-            sentence_batch.append(
-                BatchSentence(
-                    doc_id=es_doc.id,
-                    root_document=es_doc.root_document,
-                    sentence_index=idx,
-                    sentence=sentence,
-                )
-            )
-
-            if len(sentence_batch) >= sentence_batch_size:
-                yield sentence_batch
-                sentence_batch = []
-
-    if len(sentence_batch) > 0:
-        yield sentence_batch
-
-
-async def _translate_batch(
-    sentence_batch: list[BatchSentence],
-    translation_ensemble: TranslationEnsemble,
-    max_parallel_batches: int = 8,
-    beam_size: int = 4,
-) -> list[str]:
-    async with asyncio.Semaphore(max_parallel_batches):
-        return await asyncio.to_thread(
-            translate_as_list, sentence_batch, translation_ensemble, beam_size
+        sentences = await asyncio.to_thread(
+            sentence_splitter.split_sentences, es_doc.content
         )
+        for sentence in sentences:
+            yield es_doc, sentence
 
 
 async def _get_es_docs(
     es_client: ESClient,
     project: str,
-    target_language_alpha_code: str,
+    target: Language,
     source_includes: list[str],
 ) -> AsyncGenerator[AsyncIterator[dict], None]:
     # Get all documents that are not in the target language sorted by language
-    docs = _async_query_es(
+    docs = _poll_from_es(
         es_client,
         project,
-        body=_untranslated_query(target_language_alpha_code),
+        body=_untranslated_query(target),
         source_includes=source_includes,
         sort=[f"{DOC_LANGUAGE}:asc", "_doc:asc"],
     )
@@ -352,69 +297,66 @@ async def _get_es_docs(
         except StopAsyncIteration:
             return
         current_language = next_doc[SOURCE][DOC_LANGUAGE]
-
         # Consume the iterator until we find a doc with a different language
         language_docs, docs = before_and_after(
-            docs, predicate=partial(has_language, language=current_language)
+            docs, predicate=partial(_has_language, language=current_language)
         )
         # Group all docs of same language
         grouped_docs = chain(once(next_doc), language_docs)
-
         yield aiter(grouped_docs)
 
 
-_SCRIPT_SOURCES = """
-if( !ctx._source.containsKey("content_translated") ) {
-    ctx._source.content_translated = new HashMap();
-}
-ctx._source.content_translated[params.language] = params.translation;
+_SCRIPT_SOURCES = f"""
+if (ctx._source.{DOC_CONTENT_TRANSLATED} == null) {{
+    ctx._source.{DOC_CONTENT_TRANSLATED} = [params.translation];
+}} else {{
+    def existing = ctx._source.{DOC_CONTENT_TRANSLATED};
+    for (int i = 0; i < existing.size(); i++) {{
+        if (existing[i].source_language == params.translation.source_language
+            && existing[i].target_language == params.translation.target_language) {{
+            if (existing[i].content == params.translation.content) {{
+                ctx.op = 'none';  // skip write if identical
+                return;
+            }}
+            existing[i] = params.translation;
+            return;
+        }}
+    }}
+    existing.add(params.translation);
+}}
 """
 
 
-async def _add_translation(
+async def _update_docs_translation(
     es_client: ESClient,
-    translations: Iterable[tuple[Document, str]],
+    translated_docs: Iterable[tuple[Document, Translation]],
     project: str,
-    *,
-    target_language_alpha_code: str,
 ) -> None:
     actions = (
         {
             "_op_type": "update",
             "_index": project,
-            "_routing": root_document,
-            ID_: doc_id,
+            "_routing": doc.root_document,
+            ID_: doc.id,
             "script": {
                 "source": _SCRIPT_SOURCES,
                 "lang": "painless",
-                "params": {
-                    "language": target_language_alpha_code,
-                    "translation": translation,
-                },
+                "params": {"translation": translation.model_dump(by_alias=True)},
             },
         }
-        for doc_id, root_document, translation in translations
+        for doc, translation in translated_docs
     )
     await async_bulk(es_client, actions, raise_on_error=True, refresh="wait_for")
 
 
-def _untranslated_query(target_language_alpha_code: str) -> dict:
-    query = {
-        "query": {
-            BOOL: must_not(
-                {
-                    "exists": {
-                        "field": f"content_translated.{target_language_alpha_code}"
-                    }
-                },
-                {TERM: {DOC_LANGUAGE: target_language_alpha_code}},
-            )
-        }
-    }
+def _untranslated_query(target: Language) -> dict:
+    query = bool_query(
+        must_not({TERM: {f"{DOC_CONTENT_TRANSLATED}.target_language.keyword": target}})
+    )
     return query
 
 
-async def _async_query_es(
+async def _poll_from_es(
     es_client: ESClient,
     project: str,
     *,
@@ -423,13 +365,42 @@ async def _async_query_es(
     sort: list[str] = None,
 ) -> AsyncGenerator[dict, None]:
     async for res in es_client.poll_search_pages(
-        index=project,
-        body=body,
-        _source_includes=source_includes,
-        sort=sort,
+        index=project, body=body, _source_includes=source_includes, sort=sort
     ):
         for hit in res[HITS][HITS]:
             yield hit
+
+
+def _has_language(doc: dict, language: str) -> bool:
+    return doc[SOURCE][DOC_LANGUAGE] == language
+
+
+async def _publish_and_consume(
+    publisher: asyncio.Task,
+    publisher_completion_callback: Callable[[], None],
+    *,
+    consumer: asyncio.Task,
+) -> tuple[Any, Any]:
+    # Publish and consume concurrently
+    logger.debug("starting publish and subscribe")
+    done, pending = await asyncio.wait(
+        [publisher, consumer], return_when=asyncio.FIRST_COMPLETED
+    )
+    for d in done:
+        # Stop everything case of exception
+        exc = d.exception()
+        if exc:
+            for p in pending:
+                p.cancel()
+            raise exc
+    # Wait for publish to be done and push the poison pill to stop consuming
+    p_res = await publisher
+    publisher_completion_callback()
+    logger.debug("done publishing, waiting for consumer to complete...")
+    # Wait for consumption to be done
+    c_res = await consumer
+    logger.debug("done consuming !")
+    return p_res, c_res
 
 
 ACTIVITIES = [

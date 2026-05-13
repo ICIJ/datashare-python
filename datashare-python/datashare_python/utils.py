@@ -83,7 +83,6 @@ class WorkflowWithProgress:
     async def update_progress(self, signal: ProgressSignal) -> None:
         async with self._update_lock:
             # TODO: remove this log
-            workflow.logger.debug("recording progress signal %s", signal)
             key = (signal.run_id, signal.activity_id)
             self._progress[key] = signal.to_progress()
             progress = sum(p.current for p in self._progress.values())

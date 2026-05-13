@@ -3,13 +3,13 @@ from functools import partial
 
 import pytest
 from datashare_python.conftest import TEST_PROJECT, has_state
-from datashare_python.objects import Document, TaskResult, TaskState
+from datashare_python.objects import DatashareLanguage, Document, TaskResult, TaskState
 from datashare_python.task_client import DatashareTaskClient
 from icij_common.es import HITS, ESClient, has_type
 from icij_common.test_utils import async_true_after
 from temporalio.client import Client as TemporalClient
 from temporalio.worker import Worker
-from worker_template.objects_ import (
+from worker_template.objects import (
     TranslateAndClassifyArgs,
     TranslateAndClassifyResponse,
 )
@@ -23,6 +23,7 @@ from worker_template.workflows import (
 @pytest.mark.e2e
 async def test_ping_workflow_e2e(
     io_worker: Worker,  # noqa: ARG001
+    workflows_worker: Worker,  # noqa: ARG001
     test_temporal_client_session: TemporalClient,
 ) -> None:
     # Given
@@ -35,7 +36,7 @@ async def test_ping_workflow_e2e(
         PingWorkflow,
         args,
         id=wf_id,
-        task_queue=TaskQueues.IO,
+        task_queue=TaskQueues.WORKFLOWS,
         request_eager_start=True,
     )
 
@@ -46,10 +47,11 @@ async def test_ping_workflow_e2e(
 @pytest.mark.e2e
 async def test_ping_e2e(
     io_worker: Worker,  # noqa: ARG001
+    workflows_worker: Worker,  # noqa: ARG001
     test_task_client: DatashareTaskClient,
 ) -> None:
     # Given
-    task_group = TaskQueues.IO
+    task_group = TaskQueues.WORKFLOWS
     # When
     ping_task_id = await test_task_client.create_task("ping", dict(), group=task_group)
     # Then
@@ -76,12 +78,15 @@ async def test_translate_and_classify_workflow_e2e(
     populate_es: list[Document],  # noqa: ARG001
     test_es_client: ESClient,
     io_worker: Worker,  # noqa: ARG001
+    workflows_worker: Worker,  # noqa: ARG001
     translation_worker: Worker,  # noqa: ARG001
     classification_worker: Worker,  # noqa: ARG001
 ) -> None:
     # Given
     temporal_client = test_temporal_client_session
-    payload = TranslateAndClassifyArgs(project=TEST_PROJECT, language="ENGLISH")
+    payload = TranslateAndClassifyArgs(
+        project=TEST_PROJECT, language=DatashareLanguage("ENGLISH")
+    )
     wf_id = f"translate-and-classify-{uuid.uuid4()}"
 
     # When
@@ -89,7 +94,7 @@ async def test_translate_and_classify_workflow_e2e(
         TranslateAndClassifyWorkflow.run,
         payload,
         id=wf_id,
-        task_queue=TaskQueues.IO,
+        task_queue=TaskQueues.WORKFLOWS,
     )
 
     # Then

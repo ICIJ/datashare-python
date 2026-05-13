@@ -2,14 +2,15 @@ import uuid
 
 import pytest
 from datashare_python.conftest import TEST_PROJECT
-from datashare_python.objects import Document
+from datashare_python.objects import DatashareLanguage, Document
 from icij_common.es import HITS, ESClient, has_type
-from pydantic_extra_types.language_code import LanguageName
 from temporalio.client import Client as TemporalClient
 from temporalio.worker import Worker
 from translation_worker.constants import TaskQueue
 from translation_worker.objects import TranslationArgs
 from translation_worker.workflows import TranslationWorkflow
+
+from .conftest import DS_ENGLISH
 
 
 @pytest.mark.e2e
@@ -23,7 +24,7 @@ async def test_translation_workflow(
 ) -> None:
     # Given
     args = TranslationArgs(
-        project=TEST_PROJECT, target_language=LanguageName("ENGLISH")
+        project=TEST_PROJECT, target_language=DatashareLanguage("ENGLISH")
     )
     workflow_id = f"translation-{uuid.uuid4().hex}"
 
@@ -43,4 +44,7 @@ async def test_translation_workflow(
         index_docs += hits[HITS][HITS]
     assert len(index_docs) == 2
     index_docs = [Document.from_es(doc) for doc in index_docs]
-    assert all("en" in doc.content_translated for doc in index_docs)
+    assert all(
+        any(ct.target_language == DS_ENGLISH for ct in doc.content_translated)
+        for doc in index_docs
+    )

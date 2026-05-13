@@ -82,6 +82,30 @@ async def lifetime_deps(
 
 
 @pytest.fixture(scope="session")
+async def workflows_worker(
+    test_worker_config: WorkerConfig,  # noqa: F811
+    test_temporal_client_session: TemporalClient,  # noqa: F811
+    event_loop: asyncio.AbstractEventLoop,  # noqa: F811
+    test_deps: list[ContextManagerFactory],  # noqa: F811
+) -> AsyncGenerator[None, None]:
+    client = test_temporal_client_session
+    worker_id = f"test-workflows-worker-{uuid.uuid4()}"
+    task_queue = TaskQueues.WORKFLOWS
+    workflows = [PingWorkflow, TranslateAndClassifyWorkflow]
+    worker_ctx = worker_context(
+        worker_id,
+        workflows=workflows,
+        worker_config=test_worker_config,
+        client=client,
+        event_loop=event_loop,
+        task_queue=task_queue,
+        dependencies=test_deps,
+    )
+    async with worker_ctx:
+        yield
+
+
+@pytest.fixture(scope="session")
 async def io_worker(
     test_worker_config: WorkerConfig,  # noqa: F811
     test_temporal_client_session: TemporalClient,  # noqa: F811
@@ -96,12 +120,10 @@ async def io_worker(
         CreateTranslationBatches.create_translation_batches,
         CreateClassificationBatches.create_classification_batches,
     ]
-    workflows = [PingWorkflow, TranslateAndClassifyWorkflow]
     task_queue = TaskQueues.IO
     worker_ctx = worker_context(
         worker_id,
         activities=io_activities,
-        workflows=workflows,
         worker_config=test_worker_config,
         client=client,
         event_loop=event_loop,

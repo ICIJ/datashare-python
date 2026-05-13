@@ -6,8 +6,12 @@ from datetime import UTC, datetime
 from enum import StrEnum, unique
 from io import BytesIO
 from pathlib import Path
-from typing import Annotated, Any, Literal, Self, TypeVar, cast
+from typing import Annotated, Any, ClassVar, Literal, Self, TypeVar, cast
 
+import langcodes
+from pydantic_core import PydanticCustomError, ValidationError, core_schema
+from pydantic_core.core_schema import PlainValidatorFunctionSchema
+from pydantic_extra_types.language_code import LanguageName
 from temporalio import workflow
 
 from .constants import TIKA_METADATA_RESOURCENAME
@@ -31,7 +35,14 @@ from icij_common.pydantic_utils import (
     merge_configs,
     no_enum_values_config,
 )
-from pydantic import AfterValidator, Field
+from pydantic import (
+    AfterValidator,
+    BeforeValidator,
+    Field,
+    GetCoreSchemaHandler,
+    TypeAdapter,
+    model_validator,
+)
 from pydantic import BaseModel as _BaseModel
 from pydantic.main import IncEx
 
@@ -48,6 +59,202 @@ class BaseModel(_BaseModel):
 
 class DatashareModel(BaseModel):
     model_config = merge_configs(BaseModel.model_config, lowercamel_case_config())
+
+
+class DatashareLanguage(str):
+    _language_type_adapter: ClassVar[TypeAdapter] = TypeAdapter(LanguageName)
+
+    @classmethod
+    def _validate(cls, __input_value: str, _: core_schema.ValidationInfo) -> Self:
+        if __input_value != __input_value.upper():
+            raise PydanticCustomError(
+                "datashare_language", "Invalid Datashare language, expected uppercase"
+            )
+        try:
+            # Use pydantic provided validation
+            cls._language_type_adapter.validate_python(__input_value.title())
+        except ValidationError as e:
+            raise PydanticCustomError(
+                "datashare_language", "Unknown Datashare language"
+            ) from e
+        return cls(__input_value)
+
+    @classmethod
+    def __get_pydantic_core_schema__(
+        cls, source: type[Any], handler: GetCoreSchemaHandler
+    ) -> core_schema.AfterValidatorFunctionSchema:
+        return core_schema.with_info_after_validator_function(
+            cls._validate,
+            core_schema.str_schema(),
+            serialization=core_schema.to_string_ser_schema(),
+        )
+
+    @property
+    def as_language_name(self) -> LanguageName:
+        return LanguageName(self.title())
+
+    @property
+    def alpha2(self) -> str | None:
+        return self.as_language_name.alpha2
+
+    @property
+    def alpha3(self) -> str:
+        return self.as_language_name.alpha3
+
+
+@unique
+class DocumentLocation(StrEnum):
+    ORIGINAL = "original"
+    ARTIFACTS = "artifacts"
+    WORKDIR = "workdir"
+
+
+def _is_relative(value: Path) -> Path:
+    if value.is_absolute():
+        raise ValueError(
+            f"FilesystemDocument path should always be relative, found {value}"
+        )
+    return value
+
+
+class FilesystemDocument(DatashareModel):
+    id: str
+    path: Annotated[Path, AfterValidator(_is_relative)]
+    index: str
+    location: DocumentLocation
+    resource_name: str
+
+    def locate(
+        self, original_root: Path, *, artifacts_root: Path, workdir: Path
+    ) -> Path:
+        from datashare_python.utils import artifacts_dir  # noqa: PLC0415
+
+        match self.location:
+            case DocumentLocation.ORIGINAL:
+                return original_root / self.path
+            case DocumentLocation.ARTIFACTS:
+                project = self.index
+                return artifacts_root / artifacts_dir(self.id, project=project) / "raw"
+            case DocumentLocation.WORKDIR:
+                return workdir / self.path
+            case _:
+                raise ValueError(f"invalid location: {self.path}")
+
+
+class IETFLanguage(str):
+    @classmethod
+    def __get_pydantic_core_schema__(
+        cls, source: Any, handler: GetCoreSchemaHandler
+    ) -> PlainValidatorFunctionSchema:
+        return core_schema.no_info_plain_validator_function(cls.validate)
+
+    @classmethod
+    def validate(cls, v: Any) -> Self:
+        tag = langcodes.get(str(v))
+        if not tag.is_valid():
+            raise ValueError(f"Invalid IETF language: {v}")
+        return cls(v)
+
+
+Language = DatashareLanguage | IETFLanguage
+
+
+def _from_sentences(value: Any) -> Any:
+    if isinstance(value, list):
+        return " ".join(value)
+    return value
+
+
+class Translation(BaseModel):  # No camelcase here we don't know why
+    source_language: DatashareLanguage
+    target_language: Language
+    translator: str
+    content: Annotated[str, BeforeValidator(_from_sentences)]
+
+
+class Document(DatashareModel):
+    id: str
+    language: DatashareLanguage
+    index: str | None = None
+    root_document: str | None = None
+    content: str | None = None
+    content_text_length: int | None = None
+    content_type: str | None = None
+    path: Path | None = None
+    tags: list[str] = Field(default_factory=list)
+    content_translated: list[Translation] | None = Field(
+        default=None,
+        # es translator is using snake_case, we must do the same
+        alias="content_translated",
+    )
+    metadata: dict[str, Any] | None = None
+    type: str = Field(default="Document", frozen=True)
+
+    @model_validator(mode="before")
+    @classmethod
+    def _initialize_content_length_from_content(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            content_length = data.get("content_text_length")
+            if content_length is None and (content := data.get(DOC_CONTENT)):
+                data["content_text_length"] = len(content)
+        return data
+
+    @classmethod
+    def from_es(cls, es_doc: dict) -> Self:
+        sources = es_doc[SOURCE]
+        return cls(
+            id=es_doc[ID_],
+            index=es_doc.get(INDEX_),
+            content=sources.get(DOC_CONTENT),
+            content_translated=sources.get(DOC_CONTENT_TRANSLATED, []),
+            content_text_length=sources.get("content_text_length"),
+            language=DatashareLanguage(sources[DOC_LANGUAGE]),
+            root_document=sources.get(DOC_ROOT_ID),
+            tags=sources.get("tags", []),
+            path=sources.get(DOC_PATH),
+            metadata=sources.get(DOC_METADATA),
+        )
+
+    def to_filesystem(self) -> FilesystemDocument:
+        from .utils import artifacts_dir  # noqa: PLC0415
+
+        if self.metadata is None:
+            raise ValueError(
+                "can't compute filesyste path for document withtout metadata"
+            )
+        resource_name = cast(str, self.metadata[TIKA_METADATA_RESOURCENAME])
+        if self.root_document is None:
+            path = self.path
+            location = DocumentLocation.ORIGINAL
+        else:
+            if self.index is None:
+                msg = (
+                    f"can't compute filesystem path for embedded doc {self.id} without"
+                    f" index"
+                )
+                raise ValueError(msg)
+            path = artifacts_dir(doc_id=self.id, project=self.index) / "raw"
+            location = DocumentLocation.ARTIFACTS
+        # The filesystem dod is alway relative to the base location, let's make sure
+        # we store a relative path otherwise joining with the location will fail
+        if path.parts and path.parts[0] == os.path.sep:
+            path = Path(*path.parts[1:])
+        return FilesystemDocument(
+            id=self.id,
+            path=path,
+            index=self.index,
+            location=location,
+            resource_name=resource_name,
+        )
+
+
+@dataclass(frozen=True)
+class DocArtifact:
+    project: str
+    doc_id: str
+    artifact: bytes | BytesIO
+    filename: str
+    metadata_key: str
 
 
 @unique
@@ -154,114 +361,3 @@ class TaskGroup:
     @classmethod
     def python(cls) -> Self:
         return cls(name="PYTHON")
-
-
-@unique
-class DocumentLocation(StrEnum):
-    ORIGINAL = "original"
-    ARTIFACTS = "artifacts"
-    WORKDIR = "workdir"
-
-
-def _is_relative(value: Path) -> Path:
-    if value.is_absolute():
-        raise ValueError(
-            f"FilesystemDocument path should always be relative, found {value}"
-        )
-    return value
-
-
-class FilesystemDocument(DatashareModel):
-    id: str
-    path: Annotated[Path, AfterValidator(_is_relative)]
-    index: str
-    location: DocumentLocation
-    resource_name: str
-
-    def locate(
-        self, original_root: Path, *, artifacts_root: Path, workdir: Path
-    ) -> Path:
-        from datashare_python.utils import artifacts_dir  # noqa: PLC0415
-
-        match self.location:
-            case DocumentLocation.ORIGINAL:
-                return original_root / self.path
-            case DocumentLocation.ARTIFACTS:
-                project = self.index
-                return artifacts_root / artifacts_dir(self.id, project=project) / "raw"
-            case DocumentLocation.WORKDIR:
-                return workdir / self.path
-            case _:
-                raise ValueError(f"invalid location: {self.path}")
-
-
-class Document(DatashareModel):
-    id: str
-    language: str
-    index: str | None = None
-    root_document: str | None = None
-    content: str | None = None
-    content_type: str | None = None
-    path: Path | None = None
-    tags: list[str] = Field(default_factory=list)
-    content_translated: dict[str, str] = Field(
-        default_factory=dict, alias="content_translated"
-    )
-    metadata: dict[str, Any] | None = None
-    type: str = Field(default="Document", frozen=True)
-
-    @classmethod
-    def from_es(cls, es_doc: dict) -> Self:
-        sources = es_doc[SOURCE]
-        return cls(
-            id=es_doc[ID_],
-            index=es_doc.get(INDEX_),
-            content=sources.get(DOC_CONTENT),
-            content_translated=sources.get(DOC_CONTENT_TRANSLATED, dict()),
-            language=sources[DOC_LANGUAGE],
-            root_document=sources.get(DOC_ROOT_ID),
-            tags=sources.get("tags", []),
-            path=sources.get(DOC_PATH),
-            metadata=sources.get(DOC_METADATA),
-        )
-
-    def to_filesystem(self) -> FilesystemDocument:
-        from .utils import artifacts_dir  # noqa: PLC0415
-
-        if self.metadata is None:
-            raise ValueError(
-                "can't compute filesyste path for document withtout metadata"
-            )
-        resource_name = cast(str, self.metadata[TIKA_METADATA_RESOURCENAME])
-        if self.root_document is None:
-            path = self.path
-            location = DocumentLocation.ORIGINAL
-        else:
-            if self.index is None:
-                msg = (
-                    f"can't compute filesystem path for embedded doc {self.id} without"
-                    f" index"
-                )
-                raise ValueError(msg)
-            path = artifacts_dir(doc_id=self.id, project=self.index) / "raw"
-            location = DocumentLocation.ARTIFACTS
-        # The filesystem dod is alway relative to the base location, let's make sure
-        # we store a relative path otherwise joining with the location will fail
-        if path.parts and path.parts[0] == os.path.sep:
-            path = Path(*path.parts[1:])
-        return FilesystemDocument(
-            id=self.id,
-            path=path,
-            index=self.index,
-            location=location,
-            resource_name=resource_name,
-        )
-
-
-@dataclass(frozen=True)
-class DocArtifact:
-    project: str
-    doc_id: str
-    artifact: bytes | BytesIO
-    filename: str
-    metadata_key: str

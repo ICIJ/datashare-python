@@ -15,12 +15,13 @@ with workflow.unsafe.imports_passed_through():
         Pong,
         TranslateDocs,
     )
-    from .objects_ import TranslateAndClassifyArgs, TranslateAndClassifyResponse
+    from .objects import TranslateAndClassifyArgs, TranslateAndClassifyResponse
 
 logger = logging.getLogger(__name__)
 
 
 class TaskQueues(StrEnum):
+    WORKFLOWS = "datashare.workflows"
     IO = "worker-template.io"
     TRANSLATE_GPU = "worker-template.translate-gpu"
     CLASSIFY_GPU = "worker-template.classify-gpu"
