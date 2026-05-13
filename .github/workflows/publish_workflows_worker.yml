@@ -62,7 +62,7 @@ jobs:
           cd ../..
           make lock-dist project=workflows-worker
           git add workers/workflows-worker/*.lock workers/workflows-worker/*.toml
-          echo "workflows_worker_tag=$workflows_worker_version" >> "$GITHUB_OUTPUT"
+          echo "workflows_worker_tag=${workflows_worker_version/workflow-worker-/}" >> "$GITHUB_OUTPUT"
           git commit -m "release(workflows-worker): bump version to `$workflows_worker_version`"
           git pull --rebase
           git tag "$workflows_worker_version" 
@@ -76,7 +76,7 @@ jobs:
       - uses: actions/checkout@v6
         with:
           # We checkout main to avoid creating a tag from a detached head
-          ref: ${{ needs.bump-workflows-worker.outputs.workflows_worker_tag }}
+          ref: workflows-worker-${{ needs.bump-workflows-worker.outputs.workflows_worker_tag }}
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Docker meta
