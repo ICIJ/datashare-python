@@ -25,7 +25,7 @@ jobs:
   bump-workflows-worker:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v6.0.2
         with:
           # We checkout main to avoid creating a tag from a detached head
           ref: main
@@ -72,7 +72,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: bump-workflows-worker
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v6.0.2
         with:
           # We checkout main to avoid creating a tag from a detached head
           ref: ${{ needs.bump-workflows-worker.outputs.tag }}
@@ -80,7 +80,7 @@ jobs:
 
       - name: Docker meta
         id: meta
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6.0.0
         with:
           images: icij/datashare-workflows-worker
           tags: ${{ needs.bump-workflows-worker.outputs.tag }}
@@ -89,10 +89,10 @@ jobs:
         uses: docker/setup-qemu-action@v4
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4.0.0
 
       - name: Login to Docker Hub
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4.1
         with:
           # You'll need to set these secrets
           username: ${{ secrets.DOCKERHUB_USERNAME }}
