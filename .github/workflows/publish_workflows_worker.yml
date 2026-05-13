@@ -62,8 +62,7 @@ jobs:
           cd ../..
           make lock-dist project=workflows-worker
           git add workers/workflows-worker/*.lock workers/workflows-worker/*.toml
-          tag=workflows-version-"$workflows_worker_version"
-          echo "workflows_worker_tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "workflows_worker_tag=$workflows_worker_version" >> "$GITHUB_OUTPUT"
           git commit -m "release(workflows-worker): bump version to `$tag`"
           git pull --rebase
           git tag "$tag" 
