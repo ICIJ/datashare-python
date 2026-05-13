@@ -202,20 +202,20 @@ wheels = [
 
 [[package]]
 name = "datashare-translation-worker"
-version = "0.6.0"
+version = "0.6.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "datashare-python" },
     { name = "pydantic-extra-types", extra = ["pycountry"] },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/df/11/c9f916624d86a75671eae3837ef6dda886b5e310604ef538b590af880b1a/datashare_translation_worker-0.6.0.tar.gz", hash = "sha256:c80630be6d1f216661d76854725645eab92d437ff434d5c13af438f77ad70778", size = 189290, upload-time = "2026-05-13T07:44:59.484Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/20/3c/c5465b189ccc3887700c1eb7fe2ef42b145153591e4a6596b31b10d21b97/datashare_translation_worker-0.6.1.tar.gz", hash = "sha256:398293d4096e4005a3b00e6cb00ad42cb6bd0cc0aa73228422f1ddbbe3f0085b", size = 189280, upload-time = "2026-05-13T10:37:24.611Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/2c/30/af72487c30f9da6606d10da7b849b69f4d92722c178a5ae8026d5e508f5a/datashare_translation_worker-0.6.0-py3-none-any.whl", hash = "sha256:d735ff6cf6b028f0d6c064cdf2a0431752062dfcf8e1a9fe10ad453764025f2e", size = 11006, upload-time = "2026-05-13T07:44:57.879Z" },
+    { url = "https://files.pythonhosted.org/packages/58/4e/9e4c6b4bd1d60203be5a6ed83f7c986e0a995d9b5c0f3cedf4a79fd43c8f/datashare_translation_worker-0.6.1-py3-none-any.whl", hash = "sha256:822fedb9ec6a6f73b7dbdd9bedcc77a84a37d46b121db7d4f0e857ac44dd0929", size = 10809, upload-time = "2026-05-13T10:37:23.426Z" },
 ]
 
 [[package]]
 name = "datashare-workflows-worker"
-version = "0.4.0"
+version = "0.4.1"
 source = { editable = "." }
 dependencies = [
     { name = "datashare-asr-worker" },
@@ -227,7 +227,7 @@ dependencies = [
 requires-dist = [
     { name = "datashare-asr-worker", specifier = "==0.8.0" },
     { name = "datashare-python", specifier = "==0.8.5" },
-    { name = "datashare-translation-worker", specifier = "==0.6.0" },
+    { name = "datashare-translation-worker", specifier = "==0.6.1" },
 ]
 
 [[package]]
