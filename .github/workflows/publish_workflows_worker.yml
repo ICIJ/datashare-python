@@ -24,6 +24,8 @@ env:
 jobs:
   bump-workflows-worker:
     runs-on: ubuntu-latest
+    outputs:
+      workflows_worker_tag: ${{ steps.tag.outputs.workflows_worker_tag }}
     steps:
       - uses: actions/checkout@v6
         with:
@@ -42,7 +44,6 @@ jobs:
           enable-cache: true
           working-directory: workers/workflows-worker
       - name: Bump workflows worker
-        id: bump-workflows-worker
         run: |
           cd workers/workflows-worker
           worker=datashare-"$WORKER"
@@ -50,6 +51,7 @@ jobs:
           echo workflows_worker_version_bump_info="$workflows_worker_version_bump_info" >> "$GITHUB_ENV"
           ./bump_workflow.sh "$worker" "$WORKER_VERSION"
       - name: Create a new workflows worker tags
+        id: tag
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -72,11 +74,6 @@ jobs:
     runs-on: ubuntu-latest
     needs: bump-workflows-worker
     steps:
-      - name: "debug version"
-        run: echo $workflows_worker_tag
-        env:
-          workflows_worker_tag: ${{ needs.bump-workflows-worker.outputs.workflows_worker_tag }}
-
       - uses: actions/checkout@v6
         with:
           # We checkout main to avoid creating a tag from a detached head
