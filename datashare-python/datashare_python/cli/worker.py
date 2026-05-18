@@ -84,9 +84,7 @@ async def start(
     ] = None,
     activities: Annotated[
         list[str] | None,
-        typer.Option(
-            "--activities", "--activity", "-a", help=_START_WORKER_ACTIVITIES_HELP
-        ),
+        typer.Option("--activities", "--activity", help=_START_WORKER_ACTIVITIES_HELP),
     ] = None,
     dependencies: Annotated[
         str | None, typer.Option(help=_START_WORKER_DEPS_HELP)
