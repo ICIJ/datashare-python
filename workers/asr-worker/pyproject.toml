@@ -18,10 +18,10 @@ asr-worker = "asr_worker.__main__:main"
 
 [project.optional-dependencies]
 cli = [
-  "caul==0.5.4",
+  "caul==0.5.7",
 ]
 cpu = [
-  "caul==0.5.4",
+  "caul==0.5.7",
   "torch==2.10.0",
   "torchaudio==2.10.0",
   "torchcodec==0.10.0",
@@ -33,14 +33,14 @@ gpu = [
   "torchcodec==0.10.0+cu129; sys_platform == 'linux'",
 ]
 inference = [
-  "caul[nemo]==0.5.4",
+  "caul[nemo]==0.5.7",
   "kaldialign==0.9.3",
   "ml-dtypes==0.5.4",
   "numpy==2.3.0",
   "pyarrow==20.0.0",
 ]
 preprocessing = [
-  "caul==0.5.4",
+  "caul==0.5.7",
 ]
 
 [project.entry-points."datashare.workflows"]
