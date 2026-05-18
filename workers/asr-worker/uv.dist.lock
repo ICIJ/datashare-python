@@ -269,7 +269,7 @@ wheels = [
 
 [[package]]
 name = "caul"
-version = "0.5.7"
+version = "0.5.8"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "huggingface-hub", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu') or sys_platform == 'darwin' or (sys_platform != 'linux' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu')" },
@@ -281,9 +281,9 @@ dependencies = [
     { name = "pydantic-extra-types", extra = ["pycountry"], marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu') or sys_platform == 'darwin' or (sys_platform != 'linux' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu')" },
     { name = "typer", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu') or sys_platform == 'darwin' or (sys_platform != 'linux' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu')" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/7f/5a/1df1aab38c5dc6ad4ae7ba94b096ccd07da67dda0c01646f32e9aab368db/caul-0.5.7.tar.gz", hash = "sha256:5af033ba0f8a15d389098789e0426439edfb4033facf480188b4caeadaae6efe", size = 826588, upload-time = "2026-05-18T10:21:10.897Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/fe/26/dd58fe1d199abbbe352d87ec3018b358f5061ada2a89f87e88f37303977a/caul-0.5.8.tar.gz", hash = "sha256:6b28b8f1a6a7372c6106183ee430c7d438d0866ab301c324eeaa6406083db286", size = 826594, upload-time = "2026-05-18T10:47:10.049Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/4d/05/a2406f987f498de83122b7bce391de353e688d33f4ec1911f63e3a06646b/caul-0.5.7-py3-none-any.whl", hash = "sha256:e615c73743e0abfdc982a981c0124afba565bb6edd5159a8e9170bd2dcb699d2", size = 37462, upload-time = "2026-05-18T10:21:12.49Z" },
+    { url = "https://files.pythonhosted.org/packages/a8/c8/aaa4ed76b05d311f1bf4ae5c1cb5ed8092ded768fb0c6cd611ec6087b0cc/caul-0.5.8-py3-none-any.whl", hash = "sha256:9d99d713a410194848f56227bb752f03fe4fc42b2acf3828783b5e2c1ab9c415", size = 37465, upload-time = "2026-05-18T10:47:11.016Z" },
 ]
 
 [package.optional-dependencies]
@@ -598,10 +598,10 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "caul", marker = "extra == 'cli'", specifier = "==0.5.7" },
-    { name = "caul", marker = "extra == 'cpu'", specifier = "==0.5.7" },
-    { name = "caul", marker = "extra == 'preprocessing'", specifier = "==0.5.7" },
-    { name = "caul", extras = ["nemo"], marker = "extra == 'inference'", specifier = "==0.5.7" },
+    { name = "caul", marker = "extra == 'cli'", specifier = "==0.5.8" },
+    { name = "caul", marker = "extra == 'cpu'", specifier = "==0.5.8" },
+    { name = "caul", marker = "extra == 'preprocessing'", specifier = "==0.5.8" },
+    { name = "caul", extras = ["nemo"], marker = "extra == 'inference'", specifier = "==0.5.8" },
     { name = "cuda-bindings", marker = "sys_platform == 'linux' and extra == 'gpu'", specifier = "==12.9.4" },
     { name = "datashare-python", specifier = "~=0.8.4" },
     { name = "kaldialign", marker = "extra == 'inference'", specifier = "==0.9.3" },
