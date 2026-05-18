@@ -1,6 +1,7 @@
-from constants import TorchDevice
 from datashare_python.config import WorkerConfig
 from pydantic import Field
+
+from .constants import TorchDevice
 
 
 class TranslationWorkerConfig(WorkerConfig):
