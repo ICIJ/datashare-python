@@ -10,7 +10,7 @@ on:
         options:
           - datashare-asr-worker
           - datashare-python
-          - datshare-translation-worker
+          - datashare-translation-worker
       package_version:
         description: 'New version of the worker app'
         required: true
