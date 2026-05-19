@@ -156,12 +156,12 @@ jobs:
       - uses: actions/checkout@v6
       - name: Trigger workflow worker release
         run: |
-          worker_version="${worker_version/asr-worker-/}"
-          gh workflow run .github/workflows/publish_workflows_worker.yml -f worker=$worker -f worker_version="$worker_version" --ref main
+          package_version="${package_version/asr-worker-/}"
+          gh workflow run .github/workflows/publish_workflows_worker.yml -f package="$package" -f package_version="$package_version" --ref main
         env:
           GH_TOKEN: ${{ github.token }}
-          worker_version: ${{ github.ref_name }}
-          worker: asr-worker
+          package_version: ${{ github.ref_name }}
+          package: datashare-asr-worker
 
 
 concurrency:

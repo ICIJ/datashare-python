@@ -47,10 +47,9 @@ jobs:
       - name: Bump workflows worker
         run: |
           cd workers/workflows-worker
-          worker=datashare-"$WORKER"
-          workflows_worker_version_bump_info=$(uv run --frozen main.py "$worker" "$WORKER_VERSION")
+          workflows_worker_version_bump_info=$(uv run --frozen main.py "$WORKER" "$WORKER_VERSION")
           echo workflows_worker_version_bump_info="$workflows_worker_version_bump_info" >> "$GITHUB_ENV"
-          ./bump_workflow.sh "$worker" "$WORKER_VERSION"
+          ./bump_workflow.sh "$WORKER" "$WORKER_VERSION"
       - name: Create a new workflows worker tags
         id: tag
         env:
