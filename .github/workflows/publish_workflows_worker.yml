@@ -8,9 +8,9 @@ on:
         required: true
         type: choice
         options:
-          - asr-worker
+          - datashare-asr-worker
           - datashare-python
-          - translation-worker
+          - datshare-translation-worker
       package_version:
         description: 'New version of the worker app'
         required: true
