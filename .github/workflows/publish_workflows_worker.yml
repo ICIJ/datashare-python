@@ -3,22 +3,22 @@ name: Publish workflows-worker
 on:
   workflow_dispatch:
     inputs:
-      worker:
-        description: 'Worker app to update'
+      package:
+        description: 'Worker package to update'
         required: true
         type: choice
         options:
           - asr-worker
           - datashare-python
           - translation-worker
-      worker_version:
+      package_version:
         description: 'New version of the worker app'
         required: true
         type: string
 
 env:
-  WORKER: ${{ inputs.worker }}
-  WORKER_VERSION: ${{ inputs.worker_version }}
+  PACKAGE: ${{ inputs.package }}
+  PACKAGE_VERSION: ${{ inputs.package_version }}
   PYTHON_VERSION: 3.12
   ASTRAL_VERSION: 0.11.6
 
@@ -47,9 +47,9 @@ jobs:
       - name: Bump workflows worker
         run: |
           cd workers/workflows-worker
-          workflows_worker_version_bump_info=$(uv run --frozen main.py "$WORKER" "$WORKER_VERSION")
+          workflows_worker_version_bump_info=$(uv run --frozen main.py "$PACKAGE" "$PACKAGE_VERSION")
           echo workflows_worker_version_bump_info="$workflows_worker_version_bump_info" >> "$GITHUB_ENV"
-          ./bump_workflow.sh "$WORKER" "$WORKER_VERSION"
+          ./bump_workflow.sh "$PACKAGE" "$PACKAGE_VERSION"
       - name: Create a new workflows worker tags
         id: tag
         env:
