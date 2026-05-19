@@ -11,6 +11,7 @@ readme = "README.md"
 requires-python = ">=3.11.0, <3.13"
 dependencies = [
   "datashare-python~=0.8.6",
+  "caul==0.5.8",
 ]
 
 [project.scripts]
@@ -18,10 +19,8 @@ asr-worker = "asr_worker.__main__:main"
 
 [project.optional-dependencies]
 cli = [
-  "caul==0.5.8",
 ]
 cpu = [
-  "caul==0.5.8",
   "torch==2.10.0",
   "torchaudio==2.10.0",
   "torchcodec==0.10.0",
@@ -33,14 +32,12 @@ gpu = [
   "torchcodec==0.10.0+cu129; sys_platform == 'linux'",
 ]
 inference = [
-  "caul[nemo]==0.5.8",
   "kaldialign==0.9.3",
   "ml-dtypes==0.5.4",
   "numpy==2.3.0",
   "pyarrow==20.0.0",
 ]
 preprocessing = [
-  "caul==0.5.8",
 ]
 
 [project.entry-points."datashare.workflows"]
