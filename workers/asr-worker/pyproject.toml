@@ -32,6 +32,7 @@ gpu = [
   "torchcodec==0.10.0+cu129; sys_platform == 'linux'",
 ]
 inference = [
+  "caul[nemo]==0.5.8",
   "kaldialign==0.9.3",
   "ml-dtypes==0.5.4",
   "numpy==2.3.0",
