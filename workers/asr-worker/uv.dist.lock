@@ -603,7 +603,7 @@ requires-dist = [
     { name = "caul", marker = "extra == 'preprocessing'", specifier = "==0.5.8" },
     { name = "caul", extras = ["nemo"], marker = "extra == 'inference'", specifier = "==0.5.8" },
     { name = "cuda-bindings", marker = "sys_platform == 'linux' and extra == 'gpu'", specifier = "==12.9.4" },
-    { name = "datashare-python", specifier = "~=0.8.4" },
+    { name = "datashare-python", specifier = "~=0.8.6" },
     { name = "kaldialign", marker = "extra == 'inference'", specifier = "==0.9.3" },
     { name = "ml-dtypes", marker = "extra == 'inference'", specifier = "==0.5.4" },
     { name = "numpy", marker = "extra == 'inference'", specifier = "==2.3.0" },
