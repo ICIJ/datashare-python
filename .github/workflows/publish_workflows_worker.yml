@@ -9,6 +9,7 @@ on:
         type: choice
         options:
           - asr-worker
+          - datashare-python
           - translation-worker
       worker_version:
         description: 'New version of the worker app'
