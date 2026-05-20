@@ -29,6 +29,10 @@ _START_WORKER_CONFIG_PATH_HELP = (
     "path to a worker config YAML file,"
     " if not provided will load worker configuration from env variables"
 )
+_START_WORKER_SKIP_CONFIG_CLS_DISCOVERY = (
+    "skip config class discovery (useful to run a workflow worker from different app)"
+)
+
 _WORKER_QUEUE_HELP = "worker task queue"
 _TEMPORAL_NAMESPACE_HELP = "worker temporal namespace"
 
@@ -105,9 +109,19 @@ async def start(
         str | None,
         typer.Option("--temporal-namespace", "-ns", help=_TEMPORAL_NAMESPACE_HELP),
     ] = None,
+    *,
+    skip_config_discovery: Annotated[
+        bool,
+        typer.Option(
+            "--skip-config-discovery", help=_START_WORKER_SKIP_CONFIG_CLS_DISCOVERY
+        ),
+    ] = False,
 ) -> None:
     registered_wfs, registered_acts, registered_deps, worker_config_cls = discover(
-        workflows, act_names=activities, deps_name=dependencies
+        workflows,
+        act_names=activities,
+        deps_name=dependencies,
+        skip_config=skip_config_discovery,
     )
     if config_path is not None:
         with config_path.open() as f:
