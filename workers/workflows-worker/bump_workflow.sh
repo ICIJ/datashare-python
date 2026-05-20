@@ -10,6 +10,6 @@ fi
 uv add -n "$1$op$2" || uv add -n "$1$op$2"
 cd ../..
 make lock-dist project=workflows-worker
-cd workers/worker
+cd workers/workflows-worker
 git add uv.lock uv.dist.lock pyproject.toml
 git commit -m "chore(workflows-worker): bump $1$op$2"
