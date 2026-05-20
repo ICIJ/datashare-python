@@ -62,9 +62,10 @@ jobs:
           uv version --bump $bump_type
           cd ../..
           make lock-dist project=workflows-worker
+          cd workers/workflows-worker/
           uv sync --frozen
           uv pip list
-          git add workers/workflows-worker/*.lock workers/workflows-worker/*.toml
+          git add uv.lock uv.dist.lock pyproject.toml
           git status
           echo "workflows_worker_tag=$raw_version" >> "$GITHUB_OUTPUT"
           git commit -m "release(workflows-worker): bump version to $workflows_worker_version"
