@@ -2,5 +2,6 @@
 !asr_worker
 !entrypoints
 !pyproject.toml
+!README.md
 !uv.dist.lock
 !uv.lock
