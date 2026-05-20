@@ -299,7 +299,7 @@ wheels = [
 
 [[package]]
 name = "datashare-python"
-version = "0.8.10"
+version = "0.8.12"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiohttp" },
@@ -314,9 +314,9 @@ dependencies = [
     { name = "tomlkit" },
     { name = "typer" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/06/22/6c9d829f035a0611a9ff273fbb1c27ab1ad4384b8947d1957dcdcd9f08a3/datashare_python-0.8.10.tar.gz", hash = "sha256:dec7b0b2522ed1c1afe2617c26002a789af016082165ec540ce9a51e3f852e1f", size = 315382, upload-time = "2026-05-20T10:22:44.175Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/2d/81/86e166f20ded7a9c0fa3355d6e48728d4a27acf8eadc9f73c6dd2dc0ee46/datashare_python-0.8.12.tar.gz", hash = "sha256:48ba2856e633004d727ee87b095fd4b870966ed773326ae86ec121be86c17d27", size = 315366, upload-time = "2026-05-20T10:45:12.617Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/82/6d/603675b5825882061ae4a9cfefa4f0c57b1ad64a3729740fd8dd36dcef31/datashare_python-0.8.10-py3-none-any.whl", hash = "sha256:0db5be40b4d8dddc175ef5bb80404db3c77c19a8bdc6db49845db07c33767d3d", size = 321379, upload-time = "2026-05-20T10:22:45.689Z" },
+    { url = "https://files.pythonhosted.org/packages/ba/84/a07de2eee382e1b5822981b75acd52312d8fa295561f35c4b2a79ca617b3/datashare_python-0.8.12-py3-none-any.whl", hash = "sha256:42fbb2dd6c63e6ef1b3e245d59fe5c8e5adb7c2065a55514d68eda8bd896d4cc", size = 321394, upload-time = "2026-05-20T10:45:11.266Z" },
 ]
 
 [[package]]
@@ -334,7 +334,7 @@ wheels = [
 
 [[package]]
 name = "datashare-workflows-worker"
-version = "0.4.20"
+version = "0.4.21"
 source = { editable = "." }
 dependencies = [
     { name = "datashare-asr-worker" },
@@ -345,7 +345,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "datashare-asr-worker", specifier = "==0.8.7" },
-    { name = "datashare-python", specifier = "~=0.8.10" },
+    { name = "datashare-python", specifier = "~=0.8.12" },
     { name = "datashare-translation-worker", specifier = "==0.6.14" },
 ]
 
