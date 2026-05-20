@@ -62,3 +62,45 @@ async def test_start_workers(
 - 1 activity: create-translation-batches
 - 3 dependencies: set_worker_config, set_loggers, set_es_client"""
     assert expected in result.stderr
+
+
+async def test_start_workers_skipping_config_discovery(
+    typer_asyncio_patch,  # noqa: ANN001, ARG001
+    monkeypatch: MonkeyPatch,
+    capsys: CaptureFixture[str],
+) -> None:
+    # Given
+    runner = CliRunner()
+    monkeypatch.setattr(DatashareWorker, "__aenter__", _mock_worker__aenter__)
+    monkeypatch.setattr(DatashareWorker, "__aexit__", _mock_worker__aexit__)
+    monkeypatch.setattr(DatashareWorker, "is_done", _mock_worker_is_done)
+    with capsys.disabled():
+        # When
+        result = runner.invoke(
+            cli_app,
+            [
+                "worker",
+                "start",
+                "--queue",
+                "cpu",
+                "--skip-config-discovery",
+                "--activities",
+                "ping",
+                "--activities",
+                "create-translation-batches",
+                "--workflows",
+                "ping",
+                "--dependencies",
+                "base",
+                "--temporal-address",
+                "localhost:7233",
+            ],
+            catch_exceptions=False,
+        )
+    # Then
+    assert result.exit_code == 0
+    expected = """discovered:
+- 1 workflow: ping
+- 1 activity: create-translation-batches
+- 3 dependencies: set_worker_config, set_loggers, set_es_client"""
+    assert expected in result.stderr

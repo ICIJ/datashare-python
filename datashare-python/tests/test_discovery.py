@@ -5,7 +5,9 @@ from unittest.mock import MagicMock
 import datashare_python
 import pytest
 from _pytest.monkeypatch import MonkeyPatch
+from datashare_python.config import WorkerConfig
 from datashare_python.discovery import (
+    discover,
     discover_activities,
     discover_dependencies,
     discover_worker_config_cls,
@@ -53,6 +55,15 @@ def test_discover_activities(names: list[str], expected_activities: set[str]) ->
     activities = {act_name for act_name, _ in discover_activities(names)}
     # Then
     assert activities == expected_activities
+
+
+def test_discover_skip_config_discover() -> None:
+    # When
+    _, _, _, workflow_cls = discover(
+        ["ping"], act_names=None, deps_name=None, skip_config=True
+    )
+    # Then
+    assert workflow_cls == WorkerConfig
 
 
 def test_discover_dependencies() -> None:

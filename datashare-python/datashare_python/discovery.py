@@ -33,7 +33,11 @@ _MANDATORY_DEPS = [set_worker_config, set_loggers]
 
 
 def discover(
-    wf_names: list[str] | None, *, act_names: list[str] | None, deps_name: str | None
+    wf_names: list[str] | None,
+    *,
+    act_names: list[str] | None,
+    deps_name: str | None,
+    skip_config: bool = False,
 ) -> _Discovery:
     discovered = ""
     wfs = None
@@ -80,7 +84,10 @@ def discover(
             f"- {n_deps} dependenc{'ies' if n_deps > 1 else 'y'}:"
             f" {', '.join(deps_names)}"
         )
-    worker_config_cls = discover_worker_config_cls()
+    if not skip_config:
+        worker_config_cls = discover_worker_config_cls()
+    else:
+        worker_config_cls = WorkerConfig
     discovered += f"- worker config class: {worker_config_cls}"
     logger.info("discovered:\n%s", discovered)
     return wfs, acts, deps, worker_config_cls
