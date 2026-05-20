@@ -11,7 +11,7 @@ _DEFAULT_LOGGING_CONFIG = LoggingConfig(
 
 
 class ASRWorkerConfig(WorkerConfig):
-    logging: LoggingConfig = _DEFAULT_LOGGERS
+    logging: LoggingConfig = _DEFAULT_LOGGING_CONFIG
 
     docs_root: Path = Field(alias="audios_root")
     artifacts_root: Path
