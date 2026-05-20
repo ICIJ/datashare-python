@@ -7,7 +7,6 @@ if [[ "$worker_lib" == "datashare-python" ]]; then
 else
     op="=="
 fi
-cd
 uv add -n "$1$op$2" || uv add -n "$1$op$2"
 cd ../..
 make lock-dist project=workflows-worker
