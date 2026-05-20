@@ -120,6 +120,7 @@ jobs:
   publish-inference-gpu-worker:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v6
       - name: Docker meta
         id: meta
         uses: docker/metadata-action@v6
