@@ -26,8 +26,8 @@ from datashare_python.objects import (
 from datashare_python.types_ import ProgressRateHandler, RawProgressHandler
 from datashare_python.utils import (
     ActivityWithProgress,
-    activity_contextual_id,
     activity_defn,
+    activity_workdir,
     debuggable_name,
     safe_dir,
     to_raw_progress,
@@ -83,9 +83,8 @@ class ASRActivities(ActivityWithProgress):
     ) -> list[Path]:
         es_client = lifespan_es_client()
         worker_config = cast(ASRWorkerConfig, lifespan_worker_config())
-        batch_dir_name = activity_contextual_id()
         workdir = worker_config.workdir
-        output_dir = workdir / batch_dir_name
+        output_dir = activity_workdir(workdir, project)
         output_dir.mkdir(parents=True, exist_ok=True)
         batch_paths = [
             p.relative_to(workdir)
@@ -102,15 +101,14 @@ class ASRActivities(ActivityWithProgress):
 
     @activity_defn(name=PREPROCESS_ACTIVITY, progress_weight=_PREPROCESS_WEIGHT)
     def preprocess(
-        self, audio_batch: Path, config: ParakeetPreprocessorConfig
+        self, audio_batch: Path, project: str, config: ParakeetPreprocessorConfig
     ) -> list[Path]:
         # TODO: this shouldn't be necessary, fix this bug
         worker_config = cast(ASRWorkerConfig, lifespan_worker_config())
         workdir = worker_config.workdir
         # TODO: implement caching
         preprocessor = Preprocessor.from_config(config)
-        contextual_id = activity_contextual_id()
-        output_dir = workdir / contextual_id
+        output_dir = activity_workdir(workdir, project)
         output_dir.mkdir(parents=True, exist_ok=True)
         audio_batch = workdir / audio_batch
         with preprocessor:
@@ -136,8 +134,7 @@ class ASRActivities(ActivityWithProgress):
         config = _INFERENCE_CONFIG_TYPE_ADAPTER.validate_python(config)
         worker_config = cast(ASRWorkerConfig, lifespan_worker_config())
         workdir = worker_config.workdir
-        contextual_id = activity_contextual_id()
-        output_dir = workdir / project / contextual_id
+        output_dir = activity_workdir(workdir, project)
         output_dir.mkdir(parents=True, exist_ok=True)
         preprocessed_inputs = _LIST_OF_PATH_ADAPTER.validate_python(preprocessed_inputs)
         preprocessed_inputs = [workdir / p for p in preprocessed_inputs]

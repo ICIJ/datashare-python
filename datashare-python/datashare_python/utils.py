@@ -502,7 +502,7 @@ def debuggable_name(
     return f"{uuid}-{'--'.join(displayable_file_name)}"
 
 
-def activity_contextual_id(
+def contextual_id(
     *, wf_context: bool = True, act_context: bool = False, run_context: bool = False
 ) -> str:
     contextual_id = []
@@ -519,3 +519,41 @@ def activity_contextual_id(
         if run_context:
             contextual_id.append(act_info.activity_run_id)
     return "-".join(contextual_id)
+
+
+# TODO: deprecated, remove me at the next breaking
+activity_contextual_id = contextual_id
+
+
+def _contextual_path(
+    *, wf_context: bool = True, act_context: bool = True, run_context: bool = False
+) -> Path:
+    act_info = activity.info()
+    path = []
+    if not wf_context and not act_context:
+        raise ValueError("at least one of wf_context and act_context must be True")
+    if wf_context:
+        path = [act_info.workflow_type]
+        path.append(act_info.workflow_id)
+        if run_context:
+            path.append(act_info.workflow_run_id)
+    if act_context:
+        path.append(act_info.activity_type)
+        path.append(act_info.activity_id)
+        if run_context:
+            path.append(act_info.activity_run_id)
+    return Path(*path)
+
+
+def activity_workdir(
+    workdir: Path,
+    project: str,
+    *,
+    wf_context: bool = True,
+    act_context: bool = True,
+    run_context: bool = False,
+) -> Path:
+    ctx_path = _contextual_path(
+        wf_context=wf_context, act_context=act_context, run_context=run_context
+    )
+    return workdir.joinpath(project, ctx_path)

@@ -44,7 +44,12 @@ class ASRWorkflow(WorkflowWithProgress):
             task_queue=TaskQueues.IO,
         )
         # Preprocessing
-        preprocess_args = zip(batch_paths, repeat(config.preprocessing), strict=False)
+        preprocess_args = zip(
+            batch_paths,
+            repeat(args.project),
+            repeat(config.preprocessing),
+            strict=False,
+        )
         preprocessing_acts = (
             execute_activity(
                 ASRActivities.preprocess,
