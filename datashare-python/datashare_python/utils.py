@@ -470,7 +470,7 @@ def _metadata_path(doc_id: str, *, project: str) -> Path:
 
 
 def _read_artifact_metadata(root: Path, artifact: DocArtifact) -> dict:
-    m_path = root / _metadata_path(artifact.filename, project=artifact.project)
+    m_path = root / _metadata_path(artifact.doc_id, project=artifact.project)
     return json.loads(m_path.read_text())
 
 
