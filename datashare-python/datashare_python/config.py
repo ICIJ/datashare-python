@@ -13,6 +13,7 @@ from temporalio.converter import (
     DefaultPayloadConverter,
     JSONPlainPayloadConverter,
 )
+from temporalio.runtime import PrometheusConfig, Runtime, TelemetryConfig
 
 import datashare_python
 
@@ -64,13 +65,22 @@ class DatashareClientConfig(BaseModel):
 class TemporalClientConfig(BaseModel):
     host: str = "temporal:7233"
     namespace: str = "datashare-default"
+    prometheus_host: str | None = None
+
     _client: TemporalClient | None = PrivateAttr(default=None)
 
     async def to_client(self) -> TemporalClient:
         if self._client is None:
+            runtime = None
+            if self.prometheus_host is not None:
+                telemetry_config = TelemetryConfig(
+                    metrics=PrometheusConfig(bind_address="0.0.0.0:9000")
+                )
+                runtime = Runtime(telemetry=telemetry_config)
             self._client = await TemporalClient.connect(
                 target_host=self.host,
                 namespace=self.namespace,
+                runtime=runtime,
                 data_converter=PYDANTIC_DATA_CONVERTER,
             )
         return self._client
