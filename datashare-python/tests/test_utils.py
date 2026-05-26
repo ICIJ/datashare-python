@@ -4,7 +4,6 @@ from datetime import timedelta
 from pathlib import Path
 
 import pytest
-from datashare_python.conftest import TEST_PROJECT
 from datashare_python.objects import DocArtifact
 from datashare_python.types_ import TemporalClient
 from datashare_python.utils import activity_defn, positional_args_only, write_artifact
@@ -69,6 +68,8 @@ async def test_retriable(test_temporal_client_session: TemporalClient) -> None:
 
 
 def test_write_artifact(tmp_path: Path) -> None:
+    from datashare_python.conftest import TEST_PROJECT  # noqa: PLC0415
+
     # Given
     root_dir = Path(tmp_path)
     artifact_bytes = b"artifacts"
@@ -99,6 +100,8 @@ def test_write_artifact(tmp_path: Path) -> None:
 
 
 def test_write_artifact_with_existing_metadata(tmp_path: Path) -> None:
+    from datashare_python.conftest import TEST_PROJECT  # noqa: PLC0415
+
     # Given
     root_dir = Path(tmp_path)
     artifact_bytes = b"artifacts"
