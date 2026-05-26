@@ -4,7 +4,7 @@ from datetime import timedelta
 from pathlib import Path
 
 import pytest
-from conftest import TEST_PROJECT
+from datashare_python.conftest import TEST_PROJECT
 from datashare_python.objects import DocArtifact
 from datashare_python.types_ import TemporalClient
 from datashare_python.utils import activity_defn, positional_args_only, write_artifact
