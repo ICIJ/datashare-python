@@ -13,15 +13,15 @@ from elasticsearch._async.helpers import async_bulk
 from icij_common.es import (
     DOC_CONTENT_TRANSLATED,
     DOC_LANGUAGE,
+    ES_DOCUMENT_TYPE,
     HITS,
     ID_,
     QUERY,
     SOURCE,
-    TERM,
     ESClient,
-    bool_query,
+    and_query,
     has_id,
-    must_not,
+    has_type,
 )
 from icij_common.iter_utils import async_batches, before_and_after, once
 from pydantic import TypeAdapter
@@ -50,7 +50,7 @@ class TranslationActivities(ActivityWithProgress):
 
     @activity_defn(name="translation.create-translation-batches")
     async def create_translation_batches(
-        self, project: str, target: Language
+        self, project: str, query: dict[str, Any]
     ) -> list[tuple[Language, list[Batch]]]:
         es_client = lifespan_es_client()
         worker_config = cast(TranslationWorkerConfig, lifespan_worker_config())
@@ -59,8 +59,8 @@ class TranslationActivities(ActivityWithProgress):
         batches = [
             b
             async for b in create_translation_batches_act(
-                project=project,
-                target=target,
+                project,
+                query,
                 batch_text_length=batch_text_length,
                 es_client=es_client,
             )
@@ -110,15 +110,15 @@ class TranslationActivities(ActivityWithProgress):
 
 
 async def create_translation_batches_act(
-    *,
     project: str,
-    target: Language,
+    query: dict[str, Any],
     batch_text_length: int = 1000000,
     es_client: ESClient | None = None,
 ) -> AsyncGenerator[tuple[DatashareLanguage, list[Batch]], None]:
     # Retrieve unprocessed docs.
-    es_docs = _get_es_docs(
-        es_client, project, target=target, source_includes=BATCHING_DOC_SOURCES
+    query = _with_doc_type(query)
+    es_docs = _get_es_docs_by_language(
+        es_client, project, query, source_includes=BATCHING_DOC_SOURCES
     )
     async for language_docs in es_docs:
         language_batches: list[Batch] = []
@@ -277,17 +277,16 @@ async def _split_sentences(
             yield es_doc, sentence
 
 
-async def _get_es_docs(
+async def _get_es_docs_by_language(
     es_client: ESClient,
     project: str,
-    target: Language,
+    query: dict[str, Any],
     source_includes: list[str],
 ) -> AsyncGenerator[AsyncIterator[dict], None]:
-    # Get all documents that are not in the target language sorted by language
     docs = _poll_from_es(
         es_client,
         project,
-        body=_untranslated_query(target),
+        body=query,
         source_includes=source_includes,
         sort=[f"{DOC_LANGUAGE}:asc", "_doc:asc"],
     )
@@ -349,13 +348,6 @@ async def _update_docs_translation(
     await async_bulk(es_client, actions, raise_on_error=True, refresh="wait_for")
 
 
-def _untranslated_query(target: Language) -> dict:
-    query = bool_query(
-        must_not({TERM: {f"{DOC_CONTENT_TRANSLATED}.target_language.keyword": target}})
-    )
-    return query
-
-
 async def _poll_from_es(
     es_client: ESClient,
     project: str,
@@ -373,6 +365,10 @@ async def _poll_from_es(
 
 def _has_language(doc: dict, language: str) -> bool:
     return doc[SOURCE][DOC_LANGUAGE] == language
+
+
+def _with_doc_type(query: dict[str, Any]) -> dict[str, Any]:
+    return and_query(query, has_type(type_field="type", type_value=ES_DOCUMENT_TYPE))
 
 
 async def _publish_and_consume(

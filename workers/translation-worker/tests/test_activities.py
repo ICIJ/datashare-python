@@ -20,16 +20,15 @@ from icij_common.es import (
 from icij_common.registrable import RegistrableConfig
 from translation_worker import activities
 from translation_worker.activities import (
-    _get_es_docs,
+    _get_es_docs_by_language,
     _split_sentences,
-    _untranslated_query,
     _update_docs_translation,
     create_translation_batches_act,
     translate_docs_act,
 )
 from translation_worker.config import TranslationWorkerConfig
 from translation_worker.constants import DOC_CONTENT_TEXT_LENGTH
-from translation_worker.objects import Language, TranslationModel
+from translation_worker.objects import TranslationModel, untranslated_query
 from translation_worker.processors import SentenceSplitter, Translator
 
 from tests.conftest import (
@@ -135,25 +134,6 @@ ES_DOC_2 = _make_es_doc(
     DOC_ID_2, content=ES_DOC_2_TEXT, language=SPANISH, root_document=ROOT_DOCUMENT_2
 )
 
-
-# _untranslated_query
-
-
-@pytest.mark.parametrize("language", [DS_ENGLISH, DS_FRENCH])
-def test__untranslated_query(language: Language) -> None:
-    query = _untranslated_query(language)
-    expected_query = {
-        "query": {
-            "bool": {
-                "must_not": [
-                    {"term": {"content_translated.target_language.keyword": language}}
-                ]
-            }
-        }
-    }
-    assert query == expected_query
-
-
 # _iter_sentences
 
 _EN_DOC_TO_SPLIT = _make_es_doc(
@@ -215,11 +195,12 @@ def _make_batching_doc(
 async def test__create_translation_batches__returns_empty_list_when_no_docs() -> None:
     # Given
     client = MockESClient([])
+    query = untranslated_query(DS_ENGLISH)
     # When
     result = [
         b
         async for b in create_translation_batches_act(
-            project=TEST_PROJECT, target=DS_ENGLISH, es_client=client
+            project=TEST_PROJECT, query=query, es_client=client
         )
     ]
     # Then
@@ -230,11 +211,12 @@ async def test__create_translation_batches__single_doc_creates_one_batch() -> No
     # Given
     doc = _make_batching_doc(DOC_ID_1, FRENCH)
     client = MockESClient([doc])
+    query = untranslated_query(DS_ENGLISH)
     # When
     result = [
         b
         async for b in create_translation_batches_act(
-            project=TEST_PROJECT, target=DS_ENGLISH, es_client=client
+            project=TEST_PROJECT, query=query, es_client=client
         )
     ]
     # When
@@ -246,13 +228,14 @@ async def test__create_translation_batches__single_doc_creates_one_batch() -> No
 
 async def test__create_translation_batches__multiple_docs_same_lang_one_batch() -> None:
     # Given
+    query = untranslated_query(DS_ENGLISH)
     docs = [_make_batching_doc(DOC_ID_1, FRENCH), _make_batching_doc(DOC_ID_2, FRENCH)]
     client = MockESClient(docs)
     # When
     result = [
         b
         async for b in create_translation_batches_act(
-            project=TEST_PROJECT, target=DS_ENGLISH, es_client=client
+            project=TEST_PROJECT, query=query, es_client=client
         )
     ]
     # Then
@@ -265,6 +248,7 @@ async def test__create_translation_batches__multiple_langs_yield_separate_entrie
     None
 ):
     # Given
+    query = untranslated_query(DS_ENGLISH)
     fr_doc = _make_batching_doc(DOC_ID_1, DS_FRENCH)
     es_doc = _make_batching_doc(DOC_ID_2, DS_SPANISH)
     docs = [fr_doc, es_doc]
@@ -273,7 +257,7 @@ async def test__create_translation_batches__multiple_langs_yield_separate_entrie
     result = [
         b
         async for b in create_translation_batches_act(
-            project=TEST_PROJECT, target=DS_ENGLISH, es_client=client
+            project=TEST_PROJECT, query=query, es_client=client
         )
     ]
     # Then
@@ -289,6 +273,7 @@ async def test__create_translation_batches__splits_batch_if_max_text_len_exceede
     # Given
     batch_text_length = 1400
     doc_id_3 = "doc_id_3"
+    query = untranslated_query(DS_ENGLISH)
     docs = [
         _make_batching_doc(DOC_ID_1, FRENCH, content_text_length=600),
         _make_batching_doc(DOC_ID_2, FRENCH, content_text_length=600),
@@ -300,7 +285,7 @@ async def test__create_translation_batches__splits_batch_if_max_text_len_exceede
         b
         async for b in create_translation_batches_act(
             project=TEST_PROJECT,
-            target=DS_ENGLISH,
+            query=query,
             batch_text_length=batch_text_length,
             es_client=client,
         )
@@ -517,7 +502,9 @@ async def test__get_es_docs(
     # When
     docs = [
         [d async for d in group]
-        async for group in _get_es_docs(es_client, TEST_PROJECT, DS_ENGLISH, [])
+        async for group in _get_es_docs_by_language(
+            es_client, TEST_PROJECT, DS_ENGLISH, []
+        )
     ]
     docs = [[d[ID_] for d in g] for g in docs]
     # Then
