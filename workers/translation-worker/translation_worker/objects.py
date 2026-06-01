@@ -1,11 +1,19 @@
 from abc import ABC
 from enum import StrEnum
-from typing import TYPE_CHECKING, ClassVar
+from typing import TYPE_CHECKING, Any, ClassVar
 
 from datashare_python.objects import (
     BaseModel,
     DatashareModel,
     Language,
+)
+from icij_common.es import (
+    DOC_CONTENT_TRANSLATED,
+    QUERY,
+    TERM,
+    bool_query,
+    has_id,
+    must_not,
 )
 from icij_common.registrable import RegistrableConfig
 from pydantic import Field
@@ -105,10 +113,33 @@ class TranslationConfig(DatashareModel):
         return Translator.from_config(self.translator)
 
 
+DocumentSearchQuery = dict[str, Any]
+DocId = str
+
+
+def untranslated_query(target: Language) -> dict:
+    query = bool_query(
+        must_not({TERM: {f"{DOC_CONTENT_TRANSLATED}.target_language.keyword": target}})
+    )
+    return query[QUERY]
+
+
 class TranslationArgs(DatashareModel):
     project: str
+    docs: list[DocId] | DocumentSearchQuery | None = None
     config: TranslationConfig = Field(default_factory=TranslationConfig)
     target_language: Language
+
+    def as_query(self) -> dict[str, Any]:
+        match self.docs:
+            case None:
+                return untranslated_query(self.target_language)
+            case list():
+                return has_id(self.docs)
+            case dict():
+                return self.docs
+            case _:
+                raise ValueError(f"unsupported docs {self.docs}")
 
 
 class TranslationResponse(DatashareModel):

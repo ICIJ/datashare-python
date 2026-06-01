@@ -26,7 +26,7 @@ class TranslationWorkflow(WorkflowWithProgress):
         batches_per_worker = worker_config.batches_per_worker
         # Create translation batches
         target = args.target_language
-        translation_batch_args = [args.project, target]
+        translation_batch_args = [args.project, args.as_query()]
         per_language_batches: list[tuple[str, list[list[str]]]]
         per_language_batches = await execute_activity(
             TranslationActivities.create_translation_batches,
