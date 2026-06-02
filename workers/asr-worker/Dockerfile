@@ -61,6 +61,27 @@ RUN rm -rf ~/.cache/pip
 
 ENTRYPOINT ["entrypoints/cpu_worker.sh"]
 
+# Here for debug purposes
+FROM asr-worker-builder AS inference-cpu-worker
+RUN apt-get update && apt-get install -y build-essential
+# Install deps first to optimize layer cache
+RUN --mount=type=cache,target=~/.cache/uv \
+    --mount=type=bind,source=uv.dist.lock,target=uv.lock \
+    --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
+    uv sync -v --frozen --no-editable --no-install-project --extra inference --extra cpu
+
+# Then copy code
+ADD uv.dist.lock ./uv.lock
+ADD pyproject.toml README.md ./
+ADD asr_worker ./asr_worker/
+ADD entrypoints/inference_gpu_worker.sh ./entrypoints/inference_gpu_worker.sh
+
+# Then install service
+RUN --mount=type=cache,target=~/.cache/uv uv sync -v --frozen --no-editable --extra inference --extra cpu
+RUN rm -rf ~/.cache/pip
+
+ENTRYPOINT ["entrypoints/inference_gpu_worker.sh"]
+
 
 FROM asr-worker-builder AS inference-gpu-worker
 RUN apt-get update && apt-get install -y build-essential
