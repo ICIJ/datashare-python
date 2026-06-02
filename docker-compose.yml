@@ -29,8 +29,6 @@ services:
       - "9200:9200"
     volumes:
       - elasticsearch-data:/var/lib/elasticsearch/data
-    networks:
-      - datashare-network
 
   postgres:
     # TODO: Figure out missing root user error
@@ -49,8 +47,6 @@ services:
       - 5432
     volumes:
       - postgres-data:/var/lib/postgresql
-    networks:
-      - datashare-network
 
   redis:
     image: redis:${REDIS_VERSION:-8.6-rc1-trixie}
@@ -64,8 +60,6 @@ services:
       - "6379:6379"
     volumes:
       - redis-data:/data
-    networks:
-      - datashare-network
 
   ############################
   # temporal
@@ -120,8 +114,6 @@ services:
       - "7233:7233"
     volumes:
       - .testcontainers/temporal:/etc/temporal/.config/temporalio/
-    networks:
-      - datashare-network
 
   temporal-post-init:
     image: temporalio/admin-tools:${TEMPORAL_ADMINTOOLS_VERSION-1.31.2}
@@ -129,8 +121,6 @@ services:
     depends_on:
       temporal:
         condition: service_healthy
-    networks:
-      - datashare-network
     volumes:
       - .testcontainers/temporal:/etc/temporal/.config/temporalio/
     entrypoint: [ "/bin/sh" ]
@@ -145,8 +135,6 @@ services:
       - TEMPORAL_ADDRESS=temporal:7233
     ports:
       - "8233:8080"
-    networks:
-      - datashare-network
 
   ############################
   # datashare
@@ -157,8 +145,6 @@ services:
     depends_on:
       elasticsearch:
         condition: service_healthy
-    networks:
-      - datashare-network
     command: >-
       --mode CLI
       --createIndex sandbox
@@ -183,8 +169,6 @@ services:
       TEMPORAL_ADDRESS: http://temporal:7233
     ports:
       - "8080:8080"
-    networks:
-      - datashare-network
     command: >-
       --mode SERVER
       --taskRoutingStrategy GROUP
@@ -218,6 +202,114 @@ services:
     networks:
       - datashare-network
 
+  workflow-worker:
+    build:
+      context: workers/workflows-worker
+      target: datashare-workflows-worker
+    depends_on:
+      temporal-post-init:
+        condition: service_completed_successfully
+    environment:
+      DS_WORKER_LOGGING__FORMAT: default
+      DS_WORKER_LOG_LEVEL_MAX_CONCURRENT_IO_ACTIVITIES: 10
+      # Temporal
+      DS_WORKER_TEMPORAL__HOST: "temporal:7233"
+      DS_WORKER_TEMPORAL__NAMESPACE: "datashare-default"
+
+      DS_WORKER_DOCS_ROOT: ""
+      DS_WORKER_ARTIFACTS_ROOT: ""
+      DS_WORKER_WORKDIR: ""
+
+  asr-io-worker:
+    build:
+      context: workers/asr-worker
+      target: io-worker
+    platform: linux/amd64
+    depends_on:
+      temporal-post-init:
+        condition: service_completed_successfully
+    volumes:
+      - asr-worker-data:/usr/data
+    environment:
+      HF_HUB_CACHE: /root/.cache/huggingface/hub
+      # General
+      DS_WORKER_LOGGING__FORMAT: default
+      # Temporal
+      DS_WORKER_TEMPORAL__HOST: "temporal:7233"
+      DS_WORKER_TEMPORAL__NAMESPACE: "datashare-default"
+      # ES
+      DS_WORKER_ELASTICSEARCH__ADDRESS: "http://elasticsearch:9200"
+      DS_WORKER_ELASTICSEARCH__DEFAULT_PAGE_SIZE: "1000"
+      DS_WORKER_ELASTICSEARCH__KEEP_ALIVE: "10m"
+      DS_WORKER_ELASTICSEARCH__MAX_CONCURRENCY: "5"
+      DS_WORKER_ELASTICSEARCH__MAX_RETRIES: "5"
+      DS_WORKER_ELASTICSEARCH__MAX_RETRY_WAIT_S: "60"
+      DS_WORKER_ELASTICSEARCH__TIMEOUT_S: "300"
+      # ASR specific
+      DS_WORKER_DOCS_ROOT: /usr/src/data
+      DS_WORKER_ARTIFACTS_ROOT: /usr/src/data/artifacts
+      DS_WORKER_WORKDIR: /usr/src/data/workdir
+
+  asr-cpu-worker:
+    build:
+      context: workers/asr-worker
+      target: cpu-worker
+    platform: linux/amd64
+    depends_on:
+      temporal-post-init:
+        condition: service_completed_successfully
+    volumes:
+      - asr-worker-data:/usr/data
+    environment:
+      HF_HUB_CACHE: /root/.cache/huggingface/hub
+      # General
+      DS_WORKER_LOGGING__FORMAT: default
+      # Temporal
+      DS_WORKER_TEMPORAL__HOST: "temporal:7233"
+      DS_WORKER_TEMPORAL__NAMESPACE: "datashare-default"
+      # ES
+      DS_WORKER_ELASTICSEARCH__ADDRESS: "http://elasticsearch:9200"
+      DS_WORKER_ELASTICSEARCH__DEFAULT_PAGE_SIZE: "1000"
+      DS_WORKER_ELASTICSEARCH__KEEP_ALIVE: "10m"
+      DS_WORKER_ELASTICSEARCH__MAX_CONCURRENCY: "5"
+      DS_WORKER_ELASTICSEARCH__MAX_RETRIES: "5"
+      DS_WORKER_ELASTICSEARCH__MAX_RETRY_WAIT_S: "60"
+      DS_WORKER_ELASTICSEARCH__TIMEOUT_S: "300"
+      # ASR specific
+      DS_WORKER_DOCS_ROOT: /usr/src/data
+      DS_WORKER_ARTIFACTS_ROOT: /usr/src/data/artifacts
+      DS_WORKER_WORKDIR: /usr/src/data/workdir
+
+  asr-cpu-inference-worker:
+    build:
+      context: workers/asr-worker
+      target: inference-cpu-worker
+    platform: linux/amd64
+    depends_on:
+      temporal-post-init:
+        condition: service_completed_successfully
+    volumes:
+      - asr-worker-data:/usr/data
+    environment:
+      HF_HUB_CACHE: /root/.cache/huggingface/hub
+      # General
+      DS_WORKER_LOGGING__FORMAT: default
+      # Temporal
+      DS_WORKER_TEMPORAL__HOST: "temporal:7233"
+      DS_WORKER_TEMPORAL__NAMESPACE: "datashare-default"
+      # ES
+      DS_WORKER_ELASTICSEARCH__ADDRESS: "http://elasticsearch:9200"
+      DS_WORKER_ELASTICSEARCH__DEFAULT_PAGE_SIZE: "1000"
+      DS_WORKER_ELASTICSEARCH__KEEP_ALIVE: "10m"
+      DS_WORKER_ELASTICSEARCH__MAX_CONCURRENCY: "5"
+      DS_WORKER_ELASTICSEARCH__MAX_RETRIES: "5"
+      DS_WORKER_ELASTICSEARCH__MAX_RETRY_WAIT_S: "60"
+      DS_WORKER_ELASTICSEARCH__TIMEOUT_S: "300"
+      # ASR specific
+      DS_WORKER_DOCS_ROOT: /usr/src/data
+      DS_WORKER_ARTIFACTS_ROOT: /usr/src/data/artifacts
+      DS_WORKER_WORKDIR: /usr/src/data/workdir
+
 networks:
   datashare-network:
     driver: bridge
@@ -226,3 +318,4 @@ volumes:
   elasticsearch-data:
   postgres-data:
   redis-data:
+  asr-worker-data:
