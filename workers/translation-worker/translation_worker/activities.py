@@ -42,12 +42,12 @@ logger = logging.getLogger(__name__)
 
 
 class TranslationActivities(ActivityWithProgress):
-    @activity_defn(name="translation.worker_config")
+    @activity_defn(name="translation.worker-config")
     async def translation_worker_config(self) -> TranslationWorkerConfig:
         worker_config = cast(TranslationWorkerConfig, lifespan_worker_config())
         return worker_config
 
-    @activity_defn(name="translation.create_translation_batches")
+    @activity_defn(name="translation.create-translation-batches")
     async def create_translation_batches(
         self, project: str, target_language: LanguageAlpha2
     ) -> list[tuple[str, list[list[str]]]]:
@@ -62,7 +62,7 @@ class TranslationActivities(ActivityWithProgress):
         )
         return batches
 
-    @activity_defn(name="translation.translate_docs")
+    @activity_defn(name="translation.translate-docs")
     async def translate_docs(
         self,
         doc_id_batch_with_lang: tuple[str, list[list[str]]],
