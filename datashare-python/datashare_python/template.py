@@ -41,7 +41,8 @@ def build_template_tarball() -> None:
             is_hidden = path.name.startswith(".") or any(
                 "." in p for p in path.parts[:-1]
             )
-            if is_hidden or not path.is_file() or path.suffix not in ALLOWED_EXTS:
+            skip = is_hidden or not path.is_file() or path.suffix not in ALLOWED_EXTS
+            if path.name != "Dockerfile" and skip:
                 continue
             tar.add(path, arcname=path.relative_to(template_dir))
 
@@ -75,8 +76,11 @@ def _update_pyproject_toml(
     pyproject_toml["tool"]["uv"].pop("index", None)
 
     project = pyproject_toml["project"]
+    project["name"] = package_name.replace("_", "-").lower()
+    project["version"] = "0.1.0"
     project["authors"] = []
     project.pop("urls", None)
+    project.pop("description", None)
     project["dependencies"] = sorted(
         d
         for d in project["dependencies"]
@@ -100,16 +104,29 @@ def _update_pyproject_toml(
         "worker_template", package_name
     )
     entry_points["datashare.activities"]["activities"] = activities_entry_point
+
+    deps = entry_points["datashare.dependencies"]["dependencies"]
+    deps = deps.replace("worker_template", package_name)
+    entry_points["datashare.dependencies"]["dependencies"] = deps
+
+    cfg_cls_entry_point = entry_points["datashare.worker_config_cls"][
+        "worker_config_cls"
+    ]
+    cfg_cls_entry_point = cfg_cls_entry_point.replace("worker_template", package_name)
+    entry_points["datashare.worker_config_cls"]["worker_config_cls"] = (
+        cfg_cls_entry_point
+    )
+
     hatch_sdist = pyproject_toml["tool"]["hatch"]["build"]["targets"]["wheel"]
     hatch_sdist["packages"] = [
         i if i != "worker_template" else package_name for i in hatch_sdist["packages"]
     ]
 
-    hatch_sdist = pyproject_toml["tool"]["hatch"]["build"]["targets"]["sdist"]
-    if "only-include" in hatch_sdist:
-        hatch_sdist["only-include"] = [
-            i if i != "worker_template" else package_name
-            for i in hatch_sdist["only-include"]
-        ]
+    hatch_sdist = pyproject_toml["tool"]["hatch"]["build"]["targets"]["wheel"]
+    if "packages" in hatch_sdist:
+        hatch_sdist["packages"] = [package_name]
+
+    build_system = pyproject_toml["build-system"]
+    build_system["package"] = package_name
 
     return pyproject_toml

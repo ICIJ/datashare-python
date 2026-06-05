@@ -16,6 +16,7 @@ from datashare_python.config import (
 )
 from datashare_python.conftest import (  # noqa: F401
     TEST_PROJECT,
+    clear_dirs,
     doc_3,
     event_loop,
     index_docs,
@@ -116,19 +117,12 @@ async def populate_es_with_audios(
     return docs
 
 
-def _clear_dirs(config: ASRWorkerConfig) -> None:
-    shutil.rmtree(config.artifacts_root)
-    config.artifacts_root.mkdir(parents=True, exist_ok=True)
-    shutil.rmtree(config.workdir)
-    config.workdir.mkdir(parents=True, exist_ok=True)
-
-
 @pytest.fixture
 def with_audio_docs(
     populate_es_with_audios: list[Document], test_worker_config: ASRWorkerConfig
 ) -> list[FilesystemDocument]:
     config = test_worker_config
-    _clear_dirs(test_worker_config)
+    clear_dirs(test_worker_config)
     docs = [
         d for d in populate_es_with_audios if d.content_type in SUPPORTED_CONTENT_TYPES
     ]

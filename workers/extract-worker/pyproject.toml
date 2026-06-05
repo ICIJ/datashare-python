@@ -1,0 +1,124 @@
+[project]
+name = "extract-worker"
+dynamic = ["version"]
+authors = [
+  { name = "Clément Doumouro", email = "cdoumouro@icij.org" },
+  { name = "Clément Doumouro", email = "clement.doumouro@gmail.com" },
+  { name = "Lion Summerbell", email = "lsummerbell@icij.org" }
+]
+readme = "README.md"
+requires-python = ">=3.11,<3.14"
+dependencies = [
+    "datashare-python~=0.8.6",
+    "extract-python==0.4.2",
+    "temporalio==1.23.0",
+]
+
+[project.optional-dependencies]
+cpu = [
+  "torch==2.11.0",
+  "torchvision==0.26.0",
+]
+gpu = [
+  "cuda-bindings==12.9.4; sys_platform == 'linux'",
+  "torch==2.11.0+cu129; sys_platform == 'linux'",
+  "torchvision==0.26.0+cu129; sys_platform == 'linux'",
+]
+
+[project.entry-points."datashare.workflows"]
+workflows = "extract_worker.workflows:WORKFLOWS"
+
+[project.entry-points."datashare.activities"]
+activities = "extract_worker.activities:ACTIVITIES"
+
+[project.entry-points."datashare.dependencies"]
+dependencies = "extract_worker.dependencies:DEPENDENCIES"
+
+[project.entry-points."datashare.worker_config_cls"]
+worker_config_cls = "extract_worker.config_:WORKER_CONFIG_CLS"
+
+[dependency-groups]
+dev = [
+  "extract-python[docling,marker]==0.4.2",
+  "black>=26.1.0",
+  "nest-asyncio>=1.6.0",
+  "pre-commit>=4.5.1",
+  "psutil>=6.1.0",
+  "pylint~=3.1.0",
+  "pytest~=8.1",
+  "pytest-asyncio~=0.24",
+  "pytest-timeout==2.4.0",
+  "ruff==0.15.2",
+  "typing-extensions>=4.15.0",
+]
+
+[tool.uv-dynamic-versioning]
+fallback-version = "0.0.0"
+pattern-prefix = "extract-worker-"
+pattern = "default-unprefixed"
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[[tool.uv.index]]
+name = "pytorch-gpu"
+url = "https://download.pytorch.org/whl/cu129"
+explicit = true
+
+[tool.uv.sources]
+torch = [
+  { index = "pytorch-gpu", extra = "gpu" },
+  { index = "pytorch-cpu", extra = "cpu" },
+]
+torchvision = [
+  { index = "pytorch-gpu", extra = "gpu" },
+  { index = "pytorch-cpu", extra = "cpu" },
+]
+datashare-python = { path = "../../datashare-python", editable = true }
+
+[tool.uv]
+package = true
+exclude-dependencies = []
+override-dependencies = []
+environments = [
+  "sys_platform == 'darwin'",
+  "sys_platform == 'linux' and platform_machine == 'x86_64'",
+]
+conflicts = [
+  [
+    { extra = "cpu" },
+    { extra = "gpu" },
+  ],
+]
+prerelease = "if-necessary"
+
+
+[build-system]
+requires = ["hatchling", "uv-dynamic-versioning"]
+build-backend = "hatchling.build"
+package = "extract_worker"
+
+[tool.hatch.version]
+source = "uv-dynamic-versioning"
+
+[tool.hatch.build.targets.wheel]
+packages = ["extract_worker"]
+
+[tool.hatch.build.targets.sdist]
+exclude = [
+  "tests"
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "session"
+markers = [
+  "integration",
+  "pull",
+]
+log_cli = 1
+log_cli_level = "DEBUG"
+log_file_format = "[%(levelname)s][%(asctime)s.%(msecs)03d][%(name)s]: %(message)s"
+log_file_date_format = "%Y-%m-%d %H:%M:%S"

@@ -1,7 +1,5 @@
 import asyncio
-import contextlib
 import logging
-import os
 from asyncio import AbstractEventLoop
 from collections.abc import AsyncGenerator, AsyncIterable, Iterable
 from itertools import tee
@@ -20,7 +18,6 @@ from datashare_python.dependencies import lifespan_worker_config
 from datashare_python.objects import (
     DocArtifact,
     Document,
-    DocumentLocation,
     FilesystemDocument,
 )
 from datashare_python.types_ import ProgressRateHandler, RawProgressHandler
@@ -29,7 +26,9 @@ from datashare_python.utils import (
     activity_defn,
     activity_workdir,
     debuggable_name,
+    read_jsonl,
     safe_dir,
+    symlink_embedded_document_to_workdir,
     to_raw_progress,
     write_artifact,
 )
@@ -49,8 +48,6 @@ from icij_common.es import (
 from icij_common.iter_utils import async_batches
 from icij_common.pydantic_utils import safe_copy
 from pydantic import TypeAdapter
-
-from asr_worker.utils import read_jsonl
 
 from .config import ASRWorkerConfig
 from .constants import (
@@ -211,7 +208,12 @@ async def search_audio_paths_act(
     docs = _search_audio_paths(
         es_client, project, query, supported_content_types=SUPPORTED_CONTENT_TYPES
     )
-    docs = create_symlinks_for_embedded_audios(docs, config)
+    docs = (
+        symlink_embedded_document_to_workdir(
+            d, config.artifacts_root, workdir=config.workdir
+        )
+        async for d in docs
+    )
     async for p in write_audio_batches(docs, output_dir, batch_size):
         yield p
 
@@ -366,7 +368,7 @@ async def write_audio_batches(
 
 
 _DOC_TYPE_QUERY = has_type(type_field="type", type_value=ES_DOCUMENT_TYPE)
-_DOC_CONTENT_SOURCES = [DOC_PATH, DOC_ROOT_ID, DOC_LANGUAGE, DOC_METADATA, DOC_PATH]
+_DOC_CONTENT_SOURCES = [DOC_PATH, DOC_ROOT_ID, DOC_LANGUAGE, DOC_METADATA]
 
 
 async def _search_audio_paths(
@@ -396,36 +398,6 @@ def _with_audio_content(
     if not query:
         return type_query
     return and_query(query, type_query[QUERY])
-
-
-async def create_symlinks_for_embedded_audios(
-    docs: AsyncIterable[FilesystemDocument], config: ASRWorkerConfig
-) -> AsyncIterable[FilesystemDocument]:
-    workdir = config.workdir
-    artifacts_root = config.artifacts_root
-    symlinks_dir = None
-    async for d in docs:
-        if d.location == DocumentLocation.ARTIFACTS:
-            if symlinks_dir is None:
-                symlinks_dir = workdir / d.index / "symlinks"
-                symlinks_dir.mkdir(parents=True, exist_ok=True)
-            artifact_path = artifacts_root / d.path
-            audio_ext = Path(d.resource_name).suffix
-            symlink_path = d.path.relative_to(Path(d.index))
-            symlink_path = symlinks_dir / f"{symlink_path}{audio_ext}"
-            symlink_path.parent.mkdir(parents=True, exist_ok=True)
-            with contextlib.suppress(FileExistsError):
-                os.symlink(artifact_path, symlink_path)
-            symlink = FilesystemDocument(
-                path=symlink_path.relative_to(workdir),
-                id=d.id,
-                location=DocumentLocation.WORKDIR,
-                index=d.index,
-                resource_name=d.resource_name,
-            )
-            yield symlink
-        else:
-            yield d
 
 
 REGISTRY = [

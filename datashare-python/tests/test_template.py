@@ -28,6 +28,10 @@ async def test_init_project(
     project = pyproject_toml["project"]
     assert not project["authors"]
 
+    name = project["name"]
+    assert name == "test-project"
+    version = project["version"]
+    assert version == "0.1.0"
     dependencies = project["dependencies"]
     assert any(d.startswith("datashare-python") for d in dependencies)
     assert any(d.startswith("temporalio") for d in dependencies)
@@ -39,8 +43,15 @@ async def test_init_project(
     entry_points = project["entry-points"]
     wf_entrypoints = entry_points["datashare.workflows"]["workflows"]
     assert wf_entrypoints == "test_project.workflows:WORKFLOWS"
-    acts = entry_points["datashare.activities"]["activities"]
-    assert acts == "test_project.activities:ACTIVITIES"
+    acts_entrypoints = entry_points["datashare.activities"]["activities"]
+    assert acts_entrypoints == "test_project.activities:ACTIVITIES"
+    deps_entrypoints = entry_points["datashare.dependencies"]["dependencies"]
+    assert deps_entrypoints == "test_project.dependencies:DEPENDENCIES"
+    cfg_entrypoints = entry_points["datashare.worker_config_cls"]["worker_config_cls"]
+    assert cfg_entrypoints == "test_project.config_:WORKER_CONFIG_CLS"
 
     hatch_sdist = pyproject_toml["tool"]["hatch"]["build"]["targets"]["wheel"]
     assert hatch_sdist["packages"] == ["test_project"]
+
+    build_system = pyproject_toml["build-system"]
+    assert build_system["package"] == "test_project"

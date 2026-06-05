@@ -3,8 +3,10 @@ import contextlib
 import contextvars
 import inspect
 import json
+import os
+import shutil
 import threading
-from collections.abc import Awaitable, Callable, Coroutine
+from collections.abc import Awaitable, Callable, Coroutine, Iterable
 from copy import deepcopy
 from dataclasses import dataclass
 from datetime import timedelta
@@ -24,7 +26,7 @@ from temporalio.common import RetryPolicy, SearchAttributeKey
 from temporalio.exceptions import ApplicationError
 
 from .constants import METADATA_JSON
-from .objects import DocArtifact
+from .objects import DocArtifact, DocumentLocation, FilesystemDocument
 from .types_ import ProgressRateHandler, RawProgressHandler
 
 DependencyLabel = str | None
@@ -479,11 +481,17 @@ def write_artifact(root: Path, artifact: DocArtifact) -> Path:
     # TODO: if transcriptions are too large we could also serialize them
     #  as jsonl
     artifact_path: Path = artif_dir / artifact.filename
-    if isinstance(artifact.artifact, bytes):
-        artifact_path.write_bytes(artifact.artifact)
-    elif isinstance(artifact_path, BytesIO):
-        with artifact_path.open("wb") as f:
-            f.write(artifact.artifact.read())
+    match artifact.artifact:
+        case bytes():
+            artifact_path.write_bytes(artifact.artifact)
+        case BytesIO():
+            with artifact_path.open("wb") as f:
+                f.write(artifact.artifact.read())
+        case Path():
+            shutil.move(artifact.artifact, artifact_path)
+        case _:
+            msg = f"unsupported artifact type: {artifact.artifact.__class__.__name__}"
+            raise ValueError(msg)
     meta_path = root / _metadata_path(artifact.doc_id, project=artifact.project)
     meta = _read_artifact_metadata(root, artifact) if meta_path.exists() else dict()
     meta[artifact.metadata_key] = artifact.filename
@@ -556,3 +564,40 @@ def activity_workdir(
         wf_context=wf_context, act_context=act_context, run_context=run_context
     )
     return workdir.joinpath(project, ctx_path)
+
+
+def symlink_embedded_document_to_workdir(
+    doc: FilesystemDocument, artifacts_root: Path, *, workdir: Path
+) -> FilesystemDocument:
+    match doc.location:
+        case DocumentLocation.ARTIFACTS:
+            symlinks_dir = workdir / doc.index / "symlinks"
+            symlinks_dir.mkdir(parents=True, exist_ok=True)
+            symlink_path = Path(*doc.path.parts[:-1], doc.id)
+            # Replace the "raw" with the doc id
+            doc_ext = Path(doc.resource_name).suffix
+            symlink_path = symlink_path.relative_to(Path(doc.index))
+            symlink_path = symlinks_dir / f"{symlink_path}{doc_ext}"
+            symlink_path.parent.mkdir(parents=True, exist_ok=True)
+            artifact_path = artifacts_root / doc.path
+            with contextlib.suppress(FileExistsError):
+                os.symlink(artifact_path, symlink_path)
+            return FilesystemDocument(
+                path=symlink_path.relative_to(workdir),
+                id=doc.id,
+                location=DocumentLocation.WORKDIR,
+                index=doc.index,
+                resource_name=doc.resource_name,
+            )
+        case DocumentLocation.ORIGINAL:
+            return doc
+        case _:
+            raise ValueError(f"unsupported location {doc.location}")
+
+
+def read_jsonl(path: Path) -> Iterable[dict]:
+    with path.open() as f:
+        for line in f:
+            line = line.strip()  # noqa: PLW2901
+            if line:
+                yield json.loads(line)
