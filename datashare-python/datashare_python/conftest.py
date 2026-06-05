@@ -1,4 +1,5 @@
 import asyncio
+import shutil
 from asyncio import AbstractEventLoop
 from collections.abc import AsyncGenerator, Generator, Iterator, Sequence
 from pathlib import Path
@@ -301,3 +302,10 @@ async def all_done(task_client: DatashareTaskClient, not_done: list[str]) -> boo
 @pytest.fixture  # noqa: F405
 def typer_asyncio_patch() -> None:
     nest_asyncio.apply()
+
+
+def clear_dirs(config: WorkerConfig) -> None:
+    shutil.rmtree(str(config.artifacts_root))
+    config.artifacts_root.mkdir(parents=True, exist_ok=True)
+    shutil.rmtree(str(config.workdir))
+    config.workdir.mkdir(parents=True, exist_ok=True)

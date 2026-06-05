@@ -248,11 +248,17 @@ class Document(DatashareModel):
         )
 
 
+def _is_absolute_path(v: bytes | BytesIO | Path) -> Any:
+    if isinstance(v, Path) and not v.is_absolute():
+        raise ValueError("artifact path must be absolute")
+    return v
+
+
 @dataclass(frozen=True)
 class DocArtifact:
     project: str
     doc_id: str
-    artifact: bytes | BytesIO
+    artifact: Annotated[bytes | BytesIO | Path, AfterValidator(_is_absolute_path)]
     filename: str
     metadata_key: str
 

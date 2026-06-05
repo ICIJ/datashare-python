@@ -15,11 +15,11 @@ from asr_worker.activities import (
 )
 from asr_worker.config import ASRWorkerConfig
 from asr_worker.objects import DocId, Transcription
-from asr_worker.utils import read_jsonl
 from caul.objects import ASRResult, InputMetadata, PreprocessedInput, PreprocessorOutput
 from caul.tasks import InferenceRunner, Postprocessor, Preprocessor
 from datashare_python.conftest import TEST_PROJECT
 from datashare_python.objects import DocumentLocation, FilesystemDocument
+from datashare_python.utils import read_jsonl
 from icij_common.es import ESClient, ids_query, match_all
 from icij_common.iter_utils import batches
 from icij_common.registrable import RegistrableConfig
@@ -71,7 +71,7 @@ FS_DOCUMENT_0 = FilesystemDocument(
     location=DocumentLocation.WORKDIR,
     resource_name="doc-0.wav",
 )
-DS_DOCUMENT_2 = FilesystemDocument(
+FS_DOCUMENT_2 = FilesystemDocument(
     id="doc-2",
     path=Path("doc-2.mp3"),
     index=TEST_PROJECT,
@@ -151,9 +151,9 @@ class MockPostprocessor(Postprocessor):
     ("query", "expected_batches"),
     [
         # Supports empty query
-        ({}, [[FS_DOCUMENT_0, DS_DOCUMENT_2]]),
+        ({}, [[FS_DOCUMENT_0, FS_DOCUMENT_2]]),
         # Return all audio/video docs
-        (match_all(), [[FS_DOCUMENT_0, DS_DOCUMENT_2]]),
+        (match_all(), [[FS_DOCUMENT_0, FS_DOCUMENT_2]]),
         (ids_query(["doc-0"]), [[FS_DOCUMENT_0]]),
         # Should filter non supported content type
         (ids_query(["doc-1"]), []),
