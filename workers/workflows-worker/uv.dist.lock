@@ -298,25 +298,41 @@ wheels = [
 ]
 
 [[package]]
+name = "datashare-extract-worker"
+version = "0.1.3"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "datashare-python" },
+    { name = "extract-python" },
+    { name = "temporalio" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/91/6f/20524c515b2105856e4311eb8cc9bacae7644e93770c8e11ed124495148d/datashare_extract_worker-0.1.3.tar.gz", hash = "sha256:f846d92d3123230f840ed88aa78dca3fd8b95929380db5992c99f7ebc5263055", size = 285218, upload-time = "2026-06-08T13:19:25.19Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/16/06/34850b2cdfc76d9a6a3081cb3a4f18fb5e147c951be3f23a6db61536faab/datashare_extract_worker-0.1.3-py3-none-any.whl", hash = "sha256:8a2b58902f5405b38b01277abfc50217abf1b1e0921100b80d38401b0f27388e", size = 8153, upload-time = "2026-06-08T13:19:24.34Z" },
+]
+
+[[package]]
 name = "datashare-python"
-version = "0.8.19"
+version = "0.8.20"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiohttp" },
     { name = "alive-progress" },
     { name = "hatchling" },
     { name = "icij-common", extra = ["elasticsearch"] },
+    { name = "langcodes" },
     { name = "nest-asyncio" },
     { name = "orjson" },
+    { name = "pydantic-extra-types", extra = ["pycountry"] },
     { name = "python-json-logger" },
     { name = "pyyaml" },
     { name = "temporalio" },
     { name = "tomlkit" },
     { name = "typer" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/88/59/23fb6fb2d40a70a83fb7793e1541f34c6a40ad5769751552f4d768b15c34/datashare_python-0.8.19.tar.gz", hash = "sha256:7ec122672d9fd9ae4191ca1e26a3d0213d350514a2384ac20dbfaa98b371680d", size = 315621, upload-time = "2026-05-22T13:56:23.953Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/fe/8f/20fe348fccf6e9b2dd45ce6a4d65c131f3950456d94f307b384af7ba0fac/datashare_python-0.8.20.tar.gz", hash = "sha256:c1307c7eb52ed9120f6ff2babf3ed5687c09d45f22bc353956d9f9692fd2089d", size = 320080, upload-time = "2026-06-08T12:42:35.862Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/8e/c8/67568e37bbc7bc87aa026599bab523466f3838096b0d5e567e48a99be59a/datashare_python-0.8.19-py3-none-any.whl", hash = "sha256:858ea1d11321b67e73998c03b0aa6dd8b83f433dac4f2b67d60f6b3a0dad66f0", size = 321655, upload-time = "2026-05-22T13:56:22.706Z" },
+    { url = "https://files.pythonhosted.org/packages/47/c0/c044791d68e1ccc1bf437fb37c4217d1074ad80ce2681df5d1a93207ba00/datashare_python-0.8.20-py3-none-any.whl", hash = "sha256:dc23974fa68704c6136e34c7d6cf50c53928f63612b044dd1836744c53ac06a3", size = 325998, upload-time = "2026-06-08T12:42:34.562Z" },
 ]
 
 [[package]]
@@ -338,6 +354,7 @@ version = "0.4.33"
 source = { editable = "." }
 dependencies = [
     { name = "datashare-asr-worker" },
+    { name = "datashare-extract-worker" },
     { name = "datashare-python" },
     { name = "datashare-translation-worker" },
 ]
@@ -345,7 +362,8 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "datashare-asr-worker", specifier = "==0.8.14" },
-    { name = "datashare-python", specifier = "~=0.8.19" },
+    { name = "datashare-extract-worker", specifier = "==0.1.3" },
+    { name = "datashare-python", specifier = "~=0.8.20" },
     { name = "datashare-translation-worker", specifier = "==0.6.14" },
 ]
 
@@ -374,6 +392,18 @@ wheels = [
 [package.optional-dependencies]
 async = [
     { name = "aiohttp" },
+]
+
+[[package]]
+name = "extract-python"
+version = "0.4.2"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "icij-common" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/d1/0c/02d7eef9bd14c46bb17a3a74440b2e94c3796d987a898cf1556f7a331ec1/extract_python-0.4.2.tar.gz", hash = "sha256:e3576bb16517ff152f2d7faa8755c3866200e7507859ca542b9d16055e5f07cf", size = 266849, upload-time = "2026-06-05T15:19:20.16Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/2d/a2/daf9d0d8ca424e81e4aa93dedb55248d87c2efba8220df68ec8dbd344e3c/extract_python-0.4.2-py3-none-any.whl", hash = "sha256:30e200bd47ee46d4e0b63ab2795837a0a42b971452014d75c600f923fbe84438", size = 14641, upload-time = "2026-06-05T15:19:19.136Z" },
 ]
 
 [[package]]
@@ -750,14 +780,14 @@ wheels = [
 
 [[package]]
 name = "nexus-rpc"
-version = "1.4.0"
+version = "1.3.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/35/d5/cd1ffb202b76ebc1b33c1332a3416e55a39929006982adc2b1eb069aaa9b/nexus_rpc-1.4.0.tar.gz", hash = "sha256:3b8b373d4865671789cc43623e3dc0bcbf192562e40e13727e17f1c149050fba", size = 82367, upload-time = "2026-02-25T22:01:34.053Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/2e/f2/d54f5c03d8f4672ccc0875787a385f53dcb61f98a8ae594b5620e85b9cb3/nexus_rpc-1.3.0.tar.gz", hash = "sha256:e56d3b57b60d707ce7a72f83f23f106b86eca1043aa658e44582ab5ff30ab9ad", size = 75650, upload-time = "2025-12-08T22:59:13.002Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/11/52/6327a5f4fda01207205038a106a99848a41c83e933cd23ea2cab3d2ebc6c/nexus_rpc-1.4.0-py3-none-any.whl", hash = "sha256:14c953d3519113f8ccec533a9efdb6b10c28afef75d11cdd6d422640c40b3a49", size = 29645, upload-time = "2026-02-25T22:01:33.122Z" },
+    { url = "https://files.pythonhosted.org/packages/d6/74/0afd841de3199c148146c1d43b4bfb5605b2f1dc4c9a9087fe395091ea5a/nexus_rpc-1.3.0-py3-none-any.whl", hash = "sha256:aee0707b4861b22d8124ecb3f27d62dafbe8777dc50c66c91e49c006f971b92d", size = 28873, upload-time = "2025-12-08T22:59:12.024Z" },
 ]
 
 [[package]]
@@ -1275,7 +1305,7 @@ wheels = [
 
 [[package]]
 name = "temporalio"
-version = "1.27.0"
+version = "1.23.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "nexus-rpc" },
@@ -1283,13 +1313,13 @@ dependencies = [
     { name = "types-protobuf" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/98/a1/6d59768d97ebb03676a33d10fec22a12ba6e7062801adc5946aa99138431/temporalio-1.27.0.tar.gz", hash = "sha256:fb92ae1077967ec626375a034af7e7108fe65f7b4ab1d98798ac2eecab247a65", size = 2497835, upload-time = "2026-04-30T22:39:56.305Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/67/48/ba7413e2fab8dcd277b9df00bafa572da24e9ca32de2f38d428dc3a2825c/temporalio-1.23.0.tar.gz", hash = "sha256:72750494b00eb73ded9db76195e3a9b53ff548780f73d878ec3f807ee3191410", size = 1933051, upload-time = "2026-02-18T17:48:22.353Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/60/07/6f2a59c250b1383f7da1a607cb03a9e7bc9bd9811ce8a4fdd4e951a334b4/temporalio-1.27.0-cp310-abi3-macosx_10_12_x86_64.whl", hash = "sha256:7daa4345b377b74602626326357c49ea1864bf1277fb7cb0b9f659f505c3dfb5", size = 14594920, upload-time = "2026-04-30T22:40:25.778Z" },
-    { url = "https://files.pythonhosted.org/packages/a5/e2/16d881961ff4a8f64ab4205e5519ac6330e1cccc8c50808884e649bfc487/temporalio-1.27.0-cp310-abi3-macosx_11_0_arm64.whl", hash = "sha256:17bed16eaf340dd48ad59178c3928ecf848674bce31f80529ea057848a29399b", size = 13940741, upload-time = "2026-04-30T22:40:35.578Z" },
-    { url = "https://files.pythonhosted.org/packages/0f/bf/33c66ef5dcd5a63e5d4d171660e81302e4909545e6400e531d7d609d0a62/temporalio-1.27.0-cp310-abi3-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:449c1e4c0d4f4d6545442060b74760f491b67c075ebde6765be16468454e2874", size = 14238127, upload-time = "2026-04-30T22:40:46.198Z" },
-    { url = "https://files.pythonhosted.org/packages/db/5f/a8b7f9e26e6b7a1d0fa8e5e9e280fac3439114318fc0e65ae4c97905ebee/temporalio-1.27.0-cp310-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:5302035f8c2fdadd69a1362309ea5514bb4129bd4e494e6b69f9a5bb85e8cb85", size = 14782764, upload-time = "2026-04-30T22:40:05.627Z" },
-    { url = "https://files.pythonhosted.org/packages/e4/ba/9428864f1d79c92b1a2f987aab5ab8f57911c0deb8dcf738cb0d89556ed6/temporalio-1.27.0-cp310-abi3-win_amd64.whl", hash = "sha256:0f125e82ff616dd46fb45ac4d253319e989bf3734a4eb25af703d5bc27147af9", size = 14974832, upload-time = "2026-04-30T22:40:14.921Z" },
+    { url = "https://files.pythonhosted.org/packages/6f/71/26c8f21dca9092201b3b9cb7aff42460b4864b5999aa4c6a4343ac66f1fd/temporalio-1.23.0-cp310-abi3-macosx_10_12_x86_64.whl", hash = "sha256:6b69ac8d75f2d90e66f4edce4316f6a33badc4a30b22efc50e9eddaa9acdc216", size = 12311037, upload-time = "2026-02-18T17:47:47.628Z" },
+    { url = "https://files.pythonhosted.org/packages/ec/47/43102816139f2d346680cb7cc1e53da5f6968355ac65b4d35d4edbfca896/temporalio-1.23.0-cp310-abi3-macosx_11_0_arm64.whl", hash = "sha256:1bbbb2f9c3cdd09451565163f6d741e51f109694c49435d475fdfa42b597219d", size = 11821906, upload-time = "2026-02-18T17:47:55.314Z" },
+    { url = "https://files.pythonhosted.org/packages/00/b0/899ff28464a0e17adf17476bdfac8faf4ea41870358ff2d14737e43f9e66/temporalio-1.23.0-cp310-abi3-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:cf6570e0ee696f99a38d855da4441a890c7187357c16505ed458ac9ef274ed70", size = 12063601, upload-time = "2026-02-18T17:48:03.994Z" },
+    { url = "https://files.pythonhosted.org/packages/ed/17/b8c6d2ec3e113c6a788322513a5ff635bdd54b3791d092ed0e273467748a/temporalio-1.23.0-cp310-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:b82d6cca54c9f376b50e941dd10d12f7fe5b692a314fb087be72cd2898646a79", size = 12394579, upload-time = "2026-02-18T17:48:11.65Z" },
+    { url = "https://files.pythonhosted.org/packages/b4/b7/f9ef7fd5ee65aef7d59ab1e95cb1b45df2fe49c17e3aa4d650ae3322f015/temporalio-1.23.0-cp310-abi3-win_amd64.whl", hash = "sha256:43c3b99a46dd329761a256f3855710c4a5b322afc879785e468bdd0b94faace6", size = 12834494, upload-time = "2026-02-18T17:48:19.071Z" },
 ]
 
 [[package]]
