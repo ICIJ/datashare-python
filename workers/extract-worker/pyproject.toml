@@ -1,5 +1,5 @@
 [project]
-name = "extract-worker"
+name = "datashare-extract-worker"
 dynamic = ["version"]
 authors = [
   { name = "Clément Doumouro", email = "cdoumouro@icij.org" },
