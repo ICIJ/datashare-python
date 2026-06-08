@@ -410,24 +410,26 @@ wheels = [
 
 [[package]]
 name = "datashare-python"
-version = "0.8.19"
+version = "0.8.20"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiohttp" },
     { name = "alive-progress" },
     { name = "hatchling" },
     { name = "icij-common", extra = ["elasticsearch"] },
+    { name = "langcodes" },
     { name = "nest-asyncio" },
     { name = "orjson" },
+    { name = "pydantic-extra-types", extra = ["pycountry"] },
     { name = "python-json-logger" },
     { name = "pyyaml" },
     { name = "temporalio" },
     { name = "tomlkit" },
     { name = "typer" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/88/59/23fb6fb2d40a70a83fb7793e1541f34c6a40ad5769751552f4d768b15c34/datashare_python-0.8.19.tar.gz", hash = "sha256:7ec122672d9fd9ae4191ca1e26a3d0213d350514a2384ac20dbfaa98b371680d", size = 315621, upload-time = "2026-05-22T13:56:23.953Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/fe/8f/20fe348fccf6e9b2dd45ce6a4d65c131f3950456d94f307b384af7ba0fac/datashare_python-0.8.20.tar.gz", hash = "sha256:c1307c7eb52ed9120f6ff2babf3ed5687c09d45f22bc353956d9f9692fd2089d", size = 320080, upload-time = "2026-06-08T12:42:35.862Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/8e/c8/67568e37bbc7bc87aa026599bab523466f3838096b0d5e567e48a99be59a/datashare_python-0.8.19-py3-none-any.whl", hash = "sha256:858ea1d11321b67e73998c03b0aa6dd8b83f433dac4f2b67d60f6b3a0dad66f0", size = 321655, upload-time = "2026-05-22T13:56:22.706Z" },
+    { url = "https://files.pythonhosted.org/packages/47/c0/c044791d68e1ccc1bf437fb37c4217d1074ad80ce2681df5d1a93207ba00/datashare_python-0.8.20-py3-none-any.whl", hash = "sha256:dc23974fa68704c6136e34c7d6cf50c53928f63612b044dd1836744c53ac06a3", size = 325998, upload-time = "2026-06-08T12:42:34.562Z" },
 ]
 
 [[package]]
@@ -460,14 +462,14 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "argostranslate", marker = "extra == 'inference'", specifier = "==1.11.0" },
-    { name = "datashare-python", specifier = "~=0.8.6" },
+    { name = "datashare-python", specifier = "~=0.8.20" },
     { name = "pydantic-extra-types", extras = ["pycountry"], specifier = "==2.11.1" },
 ]
 provides-extras = ["inference"]
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "datashare-python", specifier = "~=0.2" },
+    { name = "datashare-python", specifier = "~=0.8.20" },
     { name = "nest-asyncio", specifier = ">=1.6.0" },
     { name = "pre-commit", specifier = ">=4.5.1" },
     { name = "psutil", specifier = ">=6.1.0" },
@@ -740,6 +742,15 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/41/f2/d34e8b3a08a9cc79a50b2208a93dce981fe615b64d5a4d4abee421d898df/joblib-1.5.3.tar.gz", hash = "sha256:8561a3269e6801106863fd0d6d84bb737be9e7631e33aaed3fb9ce5953688da3", size = 331603, upload-time = "2025-12-15T08:41:46.427Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/7b/91/984aca2ec129e2757d1e4e3c81c3fcda9d0f85b74670a094cc443d9ee949/joblib-1.5.3-py3-none-any.whl", hash = "sha256:5fc3c5039fc5ca8c0276333a188bbd59d6b7ab37fe6632daa76bc7f9ec18e713", size = 309071, upload-time = "2025-12-15T08:41:44.973Z" },
+]
+
+[[package]]
+name = "langcodes"
+version = "3.5.1"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/a9/75/f9edc5d72945019312f359e69ded9f82392a81d49c5051ed3209b100c0d2/langcodes-3.5.1.tar.gz", hash = "sha256:40bff315e01b01d11c2ae3928dd4f5cbd74dd38f9bd912c12b9a3606c143f731", size = 191084, upload-time = "2025-12-02T16:22:01.627Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/dd/c1/d10b371bcba7abce05e2b33910e39c33cfa496a53f13640b7b8e10bb4d2b/langcodes-3.5.1-py3-none-any.whl", hash = "sha256:b6a9c25c603804e2d169165091d0cdb23934610524a21d226e4f463e8e958a72", size = 183050, upload-time = "2025-12-02T16:21:59.954Z" },
 ]
 
 [[package]]
