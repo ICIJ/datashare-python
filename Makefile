@@ -1,6 +1,7 @@
 lock-all:
 	./scripts/lock-dist.sh worker-template
 	./scripts/lock-dist.sh asr-worker
+	./scripts/lock-dist.sh extract-worker
 	./scripts/lock-dist.sh translation-worker
 	./scripts/lock-dist.sh workflows-worker
 
