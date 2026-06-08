@@ -53,7 +53,7 @@ jobs:
       - name: Run tests
         run: |
           cd workers/extract-worker
-          uv sync --verbose --frozen --extra preprocessing --extra inference --extra cpu --dev
+          uv sync --verbose --frozen --extra base --extra cpu --dev
           uv run --frozen python -m pytest --timeout=180 -vvv --cache-clear --show-capture=all -r A
 
 concurrency:
