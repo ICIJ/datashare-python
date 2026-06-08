@@ -8,4 +8,4 @@ from datashare_python.dependencies import (
 IO = [set_worker_config, set_loggers, set_es_client]
 EXTRACT = [set_worker_config, set_loggers]
 
-DEPENDENCIES = {"io": IO, "extract": EXTRACT}
+DEPENDENCIES = {"extract.io": IO, "extract.extract": EXTRACT}

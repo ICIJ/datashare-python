@@ -39,9 +39,10 @@ async def test_extract_markdown_workflow_e2e(
     )
 
     # Then
+    response = response.model_dump()
     expected_res = MarkdownExtractResponse(
         processed=ProcessingReport(n_docs=2, n_pages=3),
         successes=ProcessingReport(n_docs=2, n_pages=3),
         errors=[],
-    )
+    ).model_dump()
     assert response == expected_res

@@ -10,6 +10,7 @@ readme = "README.md"
 requires-python = ">=3.11.0, <3.13"
 dependencies = [
   "datashare-asr-worker==0.8.14",
+  "datashare-extract-worker==0.1.0",
   "datashare-python~=0.8.19",
   "datashare-translation-worker==0.6.14",
 ]
