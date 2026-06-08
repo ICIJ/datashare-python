@@ -31,17 +31,17 @@ from datashare_python.conftest import (  # noqa: F401
     worker_lifetime_deps,
 )
 from datashare_python.objects import Document
+from datashare_python.types_ import ContextManagerFactory, TemporalClient
 from datashare_python.utils import artifacts_dir
 from datashare_python.worker import worker_context
-from dependencies import DEPENDENCIES
 from extract_python.objects import SupportedExt
 from extract_worker.activities import MarkdownExtract
 from extract_worker.config import ExtractWorkerConfig
 from extract_worker.constants import TaskQueue
+from extract_worker.dependencies import DEPENDENCIES
 from extract_worker.objects import ProcessedDoc
 from extract_worker.workflows import ExtractMarkdownContentWorkflow
 from icij_common.es import ESClient
-from types_ import ContextManagerFactory, TemporalClient
 
 from tests import DOCS_PATH
 
