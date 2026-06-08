@@ -1,0 +1,220 @@
+name: Publish extract-worker
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'extract-worker-*'
+
+jobs:
+  create-release:
+    runs-on: ubuntu-latest
+    env:
+      PYTHON_VERSION: 3.12
+      ASTRAL_VERSION: 0.11.6
+    steps:
+      - uses: actions/checkout@v6
+      - name: Create GH release
+        run: gh release create "$tag" --generate-notes
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          tag: ${{ github.ref_name }}
+
+  publish-extract-worker-to-pypi:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+    environment:
+      name: pypi
+      url: https://pypi.org/p/datashare-extract-worker
+    steps:
+      - uses: actions/checkout@v6
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: "0.10.8"
+      - name: Install Python 3.11
+        run: uv python install 3.11
+      - name: Build
+        run: cd workers/extract-worker && uv build
+      - name: Publish
+        run: cd workers/extract-worker && uv publish
+
+  publish-io-worker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v6
+        with:
+          images: icij/datashare-extract-io-worker
+          tags: |
+            type=match,pattern=extract-worker-(.*),group=1
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v4
+        with:
+          # You'll need to set these secrets
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push image
+        uses: docker/build-push-action@v7
+        with:
+          target: io-worker
+          context: ./workers/extract-worker
+          platforms: linux/amd64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+
+  publish-extract-cpu-worker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v6
+        with:
+          images: icij/datashare-extract-cpu-worker
+          tags: |
+            type=match,pattern=extract-worker-(.*),group=1
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v4
+        with:
+          # You'll need to set these secrets
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push image
+        uses: docker/build-push-action@v7
+        with:
+          target: extract-cpu-worker
+          context: ./workers/extract-worker
+          platforms: linux/amd64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+
+  publish-extract-gpu-worker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v6
+        with:
+          images: icij/datashare-extract-gpu-worker
+          tags: |
+            type=match,pattern=extract-worker-(.*),group=1
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v4
+        with:
+          # You'll need to set these secrets
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push image
+        uses: docker/build-push-action@v7
+        with:
+          target: extract-gpu-worker
+          context: ./workers/extract-worker
+          platforms: linux/amd64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+
+  publish-extract-cpu-mineru-worker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v6
+        with:
+          images: icij/datashare-extract-cpu-mineru-worker
+          tags: |
+            type=match,pattern=extract-worker-(.*),group=1
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v4
+        with:
+          # You'll need to set these secrets
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push image
+        uses: docker/build-push-action@v7
+        with:
+          target: extract-cpu-mineru-worker
+          context: ./workers/extract-worker
+          platforms: linux/amd64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+
+  publish-extract-gpu-mineru-worker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v6
+        with:
+          images: icij/datashare-extract-gpu-mineru-worker
+          tags: |
+            type=match,pattern=extract-worker-(.*),group=1
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v4
+        with:
+          # You'll need to set these secrets
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push image
+        uses: docker/build-push-action@v7
+        with:
+          target: extract-gpu-mineru-worker
+          context: ./workers/extract-worker
+          platforms: linux/amd64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+
+  trigger-workflows-worker-publication:
+    needs:
+      - publish-extract-worker-to-pypi
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Trigger workflow worker release
+        run: |
+          package_version="${package_version/extract-worker-/}"
+          gh workflow run .github/workflows/publish_workflows_worker.yml -f package="$package" -f package_version="$package_version" --ref main
+        env:
+          GH_TOKEN: ${{ github.token }}
+          package_version: ${{ github.ref_name }}
+          package: datashare-extract-worker
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false

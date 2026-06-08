@@ -8,7 +8,6 @@ from itertools import chain
 from pathlib import Path
 from typing import Any, cast
 
-from constants import MARKDOWN_DIRNAME, MARKDOWN_METADATA_KEY
 from datashare_python.dependencies import lifespan_es_client, lifespan_worker_config
 from datashare_python.objects import DocArtifact, Document, DocumentLocation
 from datashare_python.utils import (
@@ -39,6 +38,7 @@ from icij_common.es import (
 from pydantic import TypeAdapter
 
 from .config import ExtractWorkerConfig
+from .constants import MARKDOWN_DIRNAME, MARKDOWN_METADATA_KEY
 from .objects import (
     DocId,
     DocumentSearchQuery,

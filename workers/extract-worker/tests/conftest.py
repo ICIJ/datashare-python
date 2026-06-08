@@ -195,7 +195,7 @@ async def io_worker(
         client=client,
         event_loop=event_loop,
         task_queue=task_queue,
-        dependencies=DEPENDENCIES["io"],
+        dependencies=DEPENDENCIES["extract.io"],
     )
     async with worker_ctx:
         yield
@@ -211,7 +211,7 @@ async def md_extract_cpu_worker(
     worker_id = f"test-extract-cpu-worker-{uuid.uuid4()}"
     acts = MarkdownExtract(temporal_client=client, event_loop=event_loop)
     acts = [acts.extract_markdown_content]
-    task_queue = TaskQueue.MARKDOWN_CPU
+    task_queue = TaskQueue.EXTRACT_CPU
     worker_ctx = worker_context(
         worker_id,
         activities=acts,
@@ -219,7 +219,7 @@ async def md_extract_cpu_worker(
         client=client,
         event_loop=event_loop,
         task_queue=task_queue,
-        dependencies=DEPENDENCIES["extract"],
+        dependencies=DEPENDENCIES["extract.extract"],
     )
     async with worker_ctx:
         yield

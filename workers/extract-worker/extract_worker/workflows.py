@@ -47,7 +47,7 @@ class ExtractMarkdownContentWorkflow(WorkflowWithProgress):
         # Distribute batches docs with (more or less) constant number of page per batch,
         # across workers
         extract_args = [(b, args.project, args.config) for b in extract_batches]
-        task_queue = worker_config.device.md_extract_queue
+        task_queue = worker_config.device.md_extract_queue(args.config.pipeline)
         extract_acts = (
             execute_activity(
                 MarkdownExtract.extract_markdown_content,
