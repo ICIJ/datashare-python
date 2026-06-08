@@ -307,24 +307,26 @@ wheels = [
 
 [[package]]
 name = "datashare-python"
-version = "0.8.19"
+version = "0.8.20"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiohttp" },
     { name = "alive-progress" },
     { name = "hatchling" },
     { name = "icij-common", extra = ["elasticsearch"] },
+    { name = "langcodes" },
     { name = "nest-asyncio" },
     { name = "orjson" },
+    { name = "pydantic-extra-types", extra = ["pycountry"] },
     { name = "python-json-logger" },
     { name = "pyyaml" },
     { name = "temporalio" },
     { name = "tomlkit" },
     { name = "typer" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/88/59/23fb6fb2d40a70a83fb7793e1541f34c6a40ad5769751552f4d768b15c34/datashare_python-0.8.19.tar.gz", hash = "sha256:7ec122672d9fd9ae4191ca1e26a3d0213d350514a2384ac20dbfaa98b371680d", size = 315621, upload-time = "2026-05-22T13:56:23.953Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/fe/8f/20fe348fccf6e9b2dd45ce6a4d65c131f3950456d94f307b384af7ba0fac/datashare_python-0.8.20.tar.gz", hash = "sha256:c1307c7eb52ed9120f6ff2babf3ed5687c09d45f22bc353956d9f9692fd2089d", size = 320080, upload-time = "2026-06-08T12:42:35.862Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/8e/c8/67568e37bbc7bc87aa026599bab523466f3838096b0d5e567e48a99be59a/datashare_python-0.8.19-py3-none-any.whl", hash = "sha256:858ea1d11321b67e73998c03b0aa6dd8b83f433dac4f2b67d60f6b3a0dad66f0", size = 321655, upload-time = "2026-05-22T13:56:22.706Z" },
+    { url = "https://files.pythonhosted.org/packages/47/c0/c044791d68e1ccc1bf437fb37c4217d1074ad80ce2681df5d1a93207ba00/datashare_python-0.8.20-py3-none-any.whl", hash = "sha256:dc23974fa68704c6136e34c7d6cf50c53928f63612b044dd1836744c53ac06a3", size = 325998, upload-time = "2026-06-08T12:42:34.562Z" },
 ]
 
 [[package]]
@@ -678,6 +680,15 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/df/bf/f7da0350254c0ed7c72f3e33cef02e048281fec7ecec5f032d4aac52226b/jinja2-3.1.6.tar.gz", hash = "sha256:0137fb05990d35f1275a587e9aee6d56da821fc83491a0fb838183be43f66d6d", size = 245115, upload-time = "2025-03-05T20:05:02.478Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/62/a1/3d680cbfd5f4b8f15abc1d571870c5fc3e594bb582bc3b64ea099db13e56/jinja2-3.1.6-py3-none-any.whl", hash = "sha256:85ece4451f492d0c13c5dd7c13a64681a86afae63a5f347908daf103ce6d2f67", size = 134899, upload-time = "2025-03-05T20:05:00.369Z" },
+]
+
+[[package]]
+name = "langcodes"
+version = "3.5.1"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/a9/75/f9edc5d72945019312f359e69ded9f82392a81d49c5051ed3209b100c0d2/langcodes-3.5.1.tar.gz", hash = "sha256:40bff315e01b01d11c2ae3928dd4f5cbd74dd38f9bd912c12b9a3606c143f731", size = 191084, upload-time = "2025-12-02T16:22:01.627Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/dd/c1/d10b371bcba7abce05e2b33910e39c33cfa496a53f13640b7b8e10bb4d2b/langcodes-3.5.1-py3-none-any.whl", hash = "sha256:b6a9c25c603804e2d169165091d0cdb23934610524a21d226e4f463e8e958a72", size = 183050, upload-time = "2025-12-02T16:21:59.954Z" },
 ]
 
 [[package]]
@@ -1386,6 +1397,24 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/b8/e9/1f7efbe20d0b2b10f6718944b5d8ece9152390904f29a78e68d4e7961159/pydantic_core-2.33.2-pp311-pypy311_pp73-musllinux_1_1_armv7l.whl", hash = "sha256:de4b83bb311557e439b9e186f733f6c645b9417c84e2eb8203f3f820a4b988bf", size = 2239013, upload-time = "2025-04-23T18:33:26.621Z" },
     { url = "https://files.pythonhosted.org/packages/3c/b2/5309c905a93811524a49b4e031e9851a6b00ff0fb668794472ea7746b448/pydantic_core-2.33.2-pp311-pypy311_pp73-musllinux_1_1_x86_64.whl", hash = "sha256:82f68293f055f51b51ea42fafc74b6aad03e70e191799430b90c13d643059ebb", size = 2238715, upload-time = "2025-04-23T18:33:28.656Z" },
     { url = "https://files.pythonhosted.org/packages/32/56/8a7ca5d2cd2cda1d245d34b1c9a942920a718082ae8e54e5f3e5a58b7add/pydantic_core-2.33.2-pp311-pypy311_pp73-win_amd64.whl", hash = "sha256:329467cecfb529c925cf2bbd4d60d2c509bc2fb52a20c1045bf09bb70971a9c1", size = 2066757, upload-time = "2025-04-23T18:33:30.645Z" },
+]
+
+[[package]]
+name = "pydantic-extra-types"
+version = "2.11.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "pydantic" },
+    { name = "typing-extensions" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/66/71/dba38ee2651f84f7842206adbd2233d8bbdb59fb85e9fa14232486a8c471/pydantic_extra_types-2.11.1.tar.gz", hash = "sha256:46792d2307383859e923d8fcefa82108b1a141f8a9c0198982b3832ab5ef1049", size = 172002, upload-time = "2026-03-16T08:08:03.92Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/17/c1/3226e6d7f5a4f736f38ac11a6fbb262d701889802595cdb0f53a885ac2e0/pydantic_extra_types-2.11.1-py3-none-any.whl", hash = "sha256:1722ea2bddae5628ace25f2aa685b69978ef533123e5638cfbddb999e0100ec1", size = 79526, upload-time = "2026-03-16T08:08:02.533Z" },
+]
+
+[package.optional-dependencies]
+pycountry = [
+    { name = "pycountry" },
 ]
 
 [[package]]
