@@ -9,6 +9,7 @@ on:
         type: choice
         options:
           - datashare-asr-worker
+          - datashare-extract-worker
           - datashare-python
           - datashare-translation-worker
       package_version:
