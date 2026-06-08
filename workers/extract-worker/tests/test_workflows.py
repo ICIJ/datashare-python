@@ -3,13 +3,13 @@ import uuid
 import pytest
 from datashare_python.conftest import TEST_PROJECT
 from extract_python import DoclingPipelineConfig
-from extract_worker.workflows import ExtractMarkdownContentWorkflow, TaskQueues
-from objects import (
+from extract_worker.objects import (
     MarkdownExtractArgs,
     MarkdownExtractResponse,
     ProcessedDoc,
     ProcessingReport,
 )
+from extract_worker.workflows import ExtractMarkdownContentWorkflow, TaskQueues
 from temporalio.client import Client as TemporalClient
 from temporalio.worker import Worker
 
