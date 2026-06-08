@@ -2,5 +2,6 @@
 !entrypoints
 !pyproject.toml
 !translation_worker
+!README.md
 !uv.dist.lock
 !uv.lock
