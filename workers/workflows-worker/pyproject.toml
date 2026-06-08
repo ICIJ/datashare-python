@@ -12,7 +12,7 @@ dependencies = [
   "datashare-asr-worker==0.8.14",
   "datashare-extract-worker==0.1.4",
   "datashare-python~=0.8.20",
-  "datashare-translation-worker==0.7.0",
+  "datashare-translation-worker==0.7.1",
 ]
 
 [tool.hatch.build.targets.wheel]
