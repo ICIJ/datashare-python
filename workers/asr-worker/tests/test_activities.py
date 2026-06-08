@@ -66,7 +66,7 @@ INFERENCE_RESULTS = [
 
 FS_DOCUMENT_0 = FilesystemDocument(
     id="doc-0",
-    path=Path(TEST_PROJECT, "symlinks", "do", "c-", "doc-0", "raw.wav"),
+    path=Path(TEST_PROJECT, "symlinks", "do", "c-", "doc-0", "doc-0.wav"),
     index=TEST_PROJECT,
     location=DocumentLocation.WORKDIR,
     resource_name="doc-0.wav",

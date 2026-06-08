@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-from conftest import TEST_PROJECT
+from datashare_python.conftest import TEST_PROJECT
 from datashare_python.objects import DocumentLocation
 from datashare_python.utils import read_jsonl
 from extract_python import InputDoc, OutputFormat, Pipeline
