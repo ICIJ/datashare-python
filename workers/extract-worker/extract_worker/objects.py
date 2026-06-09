@@ -1,14 +1,17 @@
 from typing import Annotated, Any, Self
 
 from datashare_python.objects import DatashareModel, FilesystemDocument
-from extract_python import (
+
+# Import the config class from extract python otherwise the
+# ExtractPipelineConfig.__subclasses__ list might be incomplete
+from extract_python import (  # noqa: F401
     DoclingPipelineConfig,
+    MarkerPipelineConfig,
+    MinerUPipelineConfig,
     PipelineType,
     Status,
 )
-from extract_python import (
-    PipelineConfig as ExtractPipelineConfig,
-)
+from extract_python import PipelineConfig as ExtractPipelineConfig
 from extract_python.objects import Error
 from icij_common.pydantic_utils import make_enum_discriminator, tagged_union
 from pydantic import Discriminator, Field
