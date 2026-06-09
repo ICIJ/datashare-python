@@ -1,6 +1,3 @@
-FROM python:3.13-slim-trixie AS builder
-
-
 FROM python:3.13-slim-trixie AS extract-worker-builder
 
 ENV PYTHONUNBUFFERED=1
@@ -34,7 +31,15 @@ RUN rm -rf ~/.cache/pip
 ENTRYPOINT ["entrypoints/io_worker.sh"]
 
 
-FROM extract-worker-builder AS extract-cpu-worker
+FROM extract-worker-builder AS extract-base-builder
+
+RUN apt update && \
+    apt install -y --no-install-recommends build-essential g++ && \
+    apt install -y tesseract-ocr && \
+    rm -rf /var/lib/apt/lists/*
+
+
+FROM extract-base-builder AS extract-cpu-worker
 # Install deps first to optimize layer cache
 RUN --mount=type=cache,target=~/.cache/uv \
     --mount=type=bind,source=uv.dist.lock,target=uv.lock \
@@ -54,7 +59,7 @@ RUN rm -rf ~/.cache/pip
 ENTRYPOINT ["entrypoints/extract_cpu_worker.sh"]
 
 
-FROM extract-worker-builder AS extract-gpu-worker
+FROM extract-base-builder AS extract-gpu-worker
 # Install deps first to optimize layer cache
 RUN --mount=type=cache,target=~/.cache/uv \
     --mount=type=bind,source=uv.dist.lock,target=uv.lock \
