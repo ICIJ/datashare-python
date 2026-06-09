@@ -16,9 +16,15 @@ on:
         description: 'New version of the worker app'
         required: true
         type: string
+      package_extras:
+        description: 'Python package extras'
+        required: false
+        default: ""
+        type: string
 
 env:
   PACKAGE: ${{ inputs.package }}
+  PACKAGE_EXTRAS: ${{ inputs.package_extras }}
   PACKAGE_VERSION: ${{ inputs.package_version }}
   PYTHON_VERSION: 3.12
   ASTRAL_VERSION: 0.11.6
@@ -51,7 +57,7 @@ jobs:
           cd workers/workflows-worker
           workflows_worker_version_bump_info=$(uv run --frozen main.py "$PACKAGE" "$PACKAGE_VERSION")
           echo workflows_worker_version_bump_info="$workflows_worker_version_bump_info" >> "$GITHUB_ENV"
-          ./bump_workflow.sh "$PACKAGE" "$PACKAGE_VERSION"
+          ./bump_workflow.sh "$PACKAGE$PACKAGE_EXTRAS" "$PACKAGE_VERSION"
       - name: Create a new workflows worker tags
         id: tag
         env:

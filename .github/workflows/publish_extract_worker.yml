@@ -214,6 +214,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           package_version: ${{ github.ref_name }}
           package: datashare-extract-worker
+          package_extras: "[docling,marker]"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
