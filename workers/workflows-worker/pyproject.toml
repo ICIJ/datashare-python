@@ -18,6 +18,9 @@ dependencies = [
 [tool.uv]
 package = true
 exclude-dependencies = [
+  "cuda-bindings",
+  "cuda-pathfinde",
+  "cuda-toolkit",
   "nvidia-cublas",
   "nvidia-cuda-cupti",
   "nvidia-cuda-nvrtc",
