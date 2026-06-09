@@ -299,16 +299,16 @@ wheels = [
 
 [[package]]
 name = "datashare-extract-worker"
-version = "0.1.6"
+version = "0.1.5"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "datashare-python" },
     { name = "extract-python" },
     { name = "temporalio" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/a4/22/13e986fe1a5422692a772598dee759602a03b04d9f687c50f59cf521624c/datashare_extract_worker-0.1.6.tar.gz", hash = "sha256:935acc07807db94a6a0ede6cff08c2a60e433f9a10c91e7d28e8ee4a54513499", size = 284919, upload-time = "2026-06-09T10:25:36.809Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/0f/ba/8a98f2fec644a4fbd99911ce9355099c05430c9aa872fb34cde77263817c/datashare_extract_worker-0.1.5.tar.gz", hash = "sha256:ac506d14f9942dfba7c81d6ef89f86b2a52b7b825ac3b0631e2c24615eeca654", size = 284860, upload-time = "2026-06-09T08:29:18.524Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/1f/25/341212845f6a39eb692df608d5411d7ba6d89eee1d63a6df54d40894b45b/datashare_extract_worker-0.1.6-py3-none-any.whl", hash = "sha256:5110d1203b0b063524b4c7ee0059b3ba0d1832afd255354f9a1cdd7f13489b7b", size = 8222, upload-time = "2026-06-09T10:25:37.879Z" },
+    { url = "https://files.pythonhosted.org/packages/aa/4a/8e2e7e60d6ec51cc8e3dc561fa77484aa1ab05f42bdef44d331f0cb75409/datashare_extract_worker-0.1.5-py3-none-any.whl", hash = "sha256:c5df29c11b97428552b91f0a7d5c223f6a9f38e3e3543b84d649be2fe780a225", size = 8152, upload-time = "2026-06-09T08:29:19.523Z" },
 ]
 
 [[package]]
@@ -350,7 +350,7 @@ wheels = [
 
 [[package]]
 name = "datashare-workflows-worker"
-version = "0.5.6"
+version = "0.5.5"
 source = { editable = "." }
 dependencies = [
     { name = "datashare-asr-worker" },
@@ -362,7 +362,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "datashare-asr-worker", specifier = "==0.8.14" },
-    { name = "datashare-extract-worker", specifier = "==0.1.6" },
+    { name = "datashare-extract-worker", extras = ["docling", "marker"], specifier = "==0.1.5" },
     { name = "datashare-python", specifier = "~=0.8.23" },
     { name = "datashare-translation-worker", specifier = "==0.7.3" },
 ]
