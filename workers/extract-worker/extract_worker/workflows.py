@@ -21,7 +21,7 @@ class TaskQueues(StrEnum):
     WORKFLOWS = "datashare.workflows"
 
 
-@workflow.defn(name="extract.markdown-content")
+@workflow.defn(name="extract.markdown")
 class ExtractMarkdownContentWorkflow(WorkflowWithProgress):
     @workflow.run
     async def run(self, args: MarkdownExtractArgs) -> MarkdownExtractResponse:
