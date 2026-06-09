@@ -8,6 +8,10 @@ ENV UV_NO_DEV=1
 
 COPY --from=ghcr.io/astral-sh/uv:0.11.6 /uv /uvx /bin/
 
+RUN apt update && \
+    apt install -y --no-install-recommends build-essential g++ && \
+    rm -rf /var/lib/apt/lists/*
+
 WORKDIR /app
 
 
