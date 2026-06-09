@@ -551,16 +551,16 @@ wheels = [
 
 [[package]]
 name = "datashare-extract-worker"
-version = "0.1.7"
+version = "0.1.8"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "datashare-python" },
     { name = "extract-python" },
     { name = "temporalio" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/e6/02/a3d8bce3b8bdcaf61406189816b3782b08cee067eeb06c0ffbf4fc1eec19/datashare_extract_worker-0.1.7.tar.gz", hash = "sha256:c4706725c7cc8e258f4d3266f1503f209b9f6dd693640746bf86794781a46f8d", size = 284918, upload-time = "2026-06-09T10:43:27.833Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/9b/3a/0cdf5495a058280e7295b7aeafef5a7b0e2df31f128465a77e9e3542d3bb/datashare_extract_worker-0.1.8.tar.gz", hash = "sha256:471886d0c9834b2f85c9be7f3a2bca4582c583406b3c92acc30d5dba284dd79e", size = 284916, upload-time = "2026-06-09T12:19:20.679Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/a5/4c/a9554b09b0115dcde733915660eb3624613219c3342588a61edffe8e2889/datashare_extract_worker-0.1.7-py3-none-any.whl", hash = "sha256:9ea6803fc1999dc170dfe40251ffa97bebdbf3b49a69a267f448513f1f4d781f", size = 8222, upload-time = "2026-06-09T10:43:27.033Z" },
+    { url = "https://files.pythonhosted.org/packages/98/a6/6b111218fb5604e688b5befee3083b4f5eeedc577cd06755413173e026b0/datashare_extract_worker-0.1.8-py3-none-any.whl", hash = "sha256:fd2f20ad5796b4e16a5aa5c1f65182658e2c85def5f4e53328679498ff7013ab", size = 8221, upload-time = "2026-06-09T12:19:22.179Z" },
 ]
 
 [package.optional-dependencies]
@@ -619,7 +619,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "datashare-asr-worker", specifier = "==0.8.14" },
-    { name = "datashare-extract-worker", extras = ["base"], specifier = "==0.1.7" },
+    { name = "datashare-extract-worker", extras = ["base"], specifier = "==0.1.8" },
     { name = "datashare-python", specifier = "~=0.8.23" },
     { name = "datashare-translation-worker", specifier = "==0.7.3" },
 ]
@@ -1935,9 +1935,9 @@ name = "ocrmac"
 version = "1.0.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "click" },
-    { name = "pillow" },
-    { name = "pyobjc-framework-vision" },
+    { name = "click", marker = "sys_platform == 'darwin'" },
+    { name = "pillow", marker = "sys_platform == 'darwin'" },
+    { name = "pyobjc-framework-vision", marker = "sys_platform == 'darwin'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/5e/07/3e15ab404f75875c5e48c47163300eb90b7409044d8711fc3aaf52503f2e/ocrmac-1.0.1.tar.gz", hash = "sha256:507fe5e4cbd67b2d03f6729a52bbc11f9d0b58241134eb958a5daafd4b9d93d9", size = 1454317, upload-time = "2026-01-08T16:44:26.412Z" }
 wheels = [
@@ -2482,7 +2482,7 @@ name = "pyobjc-framework-cocoa"
 version = "12.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "pyobjc-core" },
+    { name = "pyobjc-core", marker = "sys_platform == 'darwin'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/6d/cc/927169225e72bab9c9b44285656768fb75052a0bc85fdbca62740e1ca43c/pyobjc_framework_cocoa-12.2.tar.gz", hash = "sha256:20b392e2b7241caad0538dfde12143343e5dfe48f72e7df660a7548e635903dc", size = 3125555, upload-time = "2026-05-30T12:35:09.273Z" }
 wheels = [
@@ -2495,8 +2495,8 @@ name = "pyobjc-framework-coreml"
 version = "12.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "pyobjc-core" },
-    { name = "pyobjc-framework-cocoa" },
+    { name = "pyobjc-core", marker = "sys_platform == 'darwin'" },
+    { name = "pyobjc-framework-cocoa", marker = "sys_platform == 'darwin'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/e5/a5/ee39e19017348fcba998de71f4f425abf0563b693fcf5bf7f4b84232d538/pyobjc_framework_coreml-12.2.tar.gz", hash = "sha256:884f1f68c7a74c56d26858051da8a1e19848be97f2c4b06b32ae93e505109583", size = 49266, upload-time = "2026-05-30T12:36:23.498Z" }
 wheels = [
@@ -2509,8 +2509,8 @@ name = "pyobjc-framework-quartz"
 version = "12.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "pyobjc-core" },
-    { name = "pyobjc-framework-cocoa" },
+    { name = "pyobjc-core", marker = "sys_platform == 'darwin'" },
+    { name = "pyobjc-framework-cocoa", marker = "sys_platform == 'darwin'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/91/a3/5ae4c90c13999b46315f549694f25c374c48a9f7ab18f98ace6e74f4a5c1/pyobjc_framework_quartz-12.2.tar.gz", hash = "sha256:b343395d4790323b0376fe20c83ac468510ba19f65429323ca211708c939d107", size = 3215525, upload-time = "2026-05-30T12:44:27.759Z" }
 wheels = [
@@ -2523,10 +2523,10 @@ name = "pyobjc-framework-vision"
 version = "12.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "pyobjc-core" },
-    { name = "pyobjc-framework-cocoa" },
-    { name = "pyobjc-framework-coreml" },
-    { name = "pyobjc-framework-quartz" },
+    { name = "pyobjc-core", marker = "sys_platform == 'darwin'" },
+    { name = "pyobjc-framework-cocoa", marker = "sys_platform == 'darwin'" },
+    { name = "pyobjc-framework-coreml", marker = "sys_platform == 'darwin'" },
+    { name = "pyobjc-framework-quartz", marker = "sys_platform == 'darwin'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/49/51/aed3761cfa2f0335a8fc4cdfa04c54b3fece5242745d5dd2370f38efcff5/pyobjc_framework_vision-12.2.tar.gz", hash = "sha256:0e90244f98ede5ec16ac129ed4bbd7cf0ec07247bac6f06e9cb612db23a68a3b", size = 72582, upload-time = "2026-05-30T12:46:17.468Z" }
 wheels = [
