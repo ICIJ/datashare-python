@@ -55,6 +55,8 @@ exclude-dependencies =  [
   "pypptx-with-oxml",
   "surya-ocr",
   "triton",
+  "torch",
+  "trochvision",
   "uvicorn"
 ]
 override-dependencies = [
