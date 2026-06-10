@@ -1,6 +1,6 @@
 from enum import StrEnum
 
-from extract_python import PipelineType
+from extract_core import PipelineType
 
 MARKDOWN_METADATA_KEY = "extract.markdown"
 MARKDOWN_DIRNAME = "markdown"

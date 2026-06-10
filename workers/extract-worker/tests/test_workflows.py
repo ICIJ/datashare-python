@@ -2,7 +2,7 @@ import uuid
 
 import pytest
 from datashare_python.conftest import TEST_PROJECT
-from extract_python import DoclingPipelineConfig
+from extract_core import DoclingPipelineConfig
 from extract_worker.objects import (
     MarkdownExtractArgs,
     MarkdownExtractResponse,

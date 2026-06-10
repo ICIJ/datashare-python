@@ -8,15 +8,8 @@ import pytest
 from datashare_python.conftest import TEST_PROJECT
 from datashare_python.objects import DocumentLocation
 from datashare_python.utils import read_jsonl
-from extract_python import InputDoc, OutputFormat, Pipeline
-from extract_python.objects import (
-    ConversionOutput,
-    Error,
-    PageIndexes,
-    Result,
-    Status,
-    SupportedExt,
-)
+from extract_core import InputDoc, OutputFormat, Pipeline, Result, Status
+from extract_core.objects import ConversionOutput, Error, PageIndexes, SupportedExt
 from extract_worker.activities import (
     _build_doc_query,
     create_markdown_extract_batches_act,

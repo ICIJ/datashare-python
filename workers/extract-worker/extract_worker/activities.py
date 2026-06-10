@@ -17,8 +17,8 @@ from datashare_python.utils import (
     read_jsonl,
     write_artifact,
 )
-from extract_python import Pipeline
-from extract_python.objects import InputDoc, OutputFormat, SupportedExt
+from extract_core import Pipeline
+from extract_core.objects import InputDoc, OutputFormat, SupportedExt
 from icij_common.es import (
     DOC_CONTENT_TYPE,
     DOC_LANGUAGE,
@@ -300,7 +300,7 @@ def _symlink_embedded_processed_doc_to_workdir(
 def ext_to_mime_types(ext: SupportedExt) -> set[str]:
     # All particular cases
     match ext:
-        case SupportedExt.NXML:
+        case SupportedExt.NXML | SupportedExt.DCLG | SupportedExt.DCLG_XML:
             return ext_to_mime_types(SupportedExt.XML)
         case SupportedExt.ADOC | SupportedExt.ASCIIDOC:
             return {"text/x-asciidoc"}
