@@ -494,7 +494,7 @@ wheels = [
 
 [[package]]
 name = "datashare-workflows-worker"
-version = "0.5.13"
+version = "0.5.14"
 source = { editable = "." }
 dependencies = [
     { name = "datashare-asr-worker" },
