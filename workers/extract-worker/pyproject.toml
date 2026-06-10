@@ -10,13 +10,13 @@ readme = "README.md"
 requires-python = ">=3.11,<3.14"
 dependencies = [
     "datashare-python~=0.8.20",
-    "extract-python==0.4.2",
+    "extract-core==0.5.5",
     "temporalio==1.23.0",
 ]
 
 [project.optional-dependencies]
 base = [
-  "extract-python[docling,marker]==0.4.2",
+  "extract-python[docling,marker]==0.5.5",
 ]
 cpu = [
   "torch==2.11.0",
@@ -28,7 +28,7 @@ gpu = [
   "torchvision==0.26.0+cu129; sys_platform == 'linux'",
 ]
 mineru = [
-  "extract-python[mineru]==0.4.2",
+  "extract-python[mineru]==0.5.5",
 ]
 
 [project.entry-points."datashare.workflows"]
@@ -45,7 +45,7 @@ worker_config_cls = "extract_worker.config_:WORKER_CONFIG_CLS"
 
 [dependency-groups]
 dev = [
-  "extract-python[docling]==0.4.2",
+  "extract-python[docling]==0.5.5",
   "black>=26.1.0",
   "nest-asyncio>=1.6.0",
   "pre-commit>=4.5.1",
@@ -87,7 +87,9 @@ datashare-python = { path = "../../datashare-python", editable = true }
 [tool.uv]
 package = true
 exclude-dependencies = []
-override-dependencies = []
+override-dependencies = [
+  "pillow==11.3.0"
+]
 environments = [
   "sys_platform == 'darwin'",
   "sys_platform == 'linux' and platform_machine == 'x86_64'",
