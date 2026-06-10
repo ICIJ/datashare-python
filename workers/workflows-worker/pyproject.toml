@@ -42,6 +42,7 @@ exclude-dependencies = [
 ]
 override-dependencies = [
   "huggingface-hub==1.18.0",
+  "pillow==11.3.0",
   "typer==0.24.0",
 ]
 
