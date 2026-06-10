@@ -9,6 +9,9 @@ on:
 jobs:
   create-release:
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: write
     env:
       PYTHON_VERSION: 3.12
       ASTRAL_VERSION: 0.11.6

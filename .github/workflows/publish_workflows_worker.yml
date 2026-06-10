@@ -32,6 +32,9 @@ env:
 jobs:
   bump-workflows-worker:
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: write
     outputs:
       workflows_worker_tag: ${{ steps.tag.outputs.workflows_worker_tag }}
     steps:

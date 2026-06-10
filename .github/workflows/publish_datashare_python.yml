@@ -38,6 +38,9 @@ jobs:
         run: cd datashare-python && uv publish
 
   trigger-workflows-worker-publication:
+    permissions:
+      id-token: write
+      contents: write
     needs:
       - publish-datashare-python-to-pypi
     runs-on: ubuntu-latest
