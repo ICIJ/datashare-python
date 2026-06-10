@@ -54,6 +54,7 @@ exclude-dependencies =  [
   "pypdf",
   "pypptx-with-oxml",
   "surya-ocr",
+  "transformers",
   "triton",
   "torch",
   "trochvision",
