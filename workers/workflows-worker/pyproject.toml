@@ -57,7 +57,7 @@ exclude-dependencies =  [
   "transformers",
   "triton",
   "torch",
-  "trochvision",
+  "torchvision",
   "uvicorn"
 ]
 override-dependencies = [
