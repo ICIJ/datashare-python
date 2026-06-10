@@ -17,10 +17,22 @@ dependencies = [
 
 [tool.uv]
 package = true
-exclude-dependencies = [
+exclude-dependencies =  [
+  "anthropic",
   "cuda-bindings",
   "cuda-pathfinde",
+  "cuda-pathfinder",
   "cuda-toolkit",
+  "fast-langdetect",
+  "fastapi",
+  "fsspec",
+  "google-genai",
+  "jinja2",
+  "kaldialign",
+  "librosa",
+  "magika",
+  "markupsafe",
+  "networkx",
   "nvidia-cublas",
   "nvidia-cuda-cupti",
   "nvidia-cuda-nvrtc",
@@ -37,8 +49,13 @@ exclude-dependencies = [
   "nvidia-nvshmem-cu13",
   "nvidia-nvtx",
   "ocrmac",
-  "kaldialign",
-  "librosa",
+  "opencv-python",
+  "pdftext",
+  "pypdf",
+  "pypptx-with-oxml",
+  "surya-ocr",
+  "triton",
+  "uvicorn"
 ]
 override-dependencies = [
   "huggingface-hub==1.18.0",
