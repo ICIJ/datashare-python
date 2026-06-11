@@ -12,11 +12,12 @@ WORKDIR /app
 
 
 FROM extract-worker-builder AS io-worker
+ADD io-worker-deps-exclusion.txt ./
 # Install deps first to optimize layer cache
 RUN --mount=type=cache,target=~/.cache/uv \
     --mount=type=bind,source=uv.dist.lock,target=uv.lock \
     --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
-    uv sync -v --frozen --no-editable --no-install-project
+    uv sync -v --frozen --no-editable --no-install-project $(sed 's/^/--no-install-package /' io-worker-deps-exclusion.txt)
 
 # Then copy code
 ADD uv.dist.lock ./uv.lock
@@ -25,7 +26,7 @@ ADD extract_worker ./extract_worker/
 ADD entrypoints/io_worker.sh ./entrypoints/io_worker.sh
 
 # Then install service
-RUN --mount=type=cache,target=~/.cache/uv uv sync -v --frozen --no-editable
+RUN --mount=type=cache,target=~/.cache/uv uv sync -v --frozen --no-editable --no-install-project $(sed 's/^/--no-install-package /' io-worker-deps-exclusion.txt)
 RUN rm -rf ~/.cache/pip
 
 ENTRYPOINT ["entrypoints/io_worker.sh"]

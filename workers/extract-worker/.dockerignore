@@ -1,0 +1,8 @@
+*
+!extract_worker
+!entrypoints
+!pyproject.toml
+!README.md
+!uv.dist.lock
+!uv.lock
+!io-worker-deps-exclusion.txt
