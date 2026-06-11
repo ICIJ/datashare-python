@@ -41,7 +41,7 @@ activities = "extract_worker.activities:ACTIVITIES"
 dependencies = "extract_worker.dependencies:DEPENDENCIES"
 
 [project.entry-points."datashare.worker_config_cls"]
-worker_config_cls = "extract_worker.config_:WORKER_CONFIG_CLS"
+worker_config_cls = "extract_worker.config:WORKER_CONFIG_CLS"
 
 [dependency-groups]
 dev = [
