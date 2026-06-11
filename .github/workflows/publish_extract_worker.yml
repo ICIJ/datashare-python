@@ -27,6 +27,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       id-token: write
+      contents: write
     environment:
       name: pypi
       url: https://pypi.org/p/datashare-extract-worker
@@ -41,7 +42,7 @@ jobs:
       - name: Build
         run: cd workers/extract-worker && uv build
       - name: Publish
-        run: cd workers/extract-worker && uv publish
+        run: cd workers/extract-worker && uv publish --verbose
 
   publish-io-worker:
     runs-on: ubuntu-latest
