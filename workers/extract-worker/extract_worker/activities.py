@@ -95,7 +95,7 @@ class MarkdownExtract(ActivityWithProgress):
         self, batch: Path, project: str, config: PipelineConfig
     ) -> MarkdownExtractResponse:
         # Import pipeline impls to make sure the pipeline registry is populated
-        from extract_python import (  # noqa: F401
+        from extract_python import (  # noqa: F401, PLC0415
             DoclingPipeline,
             MarkerPipeline,
             MinerUPipeline,
