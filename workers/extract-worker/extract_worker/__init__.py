@@ -1,1 +1,1 @@
-from extract_python import DoclingPipeline, MinerUPipeline, MarkerPipeline  # noqa: I001
+# Import configs so that the config registry is populated

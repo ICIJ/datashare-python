@@ -94,6 +94,13 @@ class MarkdownExtract(ActivityWithProgress):
     async def extract_markdown_content(
         self, batch: Path, project: str, config: PipelineConfig
     ) -> MarkdownExtractResponse:
+        # Import pipeline impls to make sure the pipeline registry is populated
+        from extract_python import (  # noqa: F401
+            DoclingPipeline,
+            MarkerPipeline,
+            MinerUPipeline,
+        )
+
         pipeline = Pipeline.from_config(config)
         worker_config = cast(ExtractWorkerConfig, lifespan_worker_config())
         workdir = worker_config.workdir
