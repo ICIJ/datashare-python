@@ -17,7 +17,7 @@ from datashare_python.utils import (
     read_jsonl,
     write_artifact,
 )
-from extract_core import Pipeline
+from extract_core import Pipeline, PipelineConfig
 from extract_core.objects import InputDoc, OutputFormat, SupportedExt
 from icij_common.es import (
     DOC_CONTENT_TYPE,
@@ -39,12 +39,12 @@ from pydantic import TypeAdapter
 
 from .config import ExtractWorkerConfig
 from .constants import MARKDOWN_DIRNAME, MARKDOWN_METADATA_KEY
+from .mimetypes_ import types_map
 from .objects import (
     DocId,
     DocumentSearchQuery,
     ErrorReport,
     MarkdownExtractResponse,
-    PipelineConfig,
     ProcessedDoc,
     ProcessingReport,
 )
@@ -316,13 +316,9 @@ def ext_to_mime_types(ext: SupportedExt) -> set[str]:
         case SupportedExt.XBRL:
             return ext_to_mime_types(SupportedExt.HTLM)
     try:
-        types = {mimetypes.types_map[ext]}
+        return types_map()[ext]
     except KeyError as e:
         raise ValueError(f"unsupported mimetype {ext}") from e
-    other = mimetypes.common_types.get(ext)
-    if other is not None:
-        types.add(other)
-    return types
 
 
 ACTIVITIES = [

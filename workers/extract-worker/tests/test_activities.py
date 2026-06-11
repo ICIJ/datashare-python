@@ -267,6 +267,7 @@ def test_ext_to_mime_type(ext: SupportedExt, expected_mime_types: set[str]) -> N
 
 def test_all_supported_ext_should_have_mime_type() -> None:
     # Given
+    ext_to_mime_types(SupportedExt.POTX)
     for ext in SupportedExt:
         # When
         mime_types = ext_to_mime_types(ext)
