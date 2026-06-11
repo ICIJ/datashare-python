@@ -55,7 +55,7 @@ mimetypes.init()
 
 
 class MarkdownExtract(ActivityWithProgress):
-    @activity_defn(name="extract.worker_config")
+    @activity_defn(name="extract.worker-config")
     async def extract_worker_config(self) -> ExtractWorkerConfig:
         worker_config = cast(ExtractWorkerConfig, lifespan_worker_config())
         return worker_config

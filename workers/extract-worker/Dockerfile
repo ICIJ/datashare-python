@@ -26,7 +26,7 @@ ADD extract_worker ./extract_worker/
 ADD entrypoints/io_worker.sh ./entrypoints/io_worker.sh
 
 # Then install service
-RUN --mount=type=cache,target=~/.cache/uv uv sync -v --frozen --no-editable --no-install-project $(sed 's/^/--no-install-package /' io-worker-deps-exclusion.txt)
+RUN --mount=type=cache,target=~/.cache/uv uv sync -v --frozen --no-editable $(sed 's/^/--no-install-package /' io-worker-deps-exclusion.txt)
 RUN rm -rf ~/.cache/pip
 
 ENTRYPOINT ["entrypoints/io_worker.sh"]
