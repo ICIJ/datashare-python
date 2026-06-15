@@ -26,7 +26,7 @@ services:
       start_period: 5s
       retries: 10
     ports:
-      - "9200:9200"
+      - "9201:9200"
     volumes:
       - elasticsearch-data:/var/lib/elasticsearch/data
 
@@ -40,7 +40,7 @@ services:
       POSTGRES_DB: datashare
       PGDATA: /var/lib/postgresql/18/docker
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready", "-U", "datashare" ]
+      test: [ "CMD-SHELL", "pg_isready -U datashare" ]
       interval: 2s
       retries: 5
     expose:
@@ -57,7 +57,7 @@ services:
       interval: 2s
       retries: 5
     ports:
-      - "6379:6379"
+      - "6380:6379"
     volumes:
       - redis-data:/data
 
@@ -77,10 +77,19 @@ services:
       - POSTGRES_USER=datashare
       - POSTGRES_PWD=datashare
       - POSTGRES_SEEDS=postgres
-    volumes:
-      - .testcontainers/temporal:/scripts/
-    entrypoint: [ "/bin/bash" ]
-    command: /scripts/pre-init.sh
+    entrypoint: [ "/bin/sh", "-c" ]
+    command:
+      - |
+        set -eu
+        echo 'Creating temporal base DB'
+        temporal-sql-tool --plugin postgres12 --ep "$$POSTGRES_SEEDS" -u "$$POSTGRES_USER" -pw "$$POSTGRES_PWD" -p "$$POSTGRES_PORT" --db "$$POSTGRES_DB" create
+        temporal-sql-tool --plugin postgres12 --ep "$$POSTGRES_SEEDS" -u "$$POSTGRES_USER" -pw "$$POSTGRES_PWD" -p "$$POSTGRES_PORT" --db "$$POSTGRES_DB" setup-schema -v 0.0
+        temporal-sql-tool --plugin postgres12 --ep "$$POSTGRES_SEEDS" -u "$$POSTGRES_USER" -pw "$$POSTGRES_PWD" -p "$$POSTGRES_PORT" --db "$$POSTGRES_DB" update-schema -d /etc/temporal/schema/postgresql/v12/temporal/versioned
+        echo 'Creating temporal visibility DB'
+        temporal-sql-tool --plugin postgres12 --ep "$$POSTGRES_SEEDS" -u "$$POSTGRES_USER" -pw "$$POSTGRES_PWD" -p "$$POSTGRES_PORT" --db "$$POSTGRES_VISIBILITY_DB" create
+        temporal-sql-tool --plugin postgres12 --ep "$$POSTGRES_SEEDS" -u "$$POSTGRES_USER" -pw "$$POSTGRES_PWD" -p "$$POSTGRES_PORT" --db "$$POSTGRES_VISIBILITY_DB" setup-schema -v 0.0
+        temporal-sql-tool --plugin postgres12 --ep "$$POSTGRES_SEEDS" -u "$$POSTGRES_USER" -pw "$$POSTGRES_PWD" -p "$$POSTGRES_PORT" --db "$$POSTGRES_VISIBILITY_DB" update-schema -d /etc/temporal/schema/postgresql/v12/visibility/versioned
+        echo 'PostgreSQL schema setup complete'
 
   temporal:
     image: temporalio/server:${TEMPORAL_VERSION:-1.29.2}
@@ -107,9 +116,7 @@ services:
       start_period: 5s
       retries: 10
     ports:
-      - "7233:7233"
-    volumes:
-      - .testcontainers/temporal:/etc/temporal/.config/temporalio/
+      - "7234:7233"
 
   temporal-post-init:
     image: temporalio/admin-tools:${TEMPORAL_ADMINTOOLS_VERSION-1.29}
@@ -117,10 +124,19 @@ services:
     depends_on:
       temporal:
         condition: service_healthy
-    volumes:
-      - .testcontainers/temporal:/scripts
-    entrypoint: [ "/bin/sh" ]
-    command: /scripts/post-init.sh
+    entrypoint: [ "/bin/sh", "-c" ]
+    command:
+      - |
+        set -eu
+        NAMESPACE=$${DEFAULT_NAMESPACE:-datashare-default}
+        TEMPORAL_ADDRESS=$${TEMPORAL_ADDRESS:-temporal:7233}
+        echo "Creating namespace '$$NAMESPACE'..."
+        temporal operator namespace describe -n "$$NAMESPACE" --address "$$TEMPORAL_ADDRESS" || temporal operator namespace create -n "$$NAMESPACE" --address "$$TEMPORAL_ADDRESS"
+        echo "Namespace '$$NAMESPACE' created"
+        sleep 5
+        temporal operator search-attribute create --address "$$TEMPORAL_ADDRESS" -n "$$NAMESPACE" --name="UserId" --type="Keyword"
+        temporal operator search-attribute create --address "$$TEMPORAL_ADDRESS" -n "$$NAMESPACE" --name="Progress" --type="Double"
+        temporal operator search-attribute create --address "$$TEMPORAL_ADDRESS" -n "$$NAMESPACE" --name="MaxProgress" --type="Double"
 
   temporal-ui:
     image: temporalio/ui:${TEMPORAL_UI_VERSION:-2.45.3}
@@ -131,7 +147,7 @@ services:
       - TEMPORAL_ADDRESS=temporal:7233
       - TEMPORAL_CORS_ORIGINS=http://localhost:3000
     ports:
-      - "8233:8080"
+      - "8234:8080"
 
   ############################
   # datashare
@@ -166,8 +182,10 @@ services:
       TEMPORAL_ADDRESS: http://temporal:7233
     ports:
       - "8080:8080"
+    volumes:
+      - ${PWD}/data:/home/datashare/Datashare
     command: >-
-      --mode SERVER
+      --mode LOCAL
       --taskRoutingStrategy GROUP
       --dataDir /home/datashare/Datashare
       --pluginsDir /home/datashare/plugins
@@ -182,8 +200,9 @@ services:
       --sessionStoreType REDIS
       --sessionTtlSeconds 43200
       --tcpListenPort 8080
-      --batchQueueType TEMPORAL
+      --batchQueueType MEMORY
       --messageBusAddress temporal:7233
+      -b 0.0.0.0
 
   workflow-worker:
     build:
@@ -294,6 +313,12 @@ services:
       DS_WORKER_WORKDIR: /usr/src/data/workdir
 
 
+
+networks:
+  default:
+    ipam:
+      config:
+        - subnet: 10.100.0.0/16
 
 volumes:
   elasticsearch-data:
