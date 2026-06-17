@@ -34,13 +34,11 @@ class ExtractMarkdownContentWorkflow(WorkflowWithProgress):
         # Create batches almost of constant number of pages
         batch_args = [args.project, args.docs, args.config]
         logger.info("creating context extraction batches...")
-        heartbeat_timeout = timedelta(seconds=30)
         extract_batches = await execute_activity(
             MarkdownExtract.create_markdown_extract_batches,
             args=batch_args,
             task_queue=TaskQueues.IO,
             start_to_close_timeout=timedelta(hours=6),
-            heartbeat_timeout=heartbeat_timeout,
         )
 
         # Extract Markdown content
@@ -54,7 +52,8 @@ class ExtractMarkdownContentWorkflow(WorkflowWithProgress):
                 args=args,
                 task_queue=task_queue,
                 start_to_close_timeout=timedelta(hours=12),
-                heartbeat_timeout=heartbeat_timeout,
+                # We expect processing threads to block no more than 1m30s
+                heartbeat_timeout=timedelta(seconds=90),
             )
             for args in extract_args
         )
