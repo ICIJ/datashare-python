@@ -19,7 +19,7 @@ from datashare_python.utils import (
     to_raw_progress,
     write_artifact,
 )
-from extract_core import Pipeline, PipelineConfig
+from extract_core import BasePipelineConfig, Pipeline, PipelineConfig
 from extract_core.objects import InputDoc, OutputFormat, SupportedExt
 from icij_common.es import (
     DOC_CONTENT_TYPE,
@@ -54,6 +54,7 @@ from .objects import (
 logger = logging.getLogger(__name__)
 
 mimetypes.init()
+PIPELINE_CONFIG_TA = TypeAdapter(PipelineConfig)
 
 
 class MarkdownExtract(ActivityWithProgress):
@@ -110,6 +111,9 @@ class MarkdownExtract(ActivityWithProgress):
             MarkerPipeline,
             MinerUPipeline,
         )
+
+        if not isinstance(config, BasePipelineConfig):
+            config = PIPELINE_CONFIG_TA.validate_python(config)
 
         pipeline = Pipeline.from_config(config)
         worker_config = cast(ExtractWorkerConfig, lifespan_worker_config())
