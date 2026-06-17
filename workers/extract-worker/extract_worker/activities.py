@@ -15,6 +15,7 @@ from datashare_python.utils import (
     activity_defn,
     activity_workdir,
     read_jsonl,
+    to_raw_progress,
     write_artifact,
 )
 from extract_core import Pipeline, PipelineConfig
@@ -36,6 +37,7 @@ from icij_common.es import (
     has_type,
 )
 from pydantic import TypeAdapter
+from types_ import ProgressRateHandler
 
 from .config import ExtractWorkerConfig
 from .constants import MARKDOWN_DIRNAME, MARKDOWN_METADATA_KEY
@@ -57,6 +59,7 @@ mimetypes.init()
 class MarkdownExtract(ActivityWithProgress):
     @activity_defn(name="extract.worker-config")
     async def extract_worker_config(self) -> ExtractWorkerConfig:
+        logger.debug("fetching worker config...")
         worker_config = cast(ExtractWorkerConfig, lifespan_worker_config())
         return worker_config
 
@@ -75,6 +78,7 @@ class MarkdownExtract(ActivityWithProgress):
         output_dir.mkdir(parents=True, exist_ok=True)
         target_n_pages_per_batch = worker_config.markdown.target_n_pages_per_batch
         supported_exts = config.supported_exts()
+        logger.debug("creating extraction batches...")
         batch_paths = [
             p.relative_to(workdir)
             async for p in create_markdown_extract_batches_act(
@@ -88,11 +92,17 @@ class MarkdownExtract(ActivityWithProgress):
                 es_client=es_client,
             )
         ]
+        logger.debug("created extraction batches !")
         return batch_paths
 
     @activity_defn(name="extract.extract-markdown-content")
     async def extract_markdown_content(
-        self, batch: Path, project: str, config: PipelineConfig
+        self,
+        batch: Path,
+        project: str,
+        config: PipelineConfig,
+        *,
+        progress: ProgressRateHandler | None = None,
     ) -> MarkdownExtractResponse:
         # Import pipeline impls to make sure the pipeline registry is populated
         from extract_python import (  # noqa: F401, PLC0415
@@ -107,12 +117,16 @@ class MarkdownExtract(ActivityWithProgress):
         output_dir = activity_workdir(workdir, project)
         output_dir.mkdir(parents=True, exist_ok=True)
         batch = workdir / batch
-        return await extract_markdown_content_act(
+        logger.debug("extracting doc content as markdown...")
+        res = await extract_markdown_content_act(
             pipeline,
             batch,
             worker_config=worker_config,
             output_dir=output_dir,
+            progress=progress,
         )
+        logger.debug("extracted doc content as markdown !")
+        return res
 
 
 # Sort documents aiming for consistent processing type in a batch
@@ -151,8 +165,11 @@ async def extract_markdown_content_act(
     *,
     worker_config: ExtractWorkerConfig,
     output_dir: Path,
+    progress: ProgressRateHandler | None = None,
 ) -> MarkdownExtractResponse:
     docs = _BatchTypeAdapter.validate_python(list(read_jsonl(batch)))
+    if progress is not None:
+        progress = to_raw_progress(progress, max_progress=len(docs))
     docs_root = worker_config.docs_root
     artifacts_root = worker_config.artifacts_root
     workdir = worker_config.workdir
@@ -191,6 +208,8 @@ async def extract_markdown_content_act(
                 filename=MARKDOWN_DIRNAME,
             )
             write_artifact(artifacts_root, artifact)
+        if progress is not None:
+            await progress(n_docs)
     processed = ProcessingReport(n_docs=n_docs, n_pages=n_pages)
     successes = ProcessingReport(n_docs=n_successes, n_pages=n_successes_pages)
     response = MarkdownExtractResponse(
