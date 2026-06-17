@@ -626,8 +626,8 @@ requires-dist = [
     { name = "cuda-bindings", marker = "sys_platform == 'linux' and extra == 'gpu'", specifier = "==12.9.4" },
     { name = "datashare-python", specifier = "~=0.8.20" },
     { name = "extract-core", specifier = "==0.5.6" },
-    { name = "extract-python", extras = ["docling", "marker"], marker = "extra == 'base'", specifier = "==0.5.7" },
-    { name = "extract-python", extras = ["mineru"], marker = "extra == 'mineru'", specifier = "==0.5.7" },
+    { name = "extract-python", extras = ["docling", "marker"], marker = "extra == 'base'", specifier = "==0.5.9" },
+    { name = "extract-python", extras = ["mineru"], marker = "extra == 'mineru'", specifier = "==0.5.9" },
     { name = "temporalio", specifier = "==1.23.0" },
     { name = "torch", marker = "sys_platform == 'linux' and extra == 'gpu'", specifier = "==2.11.0+cu129", index = "https://download.pytorch.org/whl/cu129", conflict = { package = "datashare-extract-worker", extra = "gpu" } },
     { name = "torch", marker = "extra == 'cpu'", specifier = "==2.11.0", index = "https://download.pytorch.org/whl/cpu", conflict = { package = "datashare-extract-worker", extra = "cpu" } },
@@ -639,7 +639,7 @@ provides-extras = ["base", "cpu", "gpu", "mineru"]
 [package.metadata.requires-dev]
 dev = [
     { name = "black", specifier = ">=26.1.0" },
-    { name = "extract-python", extras = ["docling"], specifier = "==0.5.7" },
+    { name = "extract-python", extras = ["docling"], specifier = "==0.5.9" },
     { name = "nest-asyncio", specifier = ">=1.6.0" },
     { name = "pre-commit", specifier = ">=4.5.1" },
     { name = "psutil", specifier = ">=6.1.0" },
@@ -945,15 +945,15 @@ wheels = [
 
 [[package]]
 name = "extract-python"
-version = "0.5.7"
+version = "0.5.9"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "extract-core", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-24-datashare-extract-worker-base' and extra == 'extra-24-datashare-extract-worker-mineru') or (platform_machine != 'x86_64' and extra == 'extra-24-datashare-extract-worker-cpu' and extra == 'extra-24-datashare-extract-worker-gpu') or sys_platform == 'darwin' or (sys_platform != 'linux' and extra == 'extra-24-datashare-extract-worker-base' and extra == 'extra-24-datashare-extract-worker-mineru') or (sys_platform != 'linux' and extra == 'extra-24-datashare-extract-worker-cpu' and extra == 'extra-24-datashare-extract-worker-gpu')" },
     { name = "icij-common", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-24-datashare-extract-worker-base' and extra == 'extra-24-datashare-extract-worker-mineru') or (platform_machine != 'x86_64' and extra == 'extra-24-datashare-extract-worker-cpu' and extra == 'extra-24-datashare-extract-worker-gpu') or sys_platform == 'darwin' or (sys_platform != 'linux' and extra == 'extra-24-datashare-extract-worker-base' and extra == 'extra-24-datashare-extract-worker-mineru') or (sys_platform != 'linux' and extra == 'extra-24-datashare-extract-worker-cpu' and extra == 'extra-24-datashare-extract-worker-gpu')" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/12/5d/b9683b4babb03a0bc98f875fc4d8bded11dbb7aa38cb0dc6fd205f66b7c4/extract_python-0.5.7.tar.gz", hash = "sha256:e59e5ac98e9e118442ab0db7a3f93b4cc73bd85640518546e466b67a1841d394", size = 251426, upload-time = "2026-06-12T11:44:09.587Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/21/21/7dab87894d407a6cbc378bcf528dfd7b0b5646aa1dc5b9d6039e72c88d81/extract_python-0.5.9.tar.gz", hash = "sha256:4a9a94872003541682f6ffb63bf8199c9574b1f35ac5e238da40536e7397db8a", size = 251636, upload-time = "2026-06-17T15:42:34.775Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/db/97/12a2b9d854718ba719623c43007697be4a7784de9bb76e5ba0cfda4af7db/extract_python-0.5.7-py3-none-any.whl", hash = "sha256:84053c1b40f50dfba9206abd9692c9a6cb3cef5e6d576d42e347889d621a9d4b", size = 9374, upload-time = "2026-06-12T11:44:08.732Z" },
+    { url = "https://files.pythonhosted.org/packages/0b/61/b7c36a2eca1fb1895f4e124873c3745b73c66412e002833505c7b1f419d2/extract_python-0.5.9-py3-none-any.whl", hash = "sha256:cc32eb31863dda95944d65dab89a8bb71c9f037bd890f28f192380dcc9de1828", size = 9681, upload-time = "2026-06-17T15:42:33.919Z" },
 ]
 
 [package.optional-dependencies]
