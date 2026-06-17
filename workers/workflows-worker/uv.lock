@@ -440,16 +440,16 @@ wheels = [
 
 [[package]]
 name = "datashare-extract-worker"
-version = "0.1.34"
+version = "0.1.35"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "datashare-python" },
     { name = "extract-core" },
     { name = "temporalio" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/ac/7c/18d88e62a068fd872665de81a4dbefe8ecf4fbea1bf0736f25cbaed44ac2/datashare_extract_worker-0.1.34.tar.gz", hash = "sha256:a84efff506280f77b29d1048ae6e89f6b667deb00734b81e239ba2f420d867f8", size = 292435, upload-time = "2026-06-17T11:31:47.487Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/4a/89/3531f76f7a4aa3370ee5510d92afeaf04cff253934029a26ab3c708ab565/datashare_extract_worker-0.1.35.tar.gz", hash = "sha256:6eeb5c6a8abe65f8d14a7a128f1f466eef8383e3440f4c98927b262f197ecfde", size = 292432, upload-time = "2026-06-17T16:09:39.193Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/03/2c/d134cd8b93bad2987798f200211248379e0f03694d9fe561d490aad56b34/datashare_extract_worker-0.1.34-py3-none-any.whl", hash = "sha256:4ff90104f8e16739ec5dc349b8632808057a8b9475ede6812416572d789b442f", size = 17742, upload-time = "2026-06-17T11:31:48.598Z" },
+    { url = "https://files.pythonhosted.org/packages/41/d0/07e55f9953c2a3547448ab72ace987653128ebb0023969fa2e1c8053329e/datashare_extract_worker-0.1.35-py3-none-any.whl", hash = "sha256:7072c98e238136397666b6c443cd763ee4e7248f069ce23bc2c44aae02a66d7f", size = 17743, upload-time = "2026-06-17T16:09:40.172Z" },
 ]
 
 [package.optional-dependencies]
@@ -508,7 +508,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "datashare-asr-worker", specifier = "==0.8.14" },
-    { name = "datashare-extract-worker", extras = ["base"], specifier = "==0.1.34" },
+    { name = "datashare-extract-worker", extras = ["base"], specifier = "==0.1.35" },
     { name = "datashare-python", specifier = "~=0.8.23" },
     { name = "datashare-translation-worker", specifier = "==0.7.3" },
 ]
@@ -748,15 +748,15 @@ wheels = [
 
 [[package]]
 name = "extract-python"
-version = "0.5.7"
+version = "0.5.9"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "extract-core" },
     { name = "icij-common" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/12/5d/b9683b4babb03a0bc98f875fc4d8bded11dbb7aa38cb0dc6fd205f66b7c4/extract_python-0.5.7.tar.gz", hash = "sha256:e59e5ac98e9e118442ab0db7a3f93b4cc73bd85640518546e466b67a1841d394", size = 251426, upload-time = "2026-06-12T11:44:09.587Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/21/21/7dab87894d407a6cbc378bcf528dfd7b0b5646aa1dc5b9d6039e72c88d81/extract_python-0.5.9.tar.gz", hash = "sha256:4a9a94872003541682f6ffb63bf8199c9574b1f35ac5e238da40536e7397db8a", size = 251636, upload-time = "2026-06-17T15:42:34.775Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/db/97/12a2b9d854718ba719623c43007697be4a7784de9bb76e5ba0cfda4af7db/extract_python-0.5.7-py3-none-any.whl", hash = "sha256:84053c1b40f50dfba9206abd9692c9a6cb3cef5e6d576d42e347889d621a9d4b", size = 9374, upload-time = "2026-06-12T11:44:08.732Z" },
+    { url = "https://files.pythonhosted.org/packages/0b/61/b7c36a2eca1fb1895f4e124873c3745b73c66412e002833505c7b1f419d2/extract_python-0.5.9-py3-none-any.whl", hash = "sha256:cc32eb31863dda95944d65dab89a8bb71c9f037bd890f28f192380dcc9de1828", size = 9681, upload-time = "2026-06-17T15:42:33.919Z" },
 ]
 
 [package.optional-dependencies]
