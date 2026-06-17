@@ -488,6 +488,7 @@ def write_artifact(root: Path, artifact: DocArtifact) -> Path:
             with artifact_path.open("wb") as f:
                 f.write(artifact.artifact.read())
         case Path():
+            artifact_path.unlink(missing_ok=True)
             shutil.move(artifact.artifact, artifact_path)
         case _:
             msg = f"unsupported artifact type: {artifact.artifact.__class__.__name__}"
