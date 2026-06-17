@@ -16,7 +16,7 @@ dependencies = [
 
 [project.optional-dependencies]
 base = [
-  "extract-python[docling,marker]==0.5.7",
+  "extract-python[docling,marker]==0.5.8",
 ]
 cpu = [
   "torch==2.11.0",
