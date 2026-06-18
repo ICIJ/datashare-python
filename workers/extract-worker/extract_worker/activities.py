@@ -20,7 +20,6 @@ from datashare_python.utils import (
     write_artifact,
 )
 from extract_core import BasePipelineConfig, Pipeline, PipelineConfig
-from extract_core.objects import InputDoc, OutputFormat, SupportedExt
 from icij_common.es import (
     DOC_CONTENT_TYPE,
     DOC_LANGUAGE,
