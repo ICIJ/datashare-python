@@ -1,17 +1,10 @@
-import datashare_python
-import extract_core
-import extract_python
 from datashare_python.config import LoggingConfig, WorkerConfig
 from datashare_python.objects import DatashareModel
 from pydantic import Field
 
 from .constants import TorchDevice
 
-loggers = {
-    datashare_python.__name__: "INFO",
-    extract_python.__name__: "INFO",
-    extract_core.__name__: "INFO",
-}
+loggers = {"datashare_python": "INFO", "extract_python": "INFO", "extract_core": "INFO"}
 _DEFAULT_LOGGING_CONFIG = LoggingConfig(loggers=loggers)
 
 
