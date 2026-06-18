@@ -19,8 +19,14 @@ from datashare_python.utils import (
     to_raw_progress,
     write_artifact,
 )
-from extract_core import BasePipelineConfig, Pipeline, PipelineConfig
-from extract_core.objects import InputDoc, OutputFormat, SupportedExt
+from extract_core import (
+    BasePipelineConfig,
+    InputDoc,
+    OutputFormat,
+    Pipeline,
+    PipelineConfig,
+    SupportedExt,
+)
 from icij_common.es import (
     DOC_CONTENT_TYPE,
     DOC_LANGUAGE,
