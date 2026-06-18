@@ -12,6 +12,7 @@ requires-python = ">=3.11.0, <3.13"
 
 dependencies = [
   "datashare-python~=0.8.20",
+  "language-data>=1.4.0",
   "pydantic-extra-types[pycountry]==2.11.1",
 ]
 
@@ -28,8 +29,13 @@ dependencies = "translation_worker.dependencies:REGISTRY"
 worker_config_cls = "translation_worker.config:WORKER_CONFIG_CLS"
 
 [project.optional-dependencies]
-inference = [
+argos_inference = [
   "argostranslate==1.11.0",
+]
+hunyuan_inference = [
+  "torch>=2.11.0",
+  "transformers>=5.12.1",
+  "accelerate>=1.14.0",
 ]
 
 [tool.uv.sources]

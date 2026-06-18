@@ -2,14 +2,16 @@ from typing import Any
 
 import pytest
 from datashare_python.conftest import TEST_PROJECT
-from translation_worker.objects import (
+from translation_worker.config import (
     ArgosSentenceSplitterConfig,
-    ArgosSentencizer,
     ArgosTranslatorConfig,
+    TranslationConfig,
+)
+from translation_worker.objects import (
+    ArgosSentencizer,
     DocId,
     DocumentSearchQuery,
     TranslationArgs,
-    TranslationConfig,
 )
 
 from .conftest import DS_ENGLISH
@@ -55,7 +57,12 @@ def test_translation_args_as_query(
     docs: list[DocId] | DocumentSearchQuery | None, expected_query: dict[str, Any]
 ) -> None:
     # Given
-    args = TranslationArgs(project=TEST_PROJECT, docs=docs, target_language=DS_ENGLISH)
+    args = TranslationArgs(
+        project=TEST_PROJECT,
+        docs=docs,
+        target_language=DS_ENGLISH,
+        config=TranslationConfig(),
+    )
     # When
     query = args.as_query()
     # Then

@@ -24,19 +24,29 @@ from datashare_python.conftest import (  # noqa: F401
     test_worker_config,
     worker_lifetime_deps,
 )
-from datashare_python.objects import DatashareLanguage, Document
+from datashare_python.dependencies import SHARED, shared_resources
+from datashare_python.objects import DatashareLanguage, Document, Shared
 from datashare_python.types_ import ContextManagerFactory, TemporalClient
 from datashare_python.worker import worker_context
 from icij_common.es import ESClient
 from translation_worker.activities import TranslationActivities
 from translation_worker.config import TranslationWorkerConfig
-from translation_worker.dependencies import set_es_client, set_worker_config
+from translation_worker.dependencies import (
+    set_es_client,
+    set_hunyuan_translator,
+    set_worker_config,
+)
 from translation_worker.workflows import TaskQueue, TranslationWorkflow
 
 
 @pytest.fixture(scope="session")
-def test_deps() -> list[ContextManagerFactory]:
+def test_io_deps() -> list[ContextManagerFactory]:
     return [set_worker_config, set_es_client]
+
+
+@pytest.fixture(scope="session")
+def test_inference_deps() -> list[ContextManagerFactory]:
+    return [set_worker_config, set_es_client, set_hunyuan_translator]
 
 
 @pytest.fixture(scope="session")
@@ -67,6 +77,7 @@ def test_worker_config(tmp_path_factory: TempPathFactory) -> TranslationWorkerCo
 ENGLISH = "ENGLISH"
 FRENCH = "FRENCH"
 SPANISH = "SPANISH"
+CHINESE = "CHINESE"
 DOC_ID_1 = "doc_id_1"
 DOC_ID_2 = "doc_id_2"
 ROOT_DOCUMENT_1 = "root_document_1"
@@ -74,6 +85,7 @@ ROOT_DOCUMENT_2 = "root_document_2"
 DS_ENGLISH = DatashareLanguage(ENGLISH)
 DS_FRENCH = DatashareLanguage(FRENCH)
 DS_SPANISH = DatashareLanguage(SPANISH)
+DS_CHINESE = DatashareLanguage(CHINESE)
 
 
 FRENCH_TEXT = (
@@ -86,6 +98,10 @@ SPANISH_TEXT = (
     "Besame.... Besame mucho.... Como si fuera esta noche la última "
     "vez. Besame.... Besame mucho.... Que tengo miedo perderte, "
     "perderte otra vez."
+)
+CHINESE_TEXT = (
+    "北京是中国的首都。这是一个美丽的城市，有着悠久的历史和文化。"
+    "每年都有数以百万计的游客来这里参观故宫和长城。"
 )
 
 
@@ -105,6 +121,16 @@ async def index_translation_documents(
         doc_id = f"doc_id_{idx}"
         root_document = f"root_document_{idx}"
         docs.append(_create_doc(doc_id, root_document, text, languages[idx]))
+    async for _ in index_docs(test_es_client, docs=docs, index_name=TEST_PROJECT):
+        pass
+    return docs
+
+
+@pytest.fixture
+async def index_chinese_translation_documents(
+    test_es_client: ESClient,  # noqa: F811
+) -> list[Document]:
+    docs = [_create_doc(DOC_ID_1, ROOT_DOCUMENT_1, CHINESE_TEXT, DS_CHINESE)]
     async for _ in index_docs(test_es_client, docs=docs, index_name=TEST_PROJECT):
         pass
     return docs
@@ -142,7 +168,7 @@ async def io_worker(
     test_worker_config: TranslationWorkerConfig,  # noqa: F811
     test_temporal_client_session: TemporalClient,  # noqa: F811
     event_loop: asyncio.AbstractEventLoop,  # noqa: F811
-    test_deps: list[ContextManagerFactory],  # noqa: F811
+    test_io_deps: list[ContextManagerFactory],  # noqa: F811
 ) -> AsyncGenerator[None, None]:
     client = test_temporal_client_session
     worker_id = f"test-translation-io-worker-{uuid.uuid4()}"
@@ -163,7 +189,7 @@ async def io_worker(
         client=client,
         event_loop=event_loop,
         task_queue=task_queue,
-        dependencies=test_deps,
+        dependencies=test_io_deps,
     )
     async with worker_ctx:
         yield
@@ -174,7 +200,7 @@ async def translation_inference_worker(
     test_worker_config: TranslationWorkerConfig,  # noqa: F811
     test_temporal_client_session: TemporalClient,  # noqa: F811
     event_loop: asyncio.AbstractEventLoop,  # noqa: F811
-    test_deps: list[ContextManagerFactory],  # noqa: F811
+    test_inference_deps: list[ContextManagerFactory],  # noqa: F811
 ) -> AsyncGenerator[None, None]:
     client = test_temporal_client_session
     worker_id = f"test-translation-cpu-worker-{uuid.uuid4()}"
@@ -190,7 +216,13 @@ async def translation_inference_worker(
         client=client,
         event_loop=event_loop,
         task_queue=task_queue,
-        dependencies=test_deps,
+        dependencies=test_inference_deps,
     )
     async with worker_ctx:
         yield
+
+
+@pytest.fixture(scope="session")
+def test_shared_resources() -> Shared:
+    SHARED.set(Shared())
+    return shared_resources()

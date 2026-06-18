@@ -1,6 +1,7 @@
 import asyncio
 from datetime import timedelta
 
+from datashare_python.objects import DatashareLanguage
 from icij_common.iter_utils import batches
 from temporalio import workflow
 
@@ -8,9 +9,30 @@ with workflow.unsafe.imports_passed_through():
     from datashare_python.utils import WorkflowWithProgress, execute_activity
 
     from .activities import TranslationActivities
-    from .config import TranslationWorkerConfig
+    from .config import (
+        ArgosTranslatorConfig,
+        HunyuanMtTranslatorConfig,
+        TranslationConfig,
+        TranslationWorkerConfig,
+    )
     from .constants import TRANSLATION_WORKFLOW_NAME, TaskQueue
-    from .objects import TranslationArgs, TranslationResponse
+    from .objects import (
+        _VALIDATED_HUNYUAN_LANGUAGES,
+        TranslationArgs,
+        TranslationResponse,
+    )
+
+
+def _set_config_translator(
+    source: DatashareLanguage, config: "TranslationConfig"
+) -> "TranslationConfig":
+    source_code = source.alpha2 if hasattr(source, "alpha2") else str(source)
+    if source_code in _VALIDATED_HUNYUAN_LANGUAGES:
+        if not isinstance(config.translator, HunyuanMtTranslatorConfig):
+            return config.model_copy(update={"translator": HunyuanMtTranslatorConfig()})
+    elif isinstance(config.translator, HunyuanMtTranslatorConfig):
+        return config.model_copy(update={"translator": ArgosTranslatorConfig()})
+    return config
 
 
 @workflow.defn(name=TRANSLATION_WORKFLOW_NAME)
@@ -37,7 +59,13 @@ class TranslationWorkflow(WorkflowWithProgress):
 
         # Translate
         translation_args = [
-            (b, source, target, args.config, args.project)
+            (
+                b,
+                source,
+                target,
+                args.config,
+                args.project,
+            )
             for source, languages_batches in per_language_batches
             for b in batches(languages_batches, batch_size=batches_per_worker)
         ]

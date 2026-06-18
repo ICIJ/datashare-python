@@ -1,9 +1,7 @@
-from abc import ABC
 from enum import StrEnum
-from typing import TYPE_CHECKING, Any, ClassVar
+from typing import TYPE_CHECKING, Any
 
 from datashare_python.objects import (
-    BaseModel,
     DatashareModel,
     Language,
 )
@@ -15,29 +13,24 @@ from icij_common.es import (
     has_id,
     must_not,
 )
-from icij_common.registrable import RegistrableConfig
-from pydantic import Field
+from pydantic import TypeAdapter
 
-from .processors import SentenceSplitter, Translator
+from .constants import HUNYUAN_LANGUAGES
 
 if TYPE_CHECKING:
     from argostranslate.sbd import ISentenceBoundaryDetectionModel
 
-
-class _BaseProcessorConfig(BaseModel, RegistrableConfig, ABC): ...
+    from translation_worker.objects import TranslationConfig
 
 
 class SentenceSplitterModel(StrEnum):
     ARGOS = "ARGOS"
+    DEFAULT = "DEFAULT"
 
 
 class TranslationModel(StrEnum):
     ARGOS = "ARGOS"
-
-
-class SentenceSplitterConfig(_BaseProcessorConfig):
-    registry_key: ClassVar[str] = Field(frozen=True, default="model")
-    model: ClassVar[SentenceSplitterModel]
+    HUNYUAN = "HUNYUAN"
 
 
 class ArgosSentencizer(StrEnum):
@@ -60,57 +53,11 @@ class ArgosSentencizer(StrEnum):
                 raise NotImplementedError()
 
 
-class ArgosSentenceSplitterConfig(SentenceSplitterConfig):
-    model: ClassVar[SentenceSplitterModel] = SentenceSplitterModel.ARGOS
+_LANGUAGE_TYPE_ADAPTER = TypeAdapter(Language)
 
-    sentencizer: ArgosSentencizer = ArgosSentencizer.MINI_SBD
-
-
-class TranslatorConfig(_BaseProcessorConfig):
-    registry_key: ClassVar[str] = Field(frozen=True, default="model")
-    model: ClassVar[TranslationModel]
-
-
-class ArgosTranslatorConfig(TranslatorConfig):
-    model: ClassVar[TranslationModel] = TranslationModel.ARGOS
-
-    beam_size: int = 2
-    length_penalty: float = 0.2
-
-
-# TODO: uncomment when adding more implems
-# _SentenceSplitterConfig = tagged_union(
-#     SentenceSplitterConfig.__subclasses__(), lambda t: t.model.default.value
-# )
-# splitter_discriminator = make_enum_discriminator("model", SentenceSplitterModel)
-
-# TODO: uncomment when adding more implems
-# _TranslatorConfig = tagged_union(
-#     TranslatorConfig.__subclasses__(), lambda t: t.model.default.value
-# )
-# translator_discriminator = make_enum_discriminator("model", TranslationModel)
-
-
-class TranslationConfig(DatashareModel):
-    sentence_splitter: ArgosSentenceSplitterConfig = Field(
-        # TODO: uncomment when adding more implem
-        # discriminator=Discriminator(model_discriminator=splitter_discriminator),
-        default_factory=ArgosSentenceSplitterConfig,
-    )
-    translator: ArgosTranslatorConfig = Field(
-        # discriminator=Discriminator(model_discriminator=splitter_discriminator),
-        default_factory=ArgosTranslatorConfig,
-    )
-
-    def to_sentence_splitter(self) -> "SentenceSplitter":
-        from .processors import SentenceSplitter  # noqa: PLC0415
-
-        return SentenceSplitter.from_config(self.sentence_splitter)
-
-    def to_translator(self) -> "Translator":
-        from .processors import Translator  # noqa: PLC0415
-
-        return Translator.from_config(self.translator)
+_VALIDATED_HUNYUAN_LANGUAGES = {
+    _LANGUAGE_TYPE_ADAPTER.validate_python(lang) for lang in HUNYUAN_LANGUAGES
+}
 
 
 DocumentSearchQuery = dict[str, Any]
@@ -127,7 +74,7 @@ def untranslated_query(target: Language) -> dict:
 class TranslationArgs(DatashareModel):
     project: str
     docs: list[DocId] | DocumentSearchQuery | None = None
-    config: TranslationConfig = Field(default_factory=TranslationConfig)
+    config: "TranslationConfig"
     target_language: Language
 
     def as_query(self) -> dict[str, Any]:

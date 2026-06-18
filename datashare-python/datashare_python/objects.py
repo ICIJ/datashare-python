@@ -1,7 +1,8 @@
 import logging
 import os
+from asyncio import Lock
 from collections.abc import Awaitable, Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from enum import StrEnum, unique
 from io import BytesIO
@@ -367,3 +368,26 @@ class TaskGroup:
     @classmethod
     def python(cls) -> Self:
         return cls(name="PYTHON")
+
+
+@dataclass(frozen=True)
+class Shared:
+    _resources: dict[str, Any] = field(default_factory=dict)
+    _lock: Lock = field(default_factory=Lock)
+
+    def get_resource(self, key: str, default: Any = None) -> Any:
+        return self._resources.get(key, default)
+
+    def set_resource(self, key: str, value: Any) -> None:
+        self._resources[key] = value
+
+    def pop_resource(self, key: str, default: Any = None) -> Any:
+        return self._resources.pop(key, default)
+
+    async def async_set_resource(self, key: str, value: Any) -> None:
+        async with self._lock:
+            self._resources[key] = value
+
+    async def async_pop_resource(self, key: str, default: Any = None) -> Any:
+        async with self._lock:
+            return self._resources.pop(key, default)
