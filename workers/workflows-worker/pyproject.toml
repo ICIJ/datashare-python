@@ -1,6 +1,6 @@
 [project]
 name = "datashare-workflows-worker"
-version = "0.5.28"
+version = "0.5.29"
 description = "Single workflow worker to run all datashare workflows"
 authors = [
   { name = "Clément Doumouro", email = "cdoumouro@icij.org" },
