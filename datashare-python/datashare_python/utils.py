@@ -98,7 +98,7 @@ class WorkflowWithProgress:
 
 def _retry_policy_with_default(retry_policy: RetryPolicy | None) -> RetryPolicy:
     if retry_policy is None:
-        retry_policy = RetryPolicy(non_retryable_error_types=[])
+        retry_policy = RetryPolicy(non_retryable_error_types=[], maximum_attempts=3)
     retry_policy = deepcopy(retry_policy)
     non_retryable_error_types = set(retry_policy.non_retryable_error_types)
     non_retryable_error_types.update(_NEVER_RETRIABLES)
