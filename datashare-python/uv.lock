@@ -440,7 +440,7 @@ wheels = [
 
 [[package]]
 name = "datashare-python"
-version = "0.8.19"
+version = "0.8.23"
 source = { editable = "." }
 dependencies = [
     { name = "aiohttp" },
@@ -544,7 +544,6 @@ dev = [
     { name = "pytest", specifier = "~=8.1" },
     { name = "pytest-asyncio", specifier = "~=0.24" },
     { name = "pytest-timeout", specifier = "==2.4.0" },
-    { name = "redis", extras = ["hiredis"], specifier = ">=5.2.1" },
     { name = "ruff", specifier = "==0.15.2" },
     { name = "typing-extensions", specifier = ">=4.15.0" },
 ]

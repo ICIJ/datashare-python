@@ -1,7 +1,72 @@
 from typing import Any
 
 import pytest
-from datashare_python.dependencies import add_missing_args
+from datashare_python.dependencies import (
+    add_missing_args,
+    set_shared_resources,
+    shared_resources,
+)
+from datashare_python.exceptions import DependencyInjectionError
+from datashare_python.objects import Shared
+
+
+async def test_set_shared_resources_and_get() -> None:
+    shared = Shared()
+    shared.set_resource("k", "v")
+    returned = await set_shared_resources(shared)
+    assert returned is shared
+    assert shared_resources() is shared
+
+
+async def test_set_shared_resources_overwrites() -> None:
+    first = Shared()
+    second = Shared()
+    first.set_resource("k", "v1")
+    second.set_resource("k", "v2")
+    await set_shared_resources(first)
+    await set_shared_resources(second)
+    assert shared_resources() is second
+
+
+def test_shared_resources_raises_before_set() -> None:
+    with pytest.raises(DependencyInjectionError):
+        shared_resources()
+
+
+def test_shared_resources_field_is_frozen() -> None:
+    shared = Shared()
+    shared.set_resource("k", "v")
+    with pytest.raises(Exception):  # noqa: B017, PT011
+        shared._resources = {}
+
+
+def test_get_resource_existing_key() -> None:
+    shared = Shared()
+    shared.set_resource("k", "v")
+    assert shared.get_resource("k") == "v"
+
+
+def test_get_resource_missing_key_with_default() -> None:
+    shared = Shared()
+    assert shared.get_resource("missing", "default") == "default"
+
+
+async def test_async_set_resource() -> None:
+    shared = Shared()
+    await shared.async_set_resource("k", "v")
+    assert shared.get_resource("k") == "v"
+
+
+async def test_async_set_resource_overwrites() -> None:
+    shared = Shared()
+    shared.set_resource("k", "old")
+    await shared.async_set_resource("k", "new")
+    assert shared.get_resource("k") == "new"
+
+
+async def test_async_pop_resource_missing_key_with_default() -> None:
+    shared = Shared()
+    assert await shared.async_pop_resource("missing", None) is None
 
 
 @pytest.mark.parametrize(

@@ -12,6 +12,7 @@ from icij_common.es import ESClient
 from .config import LogLevel, WorkerConfig
 from .exceptions import DependencyInjectionError
 from .logging_ import setup_worker_loggers
+from .objects import Shared
 from .task_client import DatashareTaskClient
 from .types_ import ContextManagerFactory, TemporalClient
 
@@ -23,6 +24,7 @@ ES_CLIENT: ContextVar[ESClient] = ContextVar("es_client")
 TASK_CLIENT: ContextVar[DatashareTaskClient] = ContextVar("task_client")
 TEMPORAL_CLIENT: ContextVar[TemporalClient] = ContextVar("temporal_client")
 WORKER_CONFIG: ContextVar[WorkerConfig] = ContextVar("worker_config")
+SHARED: ContextVar[Shared] = ContextVar("shared")
 
 
 def set_event_loop(event_loop: AbstractEventLoop) -> None:
@@ -97,6 +99,20 @@ def lifespan_temporal_client() -> TemporalClient:
         return TEMPORAL_CLIENT.get()
     except LookupError as e:
         raise DependencyInjectionError("temporal client") from e
+
+
+# Setup shared resources
+async def set_shared_resources(shared: Shared) -> Shared:
+    SHARED.set(shared)
+    return shared
+
+
+# Return shared resources
+def shared_resources() -> Shared:
+    try:
+        return SHARED.get()
+    except LookupError as e:
+        raise DependencyInjectionError("shared resources") from e
 
 
 @asynccontextmanager

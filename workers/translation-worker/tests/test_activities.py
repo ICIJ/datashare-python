@@ -26,9 +26,13 @@ from translation_worker.activities import (
     create_translation_batches_act,
     translate_docs_act,
 )
-from translation_worker.config import TranslationWorkerConfig
+from translation_worker.config import (
+    ArgosTranslatorConfig,
+    TranslationModel,
+    TranslationWorkerConfig,
+)
 from translation_worker.constants import DOC_CONTENT_TEXT_LENGTH
-from translation_worker.objects import TranslationModel, untranslated_query
+from translation_worker.objects import untranslated_query
 from translation_worker.processors import SentenceSplitter, Translator
 
 from tests.conftest import (
@@ -80,7 +84,7 @@ class MockTranslator(Translator):
     registered_name = TranslationModel.ARGOS
 
     def __init__(self, translations: list[str]):
-        super().__init__()
+        super().__init__(ArgosTranslatorConfig())
         self._translations = translations
 
     def translate(self, texts: Iterable[str]) -> list[str]:  # noqa: ARG002

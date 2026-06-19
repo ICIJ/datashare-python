@@ -25,11 +25,10 @@ logger = logging.getLogger(__name__)
 @Translator.register(TranslationModel.ARGOS)
 class ArgosTranslator(Translator):
     def __init__(self, config: "ArgosTranslatorConfig"):
-        super().__init__()
+        super().__init__(config)
         self._translator = None
         self._tokenizer = None
         self._target_prefix = None
-        self._config = config
 
     @classmethod
     def _from_config(cls, config: "ArgosTranslatorConfig", **extras) -> Self:  # noqa: ARG003

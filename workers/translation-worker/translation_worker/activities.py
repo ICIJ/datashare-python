@@ -24,21 +24,18 @@ from icij_common.es import (
     has_type,
 )
 from icij_common.iter_utils import async_batches, before_and_after, once
-from pydantic import TypeAdapter
 
 from translation_worker.constants import DOC_CONTENT_TEXT_LENGTH
 
-from .config import TranslationWorkerConfig
+from .config import TranslationConfig, TranslationWorkerConfig
 from .constants import BATCHING_DOC_SOURCES, TRANSLATION_DOC_SOURCES
-from .objects import Language, TranslationConfig
+from .objects import _LANGUAGE_TYPE_ADAPTER, Language
 from .processors import SentenceSplitter, Translator
 
 logger = logging.getLogger(__name__)
 
 DocId = str
 Batch = list[DocId]
-
-_LANGUAGE_TYPE_ADAPTER = TypeAdapter(Language)
 
 
 class TranslationActivities(ActivityWithProgress):
@@ -90,7 +87,8 @@ class TranslationActivities(ActivityWithProgress):
         # TODO: perform some caching here to avoid reloading
         translator = config.to_translator()
         sentence_splitter = config.to_sentence_splitter()
-        # Load the translator first to install the SBD, then load the splitter
+        # Load the translator first to install the
+        # SBD, then load the splitter
         logger.debug("loading %s -> %s translator...", source, target)
         with translator.load(source, target=target, worker_config=worker_config):
             logger.debug("loading %s sentence splitter...", source)
