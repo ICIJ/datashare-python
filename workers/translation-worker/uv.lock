@@ -437,7 +437,7 @@ wheels = [
 
 [[package]]
 name = "datashare-python"
-version = "0.9.0"
+version = "0.9.3"
 source = { editable = "../../datashare-python" }
 dependencies = [
     { name = "aiohttp" },
@@ -507,6 +507,9 @@ hunyuan-inference = [
     { name = "torch" },
     { name = "transformers" },
 ]
+inference = [
+    { name = "argostranslate" },
+]
 
 [package.dev-dependencies]
 dev = [
@@ -525,13 +528,14 @@ dev = [
 requires-dist = [
     { name = "accelerate", marker = "extra == 'hunyuan-inference'", specifier = ">=1.14.0" },
     { name = "argostranslate", marker = "extra == 'argos-inference'", specifier = "==1.11.0" },
+    { name = "argostranslate", marker = "extra == 'inference'", specifier = "==1.11.0" },
     { name = "datashare-python", editable = "../../datashare-python" },
     { name = "language-data", specifier = ">=1.4.0" },
     { name = "pydantic-extra-types", extras = ["pycountry"], specifier = "==2.11.1" },
     { name = "torch", marker = "extra == 'hunyuan-inference'", specifier = ">=2.11.0" },
     { name = "transformers", marker = "extra == 'hunyuan-inference'", specifier = ">=5.12.1" },
 ]
-provides-extras = ["argos-inference", "hunyuan-inference"]
+provides-extras = ["argos-inference", "hunyuan-inference", "inference"]
 
 [package.metadata.requires-dev]
 dev = [
