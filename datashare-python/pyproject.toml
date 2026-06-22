@@ -23,6 +23,7 @@ dependencies = [
   "temporalio~=1.23",
   "typer>=0.15.4,<0.25.1",
   "tomlkit~=0.14.0",
+  "lru-dict>=1.4.1",
 ]
 
 [project.urls]

@@ -45,7 +45,9 @@ class HunyuanMtTranslator(Translator):
         target: Language,
         worker_config: TranslationWorkerConfig,
     ) -> None:
-        from datashare_python.dependencies import shared_resources  # noqa: PLC0415
+        from datashare_python.dependencies import (  # noqa: PLC0415
+            lifespan_shared_resources,
+        )
         from datashare_python.exceptions import (  # noqa: PLC0415
             DependencyInjectionError,
         )
@@ -54,7 +56,7 @@ class HunyuanMtTranslator(Translator):
         super()._load(source, target=target, worker_config=worker_config)
 
         try:
-            shared = shared_resources()
+            shared = lifespan_shared_resources()
         except DependencyInjectionError:
             shared = None
 

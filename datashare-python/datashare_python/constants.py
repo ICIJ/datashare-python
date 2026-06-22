@@ -13,3 +13,5 @@ DEFAULT_NAMESPACE = "datashare-default"
 METADATA_JSON = "metadata.json"
 
 TIKA_METADATA_RESOURCENAME = "tika_metadata_resourcename"
+
+DEFAULT_SHARED_RESOURCES_SIZE = 2
