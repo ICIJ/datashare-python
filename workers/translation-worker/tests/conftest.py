@@ -24,7 +24,7 @@ from datashare_python.conftest import (  # noqa: F401
     test_worker_config,
     worker_lifetime_deps,
 )
-from datashare_python.dependencies import SHARED, shared_resources
+from datashare_python.dependencies import SHARED, lifespan_shared_resources
 from datashare_python.objects import DatashareLanguage, Document, Shared
 from datashare_python.types_ import ContextManagerFactory, TemporalClient
 from datashare_python.worker import worker_context
@@ -225,4 +225,4 @@ async def translation_inference_worker(
 @pytest.fixture(scope="session")
 def test_shared_resources() -> Shared:
     SHARED.set(Shared())
-    return shared_resources()
+    return lifespan_shared_resources()

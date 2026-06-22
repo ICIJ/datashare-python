@@ -1,10 +1,12 @@
 from typing import Any
+from unittest.mock import MagicMock
 
 import pytest
 from datashare_python.dependencies import (
     add_missing_args,
+    component_teardown,
+    lifespan_shared_resources,
     set_shared_resources,
-    shared_resources,
 )
 from datashare_python.exceptions import DependencyInjectionError
 from datashare_python.objects import Shared
@@ -15,7 +17,7 @@ async def test_set_shared_resources_and_get() -> None:
     shared.set_resource("k", "v")
     returned = await set_shared_resources(shared)
     assert returned is shared
-    assert shared_resources() is shared
+    assert lifespan_shared_resources() is shared
 
 
 async def test_set_shared_resources_overwrites() -> None:
@@ -25,12 +27,12 @@ async def test_set_shared_resources_overwrites() -> None:
     second.set_resource("k", "v2")
     await set_shared_resources(first)
     await set_shared_resources(second)
-    assert shared_resources() is second
+    assert lifespan_shared_resources() is second
 
 
 def test_shared_resources_raises_before_set() -> None:
     with pytest.raises(DependencyInjectionError):
-        shared_resources()
+        lifespan_shared_resources()
 
 
 def test_shared_resources_field_is_frozen() -> None:
@@ -67,6 +69,28 @@ async def test_async_set_resource_overwrites() -> None:
 async def test_async_pop_resource_missing_key_with_default() -> None:
     shared = Shared()
     assert await shared.async_pop_resource("missing", None) is None
+
+
+def test_call_component_teardown_on_key_eviction() -> None:
+    shared = Shared(1, eviction_callback=component_teardown)
+
+    first_resource = MagicMock()
+    second_resource = MagicMock()
+
+    shared.set_resource("first", first_resource)
+    shared.set_resource("second", second_resource)
+
+    assert shared._resources.keys() == ["second"]
+
+    first_resource.__exit__.assert_called_once()
+
+
+def test_dont_set_default_when_set_is_unavailable_is_false() -> None:
+    shared = Shared()
+
+    shared.get_resource("first", default="isn't there", set_if_unavailable=False)
+
+    assert "first" not in shared._resources
 
 
 @pytest.mark.parametrize(

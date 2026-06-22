@@ -5,11 +5,11 @@ from typing import Any
 
 from datashare_python.dependencies import (  # noqa: F401
     lifespan_es_client,
+    lifespan_shared_resources,
     lifespan_worker_config,
     set_es_client,
     set_shared_resources,
     set_worker_config,
-    shared_resources,
 )
 from datashare_python.exceptions import DependencyInjectionError
 from datashare_python.objects import Shared
@@ -38,7 +38,7 @@ async def set_hunyuan_translator(**kwargs) -> None:  # noqa: ARG001
 
 def lifespan_hunyuan_translator() -> Any:
     try:
-        return shared_resources().get_resource(HUNYUAN_SHARED_KEY)
+        return lifespan_shared_resources().get_resource(HUNYUAN_SHARED_KEY)
     except (LookupError, KeyError) as e:
         raise DependencyInjectionError("hunyuan translator") from e
 

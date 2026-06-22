@@ -2,7 +2,7 @@ import logging
 import os
 from asyncio import Lock
 from collections.abc import Awaitable, Callable
-from dataclasses import dataclass, field
+from dataclasses import InitVar, dataclass, field
 from datetime import UTC, datetime
 from enum import StrEnum, unique
 from io import BytesIO
@@ -10,12 +10,13 @@ from pathlib import Path
 from typing import Annotated, Any, ClassVar, Literal, Self, TypeVar, cast
 
 import langcodes
+from lru import LRU
 from pydantic_core import PydanticCustomError, ValidationError, core_schema
 from pydantic_core.core_schema import PlainValidatorFunctionSchema
 from pydantic_extra_types.language_code import LanguageName
 from temporalio import workflow
 
-from .constants import TIKA_METADATA_RESOURCENAME
+from .constants import DEFAULT_SHARED_RESOURCES_SIZE, TIKA_METADATA_RESOURCENAME
 
 with workflow.unsafe.imports_passed_through():
     from icij_common.es import (
@@ -372,10 +373,23 @@ class TaskGroup:
 
 @dataclass(frozen=True)
 class Shared:
-    _resources: dict[str, Any] = field(default_factory=dict)
-    _lock: Lock = field(default_factory=Lock)
+    cache_size: InitVar[int] = DEFAULT_SHARED_RESOURCES_SIZE
+    eviction_callback: InitVar[Callable] = None
+    _resources: LRU = field(init=False, repr=False)
+    _lock: Lock = field(init=False, repr=False)
 
-    def get_resource(self, key: str, default: Any = None) -> Any:
+    def __post_init__(self, cache_size: int, eviction_callback: Callable) -> None:
+        object.__setattr__(
+            self, "_resources", LRU(cache_size, callback=eviction_callback)
+        )
+        object.__setattr__(self, "_lock", Lock())
+
+    def get_resource(
+        self, key: str, default: Any = None, *, set_if_unavailable: bool = True
+    ) -> Any:
+        if key not in self._resources and set_if_unavailable:
+            self.set_resource(key, default)
+
         return self._resources.get(key, default)
 
     def set_resource(self, key: str, value: Any) -> None:
@@ -383,6 +397,14 @@ class Shared:
 
     def pop_resource(self, key: str, default: Any = None) -> Any:
         return self._resources.pop(key, default)
+
+    async def async_get_resource(
+        self, key: str, default: Any = None, *, set_if_unavailable: bool = True
+    ) -> Any:
+        if key not in self._resources and set_if_unavailable:
+            await self.async_set_resource(key, default)
+
+        return self._resources.get(key, default)
 
     async def async_set_resource(self, key: str, value: Any) -> None:
         async with self._lock:
