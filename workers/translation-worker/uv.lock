@@ -437,7 +437,7 @@ wheels = [
 
 [[package]]
 name = "datashare-python"
-version = "0.8.25"
+version = "0.9.0"
 source = { editable = "../../datashare-python" }
 dependencies = [
     { name = "aiohttp" },
@@ -463,7 +463,7 @@ requires-dist = [
     { name = "hatchling", specifier = "~=1.27" },
     { name = "icij-common", extras = ["elasticsearch"], specifier = "~=0.8.2" },
     { name = "langcodes", specifier = "~=3.5" },
-    { name = "lru-dict", specifier = ">=1.4.1" },
+    { name = "lru-dict", specifier = "~=1.4" },
     { name = "nest-asyncio", specifier = "~=1.6" },
     { name = "orjson", specifier = "~=3.11" },
     { name = "pydantic-extra-types", extras = ["pycountry"], specifier = ">=2.11.1" },
@@ -510,7 +510,6 @@ hunyuan-inference = [
 
 [package.dev-dependencies]
 dev = [
-    { name = "datashare-python" },
     { name = "nest-asyncio" },
     { name = "pre-commit" },
     { name = "psutil" },
@@ -536,7 +535,6 @@ provides-extras = ["argos-inference", "hunyuan-inference"]
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "datashare-python", editable = "../../datashare-python" },
     { name = "nest-asyncio", specifier = ">=1.6.0" },
     { name = "pre-commit", specifier = ">=4.5.1" },
     { name = "psutil", specifier = ">=6.1.0" },
