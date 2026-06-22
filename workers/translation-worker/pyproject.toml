@@ -29,6 +29,7 @@ dependencies = "translation_worker.dependencies:REGISTRY"
 worker_config_cls = "translation_worker.config:WORKER_CONFIG_CLS"
 
 [project.optional-dependencies]
+inference = ['datashare-translation-worker[argos_inference]']
 argos_inference = [
   "argostranslate==1.11.0",
 ]
