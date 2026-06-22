@@ -66,6 +66,9 @@ override-dependencies = [
   "typer==0.24.0",
 ]
 
+[tool.uv.sources]
+datashare-python = { path = "../../datashare-python", editable = true }
+
 [tool.hatch.build.targets.wheel]
 packages = ["main"]
 
