@@ -384,7 +384,12 @@ class Shared:
         )
         object.__setattr__(self, "_lock", Lock())
 
-    def get_resource(self, key: str, default: Any = None) -> Any:
+    def get_resource(
+        self, key: str, default: Any = None, *, set_if_unavailable: bool = True
+    ) -> Any:
+        if key not in self._resources and set_if_unavailable:
+            self.set_resource(key, default)
+
         return self._resources.get(key, default)
 
     def set_resource(self, key: str, value: Any) -> None:

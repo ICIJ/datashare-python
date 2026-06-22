@@ -85,6 +85,14 @@ def test_call_component_teardown_on_key_eviction() -> None:
     first_resource.__exit__.assert_called_once()
 
 
+def test_dont_set_default_when_set_is_unavailable_is_false() -> None:
+    shared = Shared()
+
+    shared.get_resource("first", default="isn't there", set_if_unavailable=False)
+
+    assert "first" not in shared._resources
+
+
 @pytest.mark.parametrize(
     ("provided_args", "kwargs", "maybe_output"),
     [
