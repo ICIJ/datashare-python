@@ -21,7 +21,11 @@ from temporalio.worker.workflow_sandbox import SandboxedWorkflowRunner
 from .config import WorkerConfig
 from .dependencies import with_dependencies
 from .discovery import Activity
-from .interceptors import TraceContextInterceptor
+from .interceptors import (
+    HeartbeatInterceptor,
+    ProgressInterceptor,
+    TraceContextInterceptor,
+)
 from .types_ import ContextManagerFactory, TemporalClient
 
 logger = logging.getLogger(__name__)
@@ -91,7 +95,11 @@ def datashare_worker(
         max_concurrent_activities = 1
         if workflows:
             logger.warning(_SEPARATE_IO_AND_CPU_WORKERS)
-    interceptors = [TraceContextInterceptor()]
+    interceptors = [
+        TraceContextInterceptor(),
+        ProgressInterceptor(),
+        HeartbeatInterceptor(),
+    ]
     wf_runner = SandboxedWorkflowRunner() if sandboxed else UnsandboxedWorkflowRunner()
     return DatashareWorker(
         client,

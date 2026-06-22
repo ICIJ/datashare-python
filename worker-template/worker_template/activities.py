@@ -156,8 +156,6 @@ async def create_classification_batches(
     progress: ProgressRateHandler | None = None,
     logger: logging.Logger,
 ) -> list[list[str]]:
-    if not isinstance(config, ClassificationConfig):
-        config = ClassificationConfig.model_validate(config)
     # Retrieve unprocessed docs.
     model = config.model
     unclassified = _get_unclassified(
@@ -206,10 +204,6 @@ async def translate_docs(
 
     if config is None:
         config = TranslationConfig()
-
-    # TODO: this should not happen
-    if not isinstance(config, TranslationConfig):
-        config = TranslationConfig.model_validate(config)
 
     n_docs = len(docs)
     if not n_docs:
@@ -284,8 +278,6 @@ async def classify_docs(
     if config is None:
         config = ClassificationConfig()
     # TODO: fix this, we should have a ClassificationConfig hered
-    if not isinstance(config, ClassificationConfig):
-        config = ClassificationConfig.model_validate(config)
 
     n_docs = len(docs)
     model = config.model

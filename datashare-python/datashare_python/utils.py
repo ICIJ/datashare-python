@@ -1,18 +1,15 @@
 import asyncio
 import contextlib
-import contextvars
 import inspect
 import json
 import os
 import shutil
-import threading
-from collections.abc import Awaitable, Callable, Coroutine, Iterable
+from collections.abc import Callable, Coroutine, Iterable
 from copy import deepcopy
 from dataclasses import dataclass
 from datetime import timedelta
-from functools import partial, wraps
+from functools import wraps
 from hashlib import sha256
-from inspect import signature
 from io import BytesIO
 from pathlib import Path
 from typing import Any, ParamSpec, TypeVar
@@ -21,7 +18,7 @@ from uuid import uuid4
 import nest_asyncio
 import temporalio
 from temporalio import activity, workflow
-from temporalio.client import Client, WorkflowHandle
+from temporalio.client import Client
 from temporalio.common import RetryPolicy, SearchAttributeKey
 from temporalio.exceptions import ApplicationError
 
@@ -100,7 +97,12 @@ def _retry_policy_with_default(retry_policy: RetryPolicy | None) -> RetryPolicy:
     if retry_policy is None:
         retry_policy = RetryPolicy(non_retryable_error_types=[], maximum_attempts=3)
     retry_policy = deepcopy(retry_policy)
-    non_retryable_error_types = set(retry_policy.non_retryable_error_types)
+    non_retryable_error_types = (
+        retry_policy.non_retryable_error_types
+        if retry_policy.non_retryable_error_types is not None
+        else []
+    )
+    non_retryable_error_types = set(non_retryable_error_types)
     non_retryable_error_types.update(_NEVER_RETRIABLES)
     retry_policy.non_retryable_error_types = list(non_retryable_error_types)
     return retry_policy
@@ -128,167 +130,6 @@ async def execute_activity(
         retry_policy=retry_policy,
         heartbeat_timeout=heartbeat_timeout,
     )
-
-
-async def progress_handler(
-    progress: float,
-    handle: WorkflowHandle,
-    *,
-    activity_id: str,
-    run_id: str,
-    weight: float = 1.0,
-) -> None:
-    signal = ProgressSignal(
-        activity_id=activity_id, run_id=run_id, progress=progress, weight=weight
-    )
-    await handle.signal("update_progress", signal)
-    with contextlib.suppress(RuntimeError, asyncio.TimeoutError):
-        activity.heartbeat()
-
-
-def get_activity_progress_handler_async(
-    client: Client, weight: float
-) -> ProgressRateHandler:
-    info = activity.info()
-    run_id = info.workflow_run_id
-    workflow_id = info.workflow_id
-    activity_id = activity.info().activity_id
-    workflow_handle = client.get_workflow_handle(workflow_id, run_id=run_id)
-    handler = partial(
-        progress_handler,
-        handle=workflow_handle,
-        run_id=run_id,
-        activity_id=activity_id,
-        weight=weight,
-    )
-    return handler
-
-
-def supports_progress(task_fn: Callable) -> bool:
-    return any(
-        param.name == PROGRESS_HANDLER_ARG
-        for param in signature(task_fn).parameters.values()
-    )
-
-
-def with_progress(weight: float = 1.0) -> Callable[P, T]:
-    if isinstance(weight, Callable):
-        return with_progress(weight=1)(weight)
-
-    def decorator(activity_fn: Callable[P, T]) -> Callable[P, T]:
-        # TODO: handle the fact activities should have only positional args...
-        if asyncio.iscoroutinefunction(activity_fn):
-
-            @wraps(activity_fn)
-            async def wrapper(self: ActivityWithProgress, *args: P.args) -> T:
-                if not isinstance(self, ActivityWithProgress):
-                    msg = (
-                        f"{with_progress.__name__} decorator is meant to be used on "
-                        f"activities defined as an {ActivityWithProgress.__name__}"
-                        f" method, expected a {ActivityWithProgress.__name__} as first"
-                        f" argument, found {self}"
-                    )
-                    raise TypeError(msg)
-                handler = get_activity_progress_handler_async(
-                    client=self._temporal_client, weight=weight
-                )
-                await handler(0.0)
-                res = await activity_fn(self, *args, progress=handler)
-                await handler(1.0)
-                return res
-
-        else:
-
-            @wraps(activity_fn)
-            def wrapper(self: ActivityWithProgress, *args: P.args) -> T:
-                if not isinstance(self, ActivityWithProgress):
-                    msg = (
-                        f"{with_progress.__name__} decorator is meant to be used on "
-                        f"activities defined as an {ActivityWithProgress.__name__}"
-                        f" method, expected a {ActivityWithProgress.__name__} as first"
-                        f" argument, found {self}"
-                    )
-                    raise TypeError(msg)
-                handler = get_activity_progress_handler_async(
-                    client=self._temporal_client, weight=weight
-                )
-                event_loop = self._event_loop
-                asyncio.run_coroutine_threadsafe(handler(0.0), event_loop).result()
-                res = activity_fn(self, *args, progress=handler)
-                asyncio.run_coroutine_threadsafe(handler(1.0), event_loop).result()
-                return res
-
-        return wrapper
-
-    return decorator
-
-
-def with_async_heartbeat(
-    activity_fn: Callable[P, Awaitable[T]], n_missed_before_timeout: int
-) -> Callable[P, Awaitable[T]]:
-    # Copied from
-    # https://github.com/temporalio/samples-python/blob/main/custom_decorator/activity_utils.py
-    @wraps(activity_fn)
-    async def wrapper(*args, **kwargs) -> T:
-        heartbeat_timeout = activity.info().heartbeat_timeout
-        heartbeat_task = None
-        if heartbeat_timeout:
-            period = heartbeat_timeout.total_seconds() / n_missed_before_timeout
-            heartbeat_task = asyncio.create_task(_async_heartbeat_every(period))
-        try:
-            activity.heartbeat()
-            return await activity_fn(*args, **kwargs)
-        finally:
-            if heartbeat_task:
-                heartbeat_task.cancel()
-                await asyncio.wait([heartbeat_task])
-
-    return wrapper
-
-
-async def _async_heartbeat_every(period: float, *details: Any) -> None:
-    with contextlib.suppress(RuntimeError, asyncio.TimeoutError):
-        activity.heartbeat(*details)
-    while True:
-        await asyncio.sleep(period)
-        with contextlib.suppress(RuntimeError, asyncio.TimeoutError):
-            activity.heartbeat(*details)
-
-
-def with_sync_heartbeat(
-    activity_fn: Callable[P, T], n_missed_before_timeout: int
-) -> Callable[P, T]:
-    @wraps(activity_fn)
-    def wrapper(*args, **kwargs) -> T:
-        heartbeat_timeout = activity.info().heartbeat_timeout
-        heartbeat_thread, stop_event = None, None
-        if heartbeat_timeout:
-            period = heartbeat_timeout.total_seconds() / n_missed_before_timeout
-            ctx = contextvars.copy_context()
-            run_args = (_sync_heartbeat_every, period, threading.Event())
-            heartbeat_thread, stop_event = (
-                threading.Thread(target=ctx.run, args=run_args),
-                run_args[-1],
-            )
-            heartbeat_thread.start()
-        try:
-            return activity_fn(*args, **kwargs)
-        finally:
-            if heartbeat_thread:
-                stop_event.set()
-                heartbeat_thread.join()
-
-    return wrapper
-
-
-def _sync_heartbeat_every(
-    period: float, stop_event: threading.Event, *details: Any
-) -> None:
-    with contextlib.suppress(RuntimeError, asyncio.TimeoutError):
-        activity.heartbeat(*details)
-    while not stop_event.wait(period):
-        with contextlib.suppress(RuntimeError, asyncio.TimeoutError):
-            activity.heartbeat(*details)
 
 
 def positional_args_only(activity_fn: Callable[P, T]) -> Callable[P, T]:
@@ -395,29 +236,27 @@ def with_retriables(
 
 
 def activity_defn(
-    name: str,
-    progress_weight: float = 1.0,
-    retriables: set[type[Exception]] = None,
-    n_missed_heartbeats_before_timeout: int = 5,
+    name: str, retriables: set[type[Exception]] = None
 ) -> Callable[[Callable[P, T]], Callable[P, T]]:
+
     def decorator(activity_fn: Callable[P, T]) -> Callable[P, T]:
-        # TODO: some of these could probably be reimplemented more elegantly using
-        #  temporal interceptors: https://docs.temporal.io/develop/python/workers/interceptors
         activity_fn = positional_args_only(activity_fn)
         activity_fn = with_retriables(retriables)(activity_fn)
-        if supports_progress(activity_fn):
-            activity_fn = with_progress(progress_weight)(activity_fn)
+        activity_fn = activity.defn(activity_fn, name=name)
+
         is_async = asyncio.iscoroutinefunction(activity_fn)
         if is_async:
-            activity_fn = with_async_heartbeat(
-                activity_fn, n_missed_heartbeats_before_timeout
-            )
+
+            @wraps(activity_fn)
+            async def wrapper(*args, **kwargs) -> T:
+                return await activity_fn(*args, **kwargs)
         else:
-            activity_fn = with_sync_heartbeat(
-                activity_fn, n_missed_heartbeats_before_timeout
-            )
-        activity_fn = activity.defn(activity_fn, name=name)
-        return activity_fn
+
+            @wraps(activity_fn)
+            def wrapper(*args, **kwargs) -> T:
+                return activity_fn(*args, **kwargs)
+
+        return wrapper
 
     return decorator
 

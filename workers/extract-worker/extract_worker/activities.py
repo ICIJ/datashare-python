@@ -20,7 +20,6 @@ from datashare_python.utils import (
     write_artifact,
 )
 from extract_core import (
-    BasePipelineConfig,
     InputDoc,
     OutputFormat,
     Pipeline,
@@ -117,9 +116,6 @@ class MarkdownExtract(ActivityWithProgress):
             MarkerPipeline,
             MinerUPipeline,
         )
-
-        if not isinstance(config, BasePipelineConfig):
-            config = PIPELINE_CONFIG_TA.validate_python(config)
 
         pipeline = Pipeline.from_config(config)
         worker_config = cast(ExtractWorkerConfig, lifespan_worker_config())

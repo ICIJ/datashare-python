@@ -159,8 +159,6 @@ async def translate_docs_act(
     progress: ProgressRateHandler | None = None,  # noqa: F821
 ) -> int:
     # TODO: this should not happen
-    if not isinstance(worker_config, TranslationWorkerConfig):
-        worker_config = TranslationWorkerConfig.model_validate(worker_config)
     es_queue = asyncio.Queue()
     publisher = _translate_and_queue(
         batches,

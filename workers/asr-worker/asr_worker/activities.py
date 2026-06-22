@@ -4,7 +4,7 @@ from asyncio import AbstractEventLoop
 from collections.abc import AsyncGenerator, AsyncIterable, Iterable
 from itertools import tee
 from pathlib import Path
-from typing import Any, cast
+from typing import Annotated, Any, cast
 
 from caul.objects import ASRResult, PreprocessedInput
 from caul.tasks import (
@@ -20,7 +20,7 @@ from datashare_python.objects import (
     Document,
     FilesystemDocument,
 )
-from datashare_python.types_ import ProgressRateHandler, RawProgressHandler
+from datashare_python.types_ import ProgressRateHandler, RawProgressHandler, Weight
 from datashare_python.utils import (
     ActivityWithProgress,
     activity_defn,
@@ -74,9 +74,16 @@ _INFERENCE_CONFIG_TYPE_ADAPTER = TypeAdapter(InferenceRunnerConfig)
 
 
 class ASRActivities(ActivityWithProgress):
-    @activity_defn(name=SEARCH_AUDIOS_ACTIVITY, progress_weight=_SEARCH_AUDIOS_WEIGHT)
+    @activity_defn(name=SEARCH_AUDIOS_ACTIVITY)
     async def search_audio_paths(
-        self, project: str, query: dict[str, Any], batch_size: int
+        self,
+        project: str,
+        query: dict[str, Any],
+        batch_size: int,
+        *,
+        progress: Annotated[  # noqa: ARG002
+            ProgressRateHandler | None, Weight(value=_SEARCH_AUDIOS_WEIGHT)
+        ] = None,
     ) -> list[Path]:
         es_client = lifespan_es_client()
         worker_config = cast(ASRWorkerConfig, lifespan_worker_config())
@@ -96,9 +103,16 @@ class ASRActivities(ActivityWithProgress):
         ]
         return batch_paths
 
-    @activity_defn(name=PREPROCESS_ACTIVITY, progress_weight=_PREPROCESS_WEIGHT)
+    @activity_defn(name=PREPROCESS_ACTIVITY)
     def preprocess(
-        self, audio_batch: Path, project: str, config: ParakeetPreprocessorConfig
+        self,
+        audio_batch: Path,
+        project: str,
+        config: ParakeetPreprocessorConfig,
+        *,
+        progress: Annotated[  # noqa: ARG002
+            ProgressRateHandler | None, Weight(value=_PREPROCESS_WEIGHT)
+        ] = None,
     ) -> list[Path]:
         # TODO: this shouldn't be necessary, fix this bug
         worker_config = cast(ASRWorkerConfig, lifespan_worker_config())
@@ -118,14 +132,16 @@ class ASRActivities(ActivityWithProgress):
             batches = [p.relative_to(workdir) for p in batch_paths]
         return batches
 
-    @activity_defn(name=RUN_INFERENCE_ACTIVITY, progress_weight=_INFERENCE_WEIGHT)
+    @activity_defn(name=RUN_INFERENCE_ACTIVITY)
     async def infer(
         self,
         preprocessed_inputs: list[Path],
         project: str,
         config: InferenceRunnerConfig,
         *,
-        progress: ProgressRateHandler | None = None,
+        progress: Annotated[  # noqa: ARG002
+            ProgressRateHandler | None, Weight(value=_INFERENCE_WEIGHT)
+        ] = None,
     ) -> list[Path]:
         # TODO: fix this temporal by, we shouldn't have to reload
         config = _INFERENCE_CONFIG_TYPE_ADAPTER.validate_python(config)
@@ -153,7 +169,7 @@ class ASRActivities(ActivityWithProgress):
             inference_res = [p.relative_to(workdir) async for p in inference_res]
         return inference_res
 
-    @activity_defn(name=POSTPROCESS_ACTIVITY, progress_weight=_BASE_WEIGHT)
+    @activity_defn(name=POSTPROCESS_ACTIVITY)
     def postprocess(
         self,
         inference_results: list[Path],
@@ -161,10 +177,10 @@ class ASRActivities(ActivityWithProgress):
         config: ParakeetPostprocessorConfig,
         project: str,
         *,
-        progress: ProgressRateHandler | None = None,
+        progress: Annotated[  # noqa: ARG002
+            ProgressRateHandler | None, Weight(value=_BASE_WEIGHT)
+        ] = None,
     ) -> int:
-        # TODO: this shouldn't be necessary, fix this bug
-        config = ParakeetPostprocessorConfig.model_validate(config)
         worker_config = cast(ASRWorkerConfig, lifespan_worker_config())
         workdir = worker_config.workdir
         audio_batch = workdir / audio_batch

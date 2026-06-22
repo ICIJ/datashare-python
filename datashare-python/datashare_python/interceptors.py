@@ -1,14 +1,33 @@
+import asyncio
+import contextlib
+import dataclasses
 import secrets
-from collections.abc import Generator, Mapping
+from collections.abc import Callable, Generator, Mapping
 from contextlib import contextmanager
 from contextvars import ContextVar
 from copy import deepcopy
-from typing import Annotated, Any, NoReturn, Self, TypeVar
+from functools import partial
+from inspect import signature
+from types import UnionType
+from typing import (
+    Annotated,
+    Any,
+    NoReturn,
+    Self,
+    TypeVar,
+    get_args,
+    get_origin,
+    get_type_hints,
+)
 
 from nexusrpc import InputT, OutputT
 from pydantic import Field
+from temporalio import activity
+from temporalio.activity import _Definition
 from temporalio.api.common.v1 import Payload
+from temporalio.client import WorkflowHandle
 from temporalio.converter import DataConverter
+from temporalio.exceptions import ApplicationError
 from temporalio.worker import (
     ActivityInboundInterceptor,
     ContinueAsNewInput,
@@ -33,7 +52,10 @@ from temporalio.workflow import (
     NexusOperationHandle,
 )
 
+from .config import PYDANTIC_DATA_CONVERTER
 from .objects import BaseModel
+from .types_ import ProgressRateHandler, Weight
+from .utils import PROGRESS_HANDLER_ARG, ActivityWithProgress, ProgressSignal
 
 _TRACEPARENT = "traceparent"
 _DEFAULT_PAYLOAD_CONVERTER = DataConverter.default.payload_converter
@@ -196,3 +218,162 @@ def _with_trace_context_header(
         next_ctx.traceparent
     )
     return new_obj
+
+
+class ProgressInterceptor(Interceptor):
+    def intercept_activity(
+        self,
+        next: ActivityInboundInterceptor,  # noqa: A002
+    ) -> ActivityInboundInterceptor:
+        return _ProgressInboundInterceptor(next)
+
+
+def _parse_progress_weight(act_fn: Callable) -> float:
+    hints = get_type_hints(act_fn, include_extras=True)
+    hint = hints["progress"]
+    annotated_progress = get_origin(hint)
+    if annotated_progress is not Annotated:
+        return 1.0
+    annotated_args = get_args(hint)
+    for ann in annotated_args[1:]:
+        if isinstance(ann, Weight):
+            return ann.value
+    return 1.0
+
+
+async def progress_handler(
+    progress: float,
+    handle: WorkflowHandle,
+    *,
+    activity_id: str,
+    run_id: str,
+    weight: float = 1.0,
+) -> None:
+    signal = ProgressSignal(
+        activity_id=activity_id, run_id=run_id, progress=progress, weight=weight
+    )
+    await handle.signal("update_progress", signal)
+
+
+def supports_progress(task_fn: Callable) -> bool:
+    return any(
+        param.name == PROGRESS_HANDLER_ARG
+        for param in signature(task_fn).parameters.values()
+    )
+
+
+def _get_progress_handler(act_fn: Callable) -> ProgressRateHandler:
+    act = getattr(act_fn, "__self__", None)
+    # Weirdly isinstance doesn't work here
+    if act is None or not isinstance(act, ActivityWithProgress):
+        msg = (
+            f"to support progress, activities should inherit from "
+            f"{ActivityWithProgress.__name__}."
+        )
+        raise TypeError(msg)
+    weight = _parse_progress_weight(act_fn)
+    info = activity.info()
+    run_id = info.workflow_run_id
+    workflow_id = info.workflow_id
+    activity_id = activity.info().activity_id
+    client = act._temporal_client
+    workflow_handle = client.get_workflow_handle(workflow_id, run_id=run_id)
+    handler = partial(
+        progress_handler,
+        handle=workflow_handle,
+        run_id=run_id,
+        activity_id=activity_id,
+        weight=weight,
+    )
+    return handler
+
+
+def _is_progress(t: type) -> bool:
+    if t is ProgressRateHandler:
+        return True
+    return bool(
+        isinstance(t, UnionType)
+        and any(sub_t is ProgressRateHandler for sub_t in get_args(t))
+    )
+
+
+def _without_progress(arg_types: list[type] | None) -> list[type] | None:
+    if arg_types is None:
+        return None
+    filtered = [t for t in arg_types if not _is_progress(t)]
+    return filtered
+
+
+class _ProgressInboundInterceptor(ActivityInboundInterceptor):
+    async def execute_activity(self, input: ExecuteActivityInput) -> Any:  # noqa: A002
+        if not supports_progress(input.fn):
+            return await super().execute_activity(input)
+        # The progress args breaks trigger a bypass of the dataloader:
+        # https://github.com/temporalio/sdk-python/blob/631ebaf0e20fb214b16589b45627b358048a5d77/temporalio/worker/_activity.py#L600
+        # we have to force it here again
+        progress_handler = _get_progress_handler(input.fn)
+        if input.args:
+            data_converter = PYDANTIC_DATA_CONVERTER
+            arg_types = _Definition.must_from_callable(input.fn).arg_types
+            arg_types = _without_progress(arg_types)
+            arg_types = arg_types[: len(input.args)]
+            try:
+                encoded = await data_converter.encode(input.args)
+            except Exception as e:
+                raise ApplicationError("Failed encoding arguments") from e
+            try:
+                new_args = await data_converter.decode(encoded, type_hints=arg_types)
+            except Exception as e:
+                raise ApplicationError("Failed decoding arguments") from e
+            new_args.append(progress_handler)
+        else:
+            new_args = [progress_handler]
+        new_input = dataclasses.replace(input, args=new_args)
+        await progress_handler(0.0)
+        res = await super().execute_activity(new_input)
+        await progress_handler(1.0)
+        return res
+
+
+class HeartbeatInterceptor(Interceptor):
+    def __init__(self, n_missed_before_timeout: int = 5):
+        self._n_missed_before_timeout = n_missed_before_timeout
+
+    def intercept_activity(
+        self,
+        next: ActivityInboundInterceptor,  # noqa: A002
+    ) -> ActivityInboundInterceptor:
+        return _HeartbeatInboundInterceptor(next, self._n_missed_before_timeout)
+
+
+async def _heartbeat_every(period: float, *details: Any) -> None:
+    with contextlib.suppress(RuntimeError, asyncio.TimeoutError):
+        activity.heartbeat(*details)
+    while True:
+        await asyncio.sleep(period)
+        with contextlib.suppress(RuntimeError, asyncio.TimeoutError):
+            activity.heartbeat(*details)
+
+
+class _HeartbeatInboundInterceptor(ActivityInboundInterceptor):
+    def __init__(
+        self,
+        next: ActivityInboundInterceptor,  # noqa: A002
+        n_missed_before_timeout: int = 5,
+    ) -> None:
+        super().__init__(next)
+        self._n_missed_before_timeout = n_missed_before_timeout
+
+    async def execute_activity(self, input: ExecuteActivityInput) -> Any:  # noqa: A002
+        heartbeat_timeout = activity.info().heartbeat_timeout
+        heartbeat_task = None
+        if heartbeat_timeout:
+            period = heartbeat_timeout.total_seconds() / self._n_missed_before_timeout
+            heartbeat_task = asyncio.create_task(_heartbeat_every(period))
+        try:
+            activity.heartbeat()
+            return await super().execute_activity(input)
+        finally:
+            if heartbeat_task:
+                heartbeat_task.cancel()
+                await asyncio.wait([heartbeat_task])
