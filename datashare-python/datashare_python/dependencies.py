@@ -150,4 +150,7 @@ def add_missing_args(fn: Callable, args: dict[str, Any], **kwargs) -> dict[str, 
 
 # component lifecycle
 def component_teardown(_cache_key: str, component: AbstractContextManager) -> None:
+    if not isinstance(component, AbstractContextManager):
+        return
+
     component.__exit__(None, None, None)
