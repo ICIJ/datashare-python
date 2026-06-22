@@ -11,7 +11,7 @@ requires-python = ">=3.11.0, <3.13"
 dependencies = [
   "datashare-asr-worker==0.8.14",
   "datashare-extract-worker[base]==0.1.37",
-  "datashare-python~=0.8.25",
+  "datashare-python~=0.8.24",
   "datashare-translation-worker==0.7.3",
 ]
 
@@ -65,9 +65,6 @@ override-dependencies = [
   "pillow==11.3.0",
   "typer==0.24.0",
 ]
-
-[tool.uv.sources]
-datashare-python = { path = "../../datashare-python", editable = true }
 
 [tool.hatch.build.targets.wheel]
 packages = ["main"]
