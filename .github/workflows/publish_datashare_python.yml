@@ -42,6 +42,7 @@ jobs:
     permissions:
       id-token: write
       contents: write
+      actions: write
     needs:
       - publish-datashare-python-to-pypi
     runs-on: ubuntu-latest
