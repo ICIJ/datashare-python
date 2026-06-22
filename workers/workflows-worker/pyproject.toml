@@ -9,10 +9,10 @@ authors = [
 readme = "README.md"
 requires-python = ">=3.11.0, <3.13"
 dependencies = [
-  "datashare-asr-worker==0.8.14",
-  "datashare-extract-worker[base]==0.1.37",
-  "datashare-python~=0.8.24",
-  "datashare-translation-worker==0.7.3",
+  "datashare-asr-worker==0.8.15",
+  "datashare-extract-worker[base]==0.1.39",
+  "datashare-python~=0.9.0",
+  "datashare-translation-worker==0.7.7",
 ]
 
 [tool.uv]
