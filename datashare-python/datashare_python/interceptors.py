@@ -27,7 +27,6 @@ from temporalio.activity import _Definition
 from temporalio.api.common.v1 import Payload
 from temporalio.client import WorkflowHandle
 from temporalio.converter import DataConverter
-from temporalio.exceptions import ApplicationError
 from temporalio.worker import (
     ActivityInboundInterceptor,
     ContinueAsNewInput,
@@ -52,10 +51,14 @@ from temporalio.workflow import (
     NexusOperationHandle,
 )
 
-from .config import PYDANTIC_DATA_CONVERTER
 from .objects import BaseModel
 from .types_ import ProgressRateHandler, Weight
-from .utils import PROGRESS_HANDLER_ARG, ActivityWithProgress, ProgressSignal
+from .utils import (
+    PROGRESS_HANDLER_ARG,
+    PYDANTIC_DATA_CONVERTER,
+    ActivityWithProgress,
+    ProgressSignal,
+)
 
 _TRACEPARENT = "traceparent"
 _DEFAULT_PAYLOAD_CONVERTER = DataConverter.default.payload_converter
@@ -317,14 +320,8 @@ class _ProgressInboundInterceptor(ActivityInboundInterceptor):
             arg_types = _Definition.must_from_callable(input.fn).arg_types
             arg_types = _without_progress(arg_types)
             arg_types = arg_types[: len(input.args)]
-            try:
-                encoded = await data_converter.encode(input.args)
-            except Exception as e:
-                raise ApplicationError("Failed encoding arguments") from e
-            try:
-                new_args = await data_converter.decode(encoded, type_hints=arg_types)
-            except Exception as e:
-                raise ApplicationError("Failed decoding arguments") from e
+            encoded = await data_converter.encode(input.args)
+            new_args = await data_converter.decode(encoded, type_hints=arg_types)
             new_args.append(progress_handler)
         else:
             new_args = [progress_handler]

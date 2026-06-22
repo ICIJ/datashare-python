@@ -4,7 +4,7 @@ from datetime import timedelta
 from pathlib import Path
 
 import pytest
-from datashare_python.objects import DocArtifact
+from datashare_python.objects import DatashareModel, DocArtifact
 from datashare_python.types_ import TemporalClient
 from datashare_python.utils import activity_defn, positional_args_only, write_artifact
 from datashare_python.worker import datashare_worker
@@ -33,6 +33,15 @@ async def non_retriable() -> None:
     raise ValueError("non retriable error occurred")
 
 
+class DeserArg(DatashareModel):
+    value: str
+
+
+@activity_defn(name="non_retriable")
+async def deser_test_act(arg: DeserArg) -> str:
+    return arg.value
+
+
 @workflow.defn(name="non_retriable_workflow")
 class NonRetriableWorkflow:
     @workflow.run
@@ -40,6 +49,18 @@ class NonRetriableWorkflow:
         await workflow.execute_activity(
             non_retriable,
             task_queue="io",
+            schedule_to_close_timeout=timedelta(seconds=30),
+        )
+
+
+@workflow.defn(name="test-deserialization-error")
+class TestDeserializationErrorWorkflow:
+    @workflow.run
+    async def run(self, args: DeserArg) -> None:
+        await workflow.execute_activity(
+            deser_test_act,
+            args=[args],
+            task_queue="deser",
             schedule_to_close_timeout=timedelta(seconds=30),
         )
 
@@ -65,6 +86,35 @@ async def test_retriable(test_temporal_client_session: TemporalClient) -> None:
         assert isinstance(cause, ApplicationError)
         assert cause.message == "non retriable error occurred"
         assert cause.non_retryable
+
+
+async def test_deserialization_error(
+    test_temporal_client_session: TemporalClient,
+) -> None:
+    # Given
+    wrong_args = {"valueee": "some-value"}
+    client = test_temporal_client_session
+    workflow_id = f"workflow_{uuid.uuid4().hex}"
+    worker_id = f"worker-{uuid.uuid4().hex}"
+    worker = datashare_worker(
+        client,
+        worker_id=worker_id,
+        task_queue="deser",
+        workflows=[TestDeserializationErrorWorkflow],
+        activities=[deser_test_act],
+    )
+    async with worker:
+        with pytest.raises(WorkflowFailureError) as ctx:
+            await client.execute_workflow(
+                TestDeserializationErrorWorkflow.run,
+                args=[wrong_args],
+                id=workflow_id,
+                task_queue="deser",
+            )
+        assert ctx.value.cause.non_retryable
+        root_cause = ctx.value.cause.__cause__
+        assert isinstance(root_cause, ApplicationError)
+        assert "2 validation errors for DeserArg" in root_cause.message
 
 
 def test_write_artifact(tmp_path: Path) -> None:
