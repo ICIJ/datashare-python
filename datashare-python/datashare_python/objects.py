@@ -398,6 +398,14 @@ class Shared:
     def pop_resource(self, key: str, default: Any = None) -> Any:
         return self._resources.pop(key, default)
 
+    async def async_get_resource(
+        self, key: str, default: Any = None, *, set_if_unavailable: bool = True
+    ) -> Any:
+        if key not in self._resources and set_if_unavailable:
+            await self.async_set_resource(key, default)
+
+        return self._resources.get(key, default)
+
     async def async_set_resource(self, key: str, value: Any) -> None:
         async with self._lock:
             self._resources[key] = value
