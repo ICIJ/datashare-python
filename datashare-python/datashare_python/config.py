@@ -6,13 +6,6 @@ from icij_common.es import ESClient
 from icij_common.pydantic_utils import ICIJSettings
 from pydantic import PrivateAttr
 from pydantic_settings import SettingsConfigDict
-from temporalio.contrib.pydantic import PydanticJSONPlainPayloadConverter, ToJsonOptions
-from temporalio.converter import (
-    CompositePayloadConverter,
-    DataConverter,
-    DefaultPayloadConverter,
-    JSONPlainPayloadConverter,
-)
 from temporalio.runtime import PrometheusConfig, Runtime, TelemetryConfig
 
 import datashare_python
@@ -20,6 +13,7 @@ import datashare_python
 from .objects import BaseModel
 from .task_client import DatashareTaskClient
 from .types_ import TemporalClient
+from .utils import PYDANTIC_DATA_CONVERTER
 
 _ALL_LOGGERS = [datashare_python.__name__]
 
@@ -129,23 +123,3 @@ class WorkerConfig(ICIJSettings, BaseModel):
 
     async def to_temporal_client(self) -> TemporalClient:
         return await self.temporal.to_client()
-
-
-class _PydanticPayloadConverter(CompositePayloadConverter):
-    def __init__(self) -> None:
-        json_payload_converter = PydanticJSONPlainPayloadConverter(
-            ToJsonOptions(exclude_unset=False)
-        )
-        super().__init__(
-            *(
-                c
-                if not isinstance(c, JSONPlainPayloadConverter)
-                else json_payload_converter
-                for c in DefaultPayloadConverter.default_encoding_payload_converters
-            )
-        )
-
-
-PYDANTIC_DATA_CONVERTER = DataConverter(
-    payload_converter_class=_PydanticPayloadConverter
-)

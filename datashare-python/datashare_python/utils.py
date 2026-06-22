@@ -4,7 +4,7 @@ import inspect
 import json
 import os
 import shutil
-from collections.abc import Callable, Coroutine, Iterable
+from collections.abc import Callable, Coroutine, Iterable, Sequence
 from copy import deepcopy
 from dataclasses import dataclass
 from datetime import timedelta
@@ -17,9 +17,18 @@ from uuid import uuid4
 
 import nest_asyncio
 import temporalio
+from pydantic import ValidationError
 from temporalio import activity, workflow
+from temporalio.api.common.v1 import Payload
 from temporalio.client import Client
 from temporalio.common import RetryPolicy, SearchAttributeKey
+from temporalio.contrib.pydantic import PydanticJSONPlainPayloadConverter, ToJsonOptions
+from temporalio.converter import (
+    CompositePayloadConverter,
+    DataConverter,
+    DefaultPayloadConverter,
+    JSONPlainPayloadConverter,
+)
 from temporalio.exceptions import ApplicationError
 
 from .constants import METADATA_JSON
@@ -441,3 +450,37 @@ def read_jsonl(path: Path) -> Iterable[dict]:
             line = line.strip()  # noqa: PLW2901
             if line:
                 yield json.loads(line)
+
+
+class _PydanticPayloadConverter(CompositePayloadConverter):
+    def __init__(self) -> None:
+        json_payload_converter = PydanticJSONPlainPayloadConverter(
+            ToJsonOptions(exclude_unset=False)
+        )
+        super().__init__(
+            *(
+                c
+                if not isinstance(c, JSONPlainPayloadConverter)
+                else json_payload_converter
+                for c in DefaultPayloadConverter.default_encoding_payload_converters
+            )
+        )
+
+    def from_payloads(
+        self, payloads: Sequence[Payload], type_hints: list[type] | None = None
+    ) -> list[Any]:
+        try:
+            return super().from_payloads(payloads, type_hints)
+        except (TypeError, ValidationError) as e:
+            raise fatal_error_from_exception(e) from e
+
+    def to_payloads(self, values: Sequence[Any]) -> list[Payload]:
+        try:
+            return super().to_payloads(values)
+        except (TypeError, ValidationError) as e:
+            raise fatal_error_from_exception(e) from e
+
+
+PYDANTIC_DATA_CONVERTER = DataConverter(
+    payload_converter_class=_PydanticPayloadConverter
+)

@@ -19,7 +19,7 @@ from temporalio import exceptions as temporalio_exceptions
 from temporalio.common import RetryPolicy
 
 with temporalio.workflow.unsafe.imports_passed_through():
-    from datashare_python.config import PYDANTIC_DATA_CONVERTER, WorkerConfig
+    from datashare_python.config import WorkerConfig
     from datashare_python.interceptors import (
         HeartbeatInterceptor,
         ProgressInterceptor,
@@ -28,6 +28,7 @@ with temporalio.workflow.unsafe.imports_passed_through():
         get_trace_context,
     )
     from datashare_python.types_ import ProgressRateHandler, TemporalClient, Weight
+    from datashare_python.utils import PYDANTIC_DATA_CONVERTER
     from temporalio import workflow
     from temporalio.client import (
         Interceptor,
