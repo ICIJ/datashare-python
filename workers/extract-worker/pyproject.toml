@@ -16,7 +16,7 @@ dependencies = [
 
 [project.optional-dependencies]
 base = [
-  "extract-python[docling,marker]==0.5.14",
+  "extract-python[docling,marker]==0.5.15",
 ]
 cpu = [
   "torch==2.11.0",
@@ -31,7 +31,7 @@ flash-attn = [
    "flash-attn==2.8.3.post1",
 ]
 mineru = [
-  "extract-python[mineru]==0.5.14",
+  "extract-python[mineru]==0.5.15",
 ]
 
 [project.entry-points."datashare.workflows"]
@@ -48,7 +48,7 @@ worker_config_cls = "extract_worker.config:WORKER_CONFIG_CLS"
 
 [dependency-groups]
 dev = [
-  "extract-python[docling]==0.5.14",
+  "extract-python[docling]==0.5.15",
   "black>=26.1.0",
   "nest-asyncio>=1.6.0",
   "pre-commit>=4.5.1",
