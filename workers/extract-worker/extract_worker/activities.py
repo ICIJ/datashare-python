@@ -43,6 +43,7 @@ from icij_common.es import (
     has_type,
 )
 from pydantic import TypeAdapter
+from temporalio import activity
 
 from .config import ExtractWorkerConfig
 from .constants import MARKDOWN_DIRNAME, MARKDOWN_METADATA_KEY
@@ -194,6 +195,9 @@ async def extract_markdown_content_act(
     n_docs, n_pages, n_successes, n_successes_pages = 0, 0, 0, 0
     errors = []
     async for extract_res in results:
+        # Heartbeat explicitely to avoid heartbeat timeout
+        with contextlib.suppress(RuntimeError):
+            activity.heartbeat()
         doc = next(docs)
         n_docs += 1
         n_pages += doc.n_pages
