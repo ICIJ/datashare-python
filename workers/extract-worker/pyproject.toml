@@ -105,6 +105,7 @@ conflicts = [
   ],
 ]
 prerelease = "if-necessary"
+no-build-isolation-package = ["flash-attn"]
 
 
 [build-system]
