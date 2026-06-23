@@ -88,7 +88,9 @@ def discover(
         worker_config_cls = discover_worker_config_cls()
     else:
         worker_config_cls = WorkerConfig
-    discovered += f"- worker config class: {worker_config_cls}"
+    if discovered:
+        discovered += "\n"
+    discovered += f"- worker config class: {worker_config_cls.__name__}"
     logger.info("discovered:\n%s", discovered)
     return wfs, acts, deps, worker_config_cls
 
