@@ -10,6 +10,29 @@ COPY --from=ghcr.io/astral-sh/uv:0.11.6 /uv /uvx /bin/
 
 WORKDIR /app
 
+# Flash attention libs has to be built on the hardware and is not available as a prebuild wheel. We don't want to do
+# it in the final image since it requires nvcc which is already embedded in Python deps and is super heavy. Sadly the
+# embedded version of nvcc is not usable for building
+FROM nvidia/cuda:12.9.0-devel-ubuntu24.04 AS flash-attn-builder
+
+COPY --from=ghcr.io/astral-sh/uv:0.11.6 /uv /bin/
+
+RUN uv python install 3.13
+
+RUN --mount=type=cache,target=~/.cache/uv \
+    --mount=type=bind,source=uv.dist.lock,target=uv.lock \
+    --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
+    uv sync --frozen --no-install-project --no-editable --extra base-gpu \
+    --only-package torch
+
+RUN --mount=type=bind,source=uv.dist.lock,target=uv.lock \
+    --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
+    uv export --frozen --extra base-gpu --no-dev | \
+    grep '^flash-attn==' | cut -d'=' -f3 > flash-attn-version.txt
+
+RUN --mount=type=cache,target=~/.cache/uv \
+    uv pip wheel --python 3.13 "flash-attn==$(cat flash-attn-version.txt)" \
+    --no-build-isolation -w /flash-attn-wheel
 
 FROM extract-worker-builder AS io-worker
 ADD io-worker-deps-exclusion.txt ./
@@ -61,11 +84,17 @@ ENTRYPOINT ["entrypoints/extract_cpu_worker.sh"]
 
 
 FROM extract-base-builder AS extract-gpu-worker
+
+# Copy the flash-attn wheel
+COPY --from=flash-attn-builder /flash-attn-wheel /flash-attn-wheel
+# Install the wheel
+RUN uv pip install /flash-attn-wheel/*.whl --no-deps
+
 # Install deps first to optimize layer cache
 RUN --mount=type=cache,target=~/.cache/uv \
     --mount=type=bind,source=uv.dist.lock,target=uv.lock \
     --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
-    uv sync -v --frozen --no-editable --no-install-project --extra base --extra gpu
+    uv sync -v --frozen --no-editable --no-install-project --extra base --extra base-gpu --no-install-package flash-attn
 
 # Then copy code
 ADD uv.dist.lock ./uv.lock
@@ -74,7 +103,7 @@ ADD extract_worker ./extract_worker/
 ADD entrypoints/extract_gpu_worker.sh ./entrypoints/extract_gpu_worker.sh
 
 # Then install service
-RUN --mount=type=cache,target=~/.cache/uv uv sync -v --frozen --no-editable --extra base --extra gpu
+RUN --mount=type=cache,target=~/.cache/uv uv sync -v --frozen --no-editable --extra base-gpu
 RUN rm -rf ~/.cache/pip
 
 ENTRYPOINT ["entrypoints/extract_gpu_worker.sh"]
@@ -105,7 +134,7 @@ FROM extract-worker-builder AS extract-gpu-mineru-worker
 RUN --mount=type=cache,target=~/.cache/uv \
     --mount=type=bind,source=uv.dist.lock,target=uv.lock \
     --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
-    uv sync -v --frozen --no-editable --no-install-project --extra mineru --extra gpu
+    uv sync -v --frozen --no-editable --no-install-project --extra mineru --extra mineru-gpu
 
 # Then copy code
 ADD uv.dist.lock ./uv.lock
@@ -114,7 +143,7 @@ ADD extract_worker ./extract_worker/
 ADD entrypoints/extract_gpu_worker.sh ./entrypoints/extract_gpu_worker.sh
 
 # Then install service
-RUN --mount=type=cache,target=~/.cache/uv uv sync -v --frozen --no-editable --extra mineru --extra gpu
+RUN --mount=type=cache,target=~/.cache/uv uv sync -v --frozen --no-editable --extra mineru --extra mineru-gpu
 RUN rm -rf ~/.cache/pip
 
 ENTRYPOINT ["entrypoints/extract_gpu_worker.sh"]
