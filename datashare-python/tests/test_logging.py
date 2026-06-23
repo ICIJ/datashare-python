@@ -15,8 +15,8 @@ def test_logfmt_formatter() -> None:
         level=logging.DEBUG,
         pathname="/some/path",
         lineno=2,
-        msg="some message with space in it",
-        args=dict(),
+        msg="some %s with space in it",
+        args=("message",),
         exc_info=exc_info,
     )
     # When
