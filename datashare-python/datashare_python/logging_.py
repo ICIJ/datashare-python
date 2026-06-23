@@ -68,7 +68,7 @@ class WorkerFilter(logging.Filter):
 
     def filter(self, record: logging.LogRecord) -> bool:
         if not hasattr(record, "message") and record.msg is not None:
-            setattr(record, "msg", record.msg)  # noqa: B010
+            setattr(record, "msg", record.getMessage())  # noqa: B010
         if self.worker_id is not None:
             record.worker_id = self.worker_id
         if workflow.in_workflow():
@@ -121,8 +121,9 @@ class LogFmtFormatter(logging.Formatter):
             record.exc_text = self.formatException(record.exc_info)
             logged["exc_info"] = record.exc_text
         for k, v in record.__dict__.items():
-            if k in _LOGGED_ATTRIBUTES and k != "exc_info":
+            if k in _LOGGED_ATTRIBUTES and k not in {"exc_info", "msg"}:
                 logged[k] = _encode_value(v)
+        logged["msg"] = _encode_value(record.getMessage())
         return " ".join(f"{k}={v}" for k, v in sorted(logged.items()))
 
 
