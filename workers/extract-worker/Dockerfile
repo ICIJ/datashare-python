@@ -23,7 +23,7 @@ RUN uv python install 3.13
 RUN --mount=type=cache,target=~/.cache/uv \
     --mount=type=bind,source=uv.dist.lock,target=uv.lock \
     --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
-    uv sync --frozen --no-install-project --no-editable --extra base-gpu \
+    uv sync --frozen --no-install-project --no-editable --extra base --extra gpu \
     --no-install-package flash-attn \
     --no-install-package torchvision \
     --no-install-package cuda-bindings
@@ -33,11 +33,9 @@ RUN --mount=type=bind,source=uv.dist.lock,target=uv.lock \
     uv export --frozen --extra base-gpu --no-dev | \
     sed -n 's/^flash-attn==\([^; ]*\).*/\1/p'  > flash-attn-version.txt
 
-RUN cat flash-attn-version.txt
-
 RUN --mount=type=cache,target=~/.cache/uv \
     uv pip install pip && \
-    uv run python -m pip wheel "flash-attn==$(cat flash-attn-version.txt)" \
+    MAX_JOBS=8 uv run python -m pip wheel "flash-attn==$(cat flash-attn-version.txt)" \
     --no-build-isolation --no-deps -w /flash-attn-wheel
 
 FROM extract-worker-builder AS io-worker
@@ -91,16 +89,16 @@ ENTRYPOINT ["entrypoints/extract_cpu_worker.sh"]
 
 FROM extract-base-builder AS extract-gpu-worker
 
-# Copy the flash-attn wheel
-COPY --from=flash-attn-builder /flash-attn-wheel /flash-attn-wheel
-# Install the wheel
-RUN uv pip install /flash-attn-wheel/*.whl --no-deps
+## Copy the flash-attn wheel
+#COPY --from=flash-attn-builder /flash-attn-wheel /flash-attn-wheel
+## Install the wheel
+#RUN uv pip install /flash-attn-wheel/*.whl --no-deps
 
 # Install deps first to optimize layer cache
 RUN --mount=type=cache,target=~/.cache/uv \
     --mount=type=bind,source=uv.dist.lock,target=uv.lock \
     --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
-    uv sync -v --frozen --no-editable --no-install-project --extra base --extra base-gpu --no-install-package flash-attn
+    uv sync -v --frozen --no-editable --no-install-project --extra base --extra base --extra gpu #--no-install-package flash-attn
 
 # Then copy code
 ADD uv.dist.lock ./uv.lock
@@ -109,7 +107,7 @@ ADD extract_worker ./extract_worker/
 ADD entrypoints/extract_gpu_worker.sh ./entrypoints/extract_gpu_worker.sh
 
 # Then install service
-RUN --mount=type=cache,target=~/.cache/uv uv sync -v --frozen --no-editable --extra base-gpu
+RUN --mount=type=cache,target=~/.cache/uv uv sync -v --frozen --no-editable --extra base --extra gpu
 RUN rm -rf ~/.cache/pip
 
 ENTRYPOINT ["entrypoints/extract_gpu_worker.sh"]
@@ -140,7 +138,7 @@ FROM extract-worker-builder AS extract-gpu-mineru-worker
 RUN --mount=type=cache,target=~/.cache/uv \
     --mount=type=bind,source=uv.dist.lock,target=uv.lock \
     --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
-    uv sync -v --frozen --no-editable --no-install-project --extra mineru --extra mineru-gpu
+    uv sync -v --frozen --no-editable --no-install-project --extra mineru --extra mineru --extra gpu
 
 # Then copy code
 ADD uv.dist.lock ./uv.lock
@@ -149,7 +147,7 @@ ADD extract_worker ./extract_worker/
 ADD entrypoints/extract_gpu_worker.sh ./entrypoints/extract_gpu_worker.sh
 
 # Then install service
-RUN --mount=type=cache,target=~/.cache/uv uv sync -v --frozen --no-editable --extra mineru --extra mineru-gpu
+RUN --mount=type=cache,target=~/.cache/uv uv sync -v --frozen --no-editable --extra mineru --extra mineru --extra gpu
 RUN rm -rf ~/.cache/pip
 
 ENTRYPOINT ["entrypoints/extract_gpu_worker.sh"]

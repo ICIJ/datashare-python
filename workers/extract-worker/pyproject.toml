@@ -10,31 +10,28 @@ readme = "README.md"
 requires-python = ">=3.11,<3.14"
 dependencies = [
     "datashare-python~=0.9.0",
-    "extract-core==0.5.11",
+    "extract-core==0.5.12",
     "temporalio==1.23.0",
 ]
 
 [project.optional-dependencies]
 base = [
-  "extract-python[docling,marker]==0.5.13",
+  "extract-python[docling,marker]==0.5.14",
 ]
 cpu = [
   "torch==2.11.0",
   "torchvision==0.26.0",
 ]
-base-gpu = [
+gpu = [
   "cuda-bindings==12.9.4; sys_platform == 'linux'",
-  "flash-attn==2.8.3.post1",
   "torch==2.11.0+cu129; sys_platform == 'linux'",
   "torchvision==0.26.0+cu129; sys_platform == 'linux'",
 ]
-mineru-gpu = [
-  "cuda-bindings==12.9.4; sys_platform == 'linux'",
-  "torch==2.11.0+cu129; sys_platform == 'linux'",
-  "torchvision==0.26.0+cu129; sys_platform == 'linux'",
+flash-attn = [
+   "flash-attn==2.8.3.post1",
 ]
 mineru = [
-  "extract-python[mineru]==0.5.13",
+  "extract-python[mineru]==0.5.14",
 ]
 
 [project.entry-points."datashare.workflows"]
@@ -51,7 +48,7 @@ worker_config_cls = "extract_worker.config:WORKER_CONFIG_CLS"
 
 [dependency-groups]
 dev = [
-  "extract-python[docling]==0.5.13",
+  "extract-python[docling]==0.5.14",
   "black>=26.1.0",
   "nest-asyncio>=1.6.0",
   "pre-commit>=4.5.1",
@@ -81,13 +78,11 @@ explicit = true
 
 [tool.uv.sources]
 torch = [
-  { index = "pytorch-gpu", extra = "base-gpu" },
-  { index = "pytorch-gpu", extra = "mineru-gpu" },
+  { index = "pytorch-gpu", extra = "gpu" },
   { index = "pytorch-cpu", extra = "cpu" },
 ]
 torchvision = [
-  { index = "pytorch-gpu", extra = "base-gpu" },
-  { index = "pytorch-gpu", extra = "mineru-gpu" },
+  { index = "pytorch-gpu", extra = "gpu" },
   { index = "pytorch-cpu", extra = "cpu" },
 ]
 datashare-python = { path = "../../datashare-python", editable = true }
@@ -105,11 +100,7 @@ environments = [
 conflicts = [
   [
     { extra = "cpu" },
-    { extra = "base-gpu" },
-  ],
-  [
-    { extra = "cpu" },
-    { extra = "mineru-gpu" },
+    { extra = "gpu" },
   ],
   [
     { extra = "base" },
