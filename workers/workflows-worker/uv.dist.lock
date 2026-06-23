@@ -440,16 +440,16 @@ wheels = [
 
 [[package]]
 name = "datashare-extract-worker"
-version = "0.1.39"
+version = "0.1.41"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "datashare-python" },
     { name = "extract-core" },
     { name = "temporalio" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/60/57/ba05ea77ae8e31ceebf832cea1f0199400e9cc9e7f152b87e45b2a536d41/datashare_extract_worker-0.1.39.tar.gz", hash = "sha256:1481fe55124e5eeda79ff5f0470a2cbb6f14fceaad6e865172182c16c4cb1f7a", size = 297197, upload-time = "2026-06-22T17:15:15.37Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/7b/21/0dde9bfc85ed2b5fac9aca9a773b7dc64ed6de712286e234773b47605f86/datashare_extract_worker-0.1.41.tar.gz", hash = "sha256:ec5d37a990c449a6acb18276306164c422c83964e13ca8060eff0f223facc044", size = 297260, upload-time = "2026-06-23T09:25:40.294Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/59/80/4ad28375da4dd1054abdacb01871f65f9ace3e5774a2da6711f4ce424887/datashare_extract_worker-0.1.39-py3-none-any.whl", hash = "sha256:fc9c9eb271d1bf4516294bfacf0d4786cb66777e2e69ea585d6f7041b3ffd9f8", size = 17781, upload-time = "2026-06-22T17:15:14.396Z" },
+    { url = "https://files.pythonhosted.org/packages/d2/8f/93cc4dbfadee14e3857a3a872f1614f06f6eb036ef45052633a5dc2e05eb/datashare_extract_worker-0.1.41-py3-none-any.whl", hash = "sha256:e846616453243789bb292aee6cc80b2607feb379dccb035b6c55ff768d7cf5ae", size = 17842, upload-time = "2026-06-23T09:25:41.25Z" },
 ]
 
 [package.optional-dependencies]
@@ -510,7 +510,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "datashare-asr-worker", specifier = "==0.8.15" },
-    { name = "datashare-extract-worker", extras = ["base"], specifier = "==0.1.39" },
+    { name = "datashare-extract-worker", extras = ["base"], specifier = "==0.1.41" },
     { name = "datashare-python", specifier = "~=0.9.4" },
     { name = "datashare-translation-worker", specifier = "==0.7.9" },
 ]
