@@ -19,20 +19,26 @@ COPY --from=ghcr.io/astral-sh/uv:0.11.6 /uv /bin/
 
 RUN uv python install 3.13
 
+# Install torch from the lockfile by install extras and skipping some packages
 RUN --mount=type=cache,target=~/.cache/uv \
     --mount=type=bind,source=uv.dist.lock,target=uv.lock \
     --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
     uv sync --frozen --no-install-project --no-editable --extra base-gpu \
-    --package torch
+    --no-install-package flash-attn \
+    --no-install-package torchvision \
+    --no-install-package cuda-bindings
 
 RUN --mount=type=bind,source=uv.dist.lock,target=uv.lock \
     --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
     uv export --frozen --extra base-gpu --no-dev | \
-    grep '^flash-attn==' | cut -d'=' -f3 > flash-attn-version.txt
+    sed -n 's/^flash-attn==\([^; ]*\).*/\1/p'  > flash-attn-version.txt
+
+RUN cat flash-attn-version.txt
 
 RUN --mount=type=cache,target=~/.cache/uv \
-    uv pip wheel --python 3.13 "flash-attn==$(cat flash-attn-version.txt)" \
-    --no-build-isolation -w /flash-attn-wheel
+    uv pip install pip && \
+    uv run python -m pip wheel "flash-attn==$(cat flash-attn-version.txt)" \
+    --no-build-isolation --no-deps -w /flash-attn-wheel
 
 FROM extract-worker-builder AS io-worker
 ADD io-worker-deps-exclusion.txt ./
