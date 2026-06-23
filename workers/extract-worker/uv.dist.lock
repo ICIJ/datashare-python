@@ -625,9 +625,9 @@ dev = [
 requires-dist = [
     { name = "cuda-bindings", marker = "sys_platform == 'linux' and extra == 'gpu'", specifier = "==12.9.4" },
     { name = "datashare-python", specifier = "~=0.9.0" },
-    { name = "extract-core", specifier = "==0.5.10" },
-    { name = "extract-python", extras = ["docling", "marker"], marker = "extra == 'base'", specifier = "==0.5.11" },
-    { name = "extract-python", extras = ["mineru"], marker = "extra == 'mineru'", specifier = "==0.5.11" },
+    { name = "extract-core", specifier = "==0.5.11" },
+    { name = "extract-python", extras = ["docling", "marker"], marker = "extra == 'base'", specifier = "==0.5.12" },
+    { name = "extract-python", extras = ["mineru"], marker = "extra == 'mineru'", specifier = "==0.5.12" },
     { name = "temporalio", specifier = "==1.23.0" },
     { name = "torch", marker = "sys_platform == 'linux' and extra == 'gpu'", specifier = "==2.11.0+cu129", index = "https://download.pytorch.org/whl/cu129", conflict = { package = "datashare-extract-worker", extra = "gpu" } },
     { name = "torch", marker = "extra == 'cpu'", specifier = "==2.11.0", index = "https://download.pytorch.org/whl/cpu", conflict = { package = "datashare-extract-worker", extra = "cpu" } },
@@ -639,7 +639,7 @@ provides-extras = ["base", "cpu", "gpu", "mineru"]
 [package.metadata.requires-dev]
 dev = [
     { name = "black", specifier = ">=26.1.0" },
-    { name = "extract-python", extras = ["docling"], specifier = "==0.5.11" },
+    { name = "extract-python", extras = ["docling"], specifier = "==0.5.12" },
     { name = "nest-asyncio", specifier = ">=1.6.0" },
     { name = "pre-commit", specifier = ">=4.5.1" },
     { name = "psutil", specifier = ">=6.1.0" },
@@ -929,7 +929,7 @@ wheels = [
 
 [[package]]
 name = "extract-core"
-version = "0.5.10"
+version = "0.5.11"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "docling-slim", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-24-datashare-extract-worker-base' and extra == 'extra-24-datashare-extract-worker-mineru') or (platform_machine != 'x86_64' and extra == 'extra-24-datashare-extract-worker-cpu' and extra == 'extra-24-datashare-extract-worker-gpu') or sys_platform == 'darwin' or (sys_platform != 'linux' and extra == 'extra-24-datashare-extract-worker-base' and extra == 'extra-24-datashare-extract-worker-mineru') or (sys_platform != 'linux' and extra == 'extra-24-datashare-extract-worker-cpu' and extra == 'extra-24-datashare-extract-worker-gpu')" },
@@ -939,27 +939,28 @@ dependencies = [
     { name = "pydantic", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-24-datashare-extract-worker-base' and extra == 'extra-24-datashare-extract-worker-mineru') or (platform_machine != 'x86_64' and extra == 'extra-24-datashare-extract-worker-cpu' and extra == 'extra-24-datashare-extract-worker-gpu') or sys_platform == 'darwin' or (sys_platform != 'linux' and extra == 'extra-24-datashare-extract-worker-base' and extra == 'extra-24-datashare-extract-worker-mineru') or (sys_platform != 'linux' and extra == 'extra-24-datashare-extract-worker-cpu' and extra == 'extra-24-datashare-extract-worker-gpu')" },
     { name = "pydantic-extra-types", extra = ["pycountry"], marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-24-datashare-extract-worker-base' and extra == 'extra-24-datashare-extract-worker-mineru') or (platform_machine != 'x86_64' and extra == 'extra-24-datashare-extract-worker-cpu' and extra == 'extra-24-datashare-extract-worker-gpu') or sys_platform == 'darwin' or (sys_platform != 'linux' and extra == 'extra-24-datashare-extract-worker-base' and extra == 'extra-24-datashare-extract-worker-mineru') or (sys_platform != 'linux' and extra == 'extra-24-datashare-extract-worker-cpu' and extra == 'extra-24-datashare-extract-worker-gpu')" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/5c/9a/490c923bffe01c650ff09513d9f1779c9020309c0ee0f7662bb46bccd3bc/extract_core-0.5.10.tar.gz", hash = "sha256:58c5f1106b86000379d9926639c5e751997a3ccdd4dc754283e7a2cd73acb3f0", size = 138212, upload-time = "2026-06-18T14:06:20.025Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/27/04/37ee3677d2fbab698e0c444a796a110947c39ab9f9ed68602eba4adf209b/extract_core-0.5.11.tar.gz", hash = "sha256:9fcf5d7ac906eaf03a797545e11903035cee87adffaa98e01cf83325564f7e98", size = 138276, upload-time = "2026-06-23T10:00:43.578Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/14/53/f5c96c7735162b9397dd298b140208e129ebe7cdc23f8dfabb2bc662b6cd/extract_core-0.5.10-py3-none-any.whl", hash = "sha256:c736bbb4168246e4116f954241467c83ec03bce3428088e7fcd3ef9f63c09342", size = 10213, upload-time = "2026-06-18T14:06:20.833Z" },
+    { url = "https://files.pythonhosted.org/packages/f9/35/fba447ed770a55f6e58c2049750214888f4a9b71bce5065099fba16ac56f/extract_core-0.5.11-py3-none-any.whl", hash = "sha256:74eea049acd7866f29477b3025ae8b6ea84b674d4bde41727bbbbcf539803b08", size = 10280, upload-time = "2026-06-23T10:00:44.402Z" },
 ]
 
 [[package]]
 name = "extract-python"
-version = "0.5.11"
+version = "0.5.12"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "extract-core", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-24-datashare-extract-worker-base' and extra == 'extra-24-datashare-extract-worker-mineru') or (platform_machine != 'x86_64' and extra == 'extra-24-datashare-extract-worker-cpu' and extra == 'extra-24-datashare-extract-worker-gpu') or sys_platform == 'darwin' or (sys_platform != 'linux' and extra == 'extra-24-datashare-extract-worker-base' and extra == 'extra-24-datashare-extract-worker-mineru') or (sys_platform != 'linux' and extra == 'extra-24-datashare-extract-worker-cpu' and extra == 'extra-24-datashare-extract-worker-gpu')" },
     { name = "icij-common", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-24-datashare-extract-worker-base' and extra == 'extra-24-datashare-extract-worker-mineru') or (platform_machine != 'x86_64' and extra == 'extra-24-datashare-extract-worker-cpu' and extra == 'extra-24-datashare-extract-worker-gpu') or sys_platform == 'darwin' or (sys_platform != 'linux' and extra == 'extra-24-datashare-extract-worker-base' and extra == 'extra-24-datashare-extract-worker-mineru') or (sys_platform != 'linux' and extra == 'extra-24-datashare-extract-worker-cpu' and extra == 'extra-24-datashare-extract-worker-gpu')" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/2e/f0/188d48b603ce9bf5c1f3cbebd667ece1a7658301a648fa9e8477a885e3c5/extract_python-0.5.11.tar.gz", hash = "sha256:caaf1540bd864d4f5a6215587f533d1a53cd85b79e103f316d308ce748c1655b", size = 251694, upload-time = "2026-06-18T14:06:17.417Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/fe/10/3699ee5ee96ea4d8356ca950d77850fd78931b77e270cb8e649b421761a8/extract_python-0.5.12.tar.gz", hash = "sha256:2298c2334edeaa0e8ee635b192c918f1bf7a3037a957f3b7d37239aa70807c02", size = 251718, upload-time = "2026-06-23T10:01:01.3Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/90/a8/e549f12d25a2f272ccf8e75a36dd81aaf2c68fd65dd5c9db29047049405b/extract_python-0.5.11-py3-none-any.whl", hash = "sha256:f3713d3173f7d7a59d8f064379a5da0eae70bd51eab394d86c322e851ab00f95", size = 9755, upload-time = "2026-06-18T14:06:18.631Z" },
+    { url = "https://files.pythonhosted.org/packages/50/da/dd363162afca703f9722df8c592de614c81b1660e1148e0146075972c85e/extract_python-0.5.12-py3-none-any.whl", hash = "sha256:9c3da8c563d7138da07453f21fd208569e4acfad84a5bb31cec93e84612786c1", size = 9766, upload-time = "2026-06-23T10:01:00.323Z" },
 ]
 
 [package.optional-dependencies]
 docling = [
     { name = "docling-slim", extra = ["feat-ocr-easyocr", "feat-ocr-mac", "feat-ocr-tesserocr", "standard"], marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-24-datashare-extract-worker-base' and extra == 'extra-24-datashare-extract-worker-mineru') or (platform_machine != 'x86_64' and extra == 'extra-24-datashare-extract-worker-cpu' and extra == 'extra-24-datashare-extract-worker-gpu') or sys_platform == 'darwin' or (sys_platform != 'linux' and extra == 'extra-24-datashare-extract-worker-base' and extra == 'extra-24-datashare-extract-worker-mineru') or (sys_platform != 'linux' and extra == 'extra-24-datashare-extract-worker-cpu' and extra == 'extra-24-datashare-extract-worker-gpu')" },
+    { name = "flash-attn", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-24-datashare-extract-worker-base' and extra == 'extra-24-datashare-extract-worker-mineru') or (platform_machine != 'x86_64' and extra == 'extra-24-datashare-extract-worker-cpu' and extra == 'extra-24-datashare-extract-worker-gpu') or sys_platform == 'darwin' or (sys_platform != 'linux' and extra == 'extra-24-datashare-extract-worker-base' and extra == 'extra-24-datashare-extract-worker-mineru') or (sys_platform != 'linux' and extra == 'extra-24-datashare-extract-worker-cpu' and extra == 'extra-24-datashare-extract-worker-gpu')" },
 ]
 marker = [
     { name = "marker-pdf", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-24-datashare-extract-worker-cpu' and extra == 'extra-24-datashare-extract-worker-gpu') or sys_platform == 'darwin' or (sys_platform != 'linux' and extra == 'extra-24-datashare-extract-worker-cpu' and extra == 'extra-24-datashare-extract-worker-gpu')" },
@@ -1052,6 +1053,19 @@ sdist = { url = "https://files.pythonhosted.org/packages/bb/29/745f7d30d47fe0f25
 wheels = [
     { url = "https://files.pythonhosted.org/packages/18/79/1b8fa1bb3568781e84c9200f951c735f3f157429f44be0495da55894d620/filetype-1.2.0-py2.py3-none-any.whl", hash = "sha256:7ce71b6880181241cf7ac8697a2f1eb6a8bd9b429f7ad6d27b8db9ba5f1c2d25", size = 19970, upload-time = "2022-11-02T17:34:01.425Z" },
 ]
+
+[[package]]
+name = "flash-attn"
+version = "2.8.3.post1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "einops", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-24-datashare-extract-worker-base' and extra == 'extra-24-datashare-extract-worker-mineru') or (platform_machine != 'x86_64' and extra == 'extra-24-datashare-extract-worker-cpu' and extra == 'extra-24-datashare-extract-worker-gpu') or sys_platform == 'darwin' or (sys_platform != 'linux' and extra == 'extra-24-datashare-extract-worker-base' and extra == 'extra-24-datashare-extract-worker-mineru') or (sys_platform != 'linux' and extra == 'extra-24-datashare-extract-worker-cpu' and extra == 'extra-24-datashare-extract-worker-gpu')" },
+    { name = "torch", version = "2.11.0", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "(sys_platform == 'darwin' and extra == 'extra-24-datashare-extract-worker-cpu') or (extra == 'extra-24-datashare-extract-worker-cpu' and extra == 'extra-24-datashare-extract-worker-gpu') or (extra == 'extra-24-datashare-extract-worker-base' and extra == 'extra-24-datashare-extract-worker-mineru')" },
+    { name = "torch", version = "2.11.0+cpu", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "(platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'extra-24-datashare-extract-worker-cpu') or (platform_machine != 'x86_64' and extra == 'extra-24-datashare-extract-worker-base' and extra == 'extra-24-datashare-extract-worker-mineru') or (platform_machine != 'x86_64' and extra == 'extra-24-datashare-extract-worker-cpu' and extra == 'extra-24-datashare-extract-worker-gpu') or (sys_platform != 'linux' and extra == 'extra-24-datashare-extract-worker-cpu' and extra == 'extra-24-datashare-extract-worker-gpu') or (sys_platform != 'linux' and extra == 'extra-24-datashare-extract-worker-base' and extra != 'extra-24-datashare-extract-worker-gpu' and extra == 'extra-24-datashare-extract-worker-mineru') or (extra == 'extra-24-datashare-extract-worker-base' and extra != 'extra-24-datashare-extract-worker-cpu' and extra == 'extra-24-datashare-extract-worker-mineru')" },
+    { name = "torch", version = "2.11.0+cu129", source = { registry = "https://download.pytorch.org/whl/cu129" }, marker = "(platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'extra-24-datashare-extract-worker-gpu') or (platform_machine != 'x86_64' and extra == 'extra-24-datashare-extract-worker-base' and extra == 'extra-24-datashare-extract-worker-mineru') or (platform_machine != 'x86_64' and extra == 'extra-24-datashare-extract-worker-cpu' and extra == 'extra-24-datashare-extract-worker-gpu') or (sys_platform != 'linux' and extra == 'extra-24-datashare-extract-worker-cpu' and extra == 'extra-24-datashare-extract-worker-gpu') or (sys_platform != 'linux' and extra == 'extra-24-datashare-extract-worker-base' and extra != 'extra-24-datashare-extract-worker-cpu' and extra == 'extra-24-datashare-extract-worker-mineru') or (extra == 'extra-24-datashare-extract-worker-base' and extra != 'extra-24-datashare-extract-worker-gpu' and extra == 'extra-24-datashare-extract-worker-mineru')" },
+    { name = "torch", version = "2.12.0", source = { registry = "https://pypi.org/simple" }, marker = "(platform_machine == 'x86_64' and sys_platform == 'linux' and extra != 'extra-24-datashare-extract-worker-cpu' and extra != 'extra-24-datashare-extract-worker-gpu') or (platform_machine != 'x86_64' and extra == 'extra-24-datashare-extract-worker-base' and extra == 'extra-24-datashare-extract-worker-mineru') or (sys_platform == 'darwin' and extra == 'extra-24-datashare-extract-worker-gpu') or (sys_platform == 'darwin' and extra != 'extra-24-datashare-extract-worker-cpu') or (sys_platform != 'linux' and extra == 'extra-24-datashare-extract-worker-base' and extra == 'extra-24-datashare-extract-worker-mineru') or (sys_platform == 'darwin' and extra == 'extra-24-datashare-extract-worker-base' and extra != 'extra-24-datashare-extract-worker-gpu' and extra == 'extra-24-datashare-extract-worker-mineru') or (extra == 'extra-24-datashare-extract-worker-cpu' and extra == 'extra-24-datashare-extract-worker-gpu') or (extra == 'extra-24-datashare-extract-worker-base' and extra == 'extra-24-datashare-extract-worker-cpu' and extra == 'extra-24-datashare-extract-worker-mineru') or (extra == 'extra-24-datashare-extract-worker-base' and extra == 'extra-24-datashare-extract-worker-gpu' and extra == 'extra-24-datashare-extract-worker-mineru')" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/01/7a/92a46e7cd6bbb4d7b2855a457c3b855df54a97af5656d98fc92e58e61065/flash_attn-2.8.3.post1.tar.gz", hash = "sha256:55d5103ed846da8b56e0797acf4bde07dee4b1c7e8907fcfc6699c203030c348", size = 8451657, upload-time = "2026-06-11T04:35:21.318Z" }
 
 [[package]]
 name = "flatbuffers"
