@@ -52,8 +52,8 @@ class ExtractMarkdownContentWorkflow(WorkflowWithProgress):
                 args=args,
                 task_queue=task_queue,
                 start_to_close_timeout=timedelta(hours=12),
-                # We expect processing threads to block no more than 1m30s
-                heartbeat_timeout=timedelta(seconds=90),
+                # We expect processing threads to block no more than 5mins
+                heartbeat_timeout=timedelta(minutes=5),
             )
             for args in extract_args
         )
