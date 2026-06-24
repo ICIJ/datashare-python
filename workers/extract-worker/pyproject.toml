@@ -17,6 +17,7 @@ dependencies = [
 [project.optional-dependencies]
 base = [
   "extract-python[docling,marker]==0.5.15",
+  "opencv-python-headless==4.11.0.86"
 ]
 cpu = [
   "torch==2.11.0",
@@ -32,6 +33,7 @@ flash-attn = [
 ]
 mineru = [
   "extract-python[mineru]==0.5.15",
+  "opencv-python-headless==4.11.0.86"
 ]
 
 [project.entry-points."datashare.workflows"]
@@ -89,7 +91,10 @@ datashare-python = { path = "../../datashare-python", editable = true }
 
 [tool.uv]
 package = true
-exclude-dependencies = []
+exclude-dependencies = [
+   # only one of opencv-python-headless and opencv-python can be installed otherwise thise triggers conflict
+  "opencv-python",
+]
 override-dependencies = [
   "pillow==11.3.0"
 ]
