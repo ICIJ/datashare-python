@@ -1,5 +1,5 @@
-import asyncio
 import mimetypes
+import platform
 import shutil
 import uuid
 from collections.abc import AsyncGenerator
@@ -18,13 +18,14 @@ from datashare_python.conftest import (  # noqa: F401
     TEST_PROJECT,
     clear_dirs,
     doc_3,
-    event_loop,
     index_docs,
+    pytest_collection_modifyitems,
     test_deps,
     test_es_client,
     test_es_client_session,
     test_task_client,
     test_task_client_session,
+    test_temporal_client,
     test_temporal_client_session,
     text_0,
     text_1,
@@ -158,7 +159,6 @@ def docs_with_cached_artifacts(
 async def workflows_worker(
     test_worker_config: ExtractWorkerConfig,  # noqa: F811
     test_temporal_client_session: TemporalClient,  # noqa: F811
-    event_loop: asyncio.AbstractEventLoop,  # noqa: F811
     test_deps: list[ContextManagerFactory],  # noqa: F811
 ) -> AsyncGenerator[None, None]:
     client = test_temporal_client_session
@@ -169,7 +169,6 @@ async def workflows_worker(
         workflows=[ExtractMarkdownContentWorkflow],
         worker_config=test_worker_config,
         client=client,
-        event_loop=event_loop,
         task_queue=task_queue,
         dependencies=test_deps,
     )
@@ -181,11 +180,10 @@ async def workflows_worker(
 async def io_worker(
     test_worker_config: ExtractWorkerConfig,  # noqa: F811
     test_temporal_client_session: TemporalClient,  # noqa: F811
-    event_loop: asyncio.AbstractEventLoop,  # noqa: F811
 ) -> AsyncGenerator[None, None]:
     client = test_temporal_client_session
     worker_id = f"test-extract-io-worker-{uuid.uuid4()}"
-    acts = MarkdownExtract(temporal_client=client, event_loop=event_loop)
+    acts = MarkdownExtract(temporal_client=client)
     acts = [acts.extract_worker_config, acts.create_markdown_extract_batches]
     task_queue = TaskQueue.IO
     worker_ctx = worker_context(
@@ -193,7 +191,6 @@ async def io_worker(
         activities=acts,
         worker_config=test_worker_config,
         client=client,
-        event_loop=event_loop,
         task_queue=task_queue,
         dependencies=DEPENDENCIES["extract.io"],
     )
@@ -205,11 +202,10 @@ async def io_worker(
 async def md_extract_cpu_worker(
     test_worker_config: ExtractWorkerConfig,  # noqa: F811
     test_temporal_client_session: TemporalClient,  # noqa: F811
-    event_loop: asyncio.AbstractEventLoop,  # noqa: F811
 ) -> AsyncGenerator[None, None]:
     client = test_temporal_client_session
     worker_id = f"test-extract-cpu-worker-{uuid.uuid4()}"
-    acts = MarkdownExtract(temporal_client=client, event_loop=event_loop)
+    acts = MarkdownExtract(temporal_client=client)
     acts = [acts.extract_markdown_content]
     task_queue = TaskQueue.EXTRACT_CPU
     worker_ctx = worker_context(
@@ -217,9 +213,15 @@ async def md_extract_cpu_worker(
         activities=acts,
         worker_config=test_worker_config,
         client=client,
-        event_loop=event_loop,
         task_queue=task_queue,
         dependencies=DEPENDENCIES["extract.extract"],
     )
     async with worker_ctx:
         yield
+
+
+@pytest.fixture(scope="session")
+def device() -> Device:
+    if "darwin" in platform.system().lower():
+        return Device.MPS
+    return Device.CPU

@@ -15,7 +15,6 @@ from pathlib import Path
 from typing import Any, ParamSpec, TypeVar
 from uuid import uuid4
 
-import nest_asyncio
 import temporalio
 from pydantic import ValidationError
 from temporalio import activity, workflow
@@ -76,9 +75,12 @@ class ProgressSignal:
 
 
 class ActivityWithProgress:
-    def __init__(self, temporal_client: Client, event_loop: asyncio.AbstractEventLoop):
+    def __init__(
+        self,
+        temporal_client: Client,
+        event_loop: asyncio.AbstractEventLoop | None = None,
+    ):
         self._temporal_client = temporal_client
-        nest_asyncio.apply()
         self._event_loop = event_loop
 
 

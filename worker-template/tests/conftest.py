@@ -1,6 +1,4 @@
-import asyncio
 import uuid
-from asyncio import AbstractEventLoop
 from collections.abc import AsyncGenerator
 from typing import Any
 
@@ -19,13 +17,14 @@ from datashare_python.conftest import (  # noqa: F401
     doc_1,
     doc_2,
     doc_3,
-    event_loop,
     populate_es,
+    pytest_collection_modifyitems,
     test_deps,
     test_es_client,
     test_es_client_session,
     test_task_client,
     test_task_client_session,
+    test_temporal_client,
     test_temporal_client_session,
     text_0,
     text_1,
@@ -65,18 +64,13 @@ def test_worker_config() -> TranslateAndClassifyWorkerConfig:
 
 @pytest.fixture(scope="session")
 async def lifetime_deps(
-    event_loop: AbstractEventLoop,  # noqa: F811
     test_deps: list[ContextManagerFactory],  # noqa: F811
     test_worker_config: WorkerConfig,
 ) -> AsyncGenerator[None, Any]:
     ctx = "unit test application"
     worker_id = f"test-worker-{uuid.uuid4()}"
     async with with_dependencies(
-        test_deps,
-        worker_config=test_worker_config,
-        event_loop=event_loop,
-        worker_id=worker_id,
-        ctx=ctx,
+        test_deps, worker_config=test_worker_config, worker_id=worker_id, ctx=ctx
     ):
         yield
 
@@ -85,7 +79,6 @@ async def lifetime_deps(
 async def workflows_worker(
     test_worker_config: WorkerConfig,  # noqa: F811
     test_temporal_client_session: TemporalClient,  # noqa: F811
-    event_loop: asyncio.AbstractEventLoop,  # noqa: F811
     test_deps: list[ContextManagerFactory],  # noqa: F811
 ) -> AsyncGenerator[None, None]:
     client = test_temporal_client_session
@@ -97,7 +90,6 @@ async def workflows_worker(
         workflows=workflows,
         worker_config=test_worker_config,
         client=client,
-        event_loop=event_loop,
         task_queue=task_queue,
         dependencies=test_deps,
     )
@@ -109,12 +101,11 @@ async def workflows_worker(
 async def io_worker(
     test_worker_config: WorkerConfig,  # noqa: F811
     test_temporal_client_session: TemporalClient,  # noqa: F811
-    event_loop: asyncio.AbstractEventLoop,  # noqa: F811
     test_deps: list[ContextManagerFactory],  # noqa: F811
 ) -> AsyncGenerator[None, None]:
     client = test_temporal_client_session
     worker_id = f"test-io-worker-{uuid.uuid4()}"
-    pong_activity = Pong(temporal_client=client, event_loop=event_loop)
+    pong_activity = Pong(temporal_client=client)
     io_activities = [
         pong_activity.pong,
         CreateTranslationBatches.create_translation_batches,
@@ -126,7 +117,6 @@ async def io_worker(
         activities=io_activities,
         worker_config=test_worker_config,
         client=client,
-        event_loop=event_loop,
         task_queue=task_queue,
         dependencies=test_deps,
     )
@@ -138,7 +128,6 @@ async def io_worker(
 async def translation_worker(
     test_worker_config: WorkerConfig,  # noqa: F811
     test_temporal_client_session: TemporalClient,  # noqa: F811
-    event_loop: asyncio.AbstractEventLoop,  # noqa: F811
     test_deps: list[ContextManagerFactory],  # noqa: F811
 ) -> AsyncGenerator[None, None]:
     client = test_temporal_client_session
@@ -150,7 +139,6 @@ async def translation_worker(
         activities=translation_activities,
         worker_config=test_worker_config,
         client=client,
-        event_loop=event_loop,
         task_queue=task_queue,
         dependencies=test_deps,
     )
@@ -162,7 +150,6 @@ async def translation_worker(
 async def classification_worker(
     test_worker_config: WorkerConfig,
     test_temporal_client_session: TemporalClient,  # noqa: F811
-    event_loop: asyncio.AbstractEventLoop,  # noqa: F811
     test_deps: list[ContextManagerFactory],  # noqa: F811
 ) -> AsyncGenerator[None, None]:
     client = test_temporal_client_session
@@ -174,7 +161,6 @@ async def classification_worker(
         activities=classification_activities,
         worker_config=test_worker_config,
         client=client,
-        event_loop=event_loop,
         task_queue=task_queue,
         dependencies=test_deps,
     )

@@ -323,7 +323,7 @@ def postprocess_act(
         )
         logger.debug("wrote transcription for %s", t_path)
         if progress is not None and event_loop is not None:
-            event_loop.run_until_complete(progress(i))
+            asyncio.run_coroutine_threadsafe(progress(i), event_loop).result()
     return n_docs
 
 

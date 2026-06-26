@@ -19,11 +19,11 @@ async def test_extract_markdown_workflow_e2e(
     workflows_worker: Worker,  # noqa: ARG001
     io_worker: Worker,  # noqa: ARG001
     md_extract_cpu_worker: Worker,  # noqa: ARG001
-    test_temporal_client_session: TemporalClient,
+    test_temporal_client: TemporalClient,
     docs_with_cached_artifacts: list[ProcessedDoc],
 ) -> None:
     # Given
-    temporal_client = test_temporal_client_session
+    client = test_temporal_client
     wf_id = f"extract-markdown-{uuid.uuid4()}"
     doc_ids = [d.id for d in docs_with_cached_artifacts]
     args = MarkdownExtractArgs(
@@ -31,7 +31,7 @@ async def test_extract_markdown_workflow_e2e(
     )
 
     # When
-    response = await temporal_client.execute_workflow(
+    response = await client.execute_workflow(
         ExtractMarkdownContentWorkflow,
         args,
         id=wf_id,
