@@ -1,12 +1,14 @@
-FROM python:3.13-slim-trixie AS extract-worker-builder
+FROM debian:trixie-slim AS extract-worker-builder
 
 ENV PYTHONUNBUFFERED=1
 ENV UV_HTTP_TIMEOUT=300
 ENV UV_LINK_MODE=copy
 ENV UV_COMPILE_BYTECODE=1
 ENV UV_NO_DEV=1
+ENV PYTHON_GIL=0
 
-COPY --from=ghcr.io/astral-sh/uv:0.11.6 /uv /uvx /bin/
+COPY --from=ghcr.io/astral-sh/uv:0.11.24 /uv /uvx /bin/
+RUN uv python install 3.14t
 
 WORKDIR /app
 
@@ -17,7 +19,7 @@ FROM nvidia/cuda:12.9.0-devel-ubuntu24.04 AS flash-attn-builder
 
 COPY --from=ghcr.io/astral-sh/uv:0.11.6 /uv /bin/
 
-RUN uv python install 3.13
+RUN uv python install 3.14t
 
 # Install torch from the lockfile by install extras and skipping some packages
 RUN --mount=type=cache,target=~/.cache/uv \
@@ -37,6 +39,7 @@ RUN --mount=type=cache,target=~/.cache/uv \
     uv pip install pip && \
     MAX_JOBS=8 uv run python -m pip wheel "flash-attn==$(cat flash-attn-version.txt)" \
     --no-build-isolation --no-deps -w /flash-attn-wheel
+
 
 FROM extract-worker-builder AS io-worker
 ADD io-worker-deps-exclusion.txt ./
@@ -88,7 +91,6 @@ ENTRYPOINT ["entrypoints/extract_cpu_worker.sh"]
 
 
 FROM extract-base-builder AS extract-gpu-worker
-
 ## Copy the flash-attn wheel
 #COPY --from=flash-attn-builder /flash-attn-wheel /flash-attn-wheel
 ## Install the wheel
