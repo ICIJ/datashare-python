@@ -6,13 +6,9 @@ from datashare_python.objects import DatashareLanguage, Document
 from icij_common.es import HITS, ESClient, has_type
 from temporalio.client import Client as TemporalClient
 from temporalio.worker import Worker
-from translation_worker.config import (
-    TranslationConfig,
-)
+from translation_worker.config import TranslationConfig
 from translation_worker.constants import TaskQueue
-from translation_worker.objects import (
-    TranslationArgs,
-)
+from translation_worker.objects import TranslationArgs
 from translation_worker.workflows import TranslationWorkflow
 
 from .conftest import DS_ENGLISH
@@ -20,7 +16,7 @@ from .conftest import DS_ENGLISH
 
 @pytest.mark.e2e
 async def test_translation_workflow(
-    test_temporal_client_session: TemporalClient,  # noqa: ARG001
+    test_temporal_client: TemporalClient,  # noqa: ARG001
     index_translation_documents: list[Document],  # noqa: ARG001
     test_es_client: ESClient,
     workflows_worker: Worker,  # noqa: ARG001
@@ -36,7 +32,7 @@ async def test_translation_workflow(
     workflow_id = f"translation-{uuid.uuid4().hex}"
 
     # When
-    res = await test_temporal_client_session.execute_workflow(
+    res = await test_temporal_client.execute_workflow(
         TranslationWorkflow.run, args, id=workflow_id, task_queue=TaskQueue.WORKFLOWS
     )
 

@@ -147,6 +147,7 @@ exclude = [
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
+asyncio_debug = true
 asyncio_default_fixture_loop_scope = "session"
 markers = [
   "integration",

@@ -1,7 +1,6 @@
 import json
 import math
 import uuid
-from asyncio import AbstractEventLoop
 from collections.abc import AsyncGenerator
 from pathlib import Path
 
@@ -43,7 +42,6 @@ _TRANSCRIPTIONS = [Transcription.from_asr_handler_result(res) for res in _MODEL_
 async def workflows_worker(
     test_temporal_client_session: TemporalClient,
     test_worker_config: ASRWorkerConfig,
-    event_loop: AbstractEventLoop,
 ) -> AsyncGenerator[None, None]:
     client = test_temporal_client_session
     worker_id = f"worker-{uuid.uuid4()}"
@@ -52,7 +50,6 @@ async def workflows_worker(
         worker_id,
         worker_config=test_worker_config,
         client=client,
-        event_loop=event_loop,
         task_queue=task_queue,
         workflows=[ASRWorkflow],
     )
@@ -64,18 +61,16 @@ async def workflows_worker(
 async def io_bound_worker(
     test_temporal_client_session: TemporalClient,
     test_worker_config: ASRWorkerConfig,
-    event_loop: AbstractEventLoop,
 ) -> AsyncGenerator[None, None]:
     client = test_temporal_client_session
     worker_id = f"worker-{uuid.uuid4()}"
     task_queue = TaskQueues.IO
     dependencies = REGISTRY["asr.io"]
-    activities = ASRActivities(client, event_loop)
+    activities = ASRActivities(client)
     worker_ctx = worker_context(
         worker_id,
         worker_config=test_worker_config,
         client=client,
-        event_loop=event_loop,
         task_queue=task_queue,
         activities=[activities.search_audio_paths],
         dependencies=dependencies,
@@ -88,10 +83,9 @@ async def io_bound_worker(
 async def cpu_bound_worker(
     test_worker_config: ASRWorkerConfig,  # noqa: ARG001
     test_temporal_client_session: TemporalClient,
-    event_loop: AbstractEventLoop,  # noqa: F811
 ) -> AsyncGenerator[None, None]:
     client = test_temporal_client_session
-    activities = ASRActivities(client, event_loop)
+    activities = ASRActivities(client)
     worker_id = f"worker-{uuid.uuid4()}"
     task_queue = TaskQueues.CPU
     dependencies = REGISTRY["asr.cpu"]
@@ -99,7 +93,6 @@ async def cpu_bound_worker(
         worker_id,
         worker_config=test_worker_config,
         client=client,
-        event_loop=event_loop,
         task_queue=task_queue,
         activities=[activities.preprocess, activities.postprocess],
         dependencies=dependencies,
@@ -112,10 +105,9 @@ async def cpu_bound_worker(
 async def gpu_inference_worker(
     test_worker_config: ASRWorkerConfig,  # noqa: ARG001
     test_temporal_client_session: TemporalClient,
-    event_loop: AbstractEventLoop,  # noqa: F811
 ) -> AsyncGenerator[None, None]:
     client = test_temporal_client_session
-    activities = ASRActivities(client, event_loop)
+    activities = ASRActivities(client)
     worker_id = f"worker-{uuid.uuid4()}"
     task_queue = TaskQueues.INFERENCE_GPU
     dependencies = REGISTRY["asr.inference"]
@@ -123,7 +115,6 @@ async def gpu_inference_worker(
         worker_id,
         worker_config=test_worker_config,
         client=client,
-        event_loop=event_loop,
         task_queue=task_queue,
         activities=[activities.infer],
         dependencies=dependencies,
@@ -152,7 +143,7 @@ _EXPECTED_TRANSCRIPTION_1 = Transcription(
 
 @pytest.mark.e2e
 async def test_asr_workflow_e2e(
-    test_temporal_client_session: TemporalClient,
+    test_temporal_client: TemporalClient,
     cpu_bound_worker: Worker,  # noqa: ARG001
     gpu_inference_worker: Worker,  # noqa: ARG001
     workflows_worker: Worker,  # noqa: ARG001
@@ -163,7 +154,7 @@ async def test_asr_workflow_e2e(
     # Given
     config = test_worker_config
     artifacts_root = config.artifacts_root
-    client = test_temporal_client_session
+    client = test_temporal_client
     n_audios = len(with_audio_docs)
     batch_size = n_audios - 1
     project = TEST_PROJECT

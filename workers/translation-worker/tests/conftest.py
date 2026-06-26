@@ -1,4 +1,3 @@
-import asyncio
 import uuid
 from collections.abc import AsyncGenerator
 
@@ -14,12 +13,13 @@ from datashare_python.config import (
 )
 from datashare_python.conftest import (  # noqa: F401
     TEST_PROJECT,
-    event_loop,
     index_docs,
+    pytest_collection_modifyitems,
     test_es_client,
     test_es_client_session,
     test_task_client,
     test_task_client_session,
+    test_temporal_client,
     test_temporal_client_session,
     test_worker_config,
     worker_lifetime_deps,
@@ -145,7 +145,6 @@ def translation_worker_config() -> TranslationWorkerConfig:
 async def workflows_worker(
     test_worker_config: TranslationWorkerConfig,  # noqa: F811
     test_temporal_client_session: TemporalClient,  # noqa: F811
-    event_loop: asyncio.AbstractEventLoop,  # noqa: F811
 ) -> AsyncGenerator[None, None]:
     client = test_temporal_client_session
     worker_id = f"test-translation-io-worker-{uuid.uuid4()}"
@@ -156,7 +155,6 @@ async def workflows_worker(
         workflows=workflows,
         worker_config=test_worker_config,
         client=client,
-        event_loop=event_loop,
         task_queue=task_queue,
     )
     async with worker_ctx:
@@ -167,14 +165,11 @@ async def workflows_worker(
 async def io_worker(
     test_worker_config: TranslationWorkerConfig,  # noqa: F811
     test_temporal_client_session: TemporalClient,  # noqa: F811
-    event_loop: asyncio.AbstractEventLoop,  # noqa: F811
     test_io_deps: list[ContextManagerFactory],  # noqa: F811
 ) -> AsyncGenerator[None, None]:
     client = test_temporal_client_session
     worker_id = f"test-translation-io-worker-{uuid.uuid4()}"
-    translation_activities = TranslationActivities(
-        temporal_client=client, event_loop=event_loop
-    )
+    translation_activities = TranslationActivities(temporal_client=client)
     batching_activities = [
         translation_activities.translation_worker_config,
         translation_activities.create_translation_batches,
@@ -187,7 +182,6 @@ async def io_worker(
         workflows=workflows,
         worker_config=test_worker_config,
         client=client,
-        event_loop=event_loop,
         task_queue=task_queue,
         dependencies=test_io_deps,
     )
@@ -199,14 +193,11 @@ async def io_worker(
 async def translation_inference_worker(
     test_worker_config: TranslationWorkerConfig,  # noqa: F811
     test_temporal_client_session: TemporalClient,  # noqa: F811
-    event_loop: asyncio.AbstractEventLoop,  # noqa: F811
     test_inference_deps: list[ContextManagerFactory],  # noqa: F811
 ) -> AsyncGenerator[None, None]:
     client = test_temporal_client_session
     worker_id = f"test-translation-cpu-worker-{uuid.uuid4()}"
-    create_translation_batches = TranslationActivities(
-        temporal_client=client, event_loop=event_loop
-    )
+    create_translation_batches = TranslationActivities(temporal_client=client)
     translation_activities = [create_translation_batches.translate_docs]
     task_queue = TaskQueue.INFERENCE
     worker_ctx = worker_context(
@@ -214,7 +205,6 @@ async def translation_inference_worker(
         activities=translation_activities,
         worker_config=test_worker_config,
         client=client,
-        event_loop=event_loop,
         task_queue=task_queue,
         dependencies=test_inference_deps,
     )

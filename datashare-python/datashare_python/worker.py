@@ -1,3 +1,4 @@
+import asyncio
 import inspect
 import logging
 import os
@@ -157,7 +158,7 @@ async def worker_context(
     workflows: list[type] | None = None,
     worker_config: WorkerConfig,
     client: TemporalClient,
-    event_loop: AbstractEventLoop,
+    event_loop: AbstractEventLoop | None = None,
     task_queue: str,
     dependencies: list[ContextManagerFactory] | None = None,
     sandboxed: bool = True,
@@ -169,6 +170,8 @@ async def worker_context(
         discovered.extend(workflows)
     if dependencies is not None:
         discovered.extend(dependencies)
+    if event_loop is None:
+        event_loop = asyncio.get_event_loop()
     discovered.append(worker_config)
     loggers = copy(worker_config.logging.loggers)
     discovered_loggers = {_get_object_package(o).__name__ for o in discovered}

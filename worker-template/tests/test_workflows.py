@@ -24,15 +24,15 @@ from worker_template.workflows import (
 async def test_ping_workflow_e2e(
     io_worker: Worker,  # noqa: ARG001
     workflows_worker: Worker,  # noqa: ARG001
-    test_temporal_client_session: TemporalClient,
+    test_temporal_client: TemporalClient,
 ) -> None:
     # Given
-    temporal_client = test_temporal_client_session
+    client = test_temporal_client
     wf_id = f"ping-{uuid.uuid4()}"
 
     # When
     args = dict()
-    response = await temporal_client.execute_workflow(
+    response = await client.execute_workflow(
         PingWorkflow,
         args,
         id=wf_id,

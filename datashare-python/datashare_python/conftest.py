@@ -1,7 +1,5 @@
-import asyncio
 import shutil
-from asyncio import AbstractEventLoop
-from collections.abc import AsyncGenerator, Generator, Iterator, Sequence
+from collections.abc import AsyncGenerator, Generator, Sequence
 from pathlib import Path
 
 import aiohttp
@@ -10,7 +8,9 @@ import pytest
 from elasticsearch._async.helpers import async_streaming_bulk
 from icij_common.es import DOC_ROOT_ID, ES_DOCUMENT_TYPE, ID, ESClient
 from icij_common.test_utils import reset_env  # noqa: F401
+from pytest_asyncio import is_async_test
 from temporalio import workflow
+from temporalio.service import RPCError, RPCStatusCode
 
 from datashare_python.config import (
     DatashareClientConfig,
@@ -59,6 +59,13 @@ _INDEX_BODY = {
 }
 
 
+def pytest_collection_modifyitems(items: list) -> None:
+    pytest_asyncio_tests = (item for item in items if is_async_test(item))
+    session_scope_marker = pytest.mark.asyncio(loop_scope="session")
+    for async_test in pytest_asyncio_tests:
+        async_test.add_marker(session_scope_marker, append=False)
+
+
 @activity_defn(name="mocked-act")
 def mocked_act() -> None:
     pass
@@ -79,16 +86,6 @@ class MockedWorkflow:
 @pytest.fixture(scope="session")
 def test_deps() -> list[ContextManagerFactory]:
     return [set_es_client, set_task_client]
-
-
-@pytest.fixture(scope="session")
-def event_loop(
-    request: pytest.FixtureRequest,  # noqa: ARG001
-) -> Iterator[asyncio.AbstractEventLoop]:
-    """Create an instance of the default event loop for each test case."""
-    loop = asyncio.get_event_loop_policy().new_event_loop()
-    yield loop
-    loop.close()
 
 
 @pytest.fixture(scope="session")
@@ -117,9 +114,7 @@ def test_worker_config_path(test_worker_config: WorkerConfig, tmpdir: Path) -> P
 
 @pytest.fixture(scope="session")
 async def worker_lifetime_deps(
-    event_loop: AbstractEventLoop,
-    test_deps: list[ContextManagerFactory],
-    test_worker_config: WorkerConfig,
+    test_deps: list[ContextManagerFactory], test_worker_config: WorkerConfig
 ) -> AsyncGenerator[None, None]:
     worker_id = "test-worker-id"
     ctx = "test application"
@@ -128,7 +123,6 @@ async def worker_lifetime_deps(
         ctx=ctx,
         worker_id=worker_id,
         worker_config=test_worker_config,
-        event_loop=event_loop,
     ):
         yield
 
@@ -174,9 +168,23 @@ async def test_task_client(
 @pytest.fixture(scope="session")
 async def test_temporal_client_session(
     test_worker_config: WorkerConfig,
-    event_loop: AbstractEventLoop,  # noqa: ARG001
 ) -> TemporalClient:  # noqa: ANN001
     return await test_worker_config.to_temporal_client()
+
+
+@pytest.fixture
+async def test_temporal_client(
+    test_temporal_client_session: TemporalClient,
+) -> TemporalClient:  # noqa: ANN001
+    client = test_temporal_client_session
+    async for wf in client.list_workflows():
+        try:
+            await client.get_workflow_handle(wf.id).terminate()
+        except RPCError as e:
+            if e.status != RPCStatusCode.NOT_FOUND:
+                raise
+
+    return client
 
 
 @pytest.fixture
