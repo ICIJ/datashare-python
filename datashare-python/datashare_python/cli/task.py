@@ -28,7 +28,7 @@ _START_HELP = "creates a new task and start it"
 _TASK_ID_HELP = "task ID"
 _WATCH_HELP = "watch a task until it's complete"
 
-TaskArgs = str
+StrTaskArgs = str
 
 task_app = AsyncTyper(name="task")
 
@@ -36,7 +36,7 @@ task_app = AsyncTyper(name="task")
 @task_app.async_command(help=_START_HELP)
 async def start(
     name: Annotated[str, typer.Argument(help=_NAME_HELP)],
-    args: Annotated[TaskArgs, typer.Argument(help=_ARGS_HELP)] = None,
+    args: Annotated[StrTaskArgs, typer.Argument(help=_ARGS_HELP)] = None,
     group: Annotated[
         str | None,
         typer.Option("--group", "-g", help=_GROUP_HELP),

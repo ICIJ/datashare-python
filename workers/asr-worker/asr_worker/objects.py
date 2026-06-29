@@ -1,12 +1,18 @@
 import math
 from collections import defaultdict
 from functools import cache
-from typing import Annotated, Any, Self
+from typing import Annotated, Any, ClassVar, Self
 
 from caul.asr_pipeline import ASRPipelineConfig
 from caul.config import InferenceRunnerConfig as CaulInferenceRunnerConfig
 from caul.objects import ASRLanguage, ASRModel, ASRResult
-from datashare_python.objects import DatashareModel
+from datashare_python.objects import (
+    ArtifactType,
+    DatashareModel,
+    DocArtifact,
+    ManifestEntry,
+    TaskArgs,
+)
 from icij_common.pydantic_utils import make_enum_discriminator, tagged_union
 from pydantic import Discriminator, Field, RootModel
 
@@ -23,11 +29,25 @@ DocumentSearchQuery = dict[str, Any]
 DocId = str
 
 
-class ASRArgs(DatashareModel):
+class TranscriptionManifestEntry(ManifestEntry):
+    confidence: float | None
+
+
+class TranscriptionArtifact(DocArtifact):
+    filename: ClassVar[str] = "transcription.json"
+    type: ClassVar[ArtifactType] = ArtifactType.ASR_TRANSCRIPTION
+
+
+class ASRArgs(TaskArgs):
     project: str
     docs: list[DocId] | DocumentSearchQuery
     config: ASRPipelineConfig = Field(default_factory=ASRPipelineConfig.parakeet)
     batch_size: int
+
+    def as_manifest_task_input(self) -> dict[str, Any]:
+        as_entry = super().as_manifest_task_input()
+        as_entry.pop("docs")
+        return as_entry
 
 
 class ASRResponse(DatashareModel):

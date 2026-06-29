@@ -36,7 +36,7 @@ from datashare_python.types_ import (
     SyncProgressRateHandler,
 )
 
-from .constants import METADATA_JSON
+from .constants import MANIFEST_JSON, METADATA_JSON
 from .objects import DocArtifact, DocumentLocation, FilesystemDocument
 from .types_ import RawAsyncProgressHandler
 
@@ -338,34 +338,69 @@ def _metadata_path(doc_id: str, *, project: str) -> Path:
     return metadata_path
 
 
-def _read_artifact_metadata(root: Path, artifact: DocArtifact) -> dict:
-    m_path = root / _metadata_path(artifact.doc_id, project=artifact.project)
+def _manifest_path(doc_id: str, *, project: str) -> Path:
+    manifest_path = artifacts_dir(doc_id, project=project) / MANIFEST_JSON
+    return manifest_path
+
+
+def _read_artifact_manifest(root: Path, artifact: DocArtifact) -> dict:
+    m_path = root / _manifest_path(artifact.doc_id, project=artifact.project)
+    if not m_path.exists():
+        m_path = root / _metadata_path(artifact.doc_id, project=artifact.project)
+        if not m_path.exists():
+            msg = f"couldn't find manifest nor metadata for {artifact.doc_id}"
+            raise FileNotFoundError(msg)
     return json.loads(m_path.read_text())
 
 
 def write_artifact(root: Path, artifact: DocArtifact) -> Path:
+    # TODO: WARNING many writers could write at the time, to avoid inconsistent
+    #  states we should handle this somehow
     artif_dir = root / artifacts_dir(artifact.doc_id, project=artifact.project)
     artif_dir.mkdir(exist_ok=True, parents=True)
-    # TODO: if transcriptions are too large we could also serialize them
-    #  as jsonl
-    artifact_path: Path = artif_dir / artifact.filename
-    match artifact.artifact:
+    artifact_path = artif_dir / artifact.filename
+    # Read the metadata first (things could go wrong here in case someone is reading
+    # at the same time). We read in a backward compatible wat and write to that same
+    # location. We don't take responsibility for migrating the data, the DS back will
+    # do it
+    manifest, manifest_path = _read_manifest_backward_compatible(root, artifact)
+    # Pop the status key from the manifest before writing
+    if artifact.type in manifest:
+        manifest[artifact.type].pop("status", None)
+        manifest_path.write_text(json.dumps(manifest))
+    # Write the artifact
+    _write_artifact_bytes(artifact_path, artifact.artifact)
+    # Update the manifest entry with details and new states
+    manifest[artifact.type] = artifact.manifest_entry.model_dump(
+        by_alias=True, exclude_none=True
+    )
+    manifest_path.write_text(json.dumps(manifest))
+    return artifact_path.relative_to(artif_dir)
+
+
+def _read_manifest_backward_compatible(
+    root: Path, artifact: DocArtifact
+) -> tuple[dict[str, Any], Path]:
+    meta_path = root / _metadata_path(artifact.doc_id, project=artifact.project)
+    manifest_path = root / _manifest_path(artifact.doc_id, project=artifact.project)
+    has_manifest = meta_path.exists() or manifest_path.exists()
+    manifest = _read_artifact_manifest(root, artifact) if has_manifest else dict()
+    return manifest, manifest_path
+
+
+def _write_artifact_bytes(path: Path, artifact: bytes | BytesIO | Path) -> None:
+    match artifact:
         case bytes():
-            artifact_path.write_bytes(artifact.artifact)
+            path.write_bytes(artifact)
         case BytesIO():
-            with artifact_path.open("wb") as f:
-                f.write(artifact.artifact.read())
+            with path.open("wb") as f:
+                f.write(artifact.read())
         case Path():
-            artifact_path.unlink(missing_ok=True)
-            shutil.move(artifact.artifact, artifact_path)
+            path.unlink(missing_ok=True)
+            shutil.move(artifact, path)
         case _:
             msg = f"unsupported artifact type: {artifact.artifact.__class__.__name__}"
             raise ValueError(msg)
-    meta_path = root / _metadata_path(artifact.doc_id, project=artifact.project)
-    meta = _read_artifact_metadata(root, artifact) if meta_path.exists() else dict()
-    meta[artifact.metadata_key] = artifact.filename
-    meta_path.write_text(json.dumps(meta))
-    return artifact_path.relative_to(artif_dir)
 
 
 def debuggable_name(
