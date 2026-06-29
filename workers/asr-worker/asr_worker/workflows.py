@@ -89,7 +89,7 @@ class ASRWorkflow(WorkflowWithProgress):
                 inference_results,
                 batch_paths,
                 repeat(config.postprocessing),
-                repeat(args.project),
+                repeat(args),
                 strict=False,
             )
         )

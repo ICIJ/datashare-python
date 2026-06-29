@@ -14,11 +14,11 @@ from asr_worker.activities import (
     write_audio_batches,
 )
 from asr_worker.config import ASRWorkerConfig
-from asr_worker.objects import DocId, Transcription
+from asr_worker.objects import ASRArgs, DocId, Transcription, TranscriptionManifestEntry
 from caul.objects import ASRResult, InputMetadata, PreprocessedInput, PreprocessorOutput
 from caul.tasks import InferenceRunner, Postprocessor, Preprocessor
 from datashare_python.conftest import TEST_PROJECT
-from datashare_python.objects import DocumentLocation, FilesystemDocument
+from datashare_python.objects import ArtifactType, DocumentLocation, FilesystemDocument
 from datashare_python.utils import read_jsonl
 from icij_common.es import ESClient, ids_query, match_all
 from icij_common.iter_utils import batches
@@ -265,6 +265,7 @@ async def test_infer_act(tmpdir: Path) -> None:
 
 def test_postprocess_act(tmpdir: Path) -> None:
     # Given
+    args = ASRArgs(project=TEST_PROJECT, docs=[], batch_size=2)
     postprocessor = MockPostprocessor()
     project = TEST_PROJECT
     artifacts_root = Path(tmpdir)
@@ -273,9 +274,9 @@ def test_postprocess_act(tmpdir: Path) -> None:
     postprocess_act(
         postprocessor,
         INFERENCE_RESULTS,
-        doc_ids=doc_ids,
+        doc_ids,
+        args,
         artifacts_root=artifacts_root,
-        project=project,
     )
     # Then
     expected_artifact_dirs = [
@@ -285,11 +286,16 @@ def test_postprocess_act(tmpdir: Path) -> None:
     ]
     for res, d in zip(INFERENCE_RESULTS, expected_artifact_dirs, strict=True):
         assert d.exists()
-        metadata_path = d / "metadata.json"
-        assert metadata_path.exists()
-        metadata = json.loads(metadata_path.read_text())
-        assert metadata["transcription"] == "transcription.json"
-        transcription_path = d / metadata["transcription"]
+        manifest_path = d / "manifest.json"
+        assert manifest_path.exists()
+        manifest = json.loads(manifest_path.read_text())
+        assert "transcription" in manifest
+        manifest_entry = TranscriptionManifestEntry.model_validate(
+            manifest["transcription"]
+        )
+        assert manifest_entry.confidence == 1
+        assert manifest_entry.input
+        transcription_path = d / ArtifactType.STRUCTURE
         assert transcription_path.exists()
         transcription = Transcription.model_validate_json(
             transcription_path.read_text()

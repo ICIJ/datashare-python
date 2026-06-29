@@ -2,9 +2,10 @@ import asyncio
 import logging
 from asyncio import AbstractEventLoop
 from collections.abc import AsyncGenerator, AsyncIterable, Iterable
+from functools import partial
 from itertools import tee
 from pathlib import Path
-from typing import Annotated, Any, cast
+from typing import Annotated, Any, Protocol, cast
 
 from caul.objects import ASRResult, PreprocessedInput
 from caul.tasks import (
@@ -16,7 +17,6 @@ from caul.tasks import (
 )
 from datashare_python.dependencies import lifespan_worker_config
 from datashare_python.objects import (
-    DocArtifact,
     Document,
     FilesystemDocument,
 )
@@ -62,11 +62,15 @@ from .constants import (
     RUN_INFERENCE_ACTIVITY,
     SEARCH_AUDIOS_ACTIVITY,
     SUPPORTED_CONTENT_TYPES,
-    TRANSCRIPTION_METADATA_KEY,
-    TRANSCRIPTION_METADATA_VALUE,
 )
 from .dependencies import lifespan_es_client
-from .objects import InferenceRunnerConfig, Transcription
+from .objects import (
+    ASRArgs,
+    InferenceRunnerConfig,
+    Transcription,
+    TranscriptionArtifact,
+    TranscriptionManifestEntry,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -77,6 +81,10 @@ _INFERENCE_WEIGHT = 10 * _PREPROCESS_WEIGHT
 
 _LIST_OF_PATH_ADAPTER = TypeAdapter(list[Path])
 _INFERENCE_CONFIG_TYPE_ADAPTER = TypeAdapter(InferenceRunnerConfig)
+
+
+class ArtifactFactory(Protocol):
+    def __call__(self, artifact: bytes) -> TranscriptionArtifact: ...
 
 
 class ASRActivities(ActivityWithProgress):
@@ -183,7 +191,7 @@ class ASRActivities(ActivityWithProgress):
         inference_results: list[Path],
         audio_batch: Path,
         config: ParakeetPostprocessorConfig,
-        project: str,
+        args: ASRArgs,
         *,
         progress: Annotated[  # noqa: ARG002
             SyncProgressRateHandler | None, Weight(value=_BASE_WEIGHT)
@@ -212,7 +220,7 @@ class ASRActivities(ActivityWithProgress):
                 postprocessor,
                 inference_results,
                 doc_ids,
-                project=project,
+                args,
                 artifacts_root=artifacts_root,
                 event_loop=self._event_loop,
                 progress=progress,
@@ -315,9 +323,9 @@ def postprocess_act(
     postprocessor: Postprocessor,
     inference_results: Iterable[ASRResult],
     doc_ids: Iterable[str],
+    args: ASRArgs,
     *,
     artifacts_root: Path,
-    project: str,
     event_loop: AbstractEventLoop | None = None,
     progress: SyncProgressRateHandler | None = None,
 ) -> int:
@@ -326,9 +334,16 @@ def postprocess_act(
     n_docs = 0
     for i, (doc_id, asr_result) in enumerate(zip(doc_ids, transcriptions, strict=True)):
         n_docs += 1
-        t_path = write_transcription(
-            doc_id, asr_result, artifacts_root=artifacts_root, project=project
+        manifest_entry = TranscriptionManifestEntry.complete(
+            args, confidence=asr_result.score
         )
+        artifact_factory = partial(
+            TranscriptionArtifact,
+            project=args.project,
+            doc_id=doc_id,
+            manifest_entry=manifest_entry,
+        )
+        t_path = write_transcription(asr_result, artifact_factory, artifacts_root)
         logger.debug("wrote transcription for %s", t_path)
         if progress is not None and event_loop is not None:
             progress(i, event_loop)
@@ -352,17 +367,11 @@ def _preprocess(
 
 
 def write_transcription(
-    doc_id: str, asr_result: ASRResult, *, artifacts_root: Path, project: str
+    asr_result: ASRResult, artifact_factory: ArtifactFactory, artifacts_root: Path
 ) -> Path:
     result = Transcription.from_asr_handler_result(asr_result)
     artifact_bytes = result.model_dump_json().encode()
-    artifact = DocArtifact(
-        project=project,
-        doc_id=doc_id,
-        filename=TRANSCRIPTION_METADATA_VALUE,
-        metadata_key=TRANSCRIPTION_METADATA_KEY,
-        artifact=artifact_bytes,
-    )
+    artifact = artifact_factory(artifact=artifact_bytes)
     # TODO: if transcriptions are too large we could also serialize them
     #  as jsonl
     rel_path = write_artifact(artifacts_root, artifact)

@@ -1,6 +1,13 @@
-from typing import Any, Self
+from typing import Any, ClassVar, Self
 
-from datashare_python.objects import DatashareModel, FilesystemDocument
+from datashare_python.objects import (
+    ArtifactType,
+    DatashareModel,
+    DocArtifact,
+    FilesystemDocument,
+    ManifestEntry,
+    TaskArgs,
+)
 from extract_core import (
     DoclingPipelineConfig,
     Error,
@@ -21,10 +28,24 @@ DocId = str
 pipeline_discriminator = make_enum_discriminator("pipeline", PipelineType)
 
 
-class MarkdownExtractArgs(DatashareModel):
+class MarkdownExtractArgs(TaskArgs):
     project: str
     docs: list[DocId] | DocumentSearchQuery | None
     config: PipelineConfig = Field(default_factory=DoclingPipelineConfig)
+
+    def as_manifest_task_input(self) -> dict[str, Any]:
+        as_entry = super().as_manifest_task_input()
+        as_entry.pop("docs")
+        return as_entry
+
+
+class StructureArtifact(DocArtifact):
+    filename: ClassVar[str] = "structure"
+    type: ClassVar[ArtifactType] = ArtifactType.STRUCTURE
+
+
+class StructureManifestEntry(ManifestEntry):
+    confidence: float | None = None
 
 
 class ProcessingReport(DatashareModel):

@@ -1,5 +1,6 @@
 import logging
 import os
+from abc import ABC
 from asyncio import Lock
 from collections.abc import Awaitable, Callable
 from dataclasses import InitVar, dataclass, field
@@ -7,7 +8,7 @@ from datetime import UTC, datetime
 from enum import StrEnum, unique
 from io import BytesIO
 from pathlib import Path
-from typing import Annotated, Any, ClassVar, Literal, Self, TypeVar, cast
+from typing import Annotated, Any, ClassVar, Generic, Literal, Self, TypeVar, cast
 
 import langcodes
 from lru import LRU
@@ -39,7 +40,9 @@ from icij_common.pydantic_utils import (
 )
 from pydantic import (
     AfterValidator,
+    AliasChoices,
     BeforeValidator,
+    ConfigDict,
     Field,
     GetCoreSchemaHandler,
     TypeAdapter,
@@ -256,13 +259,58 @@ def _is_absolute_path(v: bytes | BytesIO | Path) -> Any:
     return v
 
 
-@dataclass(frozen=True)
-class DocArtifact:
+class ArtifactType(StrEnum):
+    STRUCTURE = "structure"
+    ASR_TRANSCRIPTION = "transcription"
+
+
+class ManifestEntryStatus(StrEnum):
+    COMPLETE = "complete"
+
+
+class TaskArgs(DatashareModel, ABC):
+    def as_manifest_task_input(self) -> dict[str, Any]:
+        # This is a base implementation, if the input is too large to be dumped,
+        # override this and pop large keys
+        as_manifest = self.model_dump(by_alias=True)
+        return as_manifest
+
+
+A = TypeVar("A", bound=TaskArgs)
+
+
+class ManifestEntry(DatashareModel, Generic[A], ABC):
+    status: ManifestEntryStatus
+    label: str | None = None
+    input: Annotated[
+        dict[str, Any] | None,
+        Field(
+            validation_alias=AliasChoices("taskInput", "input"),
+            serialization_alias="taskInput",
+        ),
+    ]
+
+    @classmethod
+    def complete(cls, args: A, label: str | None = None, **kwargs) -> Self:
+        return cls(
+            input=args.as_manifest_task_input(),
+            label=label,
+            status=ManifestEntryStatus.COMPLETE,
+            **kwargs,
+        )
+
+
+class DocArtifact(BaseModel, ABC):
+    # This object is not used for serde, just as a container, it's OK to allow
+    # arbitrary types (to allow storing BytesIO)
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
     project: str
     doc_id: str
     artifact: Annotated[bytes | BytesIO | Path, AfterValidator(_is_absolute_path)]
-    filename: str
-    metadata_key: str
+    filename: ClassVar[str]  # Override this
+    type: ClassVar[ArtifactType]  # Override this
+    manifest_entry: ManifestEntry
 
 
 @unique

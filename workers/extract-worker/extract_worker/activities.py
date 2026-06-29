@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any, cast
 
 from datashare_python.dependencies import lifespan_es_client, lifespan_worker_config
-from datashare_python.objects import DocArtifact, Document, DocumentLocation
+from datashare_python.objects import Document, DocumentLocation
 from datashare_python.types_ import AsyncProgressRateHandler
 from datashare_python.utils import (
     ActivityWithProgress,
@@ -42,11 +42,11 @@ from icij_common.es import (
     has_id,
     has_type,
 )
+from objects import MarkdownExtractArgs
 from pydantic import TypeAdapter
 from temporalio import activity
 
 from .config import ExtractWorkerConfig
-from .constants import MARKDOWN_DIRNAME, MARKDOWN_METADATA_KEY
 from .mimetypes_ import types_map
 from .objects import (
     DocId,
@@ -55,6 +55,8 @@ from .objects import (
     MarkdownExtractResponse,
     ProcessedDoc,
     ProcessingReport,
+    StructureArtifact,
+    StructureManifestEntry,
 )
 
 logger = logging.getLogger(__name__)
@@ -106,8 +108,7 @@ class MarkdownExtract(ActivityWithProgress):
     async def extract_markdown_content(
         self,
         batch: Path,
-        project: str,
-        config: PipelineConfig,
+        args: MarkdownExtractArgs,
         *,
         progress: AsyncProgressRateHandler | None = None,
     ) -> MarkdownExtractResponse:
@@ -118,16 +119,18 @@ class MarkdownExtract(ActivityWithProgress):
             MinerUPipeline,
         )
 
-        pipeline = Pipeline.from_config(config)
+        pipeline = Pipeline.from_config(args.config)
         worker_config = cast(ExtractWorkerConfig, lifespan_worker_config())
         workdir = worker_config.workdir
-        output_dir = activity_workdir(workdir, project)
+        output_dir = activity_workdir(workdir, args.project)
         output_dir.mkdir(parents=True, exist_ok=True)
         batch = workdir / batch
         logger.debug("extracting doc content as markdown...")
+        manifest_entry = StructureManifestEntry.complete(args)
         res = await extract_markdown_content_act(
             pipeline,
             batch,
+            manifest_entry,
             worker_config=worker_config,
             output_dir=output_dir,
             progress=progress,
@@ -169,6 +172,7 @@ _BatchTypeAdapter = TypeAdapter(list[ProcessedDoc])
 async def extract_markdown_content_act(
     pipeline: Pipeline,
     batch: Path,
+    manifest_entry: StructureManifestEntry,
     *,
     worker_config: ExtractWorkerConfig,
     output_dir: Path,
@@ -195,7 +199,7 @@ async def extract_markdown_content_act(
     n_docs, n_pages, n_successes, n_successes_pages = 0, 0, 0, 0
     errors = []
     async for extract_res in results:
-        # Heartbeat explicitely to avoid heartbeat timeout
+        # Heartbeat explicitly to avoid heartbeat timeout
         with contextlib.suppress(RuntimeError):
             activity.heartbeat()
         doc = next(docs)
@@ -210,12 +214,11 @@ async def extract_markdown_content_act(
             n_successes += 1
             n_successes_pages += doc.n_pages
             md_path = output_dir / extract_res.output.path
-            artifact = DocArtifact(
+            artifact = StructureArtifact(
                 project=doc.index,
                 doc_id=doc.id,
                 artifact=md_path,
-                metadata_key=MARKDOWN_METADATA_KEY,
-                filename=MARKDOWN_DIRNAME,
+                manifest_entry=manifest_entry,
             )
             write_artifact(artifacts_root, artifact)
         if progress is not None:

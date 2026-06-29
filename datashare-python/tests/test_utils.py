@@ -2,9 +2,16 @@ import json
 import uuid
 from datetime import timedelta
 from pathlib import Path
+from typing import ClassVar
 
 import pytest
-from datashare_python.objects import DatashareModel, DocArtifact
+from datashare_python.objects import (
+    ArtifactType,
+    DatashareModel,
+    DocArtifact,
+    ManifestEntry,
+    TaskArgs,
+)
 from datashare_python.types_ import TemporalClient
 from datashare_python.utils import activity_defn, positional_args_only, write_artifact
 from datashare_python.worker import datashare_worker
@@ -117,20 +124,31 @@ async def test_deserialization_error(
         assert "2 validation errors for DeserArg" in root_cause.message
 
 
+class MockedArgs(TaskArgs):
+    some_value: str
+
+
+class MockedManifestEntry(ManifestEntry): ...
+
+
+class MockedArtifact(DocArtifact):
+    filename: ClassVar[str] = "mocked-structure"
+    type: ClassVar[ArtifactType] = ArtifactType.STRUCTURE
+
+
 def test_write_artifact(tmp_path: Path) -> None:
     from datashare_python.conftest import TEST_PROJECT  # noqa: PLC0415
 
     # Given
+    args = MockedArgs(some_value="value")
     root_dir = Path(tmp_path)
     artifact_bytes = b"artifacts"
-    filename = "some_artifact"
-    metadata_key = "artifact_key"
-    artifact = DocArtifact(
+    manifest_entry = MockedManifestEntry.complete(args)
+    artifact = MockedArtifact(
         project=TEST_PROJECT,
         doc_id="doc_id",
         artifact=artifact_bytes,
-        filename=filename,
-        metadata_key=metadata_key,
+        manifest_entry=manifest_entry,
     )
     # When
     write_artifact(root_dir, artifact)
@@ -138,13 +156,17 @@ def test_write_artifact(tmp_path: Path) -> None:
     artifact_dir = root_dir / TEST_PROJECT / "do" / "c_" / "doc_id"
     assert artifact_dir.exists()
     assert artifact_dir.is_dir()
-    meta_path = artifact_dir / "metadata.json"
-    assert meta_path.exists()
-    meta = json.loads(meta_path.read_text())
-    assert meta == {"artifact_key": filename}
-    artifact_name = meta.get(metadata_key)
-    assert artifact_name is not None
-    artifact_path = artifact_dir / artifact_name
+    manifest_path = artifact_dir / "manifest.json"
+    assert manifest_path.exists()
+    manifest = json.loads(manifest_path.read_text())
+    expected_manifest = {
+        "structure": {
+            "status": "complete",
+            "taskInput": {"someValue": "value"},
+        }
+    }
+    assert manifest == expected_manifest
+    artifact_path = artifact_dir / "mocked-structure"
     assert artifact_path.exists()
     assert artifact_path.read_bytes() == artifact_bytes
 
@@ -153,34 +175,77 @@ def test_write_artifact_with_existing_metadata(tmp_path: Path) -> None:
     from datashare_python.conftest import TEST_PROJECT  # noqa: PLC0415
 
     # Given
+    args = MockedArgs(some_value="value")
     root_dir = Path(tmp_path)
     artifact_bytes = b"artifacts"
-    filename = "some_artifact"
-    metadata_key = "artifact_key"
-    artifact = DocArtifact(
+    manifest_entry = MockedManifestEntry.complete(args)
+    artifact = MockedArtifact(
         project=TEST_PROJECT,
         doc_id="doc_id",
         artifact=artifact_bytes,
-        filename=filename,
-        metadata_key=metadata_key,
+        manifest_entry=manifest_entry,
     )
-    existing_metadata = {"some": "metadata"}
+    existing_manifest = {"some": "value"}
     artifact_dir = root_dir / TEST_PROJECT / "do" / "c_" / "doc_id"
     artifact_dir.mkdir(parents=True, exist_ok=True)
-    meta_path = artifact_dir / "metadata.json"
-    meta_path.write_text(json.dumps(existing_metadata))
+    manifest_path = artifact_dir / "manifest.json"
+    manifest_path.write_text(json.dumps(existing_manifest))
     # When
     write_artifact(root_dir, artifact)
     # Then
     artifact_dir = root_dir / TEST_PROJECT / "do" / "c_" / "doc_id"
     assert artifact_dir.exists()
     assert artifact_dir.is_dir()
-    meta_path = artifact_dir / "metadata.json"
-    assert meta_path.exists()
-    meta = json.loads(meta_path.read_text())
-    assert meta == {"artifact_key": filename, "some": "metadata"}
-    artifact_name = meta.get(metadata_key)
-    assert artifact_name is not None
-    artifact_path = artifact_dir / artifact_name
+    assert manifest_path.exists()
+    manifest = json.loads(manifest_path.read_text())
+    expected_manifest = {
+        "structure": {
+            "status": "complete",
+            "taskInput": {"someValue": "value"},
+        },
+        "some": "value",
+    }
+    assert manifest == expected_manifest
+    assert manifest == expected_manifest
+    artifact_path = artifact_dir / "mocked-structure"
     assert artifact_path.exists()
     assert artifact_path.read_bytes() == artifact_bytes
+
+
+def test_overwrite_artifact(tmp_path: Path) -> None:
+    from datashare_python.conftest import TEST_PROJECT  # noqa: PLC0415
+
+    # Given
+    args = MockedArgs(some_value="value")
+    root_dir = Path(tmp_path)
+    manifest_entry = MockedManifestEntry.complete(args)
+    first = MockedArtifact(
+        project=TEST_PROJECT,
+        doc_id="doc_id",
+        artifact=b"first",
+        manifest_entry=manifest_entry,
+    )
+    second = MockedArtifact(
+        project=TEST_PROJECT,
+        doc_id="doc_id",
+        artifact=b"second",
+        manifest_entry=manifest_entry,
+    )
+    write_artifact(root_dir, first)
+    # When
+    write_artifact(root_dir, second)
+    # Then
+    artifact_dir = root_dir / TEST_PROJECT / "do" / "c_" / "doc_id"
+    assert artifact_dir.exists()
+    assert artifact_dir.is_dir()
+    manifest_path = artifact_dir / "manifest.json"
+    assert manifest_path.exists()
+    manifest = json.loads(manifest_path.read_text())
+    expected_manifest = {
+        "structure": {"status": "complete", "taskInput": {"someValue": "value"}}
+    }
+    assert manifest == expected_manifest
+    assert manifest == expected_manifest
+    artifact_path = artifact_dir / "mocked-structure"
+    assert artifact_path.exists()
+    assert artifact_path.read_bytes() == b"second"
