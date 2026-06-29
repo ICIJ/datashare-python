@@ -11,6 +11,7 @@ DEFAULT_DS_ADDRESS = "http://localhost:8080"
 DEFAULT_NAMESPACE = "datashare-default"
 
 METADATA_JSON = "metadata.json"
+MANIFEST_JSON = "manifest.json"
 
 TIKA_METADATA_RESOURCENAME = "tika_metadata_resourcename"
 

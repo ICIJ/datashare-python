@@ -6,10 +6,10 @@ from typing import Any
 
 import pytest
 from datashare_python.conftest import TEST_PROJECT
-from datashare_python.objects import DocumentLocation
+from datashare_python.objects import ArtifactType, DocumentLocation, ManifestEntryStatus
 from datashare_python.utils import read_jsonl
 from extract_core import InputDoc, OutputFormat, Pipeline, Result, Status
-from extract_core.objects import ConversionOutput, Error, PageIndexes, SupportedExt
+from extract_core.objects import ConversionOutput, Error, Pages, SupportedExt
 from extract_worker.activities import (
     _build_doc_query,
     create_markdown_extract_batches_act,
@@ -21,9 +21,11 @@ from extract_worker.objects import (
     DocId,
     DocumentSearchQuery,
     ErrorReport,
+    MarkdownExtractArgs,
     MarkdownExtractResponse,
     ProcessedDoc,
     ProcessingReport,
+    StructureManifestEntry,
 )
 from icij_common.es import ESClient, ids_query, match_all
 from icij_common.registrable import FromConfig, RegistrableConfig
@@ -120,7 +122,9 @@ async def test_create_markdown_extraction_batches_act(
 _RES_0 = Result(
     input=InputDoc(ext=SupportedExt.PDF, path=Path("doc-0.pdf")),
     status=Status.SUCCESS,
-    output=ConversionOutput(path=Path("markdown"), pages=PageIndexes(root=[(0, 1)])),
+    output=ConversionOutput(
+        path=Path("markdown"), pages=Pages(total=2, byte_ranges=[(0, 1)])
+    ),
 )
 
 _RES_2_ERRORS = [Error(id="error-id", title="error-title", detail="error-detail")]
@@ -136,6 +140,7 @@ async def test_extract_markdown_content_act(
     test_worker_config: ExtractWorkerConfig,
 ) -> None:
     # Given
+    args = MarkdownExtractArgs(project=TEST_PROJECT, docs=[])
     batch = [PROCESSED_DOC_0, PROCESSED_DOC_2]
     extract_results = [_RES_0, _RES_2]
     pipeline = MockPipeline(extract_results)
@@ -151,6 +156,7 @@ async def test_extract_markdown_content_act(
     # When
     res = await extract_markdown_content_act(
         pipeline,
+        args=args,
         batch=batch_path,
         worker_config=test_worker_config,
         output_dir=output_dir,
@@ -169,12 +175,16 @@ async def test_extract_markdown_content_act(
     d = artifacts_root / TEST_PROJECT / "do" / "c-" / "doc-0"
     assert d.exists()
     assert d.is_dir()
-    meta_path = d / "metadata.json"
+    meta_path = d / "manifest.json"
     assert meta_path.exists()
-    meta = json.loads(meta_path.read_text())
-    md_dir = meta.get("extract.markdown")
-    assert md_dir is not None
-    md_dir = d / md_dir
+    manifest = json.loads(meta_path.read_text())
+    entry = StructureManifestEntry.model_validate(
+        manifest[ArtifactType.STRUCTURE.value]
+    )
+    assert entry.status is ManifestEntryStatus.COMPLETE
+    assert entry.pages.byte_ranges
+    assert entry.pages.total == 2
+    md_dir = d / "structure"
     assert md_dir.exists()
     assert md_dir.is_dir()
 

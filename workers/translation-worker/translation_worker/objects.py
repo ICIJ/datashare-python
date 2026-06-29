@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING, Any
 from datashare_python.objects import (
     DatashareModel,
     Language,
+    TaskArgs,
 )
 from icij_common.es import (
     DOC_CONTENT_TRANSLATED,
@@ -71,7 +72,7 @@ def untranslated_query(target: Language) -> dict:
     return query[QUERY]
 
 
-class TranslationArgs(DatashareModel):
+class TranslationArgs(TaskArgs):
     project: str
     docs: list[DocId] | DocumentSearchQuery | None = None
     config: "TranslationConfig"

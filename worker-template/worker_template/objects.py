@@ -1,5 +1,5 @@
 import pycountry
-from datashare_python.objects import DatashareLanguage, DatashareModel
+from datashare_python.objects import DatashareLanguage, DatashareModel, TaskArgs
 from pydantic import Field
 
 
@@ -29,7 +29,7 @@ class TranslateAndClassifyConfig(DatashareModel):
     classification: ClassificationConfig = ClassificationConfig()
 
 
-class TranslateAndClassifyArgs(DatashareModel):
+class TranslateAndClassifyArgs(TaskArgs):
     project: str
     language: DatashareLanguage
     config: TranslateAndClassifyConfig = TranslateAndClassifyConfig()

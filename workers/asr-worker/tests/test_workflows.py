@@ -14,11 +14,12 @@ from asr_worker.objects import (
     Timestamp,
     Transcript,
     Transcription,
+    TranscriptionManifestEntry,
 )
 from asr_worker.workflows import ASRWorkflow, TaskQueues
 from caul.objects import ASRResult
 from datashare_python.conftest import TEST_PROJECT
-from datashare_python.objects import FilesystemDocument
+from datashare_python.objects import FilesystemDocument, ManifestEntryStatus
 from datashare_python.types_ import TemporalClient
 from datashare_python.worker import worker_context
 from pydantic import TypeAdapter
@@ -181,12 +182,14 @@ async def test_asr_workflow_e2e(
     for d in expected_artifact_dirs:
         assert d.exists()
         assert d.is_dir()
-        meta_path = d / "metadata.json"
-        assert meta_path.exists()
-        meta = json.loads(meta_path.read_text())
-        transcription_name = meta.get("transcription")
-        assert transcription_name is not None
-        transcription_path = d / transcription_name
+        manifest_path = d / "manifest.json"
+        assert manifest_path.exists()
+        manifest = json.loads(manifest_path.read_text())
+        asr_manifest_entry = TranscriptionManifestEntry.model_validate(
+            manifest["transcription"]
+        )
+        assert asr_manifest_entry.status is ManifestEntryStatus.COMPLETE
+        transcription_path = d / "transcription.json"
         assert transcription_path.exists()
         transcription = Transcription.model_validate_json(
             transcription_path.read_text()
