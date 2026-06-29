@@ -7,8 +7,12 @@ from typing import Any, cast
 from aiostream.stream import chain
 from datashare_python.dependencies import lifespan_es_client, lifespan_worker_config
 from datashare_python.objects import DatashareLanguage, Document, Translation
-from datashare_python.types_ import ProgressRateHandler
-from datashare_python.utils import ActivityWithProgress, activity_defn, to_raw_progress
+from datashare_python.types_ import AsyncProgressRateHandler
+from datashare_python.utils import (
+    ActivityWithProgress,
+    activity_defn,
+    to_raw_async_progress,
+)
 from elasticsearch._async.helpers import async_bulk
 from icij_common.es import (
     DOC_CONTENT_TRANSLATED,
@@ -74,7 +78,7 @@ class TranslationActivities(ActivityWithProgress):
         target: Language,
         config: TranslationConfig,
         project: str,
-        progress: ProgressRateHandler | None = None,
+        progress: AsyncProgressRateHandler | None = None,
     ) -> int:
         es_client = lifespan_es_client()
         worker_config = cast(TranslationWorkerConfig, lifespan_worker_config())
@@ -154,7 +158,7 @@ async def translate_docs_act(
     sentence_splitter: SentenceSplitter,
     worker_config: TranslationWorkerConfig,
     es_client: ESClient,
-    progress: ProgressRateHandler | None = None,  # noqa: F821
+    progress: AsyncProgressRateHandler | None = None,  # noqa: F821
 ) -> int:
     # TODO: this should not happen
     es_queue = asyncio.Queue()
@@ -187,13 +191,13 @@ async def _translate_and_queue(
     sentence_splitter: SentenceSplitter,
     worker_config: TranslationWorkerConfig,
     es_client: ESClient,
-    progress: ProgressRateHandler | None = None,  # noqa: F821
+    progress: AsyncProgressRateHandler | None = None,  # noqa: F821
 ) -> int:
     n_docs = sum(len(b) for b in batches)
     if not n_docs:
         return n_docs
     if progress is not None:
-        progress = to_raw_progress(progress, max_progress=n_docs)
+        progress = to_raw_async_progress(progress, max_progress=n_docs)
     source = translator.source
     target = translator.target
     model = translator.registered_name

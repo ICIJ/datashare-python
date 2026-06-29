@@ -30,9 +30,15 @@ from temporalio.converter import (
 )
 from temporalio.exceptions import ApplicationError
 
+from datashare_python.types_ import (
+    AsyncProgressRateHandler,
+    RawSyncProgressHandler,
+    SyncProgressRateHandler,
+)
+
 from .constants import METADATA_JSON
 from .objects import DocArtifact, DocumentLocation, FilesystemDocument
-from .types_ import ProgressRateHandler, RawProgressHandler
+from .types_ import RawAsyncProgressHandler
 
 DependencyLabel = str | None
 DependencySetup = Callable[..., None]
@@ -81,7 +87,7 @@ class ActivityWithProgress:
         event_loop: asyncio.AbstractEventLoop | None = None,
     ):
         self._temporal_client = temporal_client
-        self._event_loop = event_loop
+        self._event_loop = event_loop or asyncio.get_event_loop()
 
 
 class WorkflowWithProgress:
@@ -278,9 +284,9 @@ def fatal_error_from_exception(exc: Exception) -> ApplicationError:
     return ApplicationError(str(exc), details, type=exc_type, non_retryable=True)
 
 
-def to_raw_progress(
-    progress: ProgressRateHandler, max_progress: int
-) -> RawProgressHandler:
+def to_raw_async_progress(
+    progress: AsyncProgressRateHandler, max_progress: int
+) -> RawAsyncProgressHandler:
     if not max_progress > 0:
         raise ValueError("max_progress must be > 0")
 
@@ -290,9 +296,21 @@ def to_raw_progress(
     return raw
 
 
-def to_scaled_progress(
-    progress: ProgressRateHandler, *, start: float = 0.0, end: float = 1.0
-) -> ProgressRateHandler:
+def to_raw_sync_progress(
+    progress: SyncProgressRateHandler, max_progress: int
+) -> RawSyncProgressHandler:
+    if not max_progress > 0:
+        raise ValueError("max_progress must be > 0")
+
+    def raw(iteration: int, event_loop: asyncio.AbstractEventLoop) -> None:
+        progress(iteration / max_progress, event_loop)
+
+    return raw
+
+
+def to_scaled_async_progress(
+    progress: AsyncProgressRateHandler, *, start: float = 0.0, end: float = 1.0
+) -> AsyncProgressRateHandler:
     if not 0 <= start < end:
         raise ValueError("start must be [0, end[")
     if not start < end <= 1.0:

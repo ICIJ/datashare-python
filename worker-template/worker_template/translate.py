@@ -4,8 +4,12 @@ from functools import partial
 
 from aiostream.stream import chain
 from datashare_python.objects import Document
-from datashare_python.types_ import ProgressRateHandler
-from datashare_python.utils import ActivityWithProgress, activity_defn, to_raw_progress
+from datashare_python.types_ import AsyncProgressRateHandler
+from datashare_python.utils import (
+    ActivityWithProgress,
+    activity_defn,
+    to_raw_async_progress,
+)
 from elasticsearch._async.helpers import async_bulk
 from icij_common.es import (
     BOOL,
@@ -25,8 +29,9 @@ from icij_common.es import (
 from icij_common.iter_utils import async_batches, batches, before_and_after, once
 from temporalio.client import Client
 from transformers import Pipeline, pipeline
+from types_ import SyncProgressRateHandler
 
-from .objects_ import TranslationConfig
+from .objects import TranslationConfig
 
 
 class CreateTranslationBatches(ActivityWithProgress):
@@ -69,7 +74,7 @@ class TranslateDocs(ActivityWithProgress):
         *,
         project: str,
         config: TranslationConfig,
-        progress: ProgressRateHandler | None = None,
+        progress: SyncProgressRateHandler | None = None,
     ) -> int:
         return self._event_loop.run_until_complete(
             translate_docs(
@@ -115,7 +120,7 @@ async def translate_docs(
     *,
     project: str,
     es_client: ESClient | None = None,
-    progress: ProgressRateHandler | None = None,  # noqa: F821
+    progress: AsyncProgressRateHandler | None = None,  # noqa: F821
     config: TranslationConfig | None = None,
 ) -> int:
     import torch  # noqa:PLC0415
@@ -138,7 +143,7 @@ async def translate_docs(
     # Convert the progress to a "raw" progress to update the progress incrementally
     # rather than setting the progress rate
     if progress is not None:
-        progress = to_raw_progress(progress, max_progress=n_docs)
+        progress = to_raw_async_progress(progress, max_progress=n_docs)
     pipe = None
     # We batch the data ourselves, ideally, we should use an async version of:
     # https://huggingface.co/docs/datasets/v3.1.0/en/package_reference/main_classes#datasets.Dataset.from_generator

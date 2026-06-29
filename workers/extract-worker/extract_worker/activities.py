@@ -10,13 +10,13 @@ from typing import Any, cast
 
 from datashare_python.dependencies import lifespan_es_client, lifespan_worker_config
 from datashare_python.objects import DocArtifact, Document, DocumentLocation
-from datashare_python.types_ import ProgressRateHandler
+from datashare_python.types_ import AsyncProgressRateHandler
 from datashare_python.utils import (
     ActivityWithProgress,
     activity_defn,
     activity_workdir,
     read_jsonl,
-    to_raw_progress,
+    to_raw_async_progress,
     write_artifact,
 )
 from extract_core import (
@@ -109,7 +109,7 @@ class MarkdownExtract(ActivityWithProgress):
         project: str,
         config: PipelineConfig,
         *,
-        progress: ProgressRateHandler | None = None,
+        progress: AsyncProgressRateHandler | None = None,
     ) -> MarkdownExtractResponse:
         # Import pipeline impls to make sure the pipeline registry is populated
         from extract_python import (  # noqa: F401, PLC0415
@@ -172,11 +172,11 @@ async def extract_markdown_content_act(
     *,
     worker_config: ExtractWorkerConfig,
     output_dir: Path,
-    progress: ProgressRateHandler | None = None,
+    progress: AsyncProgressRateHandler | None = None,
 ) -> MarkdownExtractResponse:
     docs = _BatchTypeAdapter.validate_python(list(read_jsonl(batch)))
     if progress is not None:
-        progress = to_raw_progress(progress, max_progress=len(docs))
+        progress = to_raw_async_progress(progress, max_progress=len(docs))
     docs_root = worker_config.docs_root
     artifacts_root = worker_config.artifacts_root
     workdir = worker_config.workdir

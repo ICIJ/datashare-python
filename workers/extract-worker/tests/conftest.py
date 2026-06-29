@@ -1,5 +1,4 @@
 import mimetypes
-import platform
 import shutil
 import uuid
 from collections.abc import AsyncGenerator
@@ -218,10 +217,3 @@ async def md_extract_cpu_worker(
     )
     async with worker_ctx:
         yield
-
-
-@pytest.fixture(scope="session")
-def device() -> Device:
-    if "darwin" in platform.system().lower():
-        return Device.MPS
-    return Device.CPU

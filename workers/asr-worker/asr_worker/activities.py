@@ -20,7 +20,12 @@ from datashare_python.objects import (
     Document,
     FilesystemDocument,
 )
-from datashare_python.types_ import ProgressRateHandler, RawProgressHandler, Weight
+from datashare_python.types_ import (
+    AsyncProgressRateHandler,
+    RawAsyncProgressHandler,
+    SyncProgressRateHandler,
+    Weight,
+)
 from datashare_python.utils import (
     ActivityWithProgress,
     activity_defn,
@@ -29,7 +34,8 @@ from datashare_python.utils import (
     read_jsonl,
     safe_dir,
     symlink_embedded_document_to_workdir,
-    to_raw_progress,
+    to_raw_async_progress,
+    to_raw_sync_progress,
     write_artifact,
 )
 from icij_common.es import (
@@ -82,7 +88,7 @@ class ASRActivities(ActivityWithProgress):
         batch_size: int,
         *,
         progress: Annotated[  # noqa: ARG002
-            ProgressRateHandler | None, Weight(value=_SEARCH_AUDIOS_WEIGHT)
+            AsyncProgressRateHandler | None, Weight(value=_SEARCH_AUDIOS_WEIGHT)
         ] = None,
     ) -> list[Path]:
         es_client = lifespan_es_client()
@@ -111,7 +117,7 @@ class ASRActivities(ActivityWithProgress):
         config: ParakeetPreprocessorConfig,
         *,
         progress: Annotated[  # noqa: ARG002
-            ProgressRateHandler | None, Weight(value=_PREPROCESS_WEIGHT)
+            SyncProgressRateHandler | None, Weight(value=_PREPROCESS_WEIGHT)
         ] = None,
     ) -> list[Path]:
         # TODO: this shouldn't be necessary, fix this bug
@@ -140,7 +146,7 @@ class ASRActivities(ActivityWithProgress):
         config: InferenceRunnerConfig,
         *,
         progress: Annotated[  # noqa: ARG002
-            ProgressRateHandler | None, Weight(value=_INFERENCE_WEIGHT)
+            AsyncProgressRateHandler | None, Weight(value=_INFERENCE_WEIGHT)
         ] = None,
     ) -> list[Path]:
         # TODO: fix this temporal by, we shouldn't have to reload
@@ -152,7 +158,9 @@ class ASRActivities(ActivityWithProgress):
         preprocessed_inputs = _LIST_OF_PATH_ADAPTER.validate_python(preprocessed_inputs)
         preprocessed_inputs = [workdir / p for p in preprocessed_inputs]
         if progress is not None:
-            progress = to_raw_progress(progress, max_progress=len(preprocessed_inputs))
+            progress = to_raw_async_progress(
+                progress, max_progress=len(preprocessed_inputs)
+            )
         inference_runner = InferenceRunner.from_config(config)
         logger.info("loading model %s", config.model)
         with inference_runner:
@@ -178,7 +186,7 @@ class ASRActivities(ActivityWithProgress):
         project: str,
         *,
         progress: Annotated[  # noqa: ARG002
-            ProgressRateHandler | None, Weight(value=_BASE_WEIGHT)
+            SyncProgressRateHandler | None, Weight(value=_BASE_WEIGHT)
         ] = None,
     ) -> int:
         worker_config = cast(ASRWorkerConfig, lifespan_worker_config())
@@ -199,7 +207,7 @@ class ASRActivities(ActivityWithProgress):
             )
             doc_ids = [doc.id for doc in docs]
             if progress is not None:
-                progress = to_raw_progress(progress, max_progress=len(doc_ids))
+                progress = to_raw_sync_progress(progress, max_progress=len(doc_ids))
             return postprocess_act(
                 postprocessor,
                 inference_results,
@@ -266,7 +274,7 @@ async def infer_act(
     preprocessed_inputs: list[Path],
     output_dir: Path,
     event_loop: AbstractEventLoop | None = None,
-    progress: RawProgressHandler | None = None,
+    progress: RawAsyncProgressHandler | None = None,
 ) -> AsyncIterable[Path]:
     # Audios paths in the input are relative to the batch file directory
     inputs = (
@@ -311,7 +319,7 @@ def postprocess_act(
     artifacts_root: Path,
     project: str,
     event_loop: AbstractEventLoop | None = None,
-    progress: ProgressRateHandler | None = None,
+    progress: SyncProgressRateHandler | None = None,
 ) -> int:
     transcriptions = postprocessor.process(inference_results)
     # Strict is important here !
@@ -323,7 +331,7 @@ def postprocess_act(
         )
         logger.debug("wrote transcription for %s", t_path)
         if progress is not None and event_loop is not None:
-            asyncio.run_coroutine_threadsafe(progress(i), event_loop).result()
+            progress(i, event_loop)
     return n_docs
 
 

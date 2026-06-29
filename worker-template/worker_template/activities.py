@@ -6,12 +6,12 @@ from typing import TYPE_CHECKING
 
 from aiostream.stream import chain
 from datashare_python.objects import Document, Language, Translation
-from datashare_python.types_ import ProgressRateHandler
+from datashare_python.types_ import AsyncProgressRateHandler
 from datashare_python.utils import (
     ActivityWithProgress,
     activity_defn,
-    to_raw_progress,
-    to_scaled_progress,
+    to_raw_async_progress,
+    to_scaled_async_progress,
 )
 from elasticsearch._async.helpers import async_bulk
 from icij_common.es import (
@@ -89,7 +89,7 @@ class TranslateDocs(ActivityWithProgress):
         *,
         project: str,
         config: TranslationConfig,
-        progress: ProgressRateHandler | None = None,
+        progress: AsyncProgressRateHandler | None = None,
     ) -> int:
         es_client = lifespan_es_client()
         return await translate_docs(
@@ -111,7 +111,7 @@ class ClassifyDocs(ActivityWithProgress):
         # *,
         project: str,
         config: ClassificationConfig,
-        progress: ProgressRateHandler | None = None,
+        progress: AsyncProgressRateHandler | None = None,
     ) -> int:
         es_client = lifespan_es_client()
         return await classify_docs(
@@ -153,7 +153,7 @@ async def create_classification_batches(
     language: str,
     config: ClassificationConfig,
     es_client: ESClient,
-    progress: ProgressRateHandler | None = None,
+    progress: AsyncProgressRateHandler | None = None,
     logger: logging.Logger,
 ) -> list[list[str]]:
     # Retrieve unprocessed docs.
@@ -174,8 +174,8 @@ async def create_classification_batches(
     if progress is not None:
         n_tasks = n_docs // config.batch_size
         # We scale the progress to post incremental progress updates from 0 to n_tasks
-        progress = to_scaled_progress(progress, start=fetch_unclassified_progress)
-        progress = to_raw_progress(progress, max_progress=n_tasks)
+        progress = to_scaled_async_progress(progress, start=fetch_unclassified_progress)
+        progress = to_raw_async_progress(progress, max_progress=n_tasks)
     logger.info("creating %s classification tasks...", effective_batch_size)
     # We create classification tasks which will be picked up by the workers
     clf_batches = []
@@ -196,7 +196,7 @@ async def translate_docs(
     *,
     project: str,
     es_client: ESClient | None = None,
-    progress: ProgressRateHandler | None = None,  # noqa: F821
+    progress: AsyncProgressRateHandler | None = None,  # noqa: F821
     config: TranslationConfig | None = None,
 ) -> int:
     import torch  # noqa:PLC0415
@@ -216,7 +216,7 @@ async def translate_docs(
     # Convert the progress to a "raw" progress to update the progress incrementally
     # rather than setting the progress rate
     if progress is not None:
-        progress = to_raw_progress(progress, max_progress=n_docs)
+        progress = to_raw_async_progress(progress, max_progress=n_docs)
     pipe = None
     # We batch the data ourselves, ideally, we should use an async version of:
     # https://huggingface.co/docs/datasets/v3.1.0/en/package_reference/main_classes#datasets.Dataset.from_generator
@@ -269,7 +269,7 @@ async def classify_docs(
     classified_language: str,
     project: str,
     config: ClassificationConfig | None = None,
-    progress: ProgressRateHandler | None = None,
+    progress: AsyncProgressRateHandler | None = None,
     es_client: ESClient,
 ) -> int:
     import torch  # noqa: PLC0415
@@ -291,7 +291,7 @@ async def classify_docs(
     # Convert the progress to a "raw" progress to update the progress incrementally
     # from 0 to n_docs (rather than 0.0 to 1.0)
     if progress is not None:
-        progress = to_raw_progress(progress, max_progress=n_docs)
+        progress = to_raw_async_progress(progress, max_progress=n_docs)
     seen = 0
     # We batch the data ourselves, ideally, we should use an async version of:
     # https://huggingface.co/docs/datasets/v3.1.0/en/package_reference/main_classes#datasets.Dataset.from_generator
