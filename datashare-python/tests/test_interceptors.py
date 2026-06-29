@@ -27,7 +27,12 @@ with temporalio.workflow.unsafe.imports_passed_through():
         TraceContextInterceptor,
         get_trace_context,
     )
-    from datashare_python.types_ import ProgressRateHandler, TemporalClient, Weight
+    from datashare_python.types_ import (
+        AsyncProgressRateHandler,
+        SyncProgressRateHandler,
+        TemporalClient,
+        Weight,
+    )
     from datashare_python.utils import PYDANTIC_DATA_CONVERTER
     from temporalio import workflow
     from temporalio.client import (
@@ -121,7 +126,7 @@ class _ProgressAct(ActivityWithProgress):
         # https://github.com/temporalio/sdk-python/issues/360
         extra: str | None = None,
         *,
-        progress: Annotated[ProgressRateHandler | None, Weight(value=5.0)] = None,
+        progress: Annotated[AsyncProgressRateHandler | None, Weight(value=5.0)] = None,
     ) -> str:
         if progress is not None:
             await progress(0.1)
@@ -137,13 +142,13 @@ class _ProgressAct(ActivityWithProgress):
         self,
         args: ProgressArg,
         *,
-        progress: ProgressRateHandler | None = None,
+        progress: SyncProgressRateHandler | None = None,
     ) -> str:
         if progress is not None:
-            self._event_loop.run_until_complete(progress(0.1))
+            progress(0.1, self._event_loop)
         hello = f"hello {args.name}"
         if progress is not None:
-            self._event_loop.run_until_complete(progress(0.9))
+            progress(0.9, self._event_loop)
         return hello
 
 
@@ -233,12 +238,12 @@ async def test_trace_worker(
 
 @pytest.fixture(scope="session")
 async def test_progress_interceptor_sync_worker(
-    test_temporal_client_session: TemporalClient, event_loop: asyncio.AbstractEventLoop
+    test_temporal_client_session: TemporalClient,
 ) -> AsyncGenerator[None, None]:
     client = test_temporal_client_session
     worker_id = f"test-progress-sync-worker-{uuid.uuid4()}"
     interceptors = [ProgressInterceptor()]
-    act = _ProgressAct(test_temporal_client_session, event_loop)
+    act = _ProgressAct(test_temporal_client_session)
     worker = Worker(
         client,
         identity=worker_id,
@@ -253,12 +258,12 @@ async def test_progress_interceptor_sync_worker(
 
 @pytest.fixture(scope="session")
 async def test_progress_interceptor_async_worker(
-    test_temporal_client_session: TemporalClient, event_loop: asyncio.AbstractEventLoop
+    test_temporal_client_session: TemporalClient,
 ) -> AsyncGenerator[None, None]:
     client = test_temporal_client_session
     worker_id = f"test-progress-async-worker-{uuid.uuid4()}"
     interceptors = [ProgressInterceptor()]
-    act = _ProgressAct(test_temporal_client_session, event_loop)
+    act = _ProgressAct(test_temporal_client_session)
     worker = Worker(
         client,
         identity=worker_id,

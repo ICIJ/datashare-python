@@ -6,7 +6,7 @@ from collections.abc import Callable, Generator, Mapping
 from contextlib import contextmanager
 from contextvars import ContextVar
 from copy import deepcopy
-from functools import partial
+from functools import partial, wraps
 from inspect import signature
 from types import UnionType
 from typing import (
@@ -52,7 +52,12 @@ from temporalio.workflow import (
 )
 
 from .objects import BaseModel
-from .types_ import ProgressRateHandler, Weight
+from .types_ import (
+    AsyncProgressRateHandler,
+    ProgressRateHandler,
+    SyncProgressRateHandler,
+    Weight,
+)
 from .utils import (
     PROGRESS_HANDLER_ARG,
     PYDANTIC_DATA_CONVERTER,
@@ -62,6 +67,11 @@ from .utils import (
 
 _TRACEPARENT = "traceparent"
 _DEFAULT_PAYLOAD_CONVERTER = DataConverter.default.payload_converter
+_PROGRESS_TYPES = {
+    ProgressRateHandler,
+    AsyncProgressRateHandler,
+    SyncProgressRateHandler,
+}
 
 
 class TraceContext(BaseModel):
@@ -292,11 +302,13 @@ def _get_progress_handler(act_fn: Callable) -> ProgressRateHandler:
 
 
 def _is_progress(t: type) -> bool:
-    if t is ProgressRateHandler:
+    if any(t is p_cls for p_cls in _PROGRESS_TYPES):
         return True
     return bool(
         isinstance(t, UnionType)
-        and any(sub_t is ProgressRateHandler for sub_t in get_args(t))
+        and any(
+            any(sub_t is p_cls for p_cls in _PROGRESS_TYPES) for sub_t in get_args(t)
+        )
     )
 
 
@@ -315,16 +327,21 @@ class _ProgressInboundInterceptor(ActivityInboundInterceptor):
         # https://github.com/temporalio/sdk-python/blob/631ebaf0e20fb214b16589b45627b358048a5d77/temporalio/worker/_activity.py#L600
         # we have to force it here again
         progress_handler = _get_progress_handler(input.fn)
+        new_args = []
+        act_definition = _Definition.must_from_callable(input.fn)
         if input.args:
             data_converter = PYDANTIC_DATA_CONVERTER
-            arg_types = _Definition.must_from_callable(input.fn).arg_types
+            arg_types = act_definition.arg_types
             arg_types = _without_progress(arg_types)
             arg_types = arg_types[: len(input.args)]
             encoded = await data_converter.encode(input.args)
             new_args = await data_converter.decode(encoded, type_hints=arg_types)
-            new_args.append(progress_handler)
-        else:
-            new_args = [progress_handler]
+        injected_progress = (
+            progress_handler
+            if act_definition.is_async
+            else _sync_progress(progress_handler)
+        )
+        new_args.append(injected_progress)
         new_input = dataclasses.replace(input, args=new_args)
         await progress_handler(0.0)
         res = await super().execute_activity(new_input)
@@ -374,3 +391,15 @@ class _HeartbeatInboundInterceptor(ActivityInboundInterceptor):
             if heartbeat_task:
                 heartbeat_task.cancel()
                 await asyncio.wait([heartbeat_task])
+
+
+def _sync_progress(
+    progress_handler: AsyncProgressRateHandler,
+) -> SyncProgressRateHandler:
+    @wraps(progress_handler)
+    def p(progress: float, event_loop: asyncio.AbstractEventLoop) -> None:
+        asyncio.run_coroutine_threadsafe(
+            progress_handler(progress), event_loop
+        ).result()
+
+    return p

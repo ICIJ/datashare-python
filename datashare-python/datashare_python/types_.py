@@ -1,3 +1,4 @@
+import asyncio
 from collections.abc import Coroutine
 from contextlib import AbstractAsyncContextManager, AbstractContextManager
 from dataclasses import dataclass
@@ -8,9 +9,19 @@ from temporalio.client import Client
 TemporalClient = Client
 
 
-class ProgressRateHandler(Protocol):
+class AsyncProgressRateHandler(Protocol):
     async def __call__(self, progress_rate: float) -> None:
         pass
+
+
+class SyncProgressRateHandler(Protocol):
+    def __call__(
+        self, progress_rate: float, event_loop: asyncio.AbstractEventLoop
+    ) -> None:
+        pass
+
+
+ProgressRateHandler = SyncProgressRateHandler | AsyncProgressRateHandler
 
 
 @dataclass
@@ -18,9 +29,14 @@ class Weight:
     value: float
 
 
-class RawProgressHandler(Protocol):
-    async def __call__(self, iteration: int) -> None:
-        pass
+class RawAsyncProgressHandler(Protocol):
+    async def __call__(self, iteration: int) -> None: ...
+
+
+class RawSyncProgressHandler(Protocol):
+    async def __call__(
+        self, iteration: int, event_loop: asyncio.AbstractEventLoop
+    ) -> None: ...
 
 
 FactoryReturnType = (
