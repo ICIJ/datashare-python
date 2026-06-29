@@ -7,13 +7,12 @@ from icij_common.pydantic_utils import make_enum_discriminator, tagged_union
 from icij_common.registrable import RegistrableConfig
 from pydantic import Discriminator, Field
 
-from translation_worker.objects import (
+from .objects import (
     ArgosSentencizer,
     SentenceSplitterModel,
+    TorchDevice,
     TranslationModel,
 )
-
-from .constants import TorchDevice
 
 if TYPE_CHECKING:
     from translation_worker.processors import SentenceSplitter, Translator
@@ -72,7 +71,7 @@ class ArgosSentenceSplitterConfig(SentenceSplitterConfig):
     sentencizer: ArgosSentencizer = ArgosSentencizer.MINI_SBD
 
 
-class TranslatorConfig(_BaseProcessorConfig):
+class BaseTranslatorConfig(_BaseProcessorConfig):
     registry_key: ClassVar[str] = Field(frozen=True, default="model")
     model: ClassVar[TranslationModel]
 
@@ -83,7 +82,7 @@ _SentenceSplitterConfig = tagged_union(
 splitter_discriminator = make_enum_discriminator("model", SentenceSplitterModel)
 
 
-class ArgosTranslatorConfig(TranslatorConfig):
+class ArgosTranslatorConfig(BaseTranslatorConfig):
     model: ClassVar[TranslationModel] = Field(
         frozen=True, default=TranslationModel.ARGOS
     )
@@ -92,8 +91,10 @@ class ArgosTranslatorConfig(TranslatorConfig):
     length_penalty: float = 0.2
 
 
-class HunyuanMtTranslatorConfig(TranslatorConfig):
-    model_config = {"arbitrary_types_allowed": True}
+DEFAULT_HUNYUAN_MODEL_REF = "tencent/Hunyuan-MT-Chimera-7B"
+
+
+class HunyuanMtTranslatorConfig(BaseTranslatorConfig):
     model: ClassVar[TranslationModel] = Field(
         frozen=True, default=TranslationModel.HUNYUAN
     )
@@ -108,8 +109,8 @@ class HunyuanMtTranslatorConfig(TranslatorConfig):
     device_map: str = "auto"
 
 
-_TranslatorConfig = tagged_union(
-    TranslatorConfig.__subclasses__(), lambda t: t.model.default
+TranslatorConfig = tagged_union(
+    BaseTranslatorConfig.__subclasses__(), lambda t: t.model.default
 )
 translator_discriminator = make_enum_discriminator("model", TranslationModel)
 
@@ -119,7 +120,7 @@ class TranslationConfig(DatashareModel):
         discriminator=Discriminator(splitter_discriminator),
         default_factory=DefaultSentenceSplitterConfig,
     )
-    translator: _TranslatorConfig = Field(
+    translator: TranslatorConfig = Field(
         discriminator=Discriminator(translator_discriminator),
         default_factory=ArgosTranslatorConfig,
     )

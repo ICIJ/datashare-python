@@ -49,11 +49,12 @@ class TranslationWorkflow(WorkflowWithProgress):
             for source, languages_batches in per_language_batches
             for b in batches(languages_batches, batch_size=batches_per_worker)
         ]
+        inference_queue = TaskQueue.inference_queue(args.config)
         translations_activities = (
             execute_activity(
                 TranslationActivities.translate_docs,
                 args=args,
-                task_queue=TaskQueue.INFERENCE,
+                task_queue=inference_queue,
                 start_to_close_timeout=timedelta(hours=1),
             )
             for args in translation_args

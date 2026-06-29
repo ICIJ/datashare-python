@@ -34,7 +34,7 @@ c2translate = [
   "argostranslate==1.11.0",
 ]
 torch = [
-  "torch==2.11.1",
+  "torch==2.11.0",
   "transformers==5.12.1",
   "accelerate==1.14.0",
 ]
