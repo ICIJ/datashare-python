@@ -1,17 +1,28 @@
 from enum import StrEnum
+from typing import Self
 
 from icij_common.es import DOC_CONTENT, DOC_LANGUAGE, DOC_ROOT_ID
+
+from .config import TranslationConfig
+from .objects import TranslationModel
 
 
 class TaskQueue(StrEnum):
     WORKFLOWS = "datashare.workflows"
     IO = "translation.io"
-    INFERENCE = "translation.inference"
+    TORCH_INFERENCE = "translation.inference.torch"
+    C2TRANSLATE_INFERENCE = "translation.inference.c2translate"
 
-
-class TorchDevice(StrEnum):
-    CPU = "cpu"
-    GPU = "cuda"
+    @classmethod
+    def inference_queue(cls, config: TranslationConfig) -> Self:
+        model = config.translator.model
+        match model:
+            case TranslationModel.ARGOS:
+                return TaskQueue.C2TRANSLATE_INFERENCE
+            case TranslationModel.HUNYUAN:
+                return TaskQueue.TORCH_INFERENCE
+            case _:
+                raise ValueError(f"unknown translation model {model}")
 
 
 TRANSLATION_TASK_NAME = "translation"

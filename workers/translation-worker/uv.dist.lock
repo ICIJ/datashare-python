@@ -470,16 +470,16 @@ dependencies = [
 ]
 
 [package.optional-dependencies]
-argos-inference = [
+c2translate = [
     { name = "argostranslate" },
-]
-hunyuan-inference = [
-    { name = "accelerate" },
-    { name = "torch" },
-    { name = "transformers" },
 ]
 inference = [
     { name = "argostranslate" },
+]
+torch = [
+    { name = "accelerate" },
+    { name = "torch" },
+    { name = "transformers" },
 ]
 
 [package.dev-dependencies]
@@ -497,16 +497,16 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "accelerate", marker = "extra == 'hunyuan-inference'", specifier = ">=1.14.0" },
-    { name = "argostranslate", marker = "extra == 'argos-inference'", specifier = "==1.11.0" },
+    { name = "accelerate", marker = "extra == 'torch'", specifier = "==1.14.0" },
+    { name = "argostranslate", marker = "extra == 'c2translate'", specifier = "==1.11.0" },
     { name = "argostranslate", marker = "extra == 'inference'", specifier = "==1.11.0" },
     { name = "datashare-python", specifier = "~=0.9.0" },
     { name = "language-data", specifier = ">=1.4.0" },
     { name = "pydantic-extra-types", extras = ["pycountry"], specifier = "==2.11.1" },
-    { name = "torch", marker = "extra == 'hunyuan-inference'", specifier = ">=2.11.0" },
-    { name = "transformers", marker = "extra == 'hunyuan-inference'", specifier = ">=5.12.1" },
+    { name = "torch", marker = "extra == 'torch'", specifier = "==2.11.0" },
+    { name = "transformers", marker = "extra == 'torch'", specifier = "==5.12.1" },
 ]
-provides-extras = ["argos-inference", "hunyuan-inference", "inference"]
+provides-extras = ["c2translate", "inference", "torch"]
 
 [package.metadata.requires-dev]
 dev = [

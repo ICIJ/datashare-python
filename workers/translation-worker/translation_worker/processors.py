@@ -10,7 +10,7 @@ from icij_common.registrable import RegistrableFromConfig
 from .config import TranslationWorkerConfig
 
 if TYPE_CHECKING:
-    from .config import TranslatorConfig
+    from .config import BaseTranslatorConfig
     from .objects import Language
 
 logger = logging.getLogger(__name__)
@@ -43,7 +43,7 @@ class SentenceSplitter(RegistrableFromConfig):
 
 
 class Translator(RegistrableFromConfig):
-    def __init__(self, config: "TranslatorConfig"):
+    def __init__(self, config: "BaseTranslatorConfig"):
         self._config = config
 
         self._source: Language | None = None

@@ -34,12 +34,12 @@ RUN rm -rf ~/.cache/pip
 ENTRYPOINT ["entrypoints/io_worker.sh"]
 
 
-FROM translation-worker-builder AS inference-worker
+FROM translation-worker-builder AS inference-c2translate-worker
 # Install deps first to optimize layer cache
 RUN --mount=type=cache,target=~/.cache/uv \
     --mount=type=bind,source=uv.dist.lock,target=uv.lock \
     --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
-    uv sync -v --frozen --no-editable --no-install-project --extra inference
+    uv sync -v --frozen --no-editable --no-install-project --extra c2translate
 
 # Then copy code
 ADD uv.dist.lock ./uv.lock
@@ -48,7 +48,27 @@ ADD translation_worker ./translation_worker/
 ADD entrypoints/inference_worker.sh ./entrypoints/inference_worker.sh
 
 # Then install service
-RUN --mount=type=cache,target=~/.cache/uv uv sync -v --frozen --no-editable --extra inference
+RUN --mount=type=cache,target=~/.cache/uv uv sync -v --frozen --no-editable --extra c2translate
+RUN rm -rf ~/.cache/pip
+
+ENTRYPOINT ["entrypoints/inference_worker.sh"]
+
+
+FROM translation-worker-builder AS inference-torch-worker
+# Install deps first to optimize layer cache
+RUN --mount=type=cache,target=~/.cache/uv \
+    --mount=type=bind,source=uv.dist.lock,target=uv.lock \
+    --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
+    uv sync -v --frozen --no-editable --no-install-project --extra torch
+
+# Then copy code
+ADD uv.dist.lock ./uv.lock
+ADD pyproject.toml README.md ./
+ADD translation_worker ./translation_worker/
+ADD entrypoints/inference_worker.sh ./entrypoints/inference_worker.sh
+
+# Then install service
+RUN --mount=type=cache,target=~/.cache/uv uv sync -v --frozen --no-editable --extra torch
 RUN rm -rf ~/.cache/pip
 
 ENTRYPOINT ["entrypoints/inference_worker.sh"]

@@ -22,6 +22,11 @@ if TYPE_CHECKING:
     from translation_worker.objects import TranslationConfig
 
 
+class TorchDevice(StrEnum):
+    CPU = "cpu"
+    GPU = "cuda"
+
+
 class SentenceSplitterModel(StrEnum):
     ARGOS = "ARGOS"
     DEFAULT = "DEFAULT"
