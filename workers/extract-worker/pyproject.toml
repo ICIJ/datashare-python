@@ -9,14 +9,15 @@ authors = [
 readme = "README.md"
 requires-python = ">=3.13,<3.15"
 dependencies = [
-    "datashare-python~=0.9.0",
-    "extract-core==0.6.0",
-    "temporalio==1.23.0",
+  "datashare-python~=0.9.0",
+  "extract-core==0.6.0",
+  "temporalio==1.23.0",
 ]
 
 [project.optional-dependencies]
 base = [
   "extract-python[docling,marker]==0.6.0",
+  "tree-sitter==0.26.10",
   "opencv-python-headless==4.11.0.86"
 ]
 cpu = [
@@ -29,7 +30,7 @@ gpu = [
   "torchvision==0.26.0+cu129; sys_platform == 'linux'",
 ]
 flash-attn = [
-   "flash-attn==2.8.3.post1",
+  "flash-attn==2.8.3.post1",
 ]
 mineru = [
   "extract-python[mineru]==0.6.0",
@@ -92,8 +93,14 @@ datashare-python = { path = "../../datashare-python", editable = true }
 [tool.uv]
 package = true
 exclude-dependencies = [
-   # only one of opencv-python-headless and opencv-python can be installed otherwise thise triggers conflict
+  # only one of opencv-python-headless and opencv-python can be installed otherwise thise triggers conflict
   "opencv-python",
+  # exclude tree sitter which is no free threaded compatible
+  "tree-sitter",
+  "tree-sitter-c",
+  "tree-sitter-javascript",
+  "tree-sitter-python",
+  "tree-sitter-typescript",
 ]
 override-dependencies = [
   "pillow==11.3.0"
