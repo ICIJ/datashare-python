@@ -17,6 +17,7 @@ dependencies = [
 [project.optional-dependencies]
 base = [
   "extract-python[docling,marker]==0.7.2",
+  "tree-sitter==0.26.10",
   "opencv-python-headless==4.11.0.86"
 ]
 cpu = [
@@ -94,6 +95,12 @@ package = true
 exclude-dependencies = [
   # only one of opencv-python-headless and opencv-python can be installed otherwise thise triggers conflict
   "opencv-python",
+  # exclude tree sitter which is no free threaded compatible
+  "tree-sitter",
+  "tree-sitter-c",
+  "tree-sitter-javascript",
+  "tree-sitter-python",
+  "tree-sitter-typescript",
 ]
 override-dependencies = [
   "pillow==11.3.0"
