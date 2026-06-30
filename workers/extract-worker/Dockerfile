@@ -1,4 +1,16 @@
-FROM debian:trixie-slim AS extract-worker-builder
+FROM python:3.14-slim-trixie AS extract-worker-builder
+
+ENV PYTHONUNBUFFERED=1
+ENV UV_HTTP_TIMEOUT=300
+ENV UV_LINK_MODE=copy
+ENV UV_COMPILE_BYTECODE=1
+ENV UV_NO_DEV=1
+
+COPY --from=ghcr.io/astral-sh/uv:0.11.24 /uv /uvx /bin/
+
+WORKDIR /app
+
+FROM debian:trixie-slim AS extract-worker-builder-free-threaded
 
 ENV PYTHONUNBUFFERED=1
 ENV UV_HTTP_TIMEOUT=300
@@ -6,6 +18,12 @@ ENV UV_LINK_MODE=copy
 ENV UV_COMPILE_BYTECODE=1
 ENV UV_NO_DEV=1
 ENV PYTHON_GIL=0
+
+RUN apt update
+RUN apt install -y git-all \
+    libprotobuf-dev  \
+    protobuf-compiler \
+    zlib1g-dev
 
 COPY --from=ghcr.io/astral-sh/uv:0.11.24 /uv /uvx /bin/
 RUN uv python install 3.14t
