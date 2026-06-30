@@ -1,10 +1,10 @@
+import json
 import logging
 import numbers
 import sys
 from copy import copy
 from typing import Any
 
-import orjson
 from icij_common.logging_utils import DATE_FMT, STREAM_HANDLER_FMT
 from pythonjsonlogger.core import BaseJsonFormatter
 from pythonjsonlogger.orjson import OrjsonFormatter
@@ -132,7 +132,7 @@ def _encode_value(value: Any) -> str:
         return "true" if value else "false"
     if isinstance(value, numbers.Number):
         return str(value)
-    return orjson.dumps(value).decode()
+    return json.dumps(value).decode()
 
 
 def _json_formatter(datefmt: str) -> BaseJsonFormatter:

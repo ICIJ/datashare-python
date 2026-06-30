@@ -440,7 +440,7 @@ wheels = [
 
 [[package]]
 name = "datashare-python"
-version = "0.8.24"
+version = "0.9.5"
 source = { editable = "." }
 dependencies = [
     { name = "aiohttp" },
@@ -449,8 +449,6 @@ dependencies = [
     { name = "icij-common", extra = ["elasticsearch"] },
     { name = "langcodes" },
     { name = "lru-dict" },
-    { name = "nest-asyncio" },
-    { name = "orjson" },
     { name = "pydantic-extra-types", extra = ["pycountry"] },
     { name = "python-json-logger" },
     { name = "pyyaml" },
@@ -481,9 +479,7 @@ requires-dist = [
     { name = "hatchling", specifier = "~=1.27" },
     { name = "icij-common", extras = ["elasticsearch"], specifier = "~=0.8.2" },
     { name = "langcodes", specifier = "~=3.5" },
-    { name = "lru-dict", specifier = ">=1.4.1" },
-    { name = "nest-asyncio", specifier = "~=1.6" },
-    { name = "orjson", specifier = "~=3.11" },
+    { name = "lru-dict", specifier = "~=1.4" },
     { name = "pydantic-extra-types", extras = ["pycountry"], specifier = ">=2.11.1" },
     { name = "python-json-logger", specifier = "~=4.0" },
     { name = "pyyaml", specifier = "~=6.0" },
