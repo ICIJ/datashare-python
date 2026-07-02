@@ -7,7 +7,7 @@ from typing import Any
 
 from icij_common.logging_utils import DATE_FMT, STREAM_HANDLER_FMT
 from pythonjsonlogger.core import BaseJsonFormatter
-from pythonjsonlogger.orjson import OrjsonFormatter
+from pythonjsonlogger.json import JsonFormatter
 from temporalio import activity, workflow
 
 from .config import LogFormat, LogLevel
@@ -136,7 +136,5 @@ def _encode_value(value: Any) -> str:
 
 
 def _json_formatter(datefmt: str) -> BaseJsonFormatter:
-    fmt = OrjsonFormatter(  # let's keep logging as fast as possible
-        _LOGGED_ATTRIBUTES, datefmt=datefmt
-    )
+    fmt = JsonFormatter(_LOGGED_ATTRIBUTES, datefmt=datefmt)
     return fmt
