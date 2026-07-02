@@ -371,9 +371,7 @@ def write_artifact(root: Path, artifact: DocArtifact) -> Path:
     # Write the artifact
     _write_artifact_bytes(artifact_path, artifact.artifact)
     # Update the manifest entry with details and new states
-    manifest[artifact.type] = artifact.manifest_entry.model_dump(
-        by_alias=True, exclude_none=True
-    )
+    manifest[artifact.type] = artifact.manifest_entry.model_dump(by_alias=True)
     manifest_path.write_text(json.dumps(manifest))
     return artifact_path.relative_to(artif_dir)
 
