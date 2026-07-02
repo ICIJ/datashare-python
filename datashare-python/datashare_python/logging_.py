@@ -132,7 +132,7 @@ def _encode_value(value: Any) -> str:
         return "true" if value else "false"
     if isinstance(value, numbers.Number):
         return str(value)
-    return json.dumps(value).decode()
+    return json.dumps(value)
 
 
 def _json_formatter(datefmt: str) -> BaseJsonFormatter:
