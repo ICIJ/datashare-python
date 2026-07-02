@@ -11,9 +11,12 @@ from pathlib import Path
 from typing import Annotated, Any, ClassVar, Generic, Literal, Self, TypeVar, cast
 
 import langcodes
+from icij_common.registrable import Registrable
 from lru import LRU
 from pydantic_core import PydanticCustomError, ValidationError, core_schema
-from pydantic_core.core_schema import PlainValidatorFunctionSchema
+from pydantic_core.core_schema import (
+    PlainValidatorFunctionSchema,
+)
 from pydantic_extra_types.language_code import LanguageName
 from temporalio import workflow
 
@@ -308,18 +311,57 @@ class PaginationType(StrEnum):
     BYTE_RANGES = "byteRanges"
 
 
-class BasePagination(DatashareModel, ABC):
+class BasePagination(DatashareModel, Registrable, ABC):
+    registry_key: ClassVar[str] = Field(frozen=True, default="type")
+
     total: int
-    type: ClassVar[PaginationType]
+    type: ClassVar[PaginationType] = Field(frozen=True)
 
 
+def _validate_pages_range(v: Any) -> None:
+    if not isinstance(v, list):
+        msg = f"expected a list, got {type(v)}"
+        raise TypeError(msg)
+    previous_end = None
+    for page_i, (start, end) in enumerate(v):
+        if not start <= end:
+            msg = "end of page must be >= start"
+            raise ValueError(msg)
+        if previous_end is not None and previous_end != start:
+            msg = (
+                f"start of page {page_i} doesn't match end of previous "
+                f"page {previous_end}"
+            )
+            raise ValueError(msg)
+    return v
+
+
+PagesRange = Annotated[list[tuple[int, int]], AfterValidator(_validate_pages_range)]
+
+
+@BasePagination.register(PaginationType.FILESYSTEM)
 class FilesystemPagination(BasePagination):
-    type: ClassVar[PaginationType] = PaginationType.FILESYSTEM
+    type: ClassVar[PaginationType] = Field(
+        default=PaginationType.FILESYSTEM, frozen=True
+    )
 
 
+@BasePagination.register(PaginationType.BYTE_RANGES)
 class ByteRangesPagination(BasePagination):
-    type: ClassVar[PaginationType] = PaginationType.BYTE_RANGES
-    byte_ranges: list[tuple[int, int]]
+    type: ClassVar[PaginationType] = Field(
+        default=PaginationType.BYTE_RANGES, frozen=True
+    )
+    byte_ranges: PagesRange
+
+    @model_validator(mode="after")
+    def byte_ranges_length_should_match_total(self) -> Self:
+        if len(self.byte_ranges) != self.total:
+            msg = (
+                f"byte_ranges must match total. Found {len(self.byte_ranges)} for"
+                f" byte_ranges and  {self.total} for total."
+            )
+            raise ValueError(msg)
+        return self
 
 
 pagination_discriminator = make_enum_discriminator("type", PaginationType)
