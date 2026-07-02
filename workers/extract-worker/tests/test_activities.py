@@ -123,7 +123,7 @@ _RES_0 = Result(
     input=InputDoc(ext=SupportedExt.PDF, path=Path("doc-0.pdf")),
     status=Status.SUCCESS,
     output=ConversionOutput(
-        path=Path("markdown"), pages=Pages(total=2, byte_ranges=[(0, 1)])
+        path=Path("markdown"), pages=Pages(total=2, byte_ranges=[(0, 1), (1, 2)])
     ),
 )
 

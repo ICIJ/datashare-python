@@ -563,7 +563,7 @@ dev = [
 
 [[package]]
 name = "datashare-python"
-version = "0.9.4"
+version = "0.9.5"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiohttp", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu') or sys_platform == 'darwin' or (sys_platform != 'linux' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu')" },
@@ -581,9 +581,9 @@ dependencies = [
     { name = "tomlkit", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu') or sys_platform == 'darwin' or (sys_platform != 'linux' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu')" },
     { name = "typer", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu') or sys_platform == 'darwin' or (sys_platform != 'linux' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu')" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/b0/1e/b6dcacb07a29f526151c98003e1c97e0b8ed0a19692abb217f9477ee80ee/datashare_python-0.9.4.tar.gz", hash = "sha256:2ab6bd6b4237f8474e61b21335441b311e84d3d0d3b6a8441fd0f33558bc790a", size = 320672, upload-time = "2026-06-23T09:25:20.411Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/cc/6a/cb3c7c3073573c6ad0cf56cd6c6b6c97dbd1dbd6392ec0314e78865c9dee/datashare_python-0.9.5.tar.gz", hash = "sha256:9ff757584b46bf95af74a1c890734d3233f02f54724806ec9b346a04c39e311a", size = 320645, upload-time = "2026-06-23T12:11:01.145Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/29/5c/cf9c94901a93a275f366c1e64418dc7c5eb217baede67ce21ec273d0ddb1/datashare_python-0.9.4-py3-none-any.whl", hash = "sha256:1ade134e1584d5c32255418eeedf5f5c7c6383d931a593f7765fd26b17114ff7", size = 326668, upload-time = "2026-06-23T09:25:21.423Z" },
+    { url = "https://files.pythonhosted.org/packages/1b/27/826ac48804b0bda7a35260fdc925ff25fda3fcc527da32c4c484461ed8d2/datashare_python-0.9.5-py3-none-any.whl", hash = "sha256:c1dce1b981342dc9a3e80d3bfd3246d4e774d55c116a37321e31ac2b39d4ae08", size = 326631, upload-time = "2026-06-23T12:10:59.749Z" },
 ]
 
 [[package]]

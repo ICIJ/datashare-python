@@ -363,27 +363,35 @@ def write_artifact(root: Path, artifact: DocArtifact) -> Path:
     # at the same time). We read in a backward compatible wat and write to that same
     # location. We don't take responsibility for migrating the data, the DS back will
     # do it
-    manifest, manifest_path = _read_manifest_backward_compatible(root, artifact)
+    manifest_path, manifest = _read_manifest_backward_compatible(root, artifact)
+    is_legacy = manifest_path.name == "metadata.json"
     # Pop the status key from the manifest before writing
-    if artifact.type in manifest:
+    manifest_entry = manifest.get(artifact.type)
+    if manifest_entry is not None and not is_legacy:
         manifest[artifact.type].pop("status", None)
         manifest_path.write_text(json.dumps(manifest))
     # Write the artifact
     _write_artifact_bytes(artifact_path, artifact.artifact)
     # Update the manifest entry with details and new states
-    manifest[artifact.type] = artifact.manifest_entry.model_dump(by_alias=True)
+    if is_legacy:
+        manifest_entry = str(artifact_path.relative_to(artif_dir))
+    else:
+        manifest_entry = artifact.manifest_entry.model_dump(mode="json", by_alias=True)
+    manifest[artifact.type] = manifest_entry
     manifest_path.write_text(json.dumps(manifest))
     return artifact_path.relative_to(artif_dir)
 
 
 def _read_manifest_backward_compatible(
     root: Path, artifact: DocArtifact
-) -> tuple[dict[str, Any], Path]:
-    meta_path = root / _metadata_path(artifact.doc_id, project=artifact.project)
+) -> tuple[Path, dict[str, Any]]:
     manifest_path = root / _manifest_path(artifact.doc_id, project=artifact.project)
-    has_manifest = meta_path.exists() or manifest_path.exists()
-    manifest = _read_artifact_manifest(root, artifact) if has_manifest else dict()
-    return manifest, manifest_path
+    if manifest_path.exists():
+        return manifest_path, _read_artifact_manifest(root, artifact)
+    meta_path = root / _metadata_path(artifact.doc_id, project=artifact.project)
+    if meta_path.exists():
+        return meta_path, _read_artifact_manifest(root, artifact)
+    return manifest_path, dict()
 
 
 def _write_artifact_bytes(path: Path, artifact: bytes | BytesIO | Path) -> None:

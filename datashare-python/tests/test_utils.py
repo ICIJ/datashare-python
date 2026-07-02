@@ -163,6 +163,7 @@ def test_write_artifact(tmp_path: Path) -> None:
         "structure": {
             "status": "complete",
             "taskInput": {"someValue": "value"},
+            "label": None,
         }
     }
     assert manifest == expected_manifest
@@ -202,12 +203,49 @@ def test_write_artifact_with_existing_metadata(tmp_path: Path) -> None:
         "structure": {
             "status": "complete",
             "taskInput": {"someValue": "value"},
+            "label": None,
         },
         "some": "value",
     }
     assert manifest == expected_manifest
     assert manifest == expected_manifest
     artifact_path = artifact_dir / "mocked-structure"
+    assert artifact_path.exists()
+    assert artifact_path.read_bytes() == artifact_bytes
+
+
+def test_write_artifact_with_existing_legacy_metadata(tmp_path: Path) -> None:
+    from datashare_python.conftest import TEST_PROJECT  # noqa: PLC0415
+
+    # Given
+    args = MockedArgs(some_value="value")
+    root_dir = Path(tmp_path)
+    artifact_bytes = b"artifacts"
+    manifest_entry = MockedManifestEntry.complete(args)
+    artifact = MockedArtifact(
+        project=TEST_PROJECT,
+        doc_id="doc_id",
+        artifact=artifact_bytes,
+        manifest_entry=manifest_entry,
+    )
+    existing_metadata = {"structure": "existing-structure"}
+    artifact_dir = root_dir / TEST_PROJECT / "do" / "c_" / "doc_id"
+    artifact_dir.mkdir(parents=True, exist_ok=True)
+    meta_path = artifact_dir / "metadata.json"
+    meta_path.write_text(json.dumps(existing_metadata))
+    # When
+    write_artifact(root_dir, artifact)
+    # Then
+    artifact_dir = root_dir / TEST_PROJECT / "do" / "c_" / "doc_id"
+    assert artifact_dir.exists()
+    assert artifact_dir.is_dir()
+    meta_path = artifact_dir / "metadata.json"
+    assert meta_path.exists()
+    meta = json.loads(meta_path.read_text())
+    assert meta == {"structure": MockedArtifact.filename}
+    artifact_name = meta.get(ArtifactType.STRUCTURE)
+    assert artifact_name is not None
+    artifact_path = artifact_dir / artifact_name
     assert artifact_path.exists()
     assert artifact_path.read_bytes() == artifact_bytes
 
@@ -242,7 +280,11 @@ def test_overwrite_artifact(tmp_path: Path) -> None:
     assert manifest_path.exists()
     manifest = json.loads(manifest_path.read_text())
     expected_manifest = {
-        "structure": {"status": "complete", "taskInput": {"someValue": "value"}}
+        "structure": {
+            "status": "complete",
+            "taskInput": {"someValue": "value"},
+            "label": None,
+        },
     }
     assert manifest == expected_manifest
     assert manifest == expected_manifest
