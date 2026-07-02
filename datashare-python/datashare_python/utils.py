@@ -397,7 +397,7 @@ def _write_artifact_bytes(path: Path, artifact: bytes | BytesIO | Path) -> None:
             path.unlink(missing_ok=True)
             shutil.move(artifact, path)
         case _:
-            msg = f"unsupported artifact type: {artifact.artifact.__class__.__name__}"
+            msg = f"unsupported artifact type: {artifact.__class__.__name__}"
             raise ValueError(msg)
 
 
