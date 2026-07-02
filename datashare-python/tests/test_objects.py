@@ -1,3 +1,4 @@
+import json
 import re
 from datetime import datetime
 from pathlib import Path
@@ -6,6 +7,8 @@ import pytest
 from datashare_python.conftest import TEST_PROJECT
 from datashare_python.constants import TIKA_METADATA_RESOURCENAME
 from datashare_python.objects import (
+    BasePagination,
+    ByteRangesPagination,
     DatashareLanguage,
     Document,
     DocumentLocation,
@@ -94,3 +97,20 @@ def test_invalid_datashare_language_should_raise(
     # When/Then
     with pytest.raises(ValidationError, match=expected_msg):
         type_adapter.validate_python(language)
+
+
+def test_pagination_serde() -> None:
+    # Given
+    pagination = ByteRangesPagination(total=3, byte_ranges=[(0, 1), (1, 2), (2, 3)])
+    ta = TypeAdapter(BasePagination)
+    # When
+    serialized = pagination.model_dump_json(by_alias=True)
+    deserialized = ta.validate_json(serialized)
+    # Then
+    expected_serialized = {
+        "type": "byteRanges",
+        "total": 3,
+        "byteRanges": [[0, 1], [1, 2], [2, 3]],
+    }
+    assert json.loads(serialized) == expected_serialized
+    assert deserialized == pagination
