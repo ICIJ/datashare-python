@@ -36,6 +36,7 @@ WORKDIR /app
 FROM debian:trixie-slim AS runtime-base
 
 ENV PYTHONUNBUFFERED=1
+ENV UV_COMPILE_BYTECODE=1
 ENV UV_NO_DEV=1
 
 COPY --from=ghcr.io/astral-sh/uv:0.11.24 /uv /uvx /bin/
