@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import ClassVar
 
 import pytest
-from constants import MANIFEST_JSON
+from datashare_python.constants import MANIFEST_JSON
 from datashare_python.objects import (
     ArtifactType,
     DatashareModel,

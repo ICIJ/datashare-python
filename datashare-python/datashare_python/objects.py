@@ -366,7 +366,7 @@ class ByteRangesPagination(BasePagination):
 
 pagination_discriminator = make_enum_discriminator("type", PaginationType)
 Pagination = Annotated[
-    tagged_union(BasePagination.__subclasses__(), lambda x: x.type),
+    tagged_union(BasePagination.__subclasses__(), lambda x: x.type.default),
     Discriminator(pagination_discriminator),
 ]
 
