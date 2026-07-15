@@ -1,13 +1,3 @@
-mineru
-mineru-vl-utils
-modelscope
-magika
-reportlab
-pypdf
-fast-langdetect
-fasttext-predict
-json-repair
-robust-downloader
 loguru
 colorlog
 httpx-retries
