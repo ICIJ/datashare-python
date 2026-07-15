@@ -72,7 +72,7 @@ RUN apt update && \
     rm -rf /var/lib/apt/lists/*
 
 
-FROM extract-base-builder AS extract-cpu-build
+FROM extract-base-builder AS extract-cpu-builder
 # Install deps first to optimize layer cache
 RUN --mount=type=cache,target=/root/.cache/uv \
     --mount=type=bind,source=uv.dist.lock,target=uv.lock \
@@ -91,11 +91,11 @@ RUN rm -rf ~/.cache/pip
 
 FROM runtime-base AS extract-cpu-worker
 
-COPY --from=extract-cpu-build /app /app
+COPY --from=extract-cpu-builder /app /app
 ENTRYPOINT ["entrypoints/extract_cpu_worker.sh"]
 
 
-FROM extract-base-builder AS extract-gpu-build
+FROM extract-base-builder AS extract-gpu-builder
 ## Copy the flash-attn wheel
 #COPY --from=flash-attn-builder /flash-attn-wheel /flash-attn-wheel
 ## Install the wheel
@@ -122,12 +122,12 @@ FROM runtime-base AS extract-gpu-worker
 RUN apt update && \
     apt install -y --no-install-recommends tesseract-ocr && \
     rm -rf /var/lib/apt/lists/*
-COPY --from=extract-gpu-build /app /app
+COPY --from=extract-gpu-builder /app /app
 
 ENTRYPOINT ["entrypoints/extract_gpu_worker.sh"]
 
 
-FROM runtime-base AS extract-cpu-mineru-build
+FROM runtime-base AS extract-cpu-mineru-builder
 # Install deps first to optimize layer cache
 RUN --mount=type=cache,target=/root/.cache/uv \
     --mount=type=bind,source=uv.dist.lock,target=uv.lock \
@@ -147,11 +147,11 @@ RUN rm -rf ~/.cache/pip
 # Slim runtime (as extract-cpu-worker): no toolchain, keep tesseract
 FROM runtime-base AS extract-cpu-mineru-worker
 
-COPY --from=extract-cpu-mineru-build /app /app
+COPY --from=extract-cpu-mineru-builder /app /app
 ENTRYPOINT ["entrypoints/extract_cpu_mineru_worker.sh"]
 
 
-FROM runtime-base AS extract-gpu-mineru-build
+FROM runtime-base AS extract-gpu-mineru-builder
 # Install deps first to optimize layer cache
 RUN --mount=type=cache,target=/root/.cache/uv \
     --mount=type=bind,source=uv.dist.lock,target=uv.lock \
@@ -171,5 +171,5 @@ RUN rm -rf ~/.cache/pip
 # Slim runtime (as extract-cpu-worker): no toolchain, keep tesseract
 FROM runtime-base AS extract-gpu-mineru-worker
 
-COPY --from=extract-gpu-mineru-build /app /app
+COPY --from=extract-gpu-mineru-builder /app /app
 ENTRYPOINT ["entrypoints/extract_gpu_mineru_worker.sh"]
