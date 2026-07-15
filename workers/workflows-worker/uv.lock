@@ -460,7 +460,7 @@ base = [
 
 [[package]]
 name = "datashare-python"
-version = "0.9.8"
+version = "0.9.9"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiohttp" },
@@ -476,9 +476,9 @@ dependencies = [
     { name = "tomlkit" },
     { name = "typer" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/9f/3c/a8d28a86627a8967d65070500ed1999434aa556b918c32c0029e9d3a998a/datashare_python-0.9.8.tar.gz", hash = "sha256:8b8a56780446827b77032d4eed402c9733a8399df6f301322d2577fdb19255c9", size = 320930, upload-time = "2026-07-02T08:08:16.289Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/1e/92/d39036df8af1ab2195abffc1b110b3ae73b7492b4817dec6e2d78a171a0c/datashare_python-0.9.9.tar.gz", hash = "sha256:e4f78f38bdb84703d6869bd13a767bd6a3e329409999a096aac8eb5119bf44a4", size = 315745, upload-time = "2026-07-15T15:35:15.519Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/71/2f/7f7f6aa1f670b3ab7d6cd6bc862ced5a2e499a14fe35a8a6629f6e0b2c98/datashare_python-0.9.8-py3-none-any.whl", hash = "sha256:ec3595ffb45e7eb45f0556813be0f278a7c779584579dab435eb88ff05703734", size = 327002, upload-time = "2026-07-02T08:08:14.688Z" },
+    { url = "https://files.pythonhosted.org/packages/2d/73/68356d617d630af7154b986b528c531295e34fc096d5a3aef663b8cba78f/datashare_python-0.9.9-py3-none-any.whl", hash = "sha256:ff99059a87c6c0da9c0098dc3eaf782b54db22b5e2d8317ec534023b39a130a9", size = 322639, upload-time = "2026-07-15T15:35:14.434Z" },
 ]
 
 [[package]]
@@ -510,7 +510,7 @@ dependencies = [
 requires-dist = [
     { name = "datashare-asr-worker", specifier = "==0.8.15" },
     { name = "datashare-extract-worker", extras = ["base"], specifier = "==0.1.55" },
-    { name = "datashare-python", specifier = "~=0.9.8" },
+    { name = "datashare-python", specifier = "~=0.9.9" },
     { name = "datashare-translation-worker", specifier = "==0.7.9" },
 ]
 
@@ -962,16 +962,16 @@ wheels = [
 
 [[package]]
 name = "icij-common"
-version = "0.8.2"
+version = "0.8.3"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiostream" },
     { name = "pydantic" },
     { name = "pydantic-settings" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/e0/51/91d85cc23e275bb51a5cae47873af9a7160f62797b25663d902cf38e6ab7/icij_common-0.8.2.tar.gz", hash = "sha256:7db68266d8facb43142131d81e998cd74c6ae73508456743e00df43a15cc2995", size = 15937, upload-time = "2026-04-07T12:13:39.774Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/6a/8d/4b2b9bb7dcac24d8bf514ccf2da6465ca3cd9b4c4f4bde0a1c97e681d595/icij_common-0.8.3.tar.gz", hash = "sha256:009dda7c1d688ecf7705cf88517deb3d0abe02300b42c8c433eb36516462fe75", size = 16161, upload-time = "2026-07-03T09:43:50.837Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/15/5a/99d123230023124ba4ec67765feb2a04b656ae1f473a14f6b29cc54b02bf/icij_common-0.8.2-py3-none-any.whl", hash = "sha256:c5a1a3ccd54e7bf53acad293a0af50ab15156b225791b43383197b896bae955f", size = 20565, upload-time = "2026-04-07T12:13:38.709Z" },
+    { url = "https://files.pythonhosted.org/packages/1c/8e/99879d623fdf4e2371e44135dcf690d7f43b921616e4c918633fe4cece48/icij_common-0.8.3-py3-none-any.whl", hash = "sha256:5214cbb73dca364cca16005f5fac3c2f3944acab6dea269a68d26f631e39a348", size = 21030, upload-time = "2026-07-03T09:43:49.934Z" },
 ]
 
 [package.optional-dependencies]
