@@ -1,10 +1,15 @@
+import asyncio
+import fcntl
 import json
+import os
 import uuid
+from concurrent.futures import ProcessPoolExecutor
 from datetime import timedelta
 from pathlib import Path
 from typing import ClassVar
 
 import pytest
+from constants import MANIFEST_JSON
 from datashare_python.objects import (
     ArtifactType,
     DatashareModel,
@@ -13,7 +18,13 @@ from datashare_python.objects import (
     TaskArgs,
 )
 from datashare_python.types_ import TemporalClient
-from datashare_python.utils import activity_defn, positional_args_only, write_artifact
+from datashare_python.utils import (
+    _LOCKED,
+    activity_defn,
+    artifact_lock,
+    positional_args_only,
+    write_artifact,
+)
 from datashare_python.worker import datashare_worker
 from temporalio import activity, workflow
 from temporalio.client import WorkflowFailureError
@@ -291,3 +302,45 @@ def test_overwrite_artifact(tmp_path: Path) -> None:
     artifact_path = artifact_dir / "mocked-structure"
     assert artifact_path.exists()
     assert artifact_path.read_bytes() == b"second"
+
+
+def _acquire_lock(artifact_dir: Path, timeout_ms: int) -> str:
+    with artifact_lock(artifact_dir, timeout_ms):
+        return "acquired"
+
+
+def test_artifact_lock_file(tmp_path: Path) -> None:
+    # Given
+    timeout_ms = 100
+    artifact_dir = Path(tmp_path)
+    lock_path = artifact_dir / f"{MANIFEST_JSON}.lock"
+    fd = os.open(lock_path, os.O_CREAT | os.O_WRONLY)
+    # The file lock is a POSIX file lock and doesn't work intra process
+    pool = ProcessPoolExecutor(max_workers=1)
+    # When
+    with pool:
+        fcntl.lockf(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        f = pool.submit(_acquire_lock, artifact_dir, timeout_ms)
+    # Then
+    expected = "failed to acquire lock"
+    with pytest.raises(TimeoutError, match=expected):
+        f.result()
+
+
+async def _sleep_with_lock(
+    sleep_s: int, artifact_dir: Path, *, timeout_ms: int
+) -> None:
+    with artifact_lock(artifact_dir, timeout_ms):
+        await asyncio.sleep(sleep_s)
+
+
+async def test_artifact_lock_in_process(tmp_path: Path) -> None:
+    # Given
+    sleep_s = 1
+    timeout_ms = 100
+    artifact_dir = Path(tmp_path)
+    # When
+    asyncio.create_task(_sleep_with_lock(sleep_s, artifact_dir, timeout_ms=timeout_ms))
+    # Then
+    completed_without_timeout = _LOCKED.wait(sleep_s / 2)
+    assert not completed_without_timeout
