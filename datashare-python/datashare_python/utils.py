@@ -1,10 +1,13 @@
 import asyncio
 import contextlib
+import fcntl
 import inspect
 import json
 import os
 import shutil
-from collections.abc import Callable, Coroutine, Iterable, Sequence
+import threading
+import time
+from collections.abc import Callable, Coroutine, Generator, Iterable, Sequence
 from copy import deepcopy
 from dataclasses import dataclass
 from datetime import timedelta
@@ -55,6 +58,11 @@ _NEVER_RETRIABLES = {
     "PydanticSchemaGenerationError",
     "PydanticSerializationError",
 }
+
+
+_ARTIFACT_LOCK = threading.Lock()
+# For test
+_LOCKED = threading.Event()
 
 
 @dataclass(frozen=True)
@@ -353,33 +361,74 @@ def _read_artifact_manifest(root: Path, artifact: DocArtifact) -> dict:
     return json.loads(m_path.read_text())
 
 
-def write_artifact(root: Path, artifact: DocArtifact) -> Path:
+def write_artifact(
+    root: Path, artifact: DocArtifact, lock_timeout_ms: int = 30_000
+) -> Path:
     # TODO: WARNING many writers could write at the time, to avoid inconsistent
     #  states we should handle this somehow
     artif_dir = root / artifacts_dir(artifact.doc_id, project=artifact.project)
     artif_dir.mkdir(exist_ok=True, parents=True)
     artifact_path = artif_dir / artifact.filename
-    # Read the metadata first (things could go wrong here in case someone is reading
-    # at the same time). We read in a backward compatible wat and write to that same
-    # location. We don't take responsibility for migrating the data, the DS back will
-    # do it
-    manifest_path, manifest = _read_manifest_backward_compatible(root, artifact)
-    is_legacy = manifest_path.name == "metadata.json"
-    # Pop the status key from the manifest before writing
-    manifest_entry = manifest.get(artifact.type)
-    if manifest_entry is not None and not is_legacy:
-        manifest[artifact.type].pop("status", None)
+    # We're using POSIX locks which are not exclusive to filedescriptors
+    # but to processes, we hence have to ensure several threads from the same
+    # Python process acquire the lock at the same time. We're using a python mutex lock
+    with artifact_lock(artif_dir, lock_timeout_ms):
+        # Read the metadata first (things could go wrong here in case someone is reading
+        # at the same time). We read in a backward compatible wat and write to that same
+        # location. We don't take responsibility for migrating the data, the DS back
+        # will do it
+        manifest_path, manifest = _read_manifest_backward_compatible(root, artifact)
+        is_legacy = manifest_path.name == "metadata.json"
+        # Pop the status key from the manifest before writing
+        manifest_entry = manifest.get(artifact.type)
+        if manifest_entry is not None and not is_legacy:
+            manifest[artifact.type].pop("status", None)
+            manifest_path.write_text(json.dumps(manifest))
+        # Write the artifact
+        _write_artifact_bytes(artifact_path, artifact.artifact)
+        # Update the manifest entry with details and new states
+        if is_legacy:
+            manifest_entry = str(artifact_path.relative_to(artif_dir))
+        else:
+            manifest_entry = artifact.manifest_entry.model_dump(
+                mode="json", by_alias=True
+            )
+        manifest[artifact.type] = manifest_entry
         manifest_path.write_text(json.dumps(manifest))
-    # Write the artifact
-    _write_artifact_bytes(artifact_path, artifact.artifact)
-    # Update the manifest entry with details and new states
-    if is_legacy:
-        manifest_entry = str(artifact_path.relative_to(artif_dir))
-    else:
-        manifest_entry = artifact.manifest_entry.model_dump(mode="json", by_alias=True)
-    manifest[artifact.type] = manifest_entry
-    manifest_path.write_text(json.dumps(manifest))
-    return artifact_path.relative_to(artif_dir)
+        return artifact_path.relative_to(artif_dir)
+
+
+@contextlib.contextmanager
+def _set_event() -> Generator[None, None, None]:
+    try:
+        _LOCKED.set()
+        yield
+    finally:
+        _LOCKED.clear()
+
+
+@contextlib.contextmanager
+def artifact_lock(
+    artifacts_dir: Path, lock_timeout_ms: int
+) -> Generator[None, None, None]:
+    lock_path = artifacts_dir / f"{MANIFEST_JSON}.lock"
+    fd = os.open(lock_path, os.O_CREAT | os.O_WRONLY)
+    with _ARTIFACT_LOCK, _set_event():
+        start = time.time()
+        timeout_s = lock_timeout_ms / 1000
+        while time.time() - start < timeout_s:
+            try:
+                fcntl.lockf(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            except OSError:
+                # TODO: we shouldn't block here, use asyncio instead
+                time.sleep(0.02)
+                continue
+            yield
+            return
+        msg = (
+            f"failed to acquire lock on {lock_path} in less than {lock_timeout_ms} ms."
+        )
+        raise TimeoutError(msg)
 
 
 def _read_manifest_backward_compatible(
