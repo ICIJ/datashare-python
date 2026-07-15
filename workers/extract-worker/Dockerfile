@@ -1,34 +1,3 @@
-FROM python:3.14-slim-trixie AS extract-worker-builder
-
-ENV PYTHONUNBUFFERED=1
-ENV UV_HTTP_TIMEOUT=300
-ENV UV_LINK_MODE=copy
-ENV UV_COMPILE_BYTECODE=1
-ENV UV_NO_DEV=1
-
-COPY --from=ghcr.io/astral-sh/uv:0.11.24 /uv /uvx /bin/
-
-WORKDIR /app
-
-FROM debian:trixie-slim AS extract-worker-builder-free-threaded
-
-ENV PYTHONUNBUFFERED=1
-ENV UV_HTTP_TIMEOUT=300
-ENV UV_LINK_MODE=copy
-ENV UV_COMPILE_BYTECODE=1
-ENV UV_NO_DEV=1
-
-RUN apt update
-RUN apt install -y git-all \
-    libprotobuf-dev  \
-    protobuf-compiler \
-    zlib1g-dev
-
-COPY --from=ghcr.io/astral-sh/uv:0.11.24 /uv /uvx /bin/
-RUN uv python install 3.14
-
-WORKDIR /app
-
 # Slim runtime base: debian + uv + the uv-managed interpreter, but not build toolchain.
 # The venv built in the *-build stages references the managed interpreter using absolute
 # path (see .venv/bin/python -> /root/.local/share/uv/python/...), so we copy it here at
@@ -37,10 +6,10 @@ FROM debian:trixie-slim AS runtime-base
 
 ENV PYTHONUNBUFFERED=1
 ENV UV_COMPILE_BYTECODE=1
+ENV UV_LINK_MODE=copy
 ENV UV_NO_DEV=1
 
 COPY --from=ghcr.io/astral-sh/uv:0.11.24 /uv /uvx /bin/
-COPY --from=extract-worker-builder /root/.local/share/uv/python /root/.local/share/uv/python
 
 WORKDIR /app
 
@@ -73,7 +42,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     --no-build-isolation --no-deps -w /flash-attn-wheel
 
 
-FROM extract-worker-builder AS io-worker
+FROM runtime-base AS io-worker
 ADD io-worker-deps-exclusion.txt ./
 # Install deps first to optimize layer cache
 RUN --mount=type=cache,target=/root/.cache/uv \
@@ -94,7 +63,7 @@ RUN rm -rf ~/.cache/pip
 ENTRYPOINT ["entrypoints/io_worker.sh"]
 
 
-FROM extract-worker-builder AS extract-base-builder
+FROM runtime-base AS extract-base-builder
 
 RUN apt update && \
     apt install -y --no-install-recommends build-essential g++ && \
@@ -161,7 +130,7 @@ COPY --from=extract-gpu-build /app /app
 ENTRYPOINT ["entrypoints/extract_gpu_worker.sh"]
 
 
-FROM extract-worker-builder AS extract-cpu-mineru-worker
+FROM runtime-base AS extract-cpu-mineru-worker
 # Install deps first to optimize layer cache
 RUN --mount=type=cache,target=/root/.cache/uv \
     --mount=type=bind,source=uv.dist.lock,target=uv.lock \
@@ -181,7 +150,7 @@ RUN rm -rf ~/.cache/pip
 ENTRYPOINT ["entrypoints/extract_cpu_worker.sh"]
 
 
-FROM extract-worker-builder AS extract-gpu-mineru-worker
+FROM runtime-base AS extract-gpu-mineru-worker
 # Install deps first to optimize layer cache
 RUN --mount=type=cache,target=/root/.cache/uv \
     --mount=type=bind,source=uv.dist.lock,target=uv.lock \
