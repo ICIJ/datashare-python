@@ -65,6 +65,7 @@ ENTRYPOINT ["entrypoints/io_worker.sh"]
 
 FROM runtime-base AS extract-base-builder
 
+# TODO: do we really need tesseract here ?
 RUN apt update && \
     apt install -y --no-install-recommends build-essential g++ && \
     apt install -y tesseract-ocr && \
@@ -88,13 +89,9 @@ ADD entrypoints/extract_cpu_worker.sh ./entrypoints/extract_cpu_worker.sh
 RUN --mount=type=cache,target=/root/.cache/uv uv sync -v --frozen --no-editable --extra base --extra cpu
 RUN rm -rf ~/.cache/pip
 
-# Slim runtime: drop build-essential/g++ (only needed to build the venv), keep tesseract for OCR
 FROM runtime-base AS extract-cpu-worker
-RUN apt update && \
-    apt install -y --no-install-recommends tesseract-ocr && \
-    rm -rf /var/lib/apt/lists/*
-COPY --from=extract-cpu-build /app /app
 
+COPY --from=extract-cpu-build /app /app
 ENTRYPOINT ["entrypoints/extract_cpu_worker.sh"]
 
 
@@ -130,7 +127,7 @@ COPY --from=extract-gpu-build /app /app
 ENTRYPOINT ["entrypoints/extract_gpu_worker.sh"]
 
 
-FROM runtime-base AS extract-cpu-mineru-worker
+FROM runtime-base AS extract-cpu-mineru-build
 # Install deps first to optimize layer cache
 RUN --mount=type=cache,target=/root/.cache/uv \
     --mount=type=bind,source=uv.dist.lock,target=uv.lock \
@@ -147,10 +144,14 @@ ADD entrypoints/extract_cpu_worker.sh ./entrypoints/extract_cpu_worker.sh
 RUN --mount=type=cache,target=/root/.cache/uv uv sync -v --frozen --no-editable --extra mineru --extra cpu
 RUN rm -rf ~/.cache/pip
 
-ENTRYPOINT ["entrypoints/extract_cpu_worker.sh"]
+# Slim runtime (as extract-cpu-worker): no toolchain, keep tesseract
+FROM runtime-base AS extract-cpu-mineru-worker
+
+COPY --from=extract-cpu-mineru-build /app /app
+ENTRYPOINT ["entrypoints/extract_cpu_mineru_worker.sh"]
 
 
-FROM runtime-base AS extract-gpu-mineru-worker
+FROM runtime-base AS extract-gpu-mineru-build
 # Install deps first to optimize layer cache
 RUN --mount=type=cache,target=/root/.cache/uv \
     --mount=type=bind,source=uv.dist.lock,target=uv.lock \
@@ -167,4 +168,8 @@ ADD entrypoints/extract_gpu_worker.sh ./entrypoints/extract_gpu_worker.sh
 RUN --mount=type=cache,target=/root/.cache/uv uv sync -v --frozen --no-editable --extra mineru --extra gpu
 RUN rm -rf ~/.cache/pip
 
-ENTRYPOINT ["entrypoints/extract_gpu_worker.sh"]
+# Slim runtime (as extract-cpu-worker): no toolchain, keep tesseract
+FROM runtime-base AS extract-gpu-mineru-worker
+
+COPY --from=extract-gpu-mineru-build /app /app
+ENTRYPOINT ["entrypoints/extract_gpu_mineru_worker.sh"]

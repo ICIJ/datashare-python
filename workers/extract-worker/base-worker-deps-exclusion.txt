@@ -1,5 +1,0 @@
-loguru
-colorlog
-httpx-retries
-aiofiles
-xlsxwriter
