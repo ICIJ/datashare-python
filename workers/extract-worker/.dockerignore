@@ -6,4 +6,3 @@
 !uv.dist.lock
 !uv.lock
 !io-worker-deps-exclusion.txt
-!base-worker-deps-exclusion.txt

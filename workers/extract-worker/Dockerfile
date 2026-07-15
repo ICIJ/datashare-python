@@ -102,14 +102,11 @@ RUN apt update && \
 
 
 FROM extract-base-builder AS extract-cpu-build
-# Skip the mineru-only subtree: extract-core pulls mineru unconditionally, but docling/marker don't use it (and it conflicts with marker)
-ADD base-worker-deps-exclusion.txt ./
 # Install deps first to optimize layer cache
 RUN --mount=type=cache,target=/root/.cache/uv \
     --mount=type=bind,source=uv.dist.lock,target=uv.lock \
     --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
-    uv sync -v --frozen --no-editable --no-install-project --extra base --extra cpu \
-    $(sed 's/^/--no-install-package /' base-worker-deps-exclusion.txt)
+    uv sync -v --frozen --no-editable --no-install-project --extra base --extra cpu
 
 # Then copy code
 ADD uv.dist.lock ./uv.lock
@@ -118,8 +115,7 @@ ADD extract_worker ./extract_worker/
 ADD entrypoints/extract_cpu_worker.sh ./entrypoints/extract_cpu_worker.sh
 
 # Then install service
-RUN --mount=type=cache,target=/root/.cache/uv uv sync -v --frozen --no-editable --extra base --extra cpu \
-    $(sed 's/^/--no-install-package /' base-worker-deps-exclusion.txt)
+RUN --mount=type=cache,target=/root/.cache/uv uv sync -v --frozen --no-editable --extra base --extra cpu
 RUN rm -rf ~/.cache/pip
 
 # Slim runtime: drop build-essential/g++ (only needed to build the venv), keep tesseract for OCR
@@ -138,14 +134,11 @@ FROM extract-base-builder AS extract-gpu-build
 ## Install the wheel
 #RUN uv pip install /flash-attn-wheel/*.whl --no-deps
 
-# Skip the mineru-only subtree: extract-core pulls mineru unconditionally, but docling/marker don't use it (and it conflicts with marker).
-ADD base-worker-deps-exclusion.txt ./
 # Install deps first to optimize layer cache
 RUN --mount=type=cache,target=/root/.cache/uv \
     --mount=type=bind,source=uv.dist.lock,target=uv.lock \
     --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
-    uv sync -v --frozen --no-editable --no-install-project --extra base --extra gpu \
-    $(sed 's/^/--no-install-package /' base-worker-deps-exclusion.txt) #--no-install-package flash-attn
+    uv sync -v --frozen --no-editable --no-install-project --extra base --extra gpu
 
 # Then copy code
 ADD uv.dist.lock ./uv.lock
@@ -154,8 +147,7 @@ ADD extract_worker ./extract_worker/
 ADD entrypoints/extract_gpu_worker.sh ./entrypoints/extract_gpu_worker.sh
 
 # Then install service
-RUN --mount=type=cache,target=/root/.cache/uv uv sync -v --frozen --no-editable --extra base --extra gpu \
-    $(sed 's/^/--no-install-package /' base-worker-deps-exclusion.txt)
+RUN --mount=type=cache,target=/root/.cache/uv uv sync -v --frozen --no-editable --extra base --extra gpu
 RUN rm -rf ~/.cache/pip
 
 # Slim runtime (as extract-cpu-worker): no toolchain, keep tesseract
