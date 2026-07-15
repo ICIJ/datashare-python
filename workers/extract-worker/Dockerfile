@@ -92,6 +92,7 @@ RUN rm -rf ~/.cache/pip
 FROM runtime-base AS extract-cpu-worker
 
 COPY --from=extract-cpu-builder /app /app
+COPY --from=extract-cpu-builder /root/.local/share/uv/python /root/.local/share/uv/python
 ENTRYPOINT ["entrypoints/extract_cpu_worker.sh"]
 
 
@@ -123,7 +124,7 @@ RUN apt update && \
     apt install -y --no-install-recommends tesseract-ocr && \
     rm -rf /var/lib/apt/lists/*
 COPY --from=extract-gpu-builder /app /app
-
+COPY --from=extract-gpu-builder /root/.local/share/uv/python /root/.local/share/uv/python
 ENTRYPOINT ["entrypoints/extract_gpu_worker.sh"]
 
 
@@ -148,6 +149,7 @@ RUN rm -rf ~/.cache/pip
 FROM runtime-base AS extract-cpu-mineru-worker
 
 COPY --from=extract-cpu-mineru-builder /app /app
+COPY --from=extract-cpu-mineru-builder /root/.local/share/uv/python /root/.local/share/uv/python
 ENTRYPOINT ["entrypoints/extract_cpu_mineru_worker.sh"]
 
 
@@ -172,4 +174,5 @@ RUN rm -rf ~/.cache/pip
 FROM runtime-base AS extract-gpu-mineru-worker
 
 COPY --from=extract-gpu-mineru-builder /app /app
+COPY --from=extract-gpu-mineru-builder /root/.local/share/uv/python /root/.local/share/uv/python
 ENTRYPOINT ["entrypoints/extract_gpu_mineru_worker.sh"]
