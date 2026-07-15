@@ -139,7 +139,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 ADD uv.dist.lock ./uv.lock
 ADD pyproject.toml README.md ./
 ADD extract_worker ./extract_worker/
-ADD entrypoints/extract_cpu_worker.sh ./entrypoints/extract_cpu_worker.sh
+ADD entrypoints/extract_cpu_mineru_worker.sh ./entrypoints/extract_cpu_mineru_worker.sh
 
 # Then install service
 RUN --mount=type=cache,target=/root/.cache/uv uv sync -v --frozen --no-editable --extra mineru --extra cpu
@@ -164,7 +164,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 ADD uv.dist.lock ./uv.lock
 ADD pyproject.toml README.md ./
 ADD extract_worker ./extract_worker/
-ADD entrypoints/extract_gpu_worker.sh ./entrypoints/extract_gpu_worker.sh
+ADD entrypoints/extract_gpu_mineru_worker.sh ./entrypoints/extract_gpu_mineru_worker.sh
 
 # Then install service
 RUN --mount=type=cache,target=/root/.cache/uv uv sync -v --frozen --no-editable --extra mineru --extra gpu
