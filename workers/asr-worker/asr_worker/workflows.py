@@ -72,7 +72,7 @@ class ASRWorkflow(WorkflowWithProgress):
         inference_acts = [
             execute_activity(
                 ASRActivities.infer,
-                task_queue=TaskQueues.INFERENCE_GPU,
+                task_queue=TaskQueues.INFERENCE_CPU,
                 args=b,
                 # TODO: in practice we should parse the config to find out
                 start_to_close_timeout=timedelta(seconds=TEN_MINUTES),
