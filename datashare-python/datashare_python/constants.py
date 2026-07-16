@@ -14,5 +14,3 @@ METADATA_JSON = "metadata.json"
 MANIFEST_JSON = "manifest.json"
 
 TIKA_METADATA_RESOURCENAME = "tika_metadata_resourcename"
-
-DEFAULT_SHARED_RESOURCES_SIZE = 1

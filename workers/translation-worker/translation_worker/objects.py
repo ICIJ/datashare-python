@@ -16,8 +16,6 @@ from icij_common.es import (
 )
 from pydantic import TypeAdapter
 
-from .constants import HUNYUAN_LANGUAGES
-
 if TYPE_CHECKING:
     from argostranslate.sbd import ISentenceBoundaryDetectionModel
 
@@ -55,10 +53,6 @@ class ArgosSentencizer(StrEnum):
 
 
 _LANGUAGE_TYPE_ADAPTER = TypeAdapter(Language)
-
-_VALIDATED_HUNYUAN_LANGUAGES = {
-    _LANGUAGE_TYPE_ADAPTER.validate_python(lang) for lang in HUNYUAN_LANGUAGES
-}
 
 
 DocumentSearchQuery = dict[str, Any]

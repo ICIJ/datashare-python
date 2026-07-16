@@ -1,11 +1,10 @@
 import math
 from collections import defaultdict
 from functools import cache
-from typing import Annotated, Any, ClassVar, Self
+from typing import Any, ClassVar, Self
 
-from caul.asr_pipeline import ASRPipelineConfig
-from caul.config import InferenceRunnerConfig as CaulInferenceRunnerConfig
-from caul.objects import ASRLanguage, ASRModel, ASRResult
+from caul_core import ASRPipelineConfig, ASRResult
+from caul_core.objects import ASRLanguage, ASRModel
 from datashare_python.objects import (
     ArtifactType,
     DatashareModel,
@@ -13,17 +12,7 @@ from datashare_python.objects import (
     ManifestEntry,
     TaskArgs,
 )
-from icij_common.pydantic_utils import make_enum_discriminator, tagged_union
-from pydantic import Discriminator, Field, RootModel
-
-model_discriminator = make_enum_discriminator("model", ASRModel)
-InferenceRunnerConfig = Annotated[
-    tagged_union(
-        CaulInferenceRunnerConfig.__subclasses__(), lambda t: t.model.default.value
-    ),
-    Discriminator(model_discriminator),
-]
-
+from pydantic import Field, RootModel
 
 DocumentSearchQuery = dict[str, Any]
 DocId = str

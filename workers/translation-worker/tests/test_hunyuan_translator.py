@@ -2,8 +2,7 @@
 import sys
 from unittest.mock import MagicMock, patch
 
-from datashare_python.objects import Shared
-from translation_worker.constants import DEFAULT_HUNYUAN_MODEL_REF, HUNYUAN_SHARED_KEY
+from translation_worker.config import DEFAULT_HUNYUAN_MODEL_REF
 from translation_worker.translators.hunyuan import HunyuanMtTranslator
 
 from tests.conftest import DS_CHINESE, DS_ENGLISH
@@ -112,7 +111,7 @@ def test__load__initialises_tokenizer_and_model_from_config_model_ref_with_devic
     with (
         patch.dict(sys.modules, {"transformers": dummy_tf}),
     ):
-        translator._load(MagicMock(), target=MagicMock(), worker_config=MagicMock())
+        translator.load(MagicMock(), target=MagicMock(), worker_config=MagicMock())
 
     dummy_tf.AutoTokenizer.from_pretrained.assert_called_once_with(
         DEFAULT_HUNYUAN_MODEL_REF
@@ -123,69 +122,3 @@ def test__load__initialises_tokenizer_and_model_from_config_model_ref_with_devic
         device_map="cuda:0",
         torch_dtype="bfloat16",
     )
-
-
-def test__load__assigns_loaded_tokenizer_and_model_to_instance_without_shared_resources() -> (  # noqa: E501
-    None
-):
-    translator = _translator()
-    dummy_tf = _dummy_transformers()
-    mock_tokenizer = MagicMock()
-    mock_model = MagicMock()
-    mock_model.to.return_value = mock_model
-    dummy_tf.AutoTokenizer.from_pretrained.return_value = mock_tokenizer
-    dummy_tf.AutoModelForCausalLM.from_pretrained.return_value = mock_model
-
-    with (
-        patch.dict(sys.modules, {"transformers": dummy_tf}),
-    ):
-        translator._load(MagicMock(), target=MagicMock(), worker_config=MagicMock())
-
-    assert translator._tokenizer is mock_tokenizer
-    assert translator._translator is mock_model
-
-
-def test__load__assigns_loaded_tokenizer_and_model_to_instance_with_shared_resources(
-    test_shared_resources: Shared,
-) -> None:
-    translator = _translator()
-    dummy_tf = _dummy_transformers()
-    mock_tokenizer = MagicMock()
-    mock_model = MagicMock()
-    mock_model.to.return_value = mock_model
-    dummy_tf.AutoTokenizer.from_pretrained.return_value = mock_tokenizer
-    dummy_tf.AutoModelForCausalLM.from_pretrained.return_value = mock_model
-
-    test_shared_resources.set_resource(HUNYUAN_SHARED_KEY, None)
-
-    with (
-        patch.dict(sys.modules, {"transformers": dummy_tf}),
-    ):
-        translator._load(MagicMock(), target=MagicMock(), worker_config=MagicMock())
-
-    assert translator._tokenizer is mock_tokenizer
-    assert translator._translator is mock_model
-    assert test_shared_resources.get_resource(HUNYUAN_SHARED_KEY) is mock_model
-
-
-# @pytest.mark.parametrize(
-#     ("source", "initial_translator", "expected_translator_type"),
-#     [
-#         # should route to hunyuan
-#         (DS_CHINESE, ArgosTranslatorConfig(), HunyuanMtTranslatorConfig),
-#         # should remain with argos
-#         (DS_FRENCH, ArgosTranslatorConfig(), ArgosTranslatorConfig),
-#         # should remain with hunyuan
-#         (DS_CHINESE, HunyuanMtTranslatorConfig(), HunyuanMtTranslatorConfig),
-#         # should route to argos
-#         (DS_FRENCH, HunyuanMtTranslatorConfig(), ArgosTranslatorConfig),
-#     ],
-# )
-# def test__set_config_translator(
-#     source: DatashareLanguage,
-#     initial_translator: ArgosTranslatorConfig | HunyuanMtTranslatorConfig,
-#     expected_translator_type: type,
-# ) -> None:
-#     config = TranslationConfig(translator=initial_translator)
-#     result = _set_config_translator(source, config)
-#     assert isinstance(result.translator, expected_translator_type)

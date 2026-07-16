@@ -17,7 +17,7 @@ from asr_worker.objects import (
     TranscriptionManifestEntry,
 )
 from asr_worker.workflows import ASRWorkflow, TaskQueues
-from caul.objects import ASRResult
+from caul_core import ASRResult
 from datashare_python.conftest import TEST_PROJECT
 from datashare_python.objects import FilesystemDocument, ManifestEntryStatus
 from datashare_python.types_ import TemporalClient

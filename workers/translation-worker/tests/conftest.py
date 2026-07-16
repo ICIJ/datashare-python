@@ -24,29 +24,24 @@ from datashare_python.conftest import (  # noqa: F401
     test_worker_config,
     worker_lifetime_deps,
 )
-from datashare_python.dependencies import SHARED, lifespan_shared_resources
-from datashare_python.objects import DatashareLanguage, Document, Shared
+from datashare_python.objects import DatashareLanguage, Document
 from datashare_python.types_ import ContextManagerFactory, TemporalClient
 from datashare_python.worker import worker_context
 from icij_common.es import ESClient
 from translation_worker.activities import TranslationActivities
 from translation_worker.config import TranslationWorkerConfig
-from translation_worker.dependencies import (
-    set_es_client,
-    set_hunyuan_translator,
-    set_worker_config,
-)
+from translation_worker.dependencies import REGISTRY
 from translation_worker.workflows import TaskQueue, TranslationWorkflow
 
 
 @pytest.fixture(scope="session")
 def test_io_deps() -> list[ContextManagerFactory]:
-    return [set_worker_config, set_es_client]
+    return REGISTRY["translation.io"]
 
 
 @pytest.fixture(scope="session")
 def test_inference_deps() -> list[ContextManagerFactory]:
-    return [set_worker_config, set_es_client, set_hunyuan_translator]
+    return REGISTRY["translation.inference"]
 
 
 @pytest.fixture(scope="session")
@@ -210,9 +205,3 @@ async def translation_inference_worker(
     )
     async with worker_ctx:
         yield
-
-
-@pytest.fixture(scope="session")
-def test_shared_resources() -> Shared:
-    SHARED.set(Shared())
-    return lifespan_shared_resources()

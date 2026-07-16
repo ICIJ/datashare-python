@@ -15,8 +15,15 @@ from asr_worker.activities import (
 )
 from asr_worker.config import ASRWorkerConfig
 from asr_worker.objects import ASRArgs, DocId, Transcription, TranscriptionManifestEntry
-from caul.objects import ASRResult, InputMetadata, PreprocessedInput, PreprocessorOutput
-from caul.tasks import InferenceRunner, Postprocessor, Preprocessor
+from caul_core import (
+    ASRResult,
+    InferenceRunner,
+    InputMetadata,
+    Postprocessor,
+    PreprocessedInput,
+    Preprocessor,
+    PreprocessorOutput,
+)
 from datashare_python.conftest import TEST_PROJECT
 from datashare_python.objects import DocumentLocation, FilesystemDocument
 from datashare_python.utils import read_jsonl

@@ -11,6 +11,7 @@ from datashare_python.types_ import AsyncProgressRateHandler
 from datashare_python.utils import (
     ActivityWithProgress,
     activity_defn,
+    config_cache_key,
     to_raw_async_progress,
 )
 from elasticsearch._async.helpers import async_bulk
@@ -31,9 +32,15 @@ from icij_common.iter_utils import async_batches, before_and_after, once
 
 from translation_worker.constants import DOC_CONTENT_TEXT_LENGTH
 
-from .config import TranslationConfig, TranslationWorkerConfig
+from .config import (
+    SentenceSplitterConfig,
+    TranslationConfig,
+    TranslationWorkerConfig,
+    TranslatorConfig,
+)
 from .constants import BATCHING_DOC_SOURCES, TRANSLATION_DOC_SOURCES
-from .objects import _LANGUAGE_TYPE_ADAPTER, Language
+from .dependencies import lifespan_sentence_splitter_cache, lifespan_translator_cache
+from .objects import Language
 from .processors import SentenceSplitter, Translator
 
 logger = logging.getLogger(__name__)
@@ -82,33 +89,61 @@ class TranslationActivities(ActivityWithProgress):
     ) -> int:
         es_client = lifespan_es_client()
         worker_config = cast(TranslationWorkerConfig, lifespan_worker_config())
-        # TODO: make a generic fix using interceptors,
-        #  see https://github.com/temporalio/sdk-python/issues/360
-        source = _LANGUAGE_TYPE_ADAPTER.validate_python(source)
-        target = _LANGUAGE_TYPE_ADAPTER.validate_python(target)
-        if isinstance(config, dict):
-            config = TranslationConfig.model_validate(config)
-        # TODO: perform some caching here to avoid reloading
-        translator = config.to_translator()
-        sentence_splitter = config.to_sentence_splitter()
         # Load the translator first to install the
-        # SBD, then load the splitter
         logger.debug("loading %s -> %s translator...", source, target)
-        with translator.load(source, target=target, worker_config=worker_config):
-            logger.debug("loading %s sentence splitter...", source)
-            with sentence_splitter.load(source):
-                logger.info("translating %s batches...", len(batches))
-                n_translated = await translate_docs_act(
-                    batches,
-                    project=project,
-                    es_client=es_client,
-                    progress=progress,
-                    worker_config=worker_config,
-                    translator=translator,
-                    sentence_splitter=sentence_splitter,
-                )
-                logger.info("done translating !")
+        translator_factory = partial(
+            _load_translator_from_config,
+            config=config.translator,
+            source=source,
+            target=target,
+            worker_config=worker_config,
+        )
+        translator_key = config_cache_key(config.translator)
+        translator_cache = lifespan_translator_cache()
+        translator = translator_cache.get_or_cache_resource(
+            translator_key, translator_factory
+        )
+        # SBD, then load the splitter
+        logger.debug("loading %s sentence splitter...", source)
+        splitter_factory = partial(
+            _load_splitter_from_config, config=config.sentence_splitter, language=source
+        )
+        splitter_key = config_cache_key(config.sentence_splitter)
+        splitter_cache = lifespan_sentence_splitter_cache()
+        sentence_splitter = splitter_cache.get_or_cache_resource(
+            splitter_key, splitter_factory
+        )
+        logger.info("translating %s batches...", len(batches))
+        n_translated = await translate_docs_act(
+            batches,
+            project=project,
+            es_client=es_client,
+            progress=progress,
+            worker_config=worker_config,
+            translator=translator,
+            sentence_splitter=sentence_splitter,
+        )
+        logger.info("done translating !")
         return n_translated
+
+
+def _load_translator_from_config(
+    config: TranslatorConfig,
+    source: DatashareLanguage,
+    target: Language,
+    worker_config: TranslationWorkerConfig,
+) -> Translator:
+    translator = Translator.from_config(config)
+    translator.load(source, target=target, worker_config=worker_config)
+    return translator
+
+
+def _load_splitter_from_config(
+    config: SentenceSplitterConfig, language: DatashareLanguage
+) -> SentenceSplitter:
+    splitter = SentenceSplitter.from_config(config)
+    splitter.load(language)
+    return splitter
 
 
 async def create_translation_batches_act(

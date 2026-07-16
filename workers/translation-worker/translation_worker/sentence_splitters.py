@@ -14,6 +14,8 @@ class DefaultSentenceSplitter(SentenceSplitter):
     def __init__(self, config: DefaultSentenceSplitterConfig):
         self._config = config
 
+    def load(self, language: "Language") -> Self: ...
+
     @classmethod
     def _from_config(cls, config: DefaultSentenceSplitterConfig) -> Self:
         return cls(config)
@@ -28,7 +30,7 @@ class ArgosSentenceSplitter(SentenceSplitter):
         self._config = config
         self._inner = None
 
-    def _load(self, language: Language) -> Self:
+    def load(self, language: Language) -> Self:
         from argostranslate.package import get_installed_packages  # noqa: PLC0415
 
         if isinstance(language, DatashareLanguage):
