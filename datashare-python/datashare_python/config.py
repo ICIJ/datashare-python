@@ -13,7 +13,7 @@ import datashare_python
 from .objects import BaseModel
 from .task_client import DatashareTaskClient
 from .types_ import TemporalClient
-from .utils import PYDANTIC_DATA_CONVERTER
+from .utils import PYDANTIC_DATA_CONVERTER, SharedResources, close_cm_callback
 
 _ALL_LOGGERS = [datashare_python.__name__]
 
@@ -94,6 +94,19 @@ class LoggingConfig(BaseModel):
     loggers: dict[str, LogLevel]
 
 
+class ResourceCacheConfig(BaseModel):
+    size: int = 1
+    exit_context_managers: bool = True
+
+    def to_resource_cache(self) -> SharedResources:
+        eviction_callback = None
+        if self.exit_context_managers:
+            eviction_callback = close_cm_callback
+        return SharedResources(
+            cache_size=self.size, eviction_callback=eviction_callback
+        )
+
+
 _DEFAULT_LOGGERS = {datashare_python.__name__: "INFO"}
 _DEFAULT_LOGGING_CONFIG = LoggingConfig(
     format=LogFormat.DEFAULT, loggers=_DEFAULT_LOGGERS
@@ -109,7 +122,7 @@ class WorkerConfig(ICIJSettings, BaseModel):
     elasticsearch: ESClientConfig = ESClientConfig()
     temporal: TemporalClientConfig = TemporalClientConfig()
 
-    max_concurrent_io_activities: int = 5
+    max_concurrent_activities: int = 5
 
     docs_root: Path | None = None
     artifacts_root: Path | None = None

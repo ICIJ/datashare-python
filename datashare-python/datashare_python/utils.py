@@ -5,6 +5,7 @@ import inspect
 import json
 import os
 import shutil
+import sys
 import threading
 import time
 from collections.abc import Callable, Coroutine, Generator, Iterable, Sequence
@@ -15,10 +16,11 @@ from functools import wraps
 from hashlib import sha256
 from io import BytesIO
 from pathlib import Path
-from typing import Any, ParamSpec, TypeVar
+from typing import Any, ParamSpec, Self, TypeVar
 from uuid import uuid4
 
 import temporalio
+from lru import LRU
 from pydantic import ValidationError
 from temporalio import activity, workflow
 from temporalio.api.common.v1 import Payload
@@ -40,7 +42,7 @@ from datashare_python.types_ import (
 )
 
 from .constants import MANIFEST_JSON, METADATA_JSON
-from .objects import DocArtifact, DocumentLocation, FilesystemDocument
+from .objects import BaseModel, DocArtifact, DocumentLocation, FilesystemDocument
 from .types_ import RawAsyncProgressHandler
 
 DependencyLabel = str | None
@@ -594,3 +596,68 @@ class _PydanticPayloadConverter(CompositePayloadConverter):
 PYDANTIC_DATA_CONVERTER = DataConverter(
     payload_converter_class=_PydanticPayloadConverter
 )
+
+
+class SharedResources:
+    def __init__(
+        self,
+        cache_size: int = 1,
+        eviction_callback: Callable[[Any, Any], None] | None = None,
+    ) -> None:
+        self._eviction_callback = eviction_callback
+        self._cache = LRU(cache_size, self._eviction_callback)
+        self._sentinel = object()
+
+    def __enter__(self) -> Self:
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb) -> None:  # noqa: ANN001
+        if self._eviction_callback is not None:
+            for k, v in self._cache.items():
+                self._eviction_callback(k, v)
+
+    def get_or_cache_resource(
+        self, key: str, default_factory: Callable[[], Any]
+    ) -> Any:
+        value = self._cache.get(key, self._sentinel)
+        if value is not self._sentinel:
+            return value
+        # Get the value first to be sure to return the right one in case of concurrent
+        # access.
+        #
+        # Additionally, the factory can be long to complete (that's one of the reason
+        # we want to cache its results). Because we don't lock the factory call,
+        # together with the cache update, in case of concurrent access,
+        # quicker factories will complete first and will stay longer in the cache.
+        # This is fine, the alternative is to lock factory + cache update to avoid
+        # concurrent access but this will mean waiting for the first factory call to
+        # complete, this can potentially imply longer waits than no getting the value
+        # from the cache
+        value = default_factory()
+        self._cache[key] = value
+        return value
+
+
+def close_cm_callback(key: str, value: Any) -> None:  # noqa: ARG001
+    if hasattr(value, "__exit__"):
+        value.__exit__(*sys.exc_info())
+
+
+def enter_cm(
+    cm_factory: Callable[[], contextlib.AbstractContextManager],
+) -> Callable[[], contextlib.AbstractContextManager]:  # noqa: ARG001
+    @wraps(cm_factory)
+    def factory() -> contextlib.AbstractContextManager:
+        cm = cm_factory()
+        cm.__enter__()
+        return cm
+
+    return factory
+
+
+def config_cache_key(config: BaseModel) -> str:
+    # Frozen model offer natural hash
+    if not config.__class__.model_config["frozen"]:
+        msg = f"{config.__class__} is not frozen, can't compute cache key"
+        raise ValueError(msg)
+    return config.__hash__()

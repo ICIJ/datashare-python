@@ -1,4 +1,5 @@
 import logging
+import sys
 from abc import abstractmethod
 from collections.abc import Iterable
 from contextlib import contextmanager
@@ -24,12 +25,15 @@ class SentenceSplitter(RegistrableFromConfig):
 
     @final
     @contextmanager
-    def load(self, language: "Language") -> Self:
-        with self:
-            self._load(language)
+    def load_cm(self, language: "Language") -> Self:
+        self.load(language)
+        try:
             yield self
+        finally:
+            self.__exit__(*sys.exc_info())
 
-    def _load(self, language: "Language") -> Self: ...
+    @abstractmethod
+    def load(self, language: "Language") -> Self: ...
 
     @final
     def __enter__(self):
@@ -62,7 +66,7 @@ class Translator(RegistrableFromConfig):
 
     @contextmanager
     @final
-    def load(
+    def load_cm(
         self,
         source: "Language",
         *,
@@ -71,11 +75,13 @@ class Translator(RegistrableFromConfig):
     ) -> Self:
         if worker_config is None:
             worker_config = TranslationWorkerConfig()
-        with self:
-            self._load(source, target=target, worker_config=worker_config)
+        self.load(source, target=target, worker_config=worker_config)
+        try:
             yield self
+        finally:
+            self.__exit__(*sys.exc_info())
 
-    def _load(
+    def load(
         self,
         source: "Language",
         *,

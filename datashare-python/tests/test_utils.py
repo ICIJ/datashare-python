@@ -7,6 +7,7 @@ from concurrent.futures import ProcessPoolExecutor
 from datetime import timedelta
 from pathlib import Path
 from typing import ClassVar
+from unittest.mock import MagicMock
 
 import pytest
 from datashare_python.constants import MANIFEST_JSON
@@ -20,6 +21,7 @@ from datashare_python.objects import (
 from datashare_python.types_ import TemporalClient
 from datashare_python.utils import (
     _LOCKED,
+    SharedResources,
     activity_defn,
     artifact_lock,
     positional_args_only,
@@ -344,3 +346,46 @@ async def test_artifact_lock_in_process(tmp_path: Path) -> None:
     # Then
     completed_without_timeout = _LOCKED.wait(sleep_s / 2)
     assert not completed_without_timeout
+
+
+def test_get_or_cache_resource_new_key() -> None:
+    # Given
+    shared = SharedResources()
+    new_key = "k"
+
+    def factory() -> str:
+        return "cached"
+
+    # When
+    from_cache = shared.get_or_cache_resource(new_key, factory)
+    # Then
+    assert from_cache == "cached"
+
+
+def test_get_or_cache_resource_existing_key() -> None:
+    # Given
+    shared = SharedResources()
+    existing_key = "k"
+
+    def factory() -> str:
+        return uuid.uuid4().hex
+
+    # When
+    first = shared.get_or_cache_resource(existing_key, factory)
+    second = shared.get_or_cache_resource(existing_key, factory)
+    # Then
+    assert second == first
+
+
+def test_get_or_cache_eviction_callback_is_called_on_exit() -> None:
+    # Given
+    mock = MagicMock()
+    eviction_callback = mock.evict
+    key = "k"
+    factory = lambda: "value"  # noqa: E731
+    shared = SharedResources(eviction_callback=eviction_callback)
+    # When
+    with shared:
+        shared.get_or_cache_resource(key, factory)
+    # Then
+    eviction_callback.assert_called_once_with(key, "value")

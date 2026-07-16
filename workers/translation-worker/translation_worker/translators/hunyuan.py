@@ -5,7 +5,6 @@ from typing import TYPE_CHECKING, Self
 from datashare_python.objects import Language
 
 from ..config import HunyuanMtTranslatorConfig, TranslationWorkerConfig
-from ..constants import HUNYUAN_SHARED_KEY
 from ..objects import TranslationModel
 from ..processors import Translator
 
@@ -38,41 +37,21 @@ class HunyuanMtTranslator(Translator):
     ) -> Self:
         return cls(config, device=device)
 
-    def _load(
+    def load(
         self,
         source: Language,
         *,
         target: Language,
         worker_config: TranslationWorkerConfig,
     ) -> None:
-        from datashare_python.dependencies import (  # noqa: PLC0415
-            lifespan_shared_resources,
-        )
-        from datashare_python.exceptions import (  # noqa: PLC0415
-            DependencyInjectionError,
-        )
         from transformers import AutoModelForCausalLM, AutoTokenizer  # noqa: PLC0415
 
-        super()._load(source, target=target, worker_config=worker_config)
-
-        try:
-            shared = lifespan_shared_resources()
-        except DependencyInjectionError:
-            shared = None
-
-        translator = (
-            shared.get_resource(HUNYUAN_SHARED_KEY) if shared is not None else None
+        super().load(source, target=target, worker_config=worker_config)
+        translator = AutoModelForCausalLM.from_pretrained(
+            self._config.model_ref,
+            device_map=self._config.device_map,
+            torch_dtype=self._config.torch_dtype,
         )
-
-        if translator is None:
-            translator = AutoModelForCausalLM.from_pretrained(
-                self._config.model_ref,
-                device_map=self._config.device_map,
-                torch_dtype=self._config.torch_dtype,
-            )
-            if shared is not None:
-                shared.set_resource(HUNYUAN_SHARED_KEY, translator)
-
         self._translator = translator
         self._tokenizer = AutoTokenizer.from_pretrained(self._config.model_ref)
         self._device = next(self._translator.parameters()).device

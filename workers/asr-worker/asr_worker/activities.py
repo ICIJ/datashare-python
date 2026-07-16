@@ -7,13 +7,15 @@ from itertools import tee
 from pathlib import Path
 from typing import Annotated, Any, Protocol, cast
 
-from caul.objects import ASRResult, PreprocessedInput
-from caul.tasks import (
+from caul_core import (
+    ASRResult,
     InferenceRunner,
-    ParakeetPostprocessorConfig,
-    ParakeetPreprocessorConfig,
+    InferenceRunnerConfig,
     Postprocessor,
+    PostprocessorConfig,
+    PreprocessedInput,
     Preprocessor,
+    PreprocessorConfig,
 )
 from datashare_python.dependencies import lifespan_worker_config
 from datashare_python.objects import (
@@ -30,7 +32,9 @@ from datashare_python.utils import (
     ActivityWithProgress,
     activity_defn,
     activity_workdir,
+    config_cache_key,
     debuggable_name,
+    enter_cm,
     read_jsonl,
     safe_dir,
     symlink_embedded_document_to_workdir,
@@ -63,10 +67,14 @@ from .constants import (
     SEARCH_AUDIOS_ACTIVITY,
     SUPPORTED_CONTENT_TYPES,
 )
-from .dependencies import lifespan_es_client
+from .dependencies import (
+    lifespan_es_client,
+    lifespan_inference_runner_cache,
+    lifespan_postprocessor_cache,
+    lifespan_preprocessor_cache,
+)
 from .objects import (
     ASRArgs,
-    InferenceRunnerConfig,
     Transcription,
     TranscriptionArtifact,
     TranscriptionManifestEntry,
@@ -80,7 +88,6 @@ _PREPROCESS_WEIGHT = 5 * _BASE_WEIGHT
 _INFERENCE_WEIGHT = 10 * _PREPROCESS_WEIGHT
 
 _LIST_OF_PATH_ADAPTER = TypeAdapter(list[Path])
-_INFERENCE_CONFIG_TYPE_ADAPTER = TypeAdapter(InferenceRunnerConfig)
 
 
 class ArtifactFactory(Protocol):
@@ -122,28 +129,33 @@ class ASRActivities(ActivityWithProgress):
         self,
         audio_batch: Path,
         project: str,
-        config: ParakeetPreprocessorConfig,
+        config: PreprocessorConfig,
         *,
         progress: Annotated[  # noqa: ARG002
             SyncProgressRateHandler | None, Weight(value=_PREPROCESS_WEIGHT)
         ] = None,
     ) -> list[Path]:
-        # TODO: this shouldn't be necessary, fix this bug
+        # Import caul.tasks to populate the Preprocessor registry
+        import caul.tasks  # noqa: F401, PLC0415
+
         worker_config = cast(ASRWorkerConfig, lifespan_worker_config())
         workdir = worker_config.workdir
-        # TODO: implement caching
-        preprocessor = Preprocessor.from_config(config)
         output_dir = activity_workdir(workdir, project)
         output_dir.mkdir(parents=True, exist_ok=True)
         audio_batch = workdir / audio_batch
-        with preprocessor:
-            batch_paths = preprocess_act(
-                preprocessor,
-                audio_batch,
-                worker_config=worker_config,
-                output_dir=output_dir,
-            )
-            batches = [p.relative_to(workdir) for p in batch_paths]
+        preprocessor_factory = enter_cm(partial(Preprocessor.from_config, config))
+        preprocessor_key = config_cache_key(config)
+        cache = lifespan_preprocessor_cache()
+        preprocessor = cache.get_or_cache_resource(
+            preprocessor_key, preprocessor_factory
+        )
+        batch_paths = preprocess_act(
+            preprocessor,
+            audio_batch,
+            worker_config=worker_config,
+            output_dir=output_dir,
+        )
+        batches = [p.relative_to(workdir) for p in batch_paths]
         return batches
 
     @activity_defn(name=RUN_INFERENCE_ACTIVITY)
@@ -157,8 +169,9 @@ class ASRActivities(ActivityWithProgress):
             AsyncProgressRateHandler | None, Weight(value=_INFERENCE_WEIGHT)
         ] = None,
     ) -> list[Path]:
-        # TODO: fix this temporal by, we shouldn't have to reload
-        config = _INFERENCE_CONFIG_TYPE_ADAPTER.validate_python(config)
+        # Import caul.tasks to populate the InferenceRunner registry
+        import caul.tasks  # noqa: F401, PLC0415
+
         worker_config = cast(ASRWorkerConfig, lifespan_worker_config())
         workdir = worker_config.workdir
         output_dir = activity_workdir(workdir, project)
@@ -169,20 +182,22 @@ class ASRActivities(ActivityWithProgress):
             progress = to_raw_async_progress(
                 progress, max_progress=len(preprocessed_inputs)
             )
-        inference_runner = InferenceRunner.from_config(config)
         logger.info("loading model %s", config.model)
-        with inference_runner:
-            logger.info(
-                "model loaded, starting inference on %s audio chunks !",
-                len(preprocessed_inputs),
-            )
-            inference_res = infer_act(
-                inference_runner,
-                preprocessed_inputs,
-                output_dir=output_dir,
-                progress=progress,
-            )
-            inference_res = [p.relative_to(workdir) async for p in inference_res]
+        runner_factory = enter_cm(partial(InferenceRunner.from_config, config))
+        runner_key = config_cache_key(config)
+        cache = lifespan_inference_runner_cache()
+        inference_runner = cache.get_or_cache_resource(runner_key, runner_factory)
+        logger.info(
+            "model loaded, starting inference on %s audio chunks !",
+            len(preprocessed_inputs),
+        )
+        inference_res = infer_act(
+            inference_runner,
+            preprocessed_inputs,
+            output_dir=output_dir,
+            progress=progress,
+        )
+        inference_res = [p.relative_to(workdir) async for p in inference_res]
         return inference_res
 
     @activity_defn(name=POSTPROCESS_ACTIVITY)
@@ -190,13 +205,16 @@ class ASRActivities(ActivityWithProgress):
         self,
         inference_results: list[Path],
         audio_batch: Path,
-        config: ParakeetPostprocessorConfig,
+        config: PostprocessorConfig,
         args: ASRArgs,
         *,
         progress: Annotated[  # noqa: ARG002
             SyncProgressRateHandler | None, Weight(value=_BASE_WEIGHT)
         ] = None,
     ) -> int:
+        # Import caul.tasks to populate the Postprocessor‹ registry
+        import caul.tasks  # noqa: F401, PLC0415
+
         worker_config = cast(ASRWorkerConfig, lifespan_worker_config())
         workdir = worker_config.workdir
         audio_batch = workdir / audio_batch
@@ -206,25 +224,29 @@ class ASRActivities(ActivityWithProgress):
             ASRResult.model_validate_json((workdir / p).read_text())
             for p in inference_results
         )
-        # TODO: implement caching
-        postprocessor = Postprocessor.from_config(config)
-        with postprocessor:
-            docs = (
-                FilesystemDocument.model_validate(fs_doc)
-                for fs_doc in read_jsonl(audio_batch)
-            )
-            doc_ids = [doc.id for doc in docs]
-            if progress is not None:
-                progress = to_raw_sync_progress(progress, max_progress=len(doc_ids))
-            return postprocess_act(
-                postprocessor,
-                inference_results,
-                doc_ids,
-                args,
-                artifacts_root=artifacts_root,
-                event_loop=self._event_loop,
-                progress=progress,
-            )
+
+        docs = (
+            FilesystemDocument.model_validate(fs_doc)
+            for fs_doc in read_jsonl(audio_batch)
+        )
+        doc_ids = [doc.id for doc in docs]
+        if progress is not None:
+            progress = to_raw_sync_progress(progress, max_progress=len(doc_ids))
+        postprocessor_factory = enter_cm(partial(Postprocessor.from_config, config))
+        postprocessor_key = config_cache_key(config)
+        cache = lifespan_postprocessor_cache()
+        postprocessor = cache.get_or_cache_resource(
+            postprocessor_key, postprocessor_factory
+        )
+        return postprocess_act(
+            postprocessor,
+            inference_results,
+            doc_ids,
+            args,
+            artifacts_root=artifacts_root,
+            event_loop=self._event_loop,
+            progress=progress,
+        )
 
 
 async def search_audio_paths_act(

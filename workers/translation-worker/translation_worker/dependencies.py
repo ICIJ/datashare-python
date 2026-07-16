@@ -1,49 +1,60 @@
-import gc
 import logging
-from contextlib import asynccontextmanager
-from typing import Any
+from _contextvars import ContextVar
 
 from datashare_python.dependencies import (  # noqa: F401
     lifespan_es_client,
-    lifespan_shared_resources,
     lifespan_worker_config,
     set_es_client,
-    set_shared_resources,
     set_worker_config,
 )
 from datashare_python.exceptions import DependencyInjectionError
-from datashare_python.objects import Shared
+from datashare_python.utils import SharedResources
 
-from .constants import HUNYUAN_SHARED_KEY
+from .config import TranslationWorkerConfig
 
 logger = logging.getLogger(__name__)
 
 
-@asynccontextmanager
-async def set_hunyuan_translator(**kwargs) -> None:  # noqa: ARG001
-    shared = Shared()
-    await set_shared_resources(shared)
+_SENTENCE_SPLITTERS: ContextVar[SharedResources] = ContextVar("sentence_splitter_cache")
+_TRANSLATORS: ContextVar[SharedResources] = ContextVar("translator_cache")
+
+
+def set_sentence_splitter_cache(
+    worker_config: TranslationWorkerConfig,
+) -> SharedResources:
+    cache = worker_config.cache.sentence_splitter.to_resource_cache()
+    _SENTENCE_SPLITTERS.set(cache)
+    return cache
+
+
+def lifespan_sentence_splitter_cache() -> SharedResources:
     try:
-        yield
-    finally:
-        import torch  # noqa: PLC0415
-
-        model = await shared.async_pop_resource(HUNYUAN_SHARED_KEY, None)
-        if model is not None:
-            del model
-            if torch.cuda.is_available():
-                torch.cuda.empty_cache()
-            gc.collect()
+        return _SENTENCE_SPLITTERS.get()
+    except LookupError as e:
+        raise DependencyInjectionError("sentence preprocessors cache") from e
 
 
-def lifespan_hunyuan_translator() -> Any:
+def set_translator_cache(
+    worker_config: TranslationWorkerConfig,
+) -> SharedResources:
+    cache = worker_config.cache.translator.to_resource_cache()
+    _TRANSLATORS.set(cache)
+    return cache
+
+
+def lifespan_translator_cache() -> SharedResources:
     try:
-        return lifespan_shared_resources().get_resource(HUNYUAN_SHARED_KEY)
-    except (LookupError, KeyError) as e:
-        raise DependencyInjectionError("hunyuan translator") from e
+        return _TRANSLATORS.get()
+    except LookupError as e:
+        raise DependencyInjectionError("translators cache") from e
 
 
 REGISTRY = {
-    "translation.inference": [set_worker_config, set_es_client, set_hunyuan_translator],
+    "translation.inference": [
+        set_worker_config,
+        set_es_client,
+        set_sentence_splitter_cache,
+        set_translator_cache,
+    ],
     "translation.io": [set_worker_config, set_es_client],
 }

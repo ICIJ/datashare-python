@@ -6,7 +6,7 @@ from typing import Any, Self, TypeVar
 from unittest.mock import patch
 
 import pytest
-from datashare_python.objects import DatashareLanguage, Document, Translation
+from datashare_python.objects import DatashareLanguage, Document, Language, Translation
 from icij_common.es import (
     DOC_CONTENT,
     DOC_LANGUAGE,
@@ -72,6 +72,8 @@ class MockESClient(ESClient):
 class MockSentenceSplitter(SentenceSplitter):
     def __init__(self, splits: list[list[str]]):
         self._splits = iter(splits)
+
+    def load(self, language: Language) -> Self: ...
 
     def split_sentences(self, text: str) -> list[str]:  # noqa: ARG002
         return next(self._splits)
@@ -353,13 +355,16 @@ async def test_translate_docs_act__returns_count_of_unique_docs_translated(
     sentence_splitter = MockSentenceSplitter(sentences)
     monkeypatch.setattr(activities, "_update_docs_translation", _do_nothing_es_update)
     es_client = MockESClient([FR_DOC_1, FR_DOC_2])
+    worker_config = TranslationWorkerConfig()
     # When
-    with translator.load(source=DS_ENGLISH, target=DS_ENGLISH):
+    with translator.load_cm(
+        source=DS_ENGLISH, target=DS_ENGLISH, worker_config=worker_config
+    ):
         n_translated = await translate_docs_act(
             batches,
             project=TEST_PROJECT,
             es_client=es_client,
-            worker_config=TranslationWorkerConfig(),
+            worker_config=worker_config,
             translator=translator,
             sentence_splitter=sentence_splitter,
         )
@@ -378,13 +383,16 @@ async def test_translate_docs_act__sentences_from_same_doc_count_as_one(
     sentence_splitter = MockSentenceSplitter(sentences)
     monkeypatch.setattr(activities, "_update_docs_translation", _do_nothing_es_update)
     es_client = MockESClient([FR_DOC_1])
+    worker_config = TranslationWorkerConfig()
     # When
-    with translator.load(source=DS_ENGLISH, target=DS_ENGLISH):
+    with translator.load_cm(
+        source=DS_ENGLISH, target=DS_ENGLISH, worker_config=worker_config
+    ):
         n_translated = await translate_docs_act(
             batches,
             project=TEST_PROJECT,
             es_client=es_client,
-            worker_config=TranslationWorkerConfig(),
+            worker_config=worker_config,
             translator=translator,
             sentence_splitter=sentence_splitter,
         )
@@ -403,13 +411,16 @@ async def test_translate_docs_act__es_update(monkeypatch) -> None:
     update_doc = partial(_capturing_es_update, captured=captured)
     monkeypatch.setattr(activities, "_update_docs_translation", update_doc)
     es_client = MockESClient([FR_DOC_1])
+    worker_config = TranslationWorkerConfig()
     # When
-    with translator.load(source=DS_FRENCH, target=DS_ENGLISH):
+    with translator.load_cm(
+        source=DS_FRENCH, target=DS_ENGLISH, worker_config=worker_config
+    ):
         n_translated = await translate_docs_act(
             batches,
             project=TEST_PROJECT,
             es_client=es_client,
-            worker_config=TranslationWorkerConfig(),
+            worker_config=worker_config,
             translator=translator,
             sentence_splitter=sentence_splitter,
         )

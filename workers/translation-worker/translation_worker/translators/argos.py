@@ -34,7 +34,7 @@ class ArgosTranslator(Translator):
     def _from_config(cls, config: "ArgosTranslatorConfig", **extras) -> Self:  # noqa: ARG003
         return cls(config)
 
-    def _load(
+    def load(
         self,
         source: Language,
         *,
@@ -43,7 +43,7 @@ class ArgosTranslator(Translator):
     ) -> None:
         import ctranslate2  # noqa: PLC0415
 
-        super()._load(source, target=target, worker_config=worker_config)
+        super().load(source, target=target, worker_config=worker_config)
 
         if isinstance(source, DatashareLanguage):
             source = LanguageAlpha2(source.alpha2)

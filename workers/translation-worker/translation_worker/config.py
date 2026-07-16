@@ -1,7 +1,7 @@
 from abc import ABC
 from typing import TYPE_CHECKING, ClassVar
 
-from datashare_python.config import WorkerConfig
+from datashare_python.config import ResourceCacheConfig, WorkerConfig
 from datashare_python.objects import BaseModel, DatashareModel
 from icij_common.pydantic_utils import make_enum_discriminator, tagged_union
 from icij_common.registrable import RegistrableConfig
@@ -13,13 +13,24 @@ from translation_worker.objects import (
     TranslationModel,
 )
 
-from .constants import DEFAULT_HUNYUAN_MODEL_REF, TorchDevice
+from .constants import TorchDevice
 
 if TYPE_CHECKING:
     from translation_worker.processors import SentenceSplitter, Translator
 
+DEFAULT_HUNYUAN_MODEL_REF = "tencent/Hunyuan-MT-Chimera-7B"
+
 
 class _BaseProcessorConfig(BaseModel, RegistrableConfig, ABC): ...
+
+
+class TranslationCache(BaseModel):
+    sentence_splitter: ResourceCacheConfig = ResourceCacheConfig(
+        size=1, exit_context_managers=True
+    )
+    translator: ResourceCacheConfig = ResourceCacheConfig(
+        size=1, exit_context_managers=True
+    )
 
 
 class C2TranslateConfig(DatashareModel):
@@ -37,6 +48,8 @@ class TranslationWorkerConfig(WorkerConfig):
     batches_per_worker: int = 10
     es_buffer_size: int = 10
 
+    cache: TranslationCache = Field(default_factory=TranslationCache)
+
     c2_translate: C2TranslateConfig = Field(default_factory=C2TranslateConfig)
 
 
@@ -46,11 +59,15 @@ class SentenceSplitterConfig(_BaseProcessorConfig):
 
 
 class DefaultSentenceSplitterConfig(SentenceSplitterConfig):
-    model: ClassVar[SentenceSplitterModel] = SentenceSplitterModel.DEFAULT
+    model: ClassVar[SentenceSplitterModel] = Field(
+        frozen=True, default=SentenceSplitterModel.DEFAULT
+    )
 
 
 class ArgosSentenceSplitterConfig(SentenceSplitterConfig):
-    model: ClassVar[SentenceSplitterModel] = SentenceSplitterModel.ARGOS
+    model: ClassVar[SentenceSplitterModel] = Field(
+        frozen=True, default=SentenceSplitterModel.ARGOS
+    )
 
     sentencizer: ArgosSentencizer = ArgosSentencizer.MINI_SBD
 
@@ -61,13 +78,15 @@ class TranslatorConfig(_BaseProcessorConfig):
 
 
 _SentenceSplitterConfig = tagged_union(
-    SentenceSplitterConfig.__subclasses__(), lambda t: t.model
+    SentenceSplitterConfig.__subclasses__(), lambda t: t.model.default
 )
 splitter_discriminator = make_enum_discriminator("model", SentenceSplitterModel)
 
 
 class ArgosTranslatorConfig(TranslatorConfig):
-    model: ClassVar[TranslationModel] = TranslationModel.ARGOS
+    model: ClassVar[TranslationModel] = Field(
+        frozen=True, default=TranslationModel.ARGOS
+    )
 
     beam_size: int = 2
     length_penalty: float = 0.2
@@ -75,7 +94,9 @@ class ArgosTranslatorConfig(TranslatorConfig):
 
 class HunyuanMtTranslatorConfig(TranslatorConfig):
     model_config = {"arbitrary_types_allowed": True}
-    model: ClassVar[TranslationModel] = TranslationModel.HUNYUAN
+    model: ClassVar[TranslationModel] = Field(
+        frozen=True, default=TranslationModel.HUNYUAN
+    )
 
     model_ref: str = DEFAULT_HUNYUAN_MODEL_REF
     max_new_tokens: int = 2048
@@ -87,7 +108,9 @@ class HunyuanMtTranslatorConfig(TranslatorConfig):
     device_map: str = "auto"
 
 
-_TranslatorConfig = tagged_union(TranslatorConfig.__subclasses__(), lambda t: t.model)
+_TranslatorConfig = tagged_union(
+    TranslatorConfig.__subclasses__(), lambda t: t.model.default
+)
 translator_discriminator = make_enum_discriminator("model", TranslationModel)
 
 

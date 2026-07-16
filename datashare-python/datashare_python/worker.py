@@ -71,7 +71,7 @@ def datashare_worker(
     task_queue: str,
     # Scale horizontally be default for activities, each worker processes one activity
     # at a time
-    max_concurrent_io_activities: int = 10,
+    max_concurrent_activities: int = 1,
     sandboxed: bool = True,
 ) -> DatashareWorker:
     if workflows is None:
@@ -91,7 +91,6 @@ def datashare_worker(
         )
         logger.warning(_SEPARATE_IO_AND_CPU_ACTIVITIES)
 
-    max_concurrent_activities = max_concurrent_io_activities
     if isinstance(activity_executor, ThreadPoolExecutor):
         max_concurrent_activities = 1
         if workflows:
@@ -204,7 +203,7 @@ async def worker_context(
             workflows=workflows,
             activities=acts,
             task_queue=task_queue,
-            max_concurrent_io_activities=worker_config.max_concurrent_io_activities,
+            max_concurrent_activities=worker_config.max_concurrent_activities,
             sandboxed=sandboxed,
         )
         async with worker:

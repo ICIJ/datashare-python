@@ -9,11 +9,11 @@ from icij_common.es import has_id
 from pydantic import TypeAdapter
 from temporalio import workflow
 
-from asr_worker.constants import ASR_WORKFLOW, TEN_MINUTES
-from asr_worker.objects import ASRArgs, ASRResponse
+from .constants import ASR_WORKFLOW, TEN_MINUTES
+from .objects import ASRArgs, ASRResponse
 
 with workflow.unsafe.imports_passed_through():
-    from asr_worker.activities import ASRActivities
+    from .activities import ASRActivities
 
 _ASR_INPUTS_TYPE_ADAPTER = TypeAdapter(ASRArgs)
 
