@@ -15,7 +15,7 @@ class TaskQueue(StrEnum):
 
     @classmethod
     def inference_queue(cls, config: TranslationConfig) -> Self:
-        model = config.translator.model
+        model = config.translator.model.default
         match model:
             case TranslationModel.ARGOS:
                 return TaskQueue.C2TRANSLATE_INFERENCE
