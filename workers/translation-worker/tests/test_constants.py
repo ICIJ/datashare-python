@@ -1,10 +1,10 @@
 import pytest
-from constants import TaskQueue
 from translation_worker.config import (
     ArgosTranslatorConfig,
     HunyuanMtTranslatorConfig,
     TranslationConfig,
 )
+from translation_worker.constants import TaskQueue
 
 
 @pytest.mark.parametrize(
