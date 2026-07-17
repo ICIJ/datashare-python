@@ -1,4 +1,4 @@
-from .constants import TorchDevice
+from .objects import TorchDevice
 
 
 def find_device(device_name: str = TorchDevice.CPU) -> TorchDevice.CPU:
