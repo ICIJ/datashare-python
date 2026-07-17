@@ -194,7 +194,7 @@ async def translation_inference_worker(
     worker_id = f"test-translation-cpu-worker-{uuid.uuid4()}"
     create_translation_batches = TranslationActivities(temporal_client=client)
     translation_activities = [create_translation_batches.translate_docs]
-    task_queue = TaskQueue.INFERENCE
+    task_queue = TaskQueue.C2TRANSLATE_INFERENCE
     worker_ctx = worker_context(
         worker_id,
         activities=translation_activities,
