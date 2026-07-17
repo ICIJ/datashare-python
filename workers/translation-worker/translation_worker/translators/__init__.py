@@ -1,9 +1,9 @@
 try:
     from .argos import ArgosTranslator
-except ImportError:
+except ModuleNotFoundError:
     ArgosTranslator = None
 
 try:
     from .hunyuan import HunyuanMtTranslator
-except ImportError:
+except ModuleNotFoundError:
     HunyuanMtTranslator = None
