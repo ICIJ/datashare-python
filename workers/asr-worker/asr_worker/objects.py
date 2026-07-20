@@ -27,11 +27,17 @@ class TranscriptionArtifact(DocArtifact):
     type: ClassVar[ArtifactType] = ArtifactType.ASR_TRANSCRIPTION
 
 
+class ASRIndexingConfig(DatashareModel):
+    transcript_sep: str = "\n"
+    speaker_sep: str = "\n\n"
+
+
 class ASRArgs(TaskArgs):
     project: str
     docs: list[DocId] | DocumentSearchQuery
     config: ASRPipelineConfig = Field(default_factory=ASRPipelineConfig.parakeet)
     batch_size: int
+    indexing: ASRIndexingConfig = Field(default_factory=ASRIndexingConfig)
 
     def as_manifest_task_input(self) -> dict[str, Any]:
         as_entry = super().as_manifest_task_input()
@@ -73,6 +79,21 @@ class Transcription(DatashareModel):
         if confidence is not None:
             confidence = math.exp(asr_handler_result.score)
         return Transcription(confidence=confidence, transcripts=transcripts)
+
+    def as_text(self, transcript_sep: str = "\n", *, speaker_sep: str = "\n\n") -> str:
+        current_speaker = None
+        current_speaker_texts = []
+        texts = []
+        for t in self.transcripts:
+            new_speaker = t.speaker
+            if new_speaker != current_speaker and current_speaker_texts:
+                texts.append(transcript_sep.join(current_speaker_texts))
+                current_speaker_texts = []
+            current_speaker_texts.append(t.text)
+            current_speaker = new_speaker
+        if current_speaker_texts:
+            texts.append(transcript_sep.join(current_speaker_texts))
+        return speaker_sep.join(texts)
 
 
 AvailableModels = RootModel[dict[ASRLanguage, list[ASRModel]]]

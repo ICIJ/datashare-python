@@ -73,7 +73,7 @@ async def io_bound_worker(
         worker_config=test_worker_config,
         client=client,
         task_queue=task_queue,
-        activities=[activities.search_audio_paths],
+        activities=[activities.search_audio_paths, activities.index_transcriptions],
         dependencies=dependencies,
     )
     async with worker_ctx:

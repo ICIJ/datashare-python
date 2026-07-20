@@ -3,6 +3,7 @@ import contextlib
 import fcntl
 import inspect
 import json
+import logging
 import os
 import shutil
 import sys
@@ -44,6 +45,8 @@ from datashare_python.types_ import (
 from .constants import MANIFEST_JSON, METADATA_JSON
 from .objects import BaseModel, DocArtifact, DocumentLocation, FilesystemDocument
 from .types_ import RawAsyncProgressHandler
+
+logger = logging.getLogger(__name__)
 
 DependencyLabel = str | None
 DependencySetup = Callable[..., None]
@@ -397,7 +400,7 @@ def write_artifact(
             )
         manifest[artifact.type] = manifest_entry
         manifest_path.write_text(json.dumps(manifest))
-        return artifact_path.relative_to(artif_dir)
+        return artifact_path.relative_to(root)
 
 
 @contextlib.contextmanager
@@ -556,12 +559,50 @@ def symlink_embedded_document_to_workdir(
             raise ValueError(f"unsupported location {doc.location}")
 
 
+def artifact_path(
+    doc_id: str,
+    artifact_type: type[DocArtifact],
+    *,
+    project: str,
+    root: Path,
+) -> Path:
+    return root / artifacts_dir(doc_id, project=project) / artifact_type.filename
+
+
 def read_jsonl(path: Path) -> Iterable[dict]:
     with path.open() as f:
         for line in f:
             line = line.strip()  # noqa: PLW2901
             if line:
                 yield json.loads(line)
+
+
+async def publish_and_consume(
+    publisher: asyncio.Task,
+    publisher_completion_callback: Callable[[], None],
+    *,
+    consumer: asyncio.Task,
+) -> tuple[Any, Any]:
+    # Publish and consume concurrently
+    logger.debug("starting publish and subscribe")
+    done, pending = await asyncio.wait(
+        [publisher, consumer], return_when=asyncio.FIRST_COMPLETED
+    )
+    for d in done:
+        # Stop everything case of exception
+        exc = d.exception()
+        if exc:
+            for p in pending:
+                p.cancel()
+            raise exc
+    # Wait for publish to be done and push the poison pill to stop consuming
+    p_res = await publisher
+    publisher_completion_callback()
+    logger.debug("done publishing, waiting for consumer to complete...")
+    # Wait for consumption to be done
+    c_res = await consumer
+    logger.debug("done consuming !")
+    return p_res, c_res
 
 
 class _PydanticPayloadConverter(CompositePayloadConverter):

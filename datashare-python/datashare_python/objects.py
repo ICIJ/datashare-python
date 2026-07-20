@@ -179,6 +179,11 @@ class Translation(BaseModel):  # No camelcase here we don't know why
     content: Annotated[str, BeforeValidator(_from_sentences)]
 
 
+Routing = str
+DocID = str
+DocRoute = tuple[DocID, Routing]
+
+
 class Document(DatashareModel):
     id: str
     language: DatashareLanguage
@@ -253,6 +258,11 @@ class Document(DatashareModel):
             location=location,
             resource_name=resource_name,
         )
+
+    def to_route(self) -> DocRoute:
+        if self.root_document is not None:
+            return self.root_document, self.id
+        return self.id, self.id
 
 
 def _is_absolute_path(v: bytes | BytesIO | Path) -> Any:

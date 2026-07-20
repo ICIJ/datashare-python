@@ -164,9 +164,13 @@ def test_write_artifact(tmp_path: Path) -> None:
         manifest_entry=manifest_entry,
     )
     # When
-    write_artifact(root_dir, artifact)
+    artifact_path = write_artifact(root_dir, artifact)
     # Then
-    artifact_dir = root_dir / TEST_PROJECT / "do" / "c_" / "doc_id"
+    expected_artifact_cache = (
+        Path(TEST_PROJECT) / "do" / "c_" / "doc_id" / "mocked-structure"
+    )
+    assert artifact_path == expected_artifact_cache
+    artifact_dir = (root_dir / artifact_path).parent
     assert artifact_dir.exists()
     assert artifact_dir.is_dir()
     manifest_path = artifact_dir / "manifest.json"
@@ -247,9 +251,13 @@ def test_write_artifact_with_existing_legacy_metadata(tmp_path: Path) -> None:
     meta_path = artifact_dir / "metadata.json"
     meta_path.write_text(json.dumps(existing_metadata))
     # When
-    write_artifact(root_dir, artifact)
+    artifact_path = write_artifact(root_dir, artifact)
     # Then
-    artifact_dir = root_dir / TEST_PROJECT / "do" / "c_" / "doc_id"
+    expected_artifact_path = (
+        Path(TEST_PROJECT) / "do" / "c_" / "doc_id" / "mocked-structure"
+    )
+    assert artifact_path == expected_artifact_path
+    artifact_dir = (root_dir / artifact_path).parent
     assert artifact_dir.exists()
     assert artifact_dir.is_dir()
     meta_path = artifact_dir / "metadata.json"

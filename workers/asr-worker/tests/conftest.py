@@ -30,7 +30,7 @@ from datashare_python.conftest import (  # noqa: F401
     worker_lifetime_deps,
 )
 from datashare_python.dependencies import set_es_client, set_temporal_client
-from datashare_python.objects import Document, FilesystemDocument
+from datashare_python.objects import Document
 from datashare_python.types_ import ContextManagerFactory
 from datashare_python.utils import artifacts_dir
 from icij_common.es import ESClient
@@ -121,13 +121,12 @@ async def populate_es_with_audios(
 @pytest.fixture
 def with_audio_docs(
     populate_es_with_audios: list[Document], test_worker_config: ASRWorkerConfig
-) -> list[FilesystemDocument]:
+) -> list[Document]:
     config = test_worker_config
     clear_dirs(test_worker_config)
     docs = [
         d for d in populate_es_with_audios if d.content_type in SUPPORTED_CONTENT_TYPES
     ]
-    paths = []
     audio_path = AUDIOS_PATH / "asr_test.wav"
     for doc in docs:
         if doc.root_document is None:
@@ -139,6 +138,4 @@ def with_audio_docs(
             )
             artifact_path.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy(audio_path, artifact_path)
-        fs_doc = doc.to_filesystem()
-        paths.append(fs_doc)
-    return paths
+    return docs
