@@ -28,12 +28,18 @@ class ASRCache(BaseModel):
     )
 
 
+class IndexingWorkerConfig(BaseModel):
+    target_bulk_char_size: int = 50_000
+
+
 class ASRWorkerConfig(WorkerConfig):
     logging: LoggingConfig = _DEFAULT_LOGGING_CONFIG
 
     docs_root: Path = Field(alias="audios_root")
     artifacts_root: Path
     workdir: Path
+
+    indexing: IndexingWorkerConfig = Field(default_factory=IndexingWorkerConfig)
 
     # Set max concurrent activity to 1 to avoid parallel inference in practice,
     # this must be set to 1 for the inference worker and > 1 for the io worker

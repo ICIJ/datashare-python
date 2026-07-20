@@ -1,5 +1,6 @@
 import json
 from collections.abc import AsyncGenerator, Iterable
+from functools import partial
 from itertools import cycle
 from pathlib import Path
 from typing import Self
@@ -7,14 +8,21 @@ from typing import Self
 import pytest
 from aiostream import stream
 from asr_worker.activities import (
+    index_transcriptions_act,
     infer_act,
     postprocess_act,
     preprocess_act,
-    search_audio_paths_act,
+    search_audios_act,
     write_audio_batches,
+    write_transcription,
 )
 from asr_worker.config import ASRWorkerConfig
-from asr_worker.objects import ASRArgs, DocId, Transcription, TranscriptionManifestEntry
+from asr_worker.objects import (
+    ASRArgs,
+    Transcription,
+    TranscriptionArtifact,
+    TranscriptionManifestEntry,
+)
 from caul_core import (
     ASRResult,
     InferenceRunner,
@@ -25,9 +33,13 @@ from caul_core import (
     PreprocessorOutput,
 )
 from datashare_python.conftest import TEST_PROJECT
-from datashare_python.objects import DocumentLocation, FilesystemDocument
+from datashare_python.objects import (
+    DatashareLanguage,
+    Document,
+    FilesystemDocument,
+)
 from datashare_python.utils import read_jsonl
-from icij_common.es import ESClient, ids_query, match_all
+from icij_common.es import HITS, ESClient, ids_query, match_all
 from icij_common.iter_utils import batches
 from icij_common.registrable import RegistrableConfig
 
@@ -71,19 +83,17 @@ INFERENCE_RESULTS = [
     ),
 ]
 
-FS_DOCUMENT_0 = FilesystemDocument(
+DOC_0 = Document(
     id="doc-0",
     path=Path(TEST_PROJECT, "symlinks", "do", "c-", "doc-0", "doc-0.wav"),
     index=TEST_PROJECT,
-    location=DocumentLocation.WORKDIR,
-    resource_name="doc-0.wav",
+    language=DatashareLanguage("ENGLISH"),
 )
-FS_DOCUMENT_2 = FilesystemDocument(
+DOC_2 = Document(
     id="doc-2",
     path=Path("doc-2.mp3"),
     index=TEST_PROJECT,
-    location=DocumentLocation.ORIGINAL,
-    resource_name="doc-2.mp3",
+    language=DatashareLanguage("ENGLISH"),
 )
 
 
@@ -158,10 +168,10 @@ class MockPostprocessor(Postprocessor):
     ("query", "expected_batches"),
     [
         # Supports empty query
-        ({}, [[FS_DOCUMENT_0, FS_DOCUMENT_2]]),
+        ({}, [["doc_0", "doc_2"]]),
         # Return all audio/video docs
-        (match_all(), [[FS_DOCUMENT_0, FS_DOCUMENT_2]]),
-        (ids_query(["doc-0"]), [[FS_DOCUMENT_0]]),
+        (match_all(), [["doc_0", "doc_2"]]),
+        (ids_query(["doc-0"]), [["doc_0"]]),
         # Should filter non supported content type
         (ids_query(["doc-1"]), []),
     ],
@@ -170,33 +180,32 @@ async def test_search_audio_paths_act(
     with_audio_docs: list[FilesystemDocument],
     test_es_client: ESClient,
     query: dict,
-    expected_batches: list[tuple[DocId, Path]],
-    test_worker_config: ASRWorkerConfig,
+    expected_batches: list[list[str]],
+    request,  # noqa: ANN001
     tmpdir: Path,
 ) -> None:
     # Given
     tmpdir = Path(tmpdir)
-    worker_config = test_worker_config
     batch_size = len(with_audio_docs)
     client = test_es_client
     # When
     batch_paths = [
         batch
-        async for batch in search_audio_paths_act(
+        async for batch in search_audios_act(
             es_client=client,
             project=TEST_PROJECT,
             query=query,
             batch_size=batch_size,
             output_dir=tmpdir,
-            config=worker_config,
         )
     ]
     # Then
     results = []
     for b in batch_paths:
-        results.append(
-            [FilesystemDocument.model_validate(fs_doc) for fs_doc in read_jsonl(b)]
-        )
+        results.append([Document.model_validate(fs_doc).id for fs_doc in read_jsonl(b)])
+    expected_batches = [
+        [request.getfixturevalue(d).id for d in batch] for batch in expected_batches
+    ]
     assert results == expected_batches
 
 
@@ -207,12 +216,13 @@ def test_preprocess_act(test_worker_config: ASRWorkerConfig, tmpdir: Path) -> No
     batch_size = n_audios - 1
     audio_batch = tmpdir / "audio_batch.txt"
     batch = [
-        FilesystemDocument(
+        Document(
             id=f"doc-{i}",
+            language=DatashareLanguage("ENGLISH"),
+            root_document=f"root-{i}",
             path=Path(str(i)),
-            location=DocumentLocation.ARTIFACTS,
             index=TEST_PROJECT,
-            resource_name=f"doc-{i}.wav",
+            metadata={"tika_metadata_resourcename": f"doc-{i}.wav"},
         )
         for i in range(n_audios)
     ]
@@ -276,16 +286,31 @@ def test_postprocess_act(tmpdir: Path) -> None:
     postprocessor = MockPostprocessor()
     project = TEST_PROJECT
     artifacts_root = Path(tmpdir)
-    doc_ids = [f"{str(i) * 4}-doc-{i}" for i in range(3)]
+    docs = [
+        Document(
+            id=f"{str(i) * 4}-doc-{i}",
+            language=DatashareLanguage("ENGLISH"),
+            root_document=f"root-{i}",
+            path=Path(str(i)),
+            index=TEST_PROJECT,
+            metadata={"tika_metadata_resourcename": f"doc-{i}.wav"},
+        )
+        for i in range(3)
+    ]
     # When
-    postprocess_act(
-        postprocessor,
+    routes = postprocess_act(
         INFERENCE_RESULTS,
-        doc_ids,
+        docs,
+        postprocessor,
         args,
         artifacts_root=artifacts_root,
     )
     # Then
+    assert routes == [
+        ("root-0", "0000-doc-0"),
+        ("root-1", "1111-doc-1"),
+        ("root-2", "2222-doc-2"),
+    ]
     expected_artifact_dirs = [
         artifacts_root / project / "00" / "00" / "0000-doc-0",
         artifacts_root / project / "11" / "11" / "1111-doc-1",
@@ -316,17 +341,17 @@ async def test_write_audio_search_results(tmpdir: Path) -> None:
     root = Path(tmpdir)
     batch_size = 2
 
-    async def results() -> AsyncGenerator[FilesystemDocument, None]:
+    async def results() -> AsyncGenerator[Document, None]:
         res = ["doc-0", "doc-1", "doc-2"]
         for r in res:
-            fs_doc = FilesystemDocument(
+            doc = Document(
                 id=r,
                 path=Path(f"{r}.wav"),
                 index=TEST_PROJECT,
-                location=DocumentLocation.WORKDIR,
-                resource_name=f"{r}.wav",
+                language=DatashareLanguage("ENGLISH"),
+                metadata={"tika_metadata_resourcename": f"{r}.wav"},
             )
-            yield fs_doc
+            yield doc
 
     # When
     results = write_audio_batches(results(), root=root, batch_size=batch_size)
@@ -335,11 +360,11 @@ async def test_write_audio_search_results(tmpdir: Path) -> None:
     async def expected_content() -> AsyncGenerator[str, None]:
         contents = [
             [
-                '{"id":"doc-0","path":"doc-0.wav","index":"test-project","location":"workdir","resource_name":"doc-0.wav"}',
-                '{"id":"doc-1","path":"doc-1.wav","index":"test-project","location":"workdir","resource_name":"doc-1.wav"}',
+                '{"id":"doc-0","language":"ENGLISH","index":"test-project","path":"doc-0.wav","metadata":{"tika_metadata_resourcename":"doc-0.wav"}}',
+                '{"id":"doc-1","language":"ENGLISH","index":"test-project","path":"doc-1.wav","metadata":{"tika_metadata_resourcename":"doc-1.wav"}}',
             ],
             [
-                '{"id":"doc-2","path":"doc-2.wav","index":"test-project","location":"workdir","resource_name":"doc-2.wav"}'
+                '{"id":"doc-2","language":"ENGLISH","index":"test-project","path":"doc-2.wav","metadata":{"tika_metadata_resourcename":"doc-2.wav"}}'
             ],
         ]
         for line in contents:
@@ -351,3 +376,54 @@ async def test_write_audio_search_results(tmpdir: Path) -> None:
         async for p, expected_content in streamed:
             assert p.exists()
             assert p.read_text() == expected_content
+
+
+@pytest.fixture
+def with_transcribed_docs(
+    with_audio_docs: list[Document], test_worker_config: ASRWorkerConfig
+) -> list[tuple[Document, str]]:
+    artifacts_root = test_worker_config.artifacts_root
+    transcriptions = []
+    args = ASRArgs(project=TEST_PROJECT, docs=[], batch_size=2)
+    manifest_entry = TranscriptionManifestEntry.complete(args, confidence=1.0)
+    for doc_i, doc in enumerate(with_audio_docs):
+        artifact_factory = partial(
+            TranscriptionArtifact,
+            doc_id=doc.id,
+            project=TEST_PROJECT,
+            manifest_entry=manifest_entry,
+        )
+        transcription = f"transcription_{doc_i}"
+        transcriptions.append(transcription)
+        asr_result = ASRResult(transcription=[(0, 1, transcription)])
+        write_transcription(asr_result, artifact_factory, artifacts_root)
+    return list(zip(with_audio_docs, transcriptions, strict=True))
+
+
+async def test_index_transcriptions_act(
+    with_transcribed_docs: list[tuple[Document, str]],
+    test_es_client: ESClient,
+    test_worker_config: ASRWorkerConfig,
+) -> None:
+    # Given
+    target_bulk_char_size = 1  # let's index each doc separately
+    docs, transcriptions = zip(*with_transcribed_docs, strict=True)
+    docs = list(docs)
+    routes = [(d.root_document, d.id) for d in docs]
+    transcriptions = list(transcriptions)
+    # When
+    n_docs = await index_transcriptions_act(
+        routes,
+        project=TEST_PROJECT,
+        es_client=test_es_client,
+        artifact_root=test_worker_config.artifacts_root,
+        target_bulk_char_size=target_bulk_char_size,
+    )
+    # Then
+    assert n_docs == len(docs)
+    contents = []
+    docs_ids = [d.id for d in docs]
+    body = {"query": ids_query(docs_ids)}
+    async for res in test_es_client.poll_search_pages(index=TEST_PROJECT, body=body):
+        contents += [Document.from_es(d).content for d in res[HITS][HITS]]
+    assert contents == transcriptions

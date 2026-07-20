@@ -1,9 +1,5 @@
 ASR_WORKER_NAME = "asr-worker"
 
-ONE_MINUTE = 60
-
-TEN_MINUTES = ONE_MINUTE * 10
-
 ASR_TASK_QUEUE = "transcription-tasks"
 
 PARAKEET = "parakeet"
@@ -20,6 +16,7 @@ PREPROCESS_ACTIVITY = "asr.transcription.preprocess"
 SEARCH_AUDIOS_ACTIVITY = "asr.transcription.search-audios"
 RUN_INFERENCE_ACTIVITY = "asr.transcription.infer"
 POSTPROCESS_ACTIVITY = "asr.transcription.postprocess"
+INDEX_TRANSCRIPTION_ACTIVITY = "asr.transcription.index"
 
 SUPPORTED_CONTENT_TYPES = {
     "audio/aac",

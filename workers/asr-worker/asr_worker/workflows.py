@@ -9,7 +9,7 @@ from icij_common.es import has_id
 from pydantic import TypeAdapter
 from temporalio import workflow
 
-from .constants import ASR_WORKFLOW, TEN_MINUTES
+from .constants import ASR_WORKFLOW
 from .objects import ASRArgs, ASRResponse
 
 with workflow.unsafe.imports_passed_through():
@@ -18,6 +18,11 @@ with workflow.unsafe.imports_passed_through():
 _ASR_INPUTS_TYPE_ADAPTER = TypeAdapter(ASRArgs)
 
 logger = logging.getLogger(__name__)
+
+AUDIO_SEARCH_TIMEOUT = timedelta(minutes=10)
+INFERENCE_TIMEOUT = timedelta(minutes=30)
+INDEXATION_TIMEOUT = timedelta(hours=1)
+POSTPROCESSING_TIMEOUT = timedelta(minutes=10)
 
 
 class TaskQueues(StrEnum):
@@ -40,7 +45,7 @@ class ASRWorkflow(WorkflowWithProgress):
         batch_paths = await execute_activity(
             ASRActivities.search_audio_paths,
             args=search_args,
-            start_to_close_timeout=timedelta(seconds=TEN_MINUTES),
+            start_to_close_timeout=AUDIO_SEARCH_TIMEOUT,
             task_queue=TaskQueues.IO,
         )
         # Preprocessing
@@ -54,7 +59,7 @@ class ASRWorkflow(WorkflowWithProgress):
             execute_activity(
                 ASRActivities.preprocess,
                 args=a,
-                start_to_close_timeout=timedelta(seconds=TEN_MINUTES),
+                start_to_close_timeout=timedelta(minutes=10),
                 task_queue=TaskQueues.CPU,
             )
             for a in preprocess_args
@@ -75,7 +80,7 @@ class ASRWorkflow(WorkflowWithProgress):
                 task_queue=TaskQueues.INFERENCE_GPU,
                 args=b,
                 # TODO: in practice we should parse the config to find out
-                start_to_close_timeout=timedelta(seconds=TEN_MINUTES),
+                start_to_close_timeout=INFERENCE_TIMEOUT,
                 heartbeat_timeout=timedelta(minutes=3),
             )
             for b in inference_args
@@ -84,7 +89,7 @@ class ASRWorkflow(WorkflowWithProgress):
         inference_results = await gather(*inference_acts)
         logger.info("inference complete !")
         # Postprocessing
-        postprocessing_ins = list(
+        postprocessing_args = list(
             zip(
                 inference_results,
                 batch_paths,
@@ -97,15 +102,34 @@ class ASRWorkflow(WorkflowWithProgress):
             execute_activity(
                 ASRActivities.postprocess,
                 args=i,
-                start_to_close_timeout=timedelta(seconds=TEN_MINUTES),
+                start_to_close_timeout=POSTPROCESSING_TIMEOUT,
                 task_queue=TaskQueues.CPU,
             )
-            for i in postprocessing_ins
+            for i in postprocessing_args
         ]
         logger.info("running postprocessing...")
-        n_transcribed = await gather(*postprocessing_acts)
-        n_transcribed = sum(n_transcribed)
+        routes_batches = await gather(*postprocessing_acts)
         logger.info("postprocessing complete !")
+        # Indexing
+        indexing_args = list(
+            zip(
+                routes_batches,
+                repeat(args.project),
+                repeat(args.indexing),
+                strict=False,
+            )
+        )
+        indexing_acts = [
+            execute_activity(
+                ASRActivities.index_transcriptions,
+                args=a,
+                start_to_close_timeout=INDEXATION_TIMEOUT,
+                task_queue=TaskQueues.IO,
+            )
+            for a in indexing_args
+        ]
+        n_transcribed = await gather(*indexing_acts)
+        n_transcribed = sum(n_transcribed)
         return ASRResponse(n_transcribed=n_transcribed)
 
 

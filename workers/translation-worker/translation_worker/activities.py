@@ -1,6 +1,6 @@
 import asyncio
 import logging
-from collections.abc import AsyncGenerator, AsyncIterator, Callable, Iterable
+from collections.abc import AsyncGenerator, AsyncIterator, Iterable
 from functools import partial
 from typing import Any, cast
 
@@ -12,6 +12,7 @@ from datashare_python.utils import (
     ActivityWithProgress,
     activity_defn,
     config_cache_key,
+    publish_and_consume,
     to_raw_async_progress,
 )
 from elasticsearch._async.helpers import async_bulk
@@ -212,7 +213,7 @@ async def translate_docs_act(
     consumer = asyncio.create_task(
         _write_translations_to_es(es_client, queue=es_queue, project=project)
     )
-    n_docs, _ = await _publish_and_consume(
+    n_docs, _ = await publish_and_consume(
         publisher, publisher_callback, consumer=consumer
     )
     return n_docs
@@ -404,34 +405,6 @@ def _has_language(doc: dict, language: str) -> bool:
 
 def _with_doc_type(query: dict[str, Any]) -> dict[str, Any]:
     return and_query(query, has_type(type_field="type", type_value=ES_DOCUMENT_TYPE))
-
-
-async def _publish_and_consume(
-    publisher: asyncio.Task,
-    publisher_completion_callback: Callable[[], None],
-    *,
-    consumer: asyncio.Task,
-) -> tuple[Any, Any]:
-    # Publish and consume concurrently
-    logger.debug("starting publish and subscribe")
-    done, pending = await asyncio.wait(
-        [publisher, consumer], return_when=asyncio.FIRST_COMPLETED
-    )
-    for d in done:
-        # Stop everything case of exception
-        exc = d.exception()
-        if exc:
-            for p in pending:
-                p.cancel()
-            raise exc
-    # Wait for publish to be done and push the poison pill to stop consuming
-    p_res = await publisher
-    publisher_completion_callback()
-    logger.debug("done publishing, waiting for consumer to complete...")
-    # Wait for consumption to be done
-    c_res = await consumer
-    logger.debug("done consuming !")
-    return p_res, c_res
 
 
 ACTIVITIES = [
