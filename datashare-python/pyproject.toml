@@ -45,8 +45,12 @@ path = "datashare_python/template.py"
 
 [tool.hatch.build.targets.sdist]
 only-include = ["datashare_python"]
+artifacts = [
+  "datashare_python/worker-template.tar.gz"
+]
 
 [tool.hatch.build.targets.wheel]
+only-include = ["datashare_python"]
 artifacts = [
   "datashare_python/worker-template.tar.gz"
 ]
