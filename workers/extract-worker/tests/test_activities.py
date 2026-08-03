@@ -182,7 +182,7 @@ async def test_extract_markdown_content_act(
         manifest[ArtifactType.STRUCTURE.value]
     )
     assert entry.status is ManifestEntryStatus.COMPLETE
-    assert entry.pages.byte_ranges
+    assert entry.pages.pagination.byte_ranges
     assert entry.pages.total == 2
     md_dir = d / "structure"
     assert md_dir.exists()

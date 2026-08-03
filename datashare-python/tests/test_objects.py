@@ -7,12 +7,13 @@ import pytest
 from datashare_python.conftest import TEST_PROJECT
 from datashare_python.constants import TIKA_METADATA_RESOURCENAME
 from datashare_python.objects import (
-    BasePagination,
     ByteRangesPagination,
     DatashareLanguage,
     Document,
     DocumentLocation,
     FilesystemDocument,
+    FilesystemPagination,
+    Pages,
     Task,
     TaskState,
 )
@@ -99,18 +100,42 @@ def test_invalid_datashare_language_should_raise(
         type_adapter.validate_python(language)
 
 
-def test_pagination_serde() -> None:
-    # Given
-    pagination = ByteRangesPagination(total=3, byte_ranges=[(0, 1), (1, 2), (2, 3)])
-    ta = TypeAdapter(BasePagination)
+@pytest.mark.parametrize(
+    ("pages", "expected_serialized"),
+    [
+        (
+            Pages(
+                pagination=ByteRangesPagination(byte_ranges=[(0, 1), (1, 2), (2, 3)]),
+                total=3,
+            ),
+            {
+                "pagination": {
+                    "byteRanges": [[0, 1], [1, 2], [2, 3]],
+                    "type": "byteRanges",
+                },
+                "total": 3,
+            },
+        ),
+        (
+            Pages(pagination=FilesystemPagination(), total=3),
+            {"pagination": {"type": "filesystem"}, "total": 3},
+        ),
+    ],
+)
+def test_pages_serde(pages: Pages, expected_serialized: dict) -> None:
     # When
-    serialized = pagination.model_dump_json(by_alias=True)
-    deserialized = ta.validate_json(serialized)
+    serialized = pages.model_dump_json(by_alias=True)
+    deserialized = Pages.model_validate_json(serialized)
     # Then
-    expected_serialized = {
-        "type": "byteRanges",
-        "total": 3,
-        "byteRanges": [[0, 1], [1, 2], [2, 3]],
-    }
     assert json.loads(serialized) == expected_serialized
-    assert deserialized == pagination
+    assert deserialized == pages
+
+
+def test_pages_validation_should_raise_for_inconsistent_byte_ranges() -> None:
+    # When
+    expected = "byte_ranges must match total"
+    with pytest.raises(ValidationError, match=expected):
+        Pages(
+            pagination=ByteRangesPagination(byte_ranges=[(0, 1), (1, 2), (2, 3)]),
+            total=2,
+        )

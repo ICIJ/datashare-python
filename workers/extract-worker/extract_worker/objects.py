@@ -2,11 +2,11 @@ from typing import Any, ClassVar, Self
 
 from datashare_python.objects import (
     ArtifactType,
-    ByteRangesPagination,
     DatashareModel,
     DocArtifact,
     FilesystemDocument,
     ManifestEntry,
+    Pages,
     TaskArgs,
 )
 from extract_core import (
@@ -47,7 +47,7 @@ class StructureArtifact(DocArtifact):
 
 class StructureManifestEntry(ManifestEntry):
     confidence: float | None = None
-    pages: ByteRangesPagination
+    pages: Pages
 
 
 class ProcessingReport(DatashareModel):
