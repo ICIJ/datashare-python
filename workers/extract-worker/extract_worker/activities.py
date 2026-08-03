@@ -13,6 +13,7 @@ from datashare_python.objects import (
     ByteRangesPagination,
     Document,
     DocumentLocation,
+    Pages,
 )
 from datashare_python.types_ import AsyncProgressRateHandler
 from datashare_python.utils import (
@@ -219,8 +220,9 @@ async def extract_markdown_content_act(
             n_successes_pages += doc.n_pages
             md_path = output_dir / extract_res.output.path
             pages = extract_res.output.pages
-            pages = ByteRangesPagination(
-                total=pages.total, byte_ranges=pages.byte_ranges
+            pages = Pages(
+                total=pages.total,
+                pagination=ByteRangesPagination(byte_ranges=pages.byte_ranges),
             )
             manifest_entry = manifest_entry_factory(pages=pages)
             artifact = StructureArtifact(

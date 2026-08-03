@@ -317,13 +317,6 @@ class PaginationType(StrEnum):
     BYTE_RANGES = "byteRanges"
 
 
-class BasePagination(DatashareModel, Registrable, ABC):
-    registry_key: ClassVar[str] = Field(frozen=True, default="type")
-
-    total: int
-    type: ClassVar[PaginationType] = Field(frozen=True)
-
-
 def _validate_pages_range(v: Any) -> None:
     if not isinstance(v, list):
         msg = f"expected a list, got {type(v)}"
@@ -345,6 +338,11 @@ def _validate_pages_range(v: Any) -> None:
 PagesRange = Annotated[list[tuple[int, int]], AfterValidator(_validate_pages_range)]
 
 
+class BasePagination(Registrable, DatashareModel):
+    registry_key: ClassVar[str] = Field(frozen=True, default="type")
+    type: ClassVar[PaginationType] = Field(frozen=True)
+
+
 @BasePagination.register(PaginationType.FILESYSTEM)
 class FilesystemPagination(BasePagination):
     type: ClassVar[PaginationType] = Field(
@@ -359,22 +357,31 @@ class ByteRangesPagination(BasePagination):
     )
     byte_ranges: PagesRange
 
-    @model_validator(mode="after")
-    def byte_ranges_length_should_match_total(self) -> Self:
-        if len(self.byte_ranges) != self.total:
-            msg = (
-                f"byte_ranges must match total. Found {len(self.byte_ranges)} for"
-                f" byte_ranges and  {self.total} for total."
-            )
-            raise ValueError(msg)
-        return self
-
 
 pagination_discriminator = make_enum_discriminator("type", PaginationType)
 Pagination = Annotated[
     tagged_union(BasePagination.__subclasses__(), lambda x: x.type.default),
     Discriminator(pagination_discriminator),
 ]
+
+
+class Pages(DatashareModel):
+    total: int
+    pagination: Pagination
+
+    @model_validator(mode="after")
+    def byte_ranges_length_should_match_total(self) -> Self:
+        if (
+            isinstance(self.pagination, ByteRangesPagination)
+            and len(self.pagination.byte_ranges) != self.total
+        ):
+            n_pages = len(self.pagination.byte_ranges)
+            msg = (
+                f"byte_ranges must match total. Found {n_pages} for"
+                f" byte_ranges and  {self.total} for total."
+            )
+            raise ValueError(msg)
+        return self
 
 
 class DocArtifact(BaseModel, ABC):
