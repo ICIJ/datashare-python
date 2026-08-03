@@ -596,7 +596,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "cuda-bindings", marker = "sys_platform == 'linux' and extra == 'gpu'", specifier = "==12.9.4" },
-    { name = "datashare-python", specifier = "~=0.9.0" },
+    { name = "datashare-python", specifier = "~=0.9.9" },
     { name = "extract-core", specifier = "==0.7.1" },
     { name = "extract-python", extras = ["docling", "marker"], marker = "extra == 'base'", specifier = "==0.7.2" },
     { name = "extract-python", extras = ["mineru"], marker = "extra == 'mineru'", specifier = "==0.7.2" },

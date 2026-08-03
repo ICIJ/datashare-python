@@ -650,7 +650,7 @@ dev = [
     { name = "pytest", specifier = "~=8.1" },
     { name = "pytest-asyncio", specifier = "~=0.24" },
     { name = "redis", extras = ["hiredis"], specifier = "~=5.2.1" },
-    { name = "ruff", specifier = "==0.15.2" },
+    { name = "ruff", specifier = "==0.16.1" },
     { name = "typing-extensions", specifier = "~=4.15.0" },
 ]
 

@@ -176,7 +176,7 @@ class MockPostprocessor(Postprocessor):
         (ids_query(["doc-1"]), []),
     ],
 )
-async def test_search_audio_paths_act(
+async def test_search_audio_paths_act(  # noqa: PLR0917
     with_audio_docs: list[FilesystemDocument],
     test_es_client: ESClient,
     query: dict,

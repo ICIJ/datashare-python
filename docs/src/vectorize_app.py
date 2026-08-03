@@ -67,7 +67,7 @@ async def create_translation_tasks(
 
 
 @app.task(group=PYTHON_TASK_GROUP)
-async def translate_docs(
+async def translate_docs(  # noqa: PLR0917
     docs: list[str],
     project: str,
     target_language: str,
@@ -82,13 +82,13 @@ async def translate_docs(
 
 
 @app.task(group=PYTHON_TASK_GROUP)
-async def create_classification_tasks(
+async def create_classification_tasks(  # noqa: PLR0917
     project: str,
     language: str,
     n_workers: int,
     progress: PercentProgress,
     config: dict | None = None,
-    user: dict | None = None,  # noqa: ARG001
+    user: dict | None = None,  # noqa: ARG001,
 ) -> list[str]:
     config = TypeAdapter(Optional[ClassificationConfig]).validate_python(config)  # noqa: UP045
     return await create_classification_tasks_(
@@ -101,7 +101,7 @@ async def create_classification_tasks(
 
 
 @app.task(group=PYTHON_TASK_GROUP)
-async def classify_docs(
+async def classify_docs(  # noqa: PLR0917
     docs: list[str],
     language: str,
     project: str,

@@ -143,7 +143,7 @@ _EXPECTED_TRANSCRIPTION_1 = Transcription(
 
 
 @pytest.mark.e2e
-async def test_asr_workflow_e2e(
+async def test_asr_workflow_e2e(  # noqa: PLR0917
     test_temporal_client: TemporalClient,
     cpu_bound_worker: Worker,  # noqa: ARG001
     gpu_inference_worker: Worker,  # noqa: ARG001

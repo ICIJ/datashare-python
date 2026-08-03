@@ -78,7 +78,7 @@ to the documentation to learn how to do so."""
 
 
 @worker_app.async_command(help=_START_WORKER_HELP)
-async def start(
+async def start(  # noqa: PLR0917
     queue: Annotated[str, typer.Option("--queue", "-q", help=_WORKER_QUEUE_HELP)],
     workflows: Annotated[
         list[str] | None,

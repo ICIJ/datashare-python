@@ -86,6 +86,7 @@ The `progress` **argument name is reserved** and `icij-worker` will automaticall
 ```python hl_lines="4"
 from icij_worker.typing_ import RateProgress
 
+
 @app.task(name="hello_user_progress")
 async def hello_user_progress(user: str | None, progress: RateProgress) -> str:
     greeting = "Hello "
