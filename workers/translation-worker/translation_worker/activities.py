@@ -219,7 +219,7 @@ async def translate_docs_act(
     return n_docs
 
 
-async def _translate_and_queue(
+async def _translate_and_queue(  # noqa: PLR0917
     batches: list[Batch],
     queue: asyncio.Queue,
     project: str,

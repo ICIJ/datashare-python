@@ -389,7 +389,7 @@ def postprocess_act(
     return routes
 
 
-async def index_transcriptions_act(
+async def index_transcriptions_act(  # noqa: PLR0917
     routes: Iterable[DocRoute],
     project: str,
     es_client: ESClient,

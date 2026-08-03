@@ -13,9 +13,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-      - uses: astral-sh/ruff-action@v3
+      - uses: astral-sh/ruff-action@v4.1.0
         with:
           args: "--version" # skips test by displaying the version
+          version: "0.16.1"
       - name: Check formatting
         run: ruff format --config qa/ruff.toml --check docs
       - name: Lint test

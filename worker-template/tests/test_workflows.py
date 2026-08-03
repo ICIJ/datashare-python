@@ -73,7 +73,7 @@ async def test_ping_e2e(
 
 
 @pytest.mark.e2e
-async def test_translate_and_classify_workflow_e2e(
+async def test_translate_and_classify_workflow_e2e(  # noqa: PLR0917
     test_temporal_client_session: TemporalClient,
     populate_es: list[Document],  # noqa: ARG001
     test_es_client: ESClient,

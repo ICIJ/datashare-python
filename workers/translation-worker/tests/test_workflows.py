@@ -15,7 +15,7 @@ from .conftest import DS_ENGLISH
 
 
 @pytest.mark.e2e
-async def test_translation_workflow(
+async def test_translation_workflow(  # noqa: PLR0917
     test_temporal_client: TemporalClient,  # noqa: ARG001
     index_translation_documents: list[Document],  # noqa: ARG001
     test_es_client: ESClient,
