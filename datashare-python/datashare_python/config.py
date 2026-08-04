@@ -1,5 +1,4 @@
 from enum import StrEnum
-from pathlib import Path
 from typing import Literal
 
 from icij_common.es import ESClient
@@ -10,7 +9,7 @@ from temporalio.runtime import PrometheusConfig, Runtime, TelemetryConfig
 
 import datashare_python
 
-from .objects import BaseModel
+from .objects import BaseModel, WorkerPaths
 from .task_client import DatashareTaskClient
 from .types_ import TemporalClient
 from .utils import PYDANTIC_DATA_CONVERTER, SharedResources, close_cm_callback
@@ -124,9 +123,7 @@ class WorkerConfig(ICIJSettings, BaseModel):
 
     max_concurrent_activities: int = 5
 
-    docs_root: Path | None = None
-    artifacts_root: Path | None = None
-    workdir: Path | None = None
+    paths: WorkerPaths | None = None
 
     def to_es_client(self) -> ESClient:
         return self.elasticsearch.to_es_client(self.datashare.api_key)

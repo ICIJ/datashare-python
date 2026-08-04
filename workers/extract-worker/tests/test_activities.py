@@ -6,8 +6,13 @@ from typing import Any
 
 import pytest
 from datashare_python.conftest import TEST_PROJECT
-from datashare_python.objects import ArtifactType, DocumentLocation, ManifestEntryStatus
-from datashare_python.utils import read_jsonl
+from datashare_python.objects import (
+    ArtifactType,
+    DocumentLocation,
+    ManifestEntryStatus,
+    ProcessedFile,
+)
+from datashare_python.utils import read_jsonl_as
 from extract_core import InputDoc, OutputFormat, Pipeline, Result, Status
 from extract_core.objects import ConversionOutput, Error, Pages, SupportedExt
 from extract_worker.activities import (
@@ -23,7 +28,6 @@ from extract_worker.objects import (
     ErrorReport,
     MarkdownExtractArgs,
     MarkdownExtractResponse,
-    ProcessedDoc,
     ProcessingReport,
     StructureManifestEntry,
 )
@@ -52,19 +56,19 @@ class MockPipeline(Pipeline):
     def _from_config(cls, config: RegistrableConfig, **extras) -> FromConfig: ...
 
 
-PROCESSED_DOC_0 = ProcessedDoc(
+PROCESSED_DOC_0 = ProcessedFile(
     id="doc-0",
     path=Path(TEST_PROJECT, "symlinks", "do", "c-", "doc-0", "doc-0.pdf"),
-    index=TEST_PROJECT,
+    project=TEST_PROJECT,
     location=DocumentLocation.WORKDIR,
     resource_name="doc-0.pdf",
     n_pages=2,
 )
-PROCESSED_DOC_2 = ProcessedDoc(
+PROCESSED_DOC_2 = ProcessedFile(
     id="doc-2",
     path=Path("doc-2.docx"),
-    index=TEST_PROJECT,
-    location=DocumentLocation.ORIGINAL,
+    project=TEST_PROJECT,
+    location=DocumentLocation.FILESYSTEM,
     resource_name="doc-2.docx",
     n_pages=1,
 )
@@ -83,7 +87,7 @@ PROCESSED_DOC_2 = ProcessedDoc(
     ],
 )
 async def test_create_markdown_extraction_batches_act(
-    docs_with_cached_artifacts: list[ProcessedDoc],  # noqa: ARG001
+    docs_with_cached_artifacts: list[ProcessedFile],  # noqa: ARG001
     test_es_client: ESClient,
     docs: list[DocId] | DocumentSearchQuery | None,
     expected_batches: list[tuple[DocId, Path]],
@@ -113,9 +117,7 @@ async def test_create_markdown_extraction_batches_act(
     # Then
     results = []
     for b in batch_paths:
-        results.append(
-            [ProcessedDoc.model_validate(fs_doc) for fs_doc in read_jsonl(b)]
-        )
+        results.append(list(read_jsonl_as(b, ProcessedFile)))
     assert results == expected_batches
 
 
@@ -144,7 +146,7 @@ async def test_extract_markdown_content_act(
     batch = [PROCESSED_DOC_0, PROCESSED_DOC_2]
     extract_results = [_RES_0, _RES_2]
     pipeline = MockPipeline(extract_results)
-    workdir = test_worker_config.workdir
+    workdir = test_worker_config.paths.workdir
     output_dir = workdir / "output_dir"
     output_dir.mkdir()
 
@@ -171,7 +173,7 @@ async def test_extract_markdown_content_act(
         errors=[errors],
     )
     assert res == expected_res
-    artifacts_root = test_worker_config.artifacts_root
+    artifacts_root = test_worker_config.paths.artifacts
     d = artifacts_root / TEST_PROJECT / "do" / "c-" / "doc-0"
     assert d.exists()
     assert d.is_dir()
@@ -280,6 +282,6 @@ def test_all_supported_ext_should_have_mime_type() -> None:
     ext_to_mime_types(SupportedExt.POTX)
     for ext in SupportedExt:
         # When
-        mime_types = ext_to_mime_types(ext)
+        mtypes = ext_to_mime_types(ext)
         # Then
-        assert isinstance(mime_types, set)
+        assert isinstance(mtypes, set)

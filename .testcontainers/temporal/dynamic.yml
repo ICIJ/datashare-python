@@ -1,3 +1,6 @@
-system:
-  namespaceCacheRefreshInterval: 0.1s
-  forceSearchAttributesCacheRefreshOnRead: true
+system.namespaceCacheRefreshInterval:
+  - value: "0.1s"
+    constraints: {}
+system.forceSearchAttributesCacheRefreshOnRead:
+  - value: true
+    constraints: {}

@@ -9,11 +9,19 @@ import shutil
 import sys
 import threading
 import time
-from collections.abc import Callable, Coroutine, Generator, Iterable, Sequence
+from collections.abc import (
+    AsyncIterable,
+    Awaitable,
+    Callable,
+    Coroutine,
+    Generator,
+    Iterable,
+    Sequence,
+)
 from copy import deepcopy
 from dataclasses import dataclass
 from datetime import timedelta
-from functools import wraps
+from functools import cache, wraps
 from hashlib import sha256
 from io import BytesIO
 from pathlib import Path
@@ -21,6 +29,7 @@ from typing import Any, ParamSpec, Self, TypeVar
 from uuid import uuid4
 
 import temporalio
+from aiofile import async_open
 from lru import LRU
 from pydantic import ValidationError
 from temporalio import activity, workflow
@@ -43,7 +52,14 @@ from datashare_python.types_ import (
 )
 
 from .constants import MANIFEST_JSON, METADATA_JSON
-from .objects import BaseModel, DocArtifact, DocumentLocation, FilesystemDocument
+from .mimetypes_ import types_map
+from .objects import (
+    BaseModel,
+    DocArtifact,
+    DocumentLocation,
+    ProcessedFile,
+    WorkerPaths,
+)
 from .types_ import RawAsyncProgressHandler
 
 logger = logging.getLogger(__name__)
@@ -139,7 +155,7 @@ def _retry_policy_with_default(retry_policy: RetryPolicy | None) -> RetryPolicy:
 
 
 async def execute_activity(
-    activity: Callable,
+    activity: Callable | str,
     task_queue: str,
     arg: Any = temporalio.common._arg_unset,
     *,
@@ -169,7 +185,7 @@ def positional_args_only(activity_fn: Callable[P, T]) -> Callable[P, T]:
     params = list(sig.parameters.values())
     keyword_only = {p.name for p in params if p.kind == inspect.Parameter.KEYWORD_ONLY}
 
-    if asyncio.iscoroutinefunction(activity_fn):
+    if inspect.iscoroutinefunction(activity_fn):
 
         @wraps(activity_fn)
         async def wrapper(*args, **kwargs) -> T:
@@ -216,7 +232,7 @@ def with_retriables(
     if retriables is None:
 
         def decorator(activity_fn: Callable[P, T]) -> Callable[P, T]:
-            if asyncio.iscoroutinefunction(activity_fn):
+            if inspect.iscoroutinefunction(activity_fn):
 
                 @wraps(activity_fn)
                 async def wrapper(*args, **kwargs) -> T:
@@ -238,7 +254,7 @@ def with_retriables(
         return decorator
 
     def decorator(activity_fn: Callable[P, T]) -> Callable[P, T]:
-        if asyncio.iscoroutinefunction(activity_fn):
+        if inspect.iscoroutinefunction(activity_fn):
 
             @wraps(activity_fn)
             async def wrapper(*args, **kwargs) -> T:
@@ -274,7 +290,7 @@ def activity_defn(
         activity_fn = with_retriables(retriables)(activity_fn)
         activity_fn = activity.defn(activity_fn, name=name)
 
-        is_async = asyncio.iscoroutinefunction(activity_fn)
+        is_async = inspect.iscoroutinefunction(activity_fn)
         if is_async:
 
             @wraps(activity_fn)
@@ -307,6 +323,20 @@ def to_raw_async_progress(
         await progress(p / max_progress)
 
     return raw
+
+
+def to_incremental_async_progress(
+    progress: RawAsyncProgressHandler,
+) -> RawAsyncProgressHandler:
+
+    offset = 0
+
+    async def incremental(p: int) -> None:
+        nonlocal offset
+        offset += p
+        await progress(offset)
+
+    return incremental
 
 
 def to_raw_sync_progress(
@@ -417,23 +447,29 @@ def artifact_lock(
     artifacts_dir: Path, lock_timeout_ms: int
 ) -> Generator[None, None, None]:
     lock_path = artifacts_dir / f"{MANIFEST_JSON}.lock"
+    acquired = False
     fd = os.open(lock_path, os.O_CREAT | os.O_WRONLY)
-    with _ARTIFACT_LOCK, _set_event():
-        start = time.time()
-        timeout_s = lock_timeout_ms / 1000
-        while time.time() - start < timeout_s:
-            try:
-                fcntl.lockf(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
-            except OSError:
-                # TODO: we shouldn't block here, use asyncio instead
-                time.sleep(0.02)
-                continue
-            yield
-            return
-        msg = (
-            f"failed to acquire lock on {lock_path} in less than {lock_timeout_ms} ms."
-        )
-        raise TimeoutError(msg)
+    try:
+        with _ARTIFACT_LOCK, _set_event():
+            start = time.time()
+            timeout_s = lock_timeout_ms / 1000
+            while time.time() - start < timeout_s:
+                try:
+                    _, acquired = fcntl.lockf(fd, fcntl.LOCK_EX | fcntl.LOCK_NB), True
+                except OSError:
+                    # TODO: we shouldn't block here, use asyncio instead
+                    time.sleep(0.02)
+                    continue
+                yield
+                return
+            msg = (
+                f"failed to acquire lock on {lock_path} in less than "
+                f"{lock_timeout_ms} ms."
+            )
+            raise TimeoutError(msg)
+    finally:
+        if acquired:
+            lock_path.unlink(missing_ok=True)
 
 
 def _read_manifest_backward_compatible(
@@ -531,29 +567,28 @@ def activity_workdir(
 
 
 def symlink_embedded_document_to_workdir(
-    doc: FilesystemDocument, artifacts_root: Path, *, workdir: Path
-) -> FilesystemDocument:
+    doc: ProcessedFile, paths: WorkerPaths
+) -> ProcessedFile:
     match doc.location:
         case DocumentLocation.ARTIFACTS:
-            symlinks_dir = workdir / doc.index / "symlinks"
+            symlinks_dir = paths.workdir / doc.project / "symlinks"
             symlinks_dir.mkdir(parents=True, exist_ok=True)
-            symlink_path = Path(*doc.path.parts[:-1], doc.id)
-            # Replace the "raw" with the doc id
-            doc_ext = Path(doc.resource_name).suffix
-            symlink_path = symlink_path.relative_to(Path(doc.index))
-            symlink_path = symlinks_dir / f"{symlink_path}{doc_ext}"
+            symlink_path = Path(*doc.path.parts[1:-1], doc.resource_name)
+            symlink_path = symlinks_dir / symlink_path
+            # Replace the "raw" with the resource name
             symlink_path.parent.mkdir(parents=True, exist_ok=True)
-            artifact_path = artifacts_root / doc.path
+            artifact_path = paths.artifacts / doc.path
             with contextlib.suppress(FileExistsError):
                 os.symlink(artifact_path, symlink_path)
-            return FilesystemDocument(
-                path=symlink_path.relative_to(workdir),
+            return ProcessedFile(
+                path=symlink_path.relative_to(paths.workdir),
                 id=doc.id,
                 location=DocumentLocation.WORKDIR,
-                index=doc.index,
+                project=doc.project,
                 resource_name=doc.resource_name,
+                n_pages=doc.n_pages,
             )
-        case DocumentLocation.ORIGINAL:
+        case DocumentLocation.FILESYSTEM:
             return doc
         case _:
             raise ValueError(f"unsupported location {doc.location}")
@@ -569,12 +604,55 @@ def artifact_path(
     return root / artifacts_dir(doc_id, project=project) / artifact_type.filename
 
 
-def read_jsonl(path: Path) -> Iterable[dict]:
+def _read_jsonl(path: Path) -> Iterable[dict]:
     with path.open() as f:
         for line in f:
             line = line.strip()  # noqa: PLW2901
             if line:
                 yield json.loads(line)
+
+
+M = TypeVar("M", bound=BaseModel)
+
+
+def read_jsonl_as(path: Path, cls: type[M]) -> Iterable[M]:
+    return (cls.model_validate(d) for d in _read_jsonl(path))
+
+
+async def async_read_jsonl_as(
+    path: Path, processed_file_cls: type[M]
+) -> AsyncIterable[M]:
+    async with async_open(path, "r") as f:
+        async for line in f:
+            line = line.strip()  # noqa: PLW2901
+            if line:
+                yield processed_file_cls.model_validate_json(line)
+
+
+@cache
+def ext_to_mime_types(ext: str) -> set[str]:
+    # All particular cases
+    match ext:
+        case ".nxml" | ".dclg" | ".dclg_xml":
+            return ext_to_mime_types(".xml")
+        case ".qmd" | ".rmd":
+            return ext_to_mime_types(".md")
+        case ".xbrl":
+            return ext_to_mime_types(".html")
+        case ".j2c" | ".j2k" | ".jpc" | ".jpf" | ".jpx":
+            return ext_to_mime_types(".jp2")
+        case ".rgba":
+            return ext_to_mime_types(".png")
+        case ".svm":
+            return ext_to_mime_types(".wmf")
+        case ".uof" | ".uop" | ".uos" | ".uot":
+            return ext_to_mime_types(".xml")
+        case ".dclg.xml":
+            return ext_to_mime_types(".xml")
+    try:
+        return types_map()[ext]
+    except KeyError as e:
+        raise ValueError(f"unsupported mimetype {ext}") from e
 
 
 async def publish_and_consume(
@@ -678,6 +756,27 @@ class SharedResources:
         self._cache[key] = value
         return value
 
+    async def async_get_or_cache_resource(
+        self, key: str, default_factory: Callable[[], Awaitable[Any]]
+    ) -> Any:
+        value = self._cache.get(key, self._sentinel)
+        if value is not self._sentinel:
+            return value
+        # Get the value first to be sure to return the right one in case of concurrent
+        # access.
+        #
+        # Additionally, the factory can be long to complete (that's one of the reason
+        # we want to cache its results). Because we don't lock the factory call,
+        # together with the cache update, in case of concurrent access,
+        # quicker factories will complete first and will stay longer in the cache.
+        # This is fine, the alternative is to lock factory + cache update to avoid
+        # concurrent access but this will mean waiting for the first factory call to
+        # complete, this can potentially imply longer waits than no getting the value
+        # from the cache
+        value = await default_factory()
+        self._cache[key] = value
+        return value
+
 
 def close_cm_callback(key: str, value: Any) -> None:  # noqa: ARG001
     if hasattr(value, "__exit__"):
@@ -696,9 +795,17 @@ def enter_cm(
     return factory
 
 
+def async_enter_cm(
+    cm_factory: Callable[[], contextlib.AbstractAsyncContextManager],
+) -> Callable[[], Awaitable[contextlib.AbstractAsyncContextManager]]:  # noqa: ARG001
+    @wraps(cm_factory)
+    async def wrapper() -> contextlib.AbstractAsyncContextManager:
+        cm = cm_factory()
+        await cm.__aenter__()
+        return cm
+
+    return wrapper
+
+
 def config_cache_key(config: BaseModel) -> str:
-    # Frozen model offer natural hash
-    if not config.__class__.model_config["frozen"]:
-        msg = f"{config.__class__} is not frozen, can't compute cache key"
-        raise ValueError(msg)
-    return config.__hash__()
+    return str(hash(config))

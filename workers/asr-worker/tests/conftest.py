@@ -7,7 +7,6 @@ import pytest
 from _pytest.tmpdir import TempPathFactory
 from asr_worker.config import ASRWorkerConfig
 from asr_worker.constants import SUPPORTED_CONTENT_TYPES
-from asr_worker.dependencies import set_multiprocessing_start_method
 from datashare_python.config import (
     DatashareClientConfig,
     LogFormat,
@@ -27,11 +26,8 @@ from datashare_python.conftest import (  # noqa: F401
     test_temporal_client_session,
     test_worker_config,
     typer_asyncio_patch,
-    worker_lifetime_deps,
 )
-from datashare_python.dependencies import set_es_client, set_temporal_client
-from datashare_python.objects import Document
-from datashare_python.types_ import ContextManagerFactory
+from datashare_python.objects import Document, WorkerPaths
 from datashare_python.utils import artifacts_dir
 from icij_common.es import ESClient
 
@@ -39,30 +35,24 @@ from tests import AUDIOS_PATH
 
 
 @pytest.fixture(scope="session")
-def test_deps() -> list[ContextManagerFactory]:
-    return [set_temporal_client, set_es_client, set_multiprocessing_start_method]
-
-
-@pytest.fixture(scope="session")
 def test_worker_config(tmp_path_factory: TempPathFactory) -> ASRWorkerConfig:  # noqa: ANN001, ARG001, F811
     tmp_path = tmp_path_factory.mktemp("test-")
-    audios_root = tmp_path / "audios"
-    audios_root.mkdir()
-    artifacts_root = tmp_path / "artifacts"
-    artifacts_root.mkdir()
+    filesystem = tmp_path / "audios"
+    filesystem.mkdir()
+    artifacts = tmp_path / "artifacts"
+    artifacts.mkdir()
     workdir = tmp_path / "workdir"
     workdir.mkdir()
     logging_config = LoggingConfig(
         loggers={datashare_python.__name__: "INFO", asr_worker.__name__: "INFO"},
         format=LogFormat.DEFAULT,
     )
+    paths = WorkerPaths(filesystem=filesystem, artifacts=artifacts, workdir=workdir)
     return ASRWorkerConfig(
         logging=logging_config,
         datashare=DatashareClientConfig(url="http://localhost:8080"),
         temporal=TemporalClientConfig(host="localhost:7233"),
-        audios_root=audios_root,
-        artifacts_root=artifacts_root,
-        workdir=workdir,
+        paths=paths,
     )
 
 
@@ -130,11 +120,13 @@ def with_audio_docs(
     audio_path = AUDIOS_PATH / "asr_test.wav"
     for doc in docs:
         if doc.root_document is None:
-            config.docs_root.mkdir(parents=True, exist_ok=True)
-            shutil.copy(audio_path, config.docs_root / doc.path)
+            config.paths.filesystem.mkdir(parents=True, exist_ok=True)
+            shutil.copy(audio_path, config.paths.filesystem / doc.path)
         else:
             artifact_path = (
-                config.artifacts_root / artifacts_dir(doc.id, project=doc.index) / "raw"
+                config.paths.artifacts
+                / artifacts_dir(doc.id, project=doc.index)
+                / "raw"
             )
             artifact_path.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy(audio_path, artifact_path)

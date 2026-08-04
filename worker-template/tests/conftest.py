@@ -1,6 +1,5 @@
 import uuid
 from collections.abc import AsyncGenerator
-from typing import Any
 
 import datashare_python
 import pytest
@@ -13,13 +12,14 @@ from datashare_python.config import (
 )
 from datashare_python.conftest import (  # noqa: F401
     TEST_PROJECT,
+    dev_worker_context,
     doc_0,
     doc_1,
     doc_2,
     doc_3,
+    indexed_docs,
     populate_es,
     pytest_collection_modifyitems,
-    test_deps,
     test_es_client,
     test_es_client_session,
     test_task_client,
@@ -28,24 +28,11 @@ from datashare_python.conftest import (  # noqa: F401
     test_temporal_client_session,
     text_0,
     text_1,
-    worker_lifetime_deps,
 )
-from datashare_python.dependencies import with_dependencies
-from datashare_python.types_ import ContextManagerFactory
-from datashare_python.worker import worker_context
 from temporalio.client import Client as TemporalClient
-from worker_template.activities import (
-    ClassifyDocs,
-    CreateClassificationBatches,
-    CreateTranslationBatches,
-    TranslateDocs,
-)
 from worker_template.config_ import TranslateAndClassifyWorkerConfig
 from worker_template.workflows import (
-    PingWorkflow,
-    Pong,
     TaskQueues,
-    TranslateAndClassifyWorkflow,
 )
 
 
@@ -63,35 +50,23 @@ def test_worker_config() -> TranslateAndClassifyWorkerConfig:
 
 
 @pytest.fixture(scope="session")
-async def lifetime_deps(
-    test_deps: list[ContextManagerFactory],  # noqa: F811
-    test_worker_config: WorkerConfig,
-) -> AsyncGenerator[None, Any]:
-    ctx = "unit test application"
-    worker_id = f"test-worker-{uuid.uuid4()}"
-    async with with_dependencies(
-        test_deps, worker_config=test_worker_config, worker_id=worker_id, ctx=ctx
-    ):
-        yield
-
-
-@pytest.fixture(scope="session")
 async def workflows_worker(
     test_worker_config: WorkerConfig,  # noqa: F811
     test_temporal_client_session: TemporalClient,  # noqa: F811
-    test_deps: list[ContextManagerFactory],  # noqa: F811
 ) -> AsyncGenerator[None, None]:
     client = test_temporal_client_session
     worker_id = f"test-workflows-worker-{uuid.uuid4()}"
     task_queue = TaskQueues.WORKFLOWS
-    workflows = [PingWorkflow, TranslateAndClassifyWorkflow]
-    worker_ctx = worker_context(
+    workflows = ["translate-and-classify", "ping"]
+    dependencies = "base"
+    worker_ctx = dev_worker_context(
         worker_id,
+        is_async=True,
         workflows=workflows,
         worker_config=test_worker_config,
         client=client,
         task_queue=task_queue,
-        dependencies=test_deps,
+        dependencies=dependencies,
     )
     async with worker_ctx:
         yield
@@ -101,24 +76,47 @@ async def workflows_worker(
 async def io_worker(
     test_worker_config: WorkerConfig,  # noqa: F811
     test_temporal_client_session: TemporalClient,  # noqa: F811
-    test_deps: list[ContextManagerFactory],  # noqa: F811
 ) -> AsyncGenerator[None, None]:
     client = test_temporal_client_session
-    worker_id = f"test-io-worker-{uuid.uuid4()}"
-    pong_activity = Pong(temporal_client=client)
+    dependencies = "base"
+    worker_id = "worker-template-io"
     io_activities = [
-        pong_activity.pong,
-        CreateTranslationBatches.create_translation_batches,
-        CreateClassificationBatches.create_classification_batches,
+        "pong-async",
+        "create-translation-batches",
+        "create-classification-batches",
     ]
     task_queue = TaskQueues.IO
-    worker_ctx = worker_context(
+    worker_ctx = dev_worker_context(
         worker_id,
+        is_async=True,
         activities=io_activities,
         worker_config=test_worker_config,
         client=client,
         task_queue=task_queue,
-        dependencies=test_deps,
+        dependencies=dependencies,
+    )
+    async with worker_ctx:
+        yield
+
+
+@pytest.fixture(scope="session")
+async def cpu_worker(
+    test_worker_config: WorkerConfig,  # noqa: F811
+    test_temporal_client_session: TemporalClient,  # noqa: F811
+) -> AsyncGenerator[None, None]:
+    client = test_temporal_client_session
+    dependencies = "base"
+    worker_id = "worker-template-cpu"
+    cpu_activities = ["pong-sync"]
+    task_queue = TaskQueues.CPU
+    worker_ctx = dev_worker_context(
+        worker_id,
+        is_async=False,
+        activities=cpu_activities,
+        worker_config=test_worker_config,
+        client=client,
+        task_queue=task_queue,
+        dependencies=dependencies,
     )
     async with worker_ctx:
         yield
@@ -128,19 +126,20 @@ async def io_worker(
 async def translation_worker(
     test_worker_config: WorkerConfig,  # noqa: F811
     test_temporal_client_session: TemporalClient,  # noqa: F811
-    test_deps: list[ContextManagerFactory],  # noqa: F811
 ) -> AsyncGenerator[None, None]:
     client = test_temporal_client_session
-    worker_id = f"test-translation-worker-{uuid.uuid4()}"
-    translation_activities = [TranslateDocs.translate_docs]
+    worker_id = "worker-template-translation"
+    translation_activities = ["translate-docs"]
     task_queue = TaskQueues.TRANSLATE_GPU
-    worker_ctx = worker_context(
+    deps = "base"
+    worker_ctx = dev_worker_context(
         worker_id,
+        is_async=True,
         activities=translation_activities,
         worker_config=test_worker_config,
         client=client,
         task_queue=task_queue,
-        dependencies=test_deps,
+        dependencies=deps,
     )
     async with worker_ctx:
         yield
@@ -150,19 +149,20 @@ async def translation_worker(
 async def classification_worker(
     test_worker_config: WorkerConfig,
     test_temporal_client_session: TemporalClient,  # noqa: F811
-    test_deps: list[ContextManagerFactory],  # noqa: F811
 ) -> AsyncGenerator[None, None]:
     client = test_temporal_client_session
-    worker_id = f"test-classification-worker-{uuid.uuid4()}"
-    classification_activities = [ClassifyDocs.classify_docs]
+    worker_id = "worker-template-classification"
+    classification_activities = ["classify-docs"]
     task_queue = TaskQueues.CLASSIFY_GPU
-    worker_ctx = worker_context(
+    deps = "base"
+    worker_ctx = dev_worker_context(
         worker_id,
+        is_async=True,
         activities=classification_activities,
         worker_config=test_worker_config,
         client=client,
         task_queue=task_queue,
-        dependencies=test_deps,
+        dependencies=deps,
     )
     async with worker_ctx:
         yield

@@ -3,7 +3,7 @@ log:
   level: { { default .Env.LOG_LEVEL "info" } }
 
 dynamicConfigClient:
-  filepath: '.config/temporalio/dynamic.yml'
+  filepath: '/etc/temporal/.config/temporalio/dynamic.yml'
   pollInterval: '10s'
 
 system:

@@ -1,12 +1,13 @@
 import asyncio
 import logging
 from collections.abc import AsyncGenerator, AsyncIterator, Iterable
+from enum import StrEnum
 from functools import partial
 from typing import Any, cast
 
 from aiostream.stream import chain
 from datashare_python.dependencies import lifespan_es_client, lifespan_worker_config
-from datashare_python.objects import DatashareLanguage, Document, Translation
+from datashare_python.objects import DatashareLanguage, Document, Language, Translation
 from datashare_python.types_ import AsyncProgressRateHandler
 from datashare_python.utils import (
     ActivityWithProgress,
@@ -41,7 +42,6 @@ from .config import (
 )
 from .constants import BATCHING_DOC_SOURCES, TRANSLATION_DOC_SOURCES
 from .dependencies import lifespan_sentence_splitter_cache, lifespan_translator_cache
-from .objects import Language
 from .processors import SentenceSplitter, Translator
 
 logger = logging.getLogger(__name__)
@@ -50,14 +50,20 @@ DocId = str
 Batch = list[DocId]
 
 
+class Activity(StrEnum):
+    WORKER_CONFIG = "translation.worker-config"
+    CREATE_TRANSLATION_BATCHES = "translation.create-translation-batches"
+    TRANSLATE_DOCS = "translation.translate-docs"
+
+
 class TranslationActivities(ActivityWithProgress):
-    @activity_defn(name="translation.worker-config")
+    @activity_defn(name=Activity.WORKER_CONFIG)
     async def translation_worker_config(self) -> TranslationWorkerConfig:
         logger.info("loading worker configuration...")
         worker_config = cast(TranslationWorkerConfig, lifespan_worker_config())
         return worker_config
 
-    @activity_defn(name="translation.create-translation-batches")
+    @activity_defn(name=Activity.CREATE_TRANSLATION_BATCHES)
     async def create_translation_batches(
         self, project: str, query: dict[str, Any]
     ) -> list[tuple[Language, list[Batch]]]:
@@ -77,7 +83,7 @@ class TranslationActivities(ActivityWithProgress):
         logger.info("translation batches created !")
         return batches
 
-    @activity_defn(name="translation.translate-docs")
+    @activity_defn(name=Activity.TRANSLATE_DOCS)
     async def translate_docs(
         self,
         batches: list[Batch],
@@ -219,6 +225,8 @@ async def translate_docs_act(
     return n_docs
 
 
+# TODO: avoid all the args by passing a poller object that returns docs given batch of
+#  ids (rather than passing the client + project)
 async def _translate_and_queue(  # noqa: PLR0917
     batches: list[Batch],
     queue: asyncio.Queue,

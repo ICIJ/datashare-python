@@ -1,9 +1,9 @@
 import contextlib
 import logging
-import mimetypes
 import os
 from collections.abc import AsyncIterable
-from functools import cache, partial
+from enum import StrEnum
+from functools import partial
 from itertools import chain
 from pathlib import Path
 from typing import Any, cast
@@ -14,16 +14,18 @@ from datashare_python.objects import (
     Document,
     DocumentLocation,
     Pages,
+    ProcessedFile,
 )
 from datashare_python.types_ import AsyncProgressRateHandler
 from datashare_python.utils import (
     ActivityWithProgress,
     activity_defn,
     activity_workdir,
-    read_jsonl,
+    read_jsonl_as,
     to_raw_async_progress,
     write_artifact,
 )
+from datashare_python.utils import ext_to_mime_types as _ext_to_mime_types
 from extract_core import (
     InputDoc,
     OutputFormat,
@@ -40,7 +42,6 @@ from icij_common.es import (
     ES_DOCUMENT_TYPE,
     HITS,
     QUERY,
-    SOURCE,
     ESClient,
     ESSort,
     and_query,
@@ -51,14 +52,12 @@ from pydantic import TypeAdapter
 from temporalio import activity
 
 from .config import ExtractWorkerConfig
-from .mimetypes_ import types_map
 from .objects import (
     DocId,
     DocumentSearchQuery,
     ErrorReport,
     MarkdownExtractArgs,
     MarkdownExtractResponse,
-    ProcessedDoc,
     ProcessingReport,
     StructureArtifact,
     StructureManifestEntry,
@@ -66,18 +65,23 @@ from .objects import (
 
 logger = logging.getLogger(__name__)
 
-mimetypes.init()
 PIPELINE_CONFIG_TA = TypeAdapter(PipelineConfig)
 
 
+class Activity(StrEnum):
+    WORKER_CONFIG = "extract.worker-config"
+    CREATE_MD_BATCHES = "extract.create-markdown-batches"
+    EXTRACT_MD_CONTENT = "extract.extract-markdown-content"
+
+
 class MarkdownExtract(ActivityWithProgress):
-    @activity_defn(name="extract.worker-config")
+    @activity_defn(name=Activity.WORKER_CONFIG)
     async def extract_worker_config(self) -> ExtractWorkerConfig:
         logger.debug("fetching worker config...")
         worker_config = cast(ExtractWorkerConfig, lifespan_worker_config())
         return worker_config
 
-    @activity_defn(name="extract.create-markdown-batches")
+    @activity_defn(name=Activity.CREATE_MD_BATCHES)
     async def create_markdown_extract_batches(
         self,
         project: str,
@@ -85,9 +89,9 @@ class MarkdownExtract(ActivityWithProgress):
         config: PipelineConfig,
     ) -> list[Path]:
         es_client = lifespan_es_client()
-        worker_config = cast(ExtractWorkerConfig, lifespan_worker_config())
-        workdir = worker_config.workdir
-        artifacts_root = worker_config.artifacts_root
+        worker_config = lifespan_worker_config()
+        workdir = worker_config.paths.workdir
+        artifacts_root = worker_config.paths.artifacts
         output_dir = activity_workdir(workdir, project)
         output_dir.mkdir(parents=True, exist_ok=True)
         target_n_pages_per_batch = worker_config.markdown.target_n_pages_per_batch
@@ -109,7 +113,7 @@ class MarkdownExtract(ActivityWithProgress):
         logger.debug("created extraction batches !")
         return batch_paths
 
-    @activity_defn(name="extract.extract-markdown-content")
+    @activity_defn(name=Activity.EXTRACT_MD_CONTENT)
     async def extract_markdown_content(
         self,
         batch: Path,
@@ -125,8 +129,8 @@ class MarkdownExtract(ActivityWithProgress):
         )
 
         pipeline = Pipeline.from_config(args.config)
-        worker_config = cast(ExtractWorkerConfig, lifespan_worker_config())
-        workdir = worker_config.workdir
+        worker_config = lifespan_worker_config()
+        workdir = worker_config.paths.workdir
         output_dir = activity_workdir(workdir, args.project)
         output_dir.mkdir(parents=True, exist_ok=True)
         batch = workdir / batch
@@ -170,9 +174,6 @@ async def create_markdown_extract_batches_act(
         yield p
 
 
-_BatchTypeAdapter = TypeAdapter(list[ProcessedDoc])
-
-
 async def extract_markdown_content_act(
     pipeline: Pipeline,
     batch: Path,
@@ -182,20 +183,11 @@ async def extract_markdown_content_act(
     output_dir: Path,
     progress: AsyncProgressRateHandler | None = None,
 ) -> MarkdownExtractResponse:
-    docs = _BatchTypeAdapter.validate_python(list(read_jsonl(batch)))
+    docs = list(read_jsonl_as(batch, ProcessedFile))
     if progress is not None:
         progress = to_raw_async_progress(progress, max_progress=len(docs))
-    docs_root = worker_config.docs_root
-    artifacts_root = worker_config.artifacts_root
-    workdir = worker_config.workdir
-    input_docs = (
-        InputDoc.from_path(
-            d.locate(
-                original_root=docs_root, artifacts_root=artifacts_root, workdir=workdir
-            )
-        )
-        for d in docs
-    )
+    artifacts_root = worker_config.paths.artifacts
+    input_docs = (InputDoc.from_path(d.locate(worker_config.paths)) for d in docs)
     results = pipeline.extract_content(
         input_docs, output_format=OutputFormat.MARKDOWN, output_path=output_dir
     )
@@ -226,7 +218,7 @@ async def extract_markdown_content_act(
             )
             manifest_entry = manifest_entry_factory(pages=pages)
             artifact = StructureArtifact(
-                project=doc.index,
+                project=doc.project,
                 doc_id=doc.id,
                 artifact=md_path,
                 manifest_entry=manifest_entry,
@@ -270,7 +262,7 @@ def _build_doc_query(
 
 async def _search_docs(
     es_client: ESClient, project: str, query: dict[str, Any], sort: ESSort = None
-) -> AsyncIterable[ProcessedDoc]:
+) -> AsyncIterable[ProcessedFile]:
     async for page in es_client.poll_search_pages(
         index=project,
         body=query,
@@ -278,18 +270,12 @@ async def _search_docs(
         _source_includes=_DOC_CONTENT_SOURCES,
     ):
         for hit in page[HITS][HITS]:
-            n_pages = None
-            meta = hit[SOURCE].get(DOC_METADATA)
-            if meta is not None:
-                n_pages = meta.get("tika_metadata_xmptpg_npages")
-            yield ProcessedDoc.from_fs_doc(
-                Document.from_es(hit).to_filesystem(), n_pages=n_pages
-            )
+            yield ProcessedFile.from_doc(Document.from_es(hit))
 
 
 async def _batch_by_n_pages(
-    docs: AsyncIterable[ProcessedDoc], target_n_pages_per_batch: int
-) -> AsyncIterable[list[ProcessedDoc]]:
+    docs: AsyncIterable[ProcessedFile], target_n_pages_per_batch: int
+) -> AsyncIterable[list[ProcessedFile]]:
     current_n_pages = 0
     current_batch = []
     async for d in docs:
@@ -304,7 +290,7 @@ async def _batch_by_n_pages(
 
 
 async def _write_batches(
-    batches: AsyncIterable[list[ProcessedDoc]], root: Path
+    batches: AsyncIterable[list[ProcessedFile]], root: Path
 ) -> AsyncIterable[Path]:
     batch_id = 0
     async for batch in batches:
@@ -317,51 +303,37 @@ async def _write_batches(
 
 
 def _symlink_embedded_processed_doc_to_workdir(
-    doc: ProcessedDoc, artifacts_root: Path, *, workdir: Path
-) -> ProcessedDoc:
+    doc: ProcessedFile, artifacts_root: Path, *, workdir: Path
+) -> ProcessedFile:
     match doc.location:
         case DocumentLocation.ARTIFACTS:
-            symlinks_dir = workdir / doc.index / "symlinks"
+            symlinks_dir = workdir / doc.project / "symlinks"
             symlinks_dir.mkdir(parents=True, exist_ok=True)
             symlink_path = Path(*doc.path.parts[:-1], doc.id)
             # Replace the "raw" with the doc id
             doc_ext = Path(doc.resource_name).suffix
-            symlink_path = symlink_path.relative_to(Path(doc.index))
+            symlink_path = symlink_path.relative_to(Path(doc.project))
             symlink_path = symlinks_dir / f"{symlink_path}{doc_ext}"
             symlink_path.parent.mkdir(parents=True, exist_ok=True)
             artifact_path = artifacts_root / doc.path
             with contextlib.suppress(FileExistsError):
                 os.symlink(artifact_path, symlink_path)
-            return ProcessedDoc(
+            return ProcessedFile(
                 path=symlink_path.relative_to(workdir),
                 id=doc.id,
                 location=DocumentLocation.WORKDIR,
-                index=doc.index,
+                project=doc.project,
                 resource_name=doc.resource_name,
                 n_pages=doc.n_pages,
             )
-        case DocumentLocation.ORIGINAL:
+        case DocumentLocation.FILESYSTEM:
             return doc
         case _:
             raise ValueError(f"unsupported location {doc.location}")
 
 
-@cache
 def ext_to_mime_types(ext: SupportedExt) -> set[str]:
-    # All particular cases
-    match ext:
-        case SupportedExt.NXML | SupportedExt.DCLG | SupportedExt.DCLG_XML:
-            return ext_to_mime_types(SupportedExt.XML)
-        case SupportedExt.ADOC | SupportedExt.ASCIIDOC:
-            return {"text/x-asciidoc"}
-        case SupportedExt.QMD | SupportedExt.RMD:
-            return ext_to_mime_types(SupportedExt.MD)
-        case SupportedExt.XBRL:
-            return ext_to_mime_types(SupportedExt.HTLM)
-    try:
-        return types_map()[ext]
-    except KeyError as e:
-        raise ValueError(f"unsupported mimetype {ext}") from e
+    return _ext_to_mime_types(ext.value)
 
 
 ACTIVITIES = [

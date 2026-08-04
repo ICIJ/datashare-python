@@ -306,8 +306,11 @@ async def test__create_translation_batches__splits_batch_if_max_text_len_exceede
 # translate_docs_act
 
 
-async def test_translate_docs_act__returns_zero_for_empty_batch(monkeypatch) -> None:
+async def test_translate_docs_act__returns_zero_for_empty_batch(
+    monkeypatch, test_worker_config: TranslationWorkerConfig
+) -> None:
     # Given
+    worker_config = test_worker_config
     batches = [[]]
     sentences = []
     translations = []
@@ -319,7 +322,7 @@ async def test_translate_docs_act__returns_zero_for_empty_batch(monkeypatch) -> 
         batches,
         project=TEST_PROJECT,
         es_client=es_client,
-        worker_config=TranslationWorkerConfig(),
+        worker_config=worker_config,
         translator=translator,
         sentence_splitter=sentence_splitter,
     )
@@ -345,9 +348,10 @@ async def _capturing_es_update(
 
 
 async def test_translate_docs_act__returns_count_of_unique_docs_translated(
-    monkeypatch,
+    monkeypatch, test_worker_config: TranslationWorkerConfig
 ) -> None:
     # Given
+    worker_config = test_worker_config
     batches = [[DOC_ID_1, DOC_ID_2]]
     sentences = [[FR_DOC_1_TEXT], [FR_DOC_2_TEXT]]
     translations = [EN_DOC_1_TEXT, EN_DOC_2_TEXT]
@@ -355,7 +359,6 @@ async def test_translate_docs_act__returns_count_of_unique_docs_translated(
     sentence_splitter = MockSentenceSplitter(sentences)
     monkeypatch.setattr(activities, "_update_docs_translation", _do_nothing_es_update)
     es_client = MockESClient([FR_DOC_1, FR_DOC_2])
-    worker_config = TranslationWorkerConfig()
     # When
     with translator.load_cm(
         source=DS_ENGLISH, target=DS_ENGLISH, worker_config=worker_config
@@ -373,9 +376,10 @@ async def test_translate_docs_act__returns_count_of_unique_docs_translated(
 
 
 async def test_translate_docs_act__sentences_from_same_doc_count_as_one(
-    monkeypatch,
+    monkeypatch, test_worker_config: TranslationWorkerConfig
 ) -> None:
     # Given
+    worker_config = test_worker_config
     batches = [[DOC_ID_1]]
     sentences = [[FR_DOC_1_TEXT, FR_DOC_2_TEXT]]
     translations = [EN_DOC_1_TEXT, EN_DOC_2_TEXT]
@@ -383,7 +387,6 @@ async def test_translate_docs_act__sentences_from_same_doc_count_as_one(
     sentence_splitter = MockSentenceSplitter(sentences)
     monkeypatch.setattr(activities, "_update_docs_translation", _do_nothing_es_update)
     es_client = MockESClient([FR_DOC_1])
-    worker_config = TranslationWorkerConfig()
     # When
     with translator.load_cm(
         source=DS_ENGLISH, target=DS_ENGLISH, worker_config=worker_config
@@ -400,8 +403,11 @@ async def test_translate_docs_act__sentences_from_same_doc_count_as_one(
     assert n_translated == 1
 
 
-async def test_translate_docs_act__es_update(monkeypatch) -> None:
+async def test_translate_docs_act__es_update(
+    monkeypatch, test_worker_config: TranslationWorkerConfig
+) -> None:
     # Given
+    worker_config = test_worker_config
     batches = [[DOC_ID_1]]
     sentences = [[FR_DOC_1_TEXT, FR_DOC_2_TEXT]]
     translations = [EN_DOC_1_TEXT, EN_DOC_2_TEXT]
@@ -411,7 +417,6 @@ async def test_translate_docs_act__es_update(monkeypatch) -> None:
     update_doc = partial(_capturing_es_update, captured=captured)
     monkeypatch.setattr(activities, "_update_docs_translation", update_doc)
     es_client = MockESClient([FR_DOC_1])
-    worker_config = TranslationWorkerConfig()
     # When
     with translator.load_cm(
         source=DS_FRENCH, target=DS_ENGLISH, worker_config=worker_config

@@ -1,0 +1,83 @@
+[project]
+name = "datashare-passport-worker"
+dynamic = ["version"]
+authors = [
+  { name = "Clément Doumouro", email = "cdoumouro@icij.org" },
+  { name = "Clément Doumouro", email = "clement.doumouro@gmail.com" },
+]
+description = "Datashare passport detection worker"
+readme = "README.md"
+requires-python = ">=3.12,<3.14"
+dependencies = [
+  "datashare-python~=0.10.0",
+  "icij-common[elasticsearch]~=0.8.3",
+]
+
+[project.optional-dependencies]
+preprocessing = [
+  "icij-passport-core[preprocessing]==0.10.7",
+]
+inference-gpu = [
+  "icij-passport-core[inference,gpu]==0.10.7"
+]
+inference-cpu = [
+  "icij-passport-core[inference,cpu]==0.10.7"
+]
+
+[tool.uv.sources]
+datashare-python = { path = "../../datashare-python", editable = true }
+
+[project.entry-points."datashare.workflows"]
+workflows = "passport_worker.workflows:WORKFLOWS"
+
+[project.entry-points."datashare.activities"]
+activities = "passport_worker.activities:ACTIVITIES"
+
+[project.entry-points."datashare.dependencies"]
+dependencies = "passport_worker.dependencies:DEPENDENCIES"
+
+[project.entry-points."datashare.worker_config_cls"]
+worker_config_cls = "passport_worker.config:WORKER_CONFIG_CLS"
+
+[dependency-groups]
+dev = [
+  "black>=26.1.0",
+  "pytest~=8.1",
+  "pytest-asyncio~=0.24",
+  "pytest-timeout==2.4.0",
+  "ruff==0.15.2",
+]
+
+[build-system]
+requires = ["hatchling", "uv-dynamic-versioning"]
+build-backend = "hatchling.build"
+package = ["passport_worker"]
+
+[tool.hatch.version]
+source = "uv-dynamic-versioning"
+
+[tool.uv-dynamic-versioning]
+fallback-version = "0.0.0"
+pattern = "default-unprefixed"
+
+[tool.hatch.build.targets.wheel]
+packages = ["passport_worker"]
+
+[tool.hatch.build.targets.sdist]
+packages = ["passport_worker"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_debug = true
+asyncio_default_fixture_loop_scope = "session"
+markers = [
+  "integration",
+  "pull",
+]
+log_cli = 1
+log_cli_level = "DEBUG"
+log_file_format = "[%(levelname)s][%(asctime)s.%(msecs)03d][%(name)s]: %(message)s"
+log_file_date_format = "%Y-%m-%d %H:%M:%S"
+
+[tool.ruff]
+target-version = "py312"

@@ -23,6 +23,7 @@ logger = logging.getLogger(__name__)
 class TaskQueues(StrEnum):
     WORKFLOWS = "datashare.workflows"
     IO = "worker-template.io"
+    CPU = "worker-template.cpu"
     TRANSLATE_GPU = "worker-template.translate-gpu"
     CLASSIFY_GPU = "worker-template.classify-gpu"
 
@@ -106,12 +107,20 @@ class TranslateAndClassifyWorkflow(WorkflowWithProgress):
 class PingWorkflow(WorkflowWithProgress):
     @workflow.run
     async def run(self, arg: dict) -> str:  # noqa: ARG002
-        logger.info("pinging !")
-        return await execute_activity(
-            Pong.pong,
+        logger.info("pinging the sync way!")
+        s = await execute_activity(
+            Pong.pong_sync,
+            task_queue=TaskQueues.CPU,
+            start_to_close_timeout=timedelta(hours=1),
+        )
+        logger.info("pinging the async way!")
+        s += " " + await execute_activity(
+            Pong.pong_async,
             task_queue=TaskQueues.IO,
             start_to_close_timeout=timedelta(hours=1),
         )
+        logger.info("done pinging !")
+        return s
 
 
 WORKFLOWS = [TranslateAndClassifyWorkflow, PingWorkflow]

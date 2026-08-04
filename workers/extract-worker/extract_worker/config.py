@@ -1,5 +1,5 @@
 from datashare_python.config import LoggingConfig, WorkerConfig
-from datashare_python.objects import DatashareModel
+from datashare_python.objects import DatashareModel, WorkerPaths
 from pydantic import Field
 
 from .constants import TorchDevice
@@ -17,6 +17,8 @@ class ExtractWorkerConfig(WorkerConfig):
     logging: LoggingConfig = _DEFAULT_LOGGING_CONFIG
 
     markdown: MarkdownExtractConfig = Field(default_factory=MarkdownExtractConfig)
+
+    paths: WorkerPaths
 
 
 WORKER_CONFIG_CLS = ExtractWorkerConfig

@@ -61,6 +61,16 @@ class DatashareWorker(Worker):
             raise ValueError("worker is not running")
         await self._async_context_run_task
 
+    async def __aexit__(self, exc_type: type[BaseException] | None, *args: Any) -> None:
+        await super().__aexit__(exc_type, *args)
+        logger.info("worker %s exited", self._config["identity"])
+
+    async def __aenter__(self) -> "DatashareWorker":
+        await super().__aenter__()
+        # TODO: remove me
+        logger.info("worker %s started working", self._config["identity"])
+        return self
+
 
 def datashare_worker(
     client: TemporalClient,
@@ -72,6 +82,7 @@ def datashare_worker(
     # Scale horizontally be default for activities, each worker processes one activity
     # at a time
     max_concurrent_activities: int = 1,
+    max_activities_per_second: float = 20.0,
     sandboxed: bool = True,
 ) -> DatashareWorker:
     if workflows is None:
@@ -117,6 +128,7 @@ def datashare_worker(
         # several of them
         workflow_task_poller_behavior=PollerBehaviorSimpleMaximum(5),
         workflow_runner=wf_runner,
+        max_activities_per_second=max_activities_per_second,
     )
 
 

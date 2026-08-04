@@ -1,5 +1,12 @@
+import asyncio
+import faulthandler
+import logging
+import multiprocessing
 import shutil
+from asyncio import AbstractEventLoop
 from collections.abc import AsyncGenerator, Generator, Sequence
+from contextlib import AbstractAsyncContextManager, asynccontextmanager
+from multiprocessing import Event
 from pathlib import Path
 
 import aiohttp
@@ -10,6 +17,7 @@ from icij_common.es import DOC_ROOT_ID, ES_DOCUMENT_TYPE, ID, ESClient
 from icij_common.test_utils import reset_env  # noqa: F401
 from pytest_asyncio import is_async_test
 from temporalio import workflow
+from temporalio.runtime import PrometheusConfig, Runtime, TelemetryConfig
 from temporalio.service import RPCError, RPCStatusCode
 
 from datashare_python.config import (
@@ -19,17 +27,14 @@ from datashare_python.config import (
     TemporalClientConfig,
     WorkerConfig,
 )
-from datashare_python.dependencies import (
-    lifespan_es_client,
-    lifespan_task_client,
-    set_es_client,
-    set_task_client,
-    with_dependencies,
-)
+from datashare_python.discovery import discover
 from datashare_python.objects import Document, TaskState
 from datashare_python.task_client import DatashareTaskClient
-from datashare_python.types_ import ContextManagerFactory, TemporalClient
-from datashare_python.utils import activity_defn
+from datashare_python.types_ import TemporalClient
+from datashare_python.utils import PYDANTIC_DATA_CONVERTER, activity_defn
+from datashare_python.worker import create_worker_id, worker_context
+
+logger = logging.getLogger(__name__)
 
 RABBITMQ_TEST_PORT = 5672
 RABBITMQ_TEST_HOST = "localhost"
@@ -84,11 +89,6 @@ class MockedWorkflow:
 
 
 @pytest.fixture(scope="session")
-def test_deps() -> list[ContextManagerFactory]:
-    return [set_es_client, set_task_client]
-
-
-@pytest.fixture(scope="session")
 def test_worker_config() -> WorkerConfig:
     logging_config = LoggingConfig(
         format=LogFormat.DEFAULT,
@@ -113,25 +113,8 @@ def test_worker_config_path(test_worker_config: WorkerConfig, tmpdir: Path) -> P
 
 
 @pytest.fixture(scope="session")
-async def worker_lifetime_deps(
-    test_deps: list[ContextManagerFactory], test_worker_config: WorkerConfig
-) -> AsyncGenerator[None, None]:
-    worker_id = "test-worker-id"
-    ctx = "test application"
-    async with with_dependencies(
-        test_deps,
-        ctx=ctx,
-        worker_id=worker_id,
-        worker_config=test_worker_config,
-    ):
-        yield
-
-
-@pytest.fixture(scope="session")
-async def test_es_client_session(
-    worker_lifetime_deps,  # noqa: ANN001, ARG001
-) -> ESClient:
-    es = lifespan_es_client()
+async def test_es_client_session(test_worker_config: WorkerConfig) -> ESClient:
+    es = test_worker_config.to_es_client()
     await es.indices.delete(index="_all")
     await es.indices.create(index=TEST_PROJECT, body=_INDEX_BODY)
     return es
@@ -147,9 +130,9 @@ async def test_es_client(test_es_client_session: ESClient) -> ESClient:
 
 @pytest.fixture(scope="session")
 async def test_task_client_session(
-    worker_lifetime_deps,  # noqa: ANN001, ARG001
+    test_worker_config: WorkerConfig,
 ) -> AsyncGenerator[DatashareTaskClient, None]:
-    task_client = lifespan_task_client()
+    task_client = test_worker_config.to_task_client()
     async with task_client:
         user, key = await task_client.create_api_key()
         task_client.authenticate(user, key)
@@ -188,17 +171,24 @@ async def test_temporal_client(
 
 
 @pytest.fixture
-async def populate_es(
-    test_es_client: ESClient,
+async def indexed_docs(
     doc_0: Document,
     doc_1: Document,
     doc_2: Document,
     doc_3: Document,
 ) -> list[Document]:
-    docs = [doc_0, doc_1, doc_2, doc_3]
-    async for _ in index_docs(test_es_client, docs=docs, index_name=TEST_PROJECT):
+    return [doc_0, doc_1, doc_2, doc_3]
+
+
+@pytest.fixture
+async def populate_es(
+    test_es_client: ESClient, indexed_docs: list[Document]
+) -> list[Document]:
+    async for _ in index_docs(
+        test_es_client, docs=indexed_docs, index_name=TEST_PROJECT
+    ):
         pass
-    return docs
+    return indexed_docs
 
 
 def index_docs_ops(
@@ -313,7 +303,149 @@ def typer_asyncio_patch() -> None:
 
 
 def clear_dirs(config: WorkerConfig) -> None:
-    shutil.rmtree(str(config.artifacts_root))
-    config.artifacts_root.mkdir(parents=True, exist_ok=True)
-    shutil.rmtree(str(config.workdir))
-    config.workdir.mkdir(parents=True, exist_ok=True)
+    shutil.rmtree(str(config.paths.filesystem))
+    config.paths.filesystem.mkdir(parents=True, exist_ok=True)
+    shutil.rmtree(str(config.paths.artifacts))
+    config.paths.artifacts.mkdir(parents=True, exist_ok=True)
+    shutil.rmtree(str(config.paths.workdir))
+    config.paths.workdir.mkdir(parents=True, exist_ok=True)
+
+
+def dev_worker_context(
+    worker_id_prefix: str,
+    *,
+    is_async: bool,
+    client: TemporalClient,
+    activities: list[str] | None = None,
+    workflows: list[str] | None = None,
+    worker_config: WorkerConfig,
+    event_loop: AbstractEventLoop | None = None,
+    task_queue: str,
+    dependencies: str | None = None,
+    sandboxed: bool = True,
+) -> AbstractAsyncContextManager[None]:
+    worker_id = create_worker_id(worker_id_prefix)
+    if not is_async:
+        return _run_worker_in_separate_process(
+            worker_id=worker_id,
+            activities=activities,
+            workflows=workflows,
+            worker_config=worker_config.model_dump(),
+            task_queue=task_queue,
+            dependencies=dependencies,
+            sandboxed=sandboxed,
+        )
+    registered_wfs, registered_acts, registered_deps, worker_config_cls = discover(
+        workflows,
+        act_names=activities,
+        deps_name=dependencies,
+    )
+    cm = _erase_type(
+        worker_context(
+            worker_id,
+            activities=registered_acts,
+            workflows=registered_wfs,
+            dependencies=registered_deps,
+            worker_config=worker_config,
+            client=client,
+            event_loop=event_loop,
+            task_queue=task_queue,
+        )
+    )
+    return cm
+
+
+@asynccontextmanager
+async def _erase_type(cm: AbstractAsyncContextManager) -> AsyncGenerator[None, None]:
+    async with cm:
+        yield
+
+
+@asynccontextmanager
+async def _run_worker_in_separate_process(
+    worker_id: str,
+    *,
+    activities: list[str] | None = None,
+    workflows: list[str] | None = None,
+    worker_config: dict,
+    task_queue: str,
+    dependencies: str | None = None,
+    sandboxed: bool = True,
+) -> AsyncGenerator[None, None]:
+    ctx = multiprocessing.get_context("spawn")
+    shutdown_event = ctx.Event()
+    faulthandler.enable()
+    kwargs = {
+        "worker_id": worker_id,
+        "activities": activities,
+        "workflows": workflows,
+        "worker_config": worker_config,
+        "task_queue": task_queue,
+        "dependencies": dependencies,
+        "sandboxed": sandboxed,
+        "shutdown_event": shutdown_event,
+    }
+    p = ctx.Process(target=_run_worker_process, kwargs=kwargs)
+    p.start()
+    try:
+        yield
+    finally:
+        shutdown_event.set()
+        p.join()
+        if p.is_alive():
+            p.terminate()
+
+
+def _run_worker_process(
+    worker_id: str,
+    *,
+    activities: list[str] | None = None,
+    workflows: list[str] | None = None,
+    worker_config: dict,
+    event_loop: AbstractEventLoop | None = None,
+    task_queue: str,
+    dependencies: str | None = None,
+    sandboxed: bool = True,
+    shutdown_event: Event,
+) -> None:
+    async def _run() -> None:
+        registered_wfs, registered_acts, registered_deps, worker_config_cls = discover(
+            workflows,
+            act_names=activities,
+            deps_name=dependencies,
+        )
+        loaded_config = worker_config_cls.model_validate(worker_config)
+        temporal_config = loaded_config.temporal
+        runtime = Runtime(telemetry=TelemetryConfig())
+        # We don't use config.to_temporal_client since we get a problem with the
+        # temporal runtime not being properly recreated, we create it explicitely
+        if temporal_config.prometheus_host is not None:
+            telemetry_config = TelemetryConfig(
+                metrics=PrometheusConfig(bind_address="0.0.0.0:9000")
+            )
+            runtime = Runtime(telemetry=telemetry_config)
+        client = await TemporalClient.connect(
+            target_host=temporal_config.host,
+            namespace=temporal_config.namespace,
+            runtime=runtime,
+            data_converter=PYDANTIC_DATA_CONVERTER,
+        )
+        worker_ctx = worker_context(
+            worker_id,
+            activities=registered_acts,
+            workflows=registered_wfs,
+            worker_config=loaded_config,
+            client=client,
+            event_loop=event_loop,
+            task_queue=task_queue,
+            dependencies=registered_deps,
+            sandboxed=sandboxed,
+        )
+        async with worker_ctx as worker:
+            aws = [
+                asyncio.create_task(asyncio.to_thread(shutdown_event.wait)),
+                asyncio.create_task(worker.is_done()),
+            ]
+            await asyncio.wait(aws, return_when=asyncio.FIRST_COMPLETED)
+
+    asyncio.run(_run())

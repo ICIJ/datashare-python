@@ -22,8 +22,9 @@ from worker_template.workflows import (
 
 @pytest.mark.e2e
 async def test_ping_workflow_e2e(
-    io_worker: Worker,  # noqa: ARG001
     workflows_worker: Worker,  # noqa: ARG001
+    cpu_worker: Worker,  # noqa: ARG001
+    io_worker: Worker,  # noqa: ARG001
     test_temporal_client: TemporalClient,
 ) -> None:
     # Given
@@ -41,12 +42,13 @@ async def test_ping_workflow_e2e(
     )
 
     # Then
-    assert response == "pong"
+    assert response == "pong pong"
 
 
 @pytest.mark.e2e
 async def test_ping_e2e(
     io_worker: Worker,  # noqa: ARG001
+    cpu_worker: Worker,  # noqa: ARG001
     workflows_worker: Worker,  # noqa: ARG001
     test_task_client: DatashareTaskClient,
 ) -> None:
@@ -55,7 +57,7 @@ async def test_ping_e2e(
     # When
     ping_task_id = await test_task_client.create_task("ping", dict(), group=task_group)
     # Then
-    ping_timeout_s = 5.0
+    ping_timeout_s = 20
     assert await async_true_after(
         partial(
             has_state,
@@ -69,7 +71,7 @@ async def test_ping_e2e(
     # When
     ping_task = await test_task_client.get_task(ping_task_id)
     # Then
-    assert ping_task.result == TaskResult(value="pong")
+    assert ping_task.result == TaskResult(value="pong pong")
 
 
 @pytest.mark.e2e
