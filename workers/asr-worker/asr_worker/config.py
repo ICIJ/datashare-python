@@ -1,5 +1,3 @@
-from pathlib import Path
-
 import datashare_python
 from datashare_python.config import (
     LogFormat,
@@ -7,7 +5,7 @@ from datashare_python.config import (
     ResourceCacheConfig,
     WorkerConfig,
 )
-from datashare_python.objects import BaseModel
+from datashare_python.objects import BaseModel, WorkerPaths
 from pydantic import Field
 
 _DEFAULT_LOGGERS = {datashare_python.__name__: "INFO", __name__: "INFO"}
@@ -35,9 +33,7 @@ class IndexingWorkerConfig(BaseModel):
 class ASRWorkerConfig(WorkerConfig):
     logging: LoggingConfig = _DEFAULT_LOGGING_CONFIG
 
-    docs_root: Path = Field(alias="audios_root")
-    artifacts_root: Path
-    workdir: Path
+    paths: WorkerPaths
 
     indexing: IndexingWorkerConfig = Field(default_factory=IndexingWorkerConfig)
 
@@ -46,9 +42,6 @@ class ASRWorkerConfig(WorkerConfig):
     max_concurrent_activities: int = Field(frozen=True, default=1)
 
     cache: ASRCache = Field(default_factory=ASRCache)
-
-    def audios_root(self) -> Path:
-        return self.docs_root
 
 
 WORKER_CONFIG_CLS = ASRWorkerConfig

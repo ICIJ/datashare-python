@@ -10,9 +10,8 @@ authors = [
 readme = "README.md"
 requires-python = ">=3.11.0, <3.13"
 dependencies = [
-  "datashare-python~=0.9.0",
+  "datashare-python~=0.10.0",
   "caul-core==0.3.1",
-  "aiofile==3.11.1",
 ]
 
 [project.scripts]

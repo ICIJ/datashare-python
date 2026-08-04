@@ -16,10 +16,10 @@ from datashare_python.config import (
 from datashare_python.conftest import (  # noqa: F401
     TEST_PROJECT,
     clear_dirs,
+    dev_worker_context,
     doc_3,
     index_docs,
     pytest_collection_modifyitems,
-    test_deps,
     test_es_client,
     test_es_client_session,
     test_task_client,
@@ -28,19 +28,14 @@ from datashare_python.conftest import (  # noqa: F401
     test_temporal_client_session,
     text_0,
     text_1,
-    worker_lifetime_deps,
 )
-from datashare_python.objects import Document
-from datashare_python.types_ import ContextManagerFactory, TemporalClient
+from datashare_python.objects import Document, ProcessedFile, WorkerPaths
+from datashare_python.types_ import TemporalClient
 from datashare_python.utils import artifacts_dir
-from datashare_python.worker import worker_context
 from extract_core.objects import SupportedExt
-from extract_worker.activities import MarkdownExtract
+from extract_worker.activities import Activity
 from extract_worker.config import ExtractWorkerConfig
 from extract_worker.constants import TaskQueue
-from extract_worker.dependencies import DEPENDENCIES
-from extract_worker.objects import ProcessedDoc
-from extract_worker.workflows import ExtractMarkdownContentWorkflow
 from icij_common.es import ESClient
 
 from tests import DOCS_PATH
@@ -51,12 +46,15 @@ mimetypes.init()
 @pytest.fixture(scope="session")
 def test_worker_config(tmp_path_factory: TempPathFactory) -> ExtractWorkerConfig:  # noqa: ANN001, ARG001, F811
     tmp_path = Path(tmp_path_factory.mktemp("test-"))
-    docs_root = tmp_path / "docs"
-    docs_root.mkdir()
-    artifacts_root = tmp_path / "artifacts"
-    artifacts_root.mkdir()
+    filesystem = tmp_path / "docs"
+    filesystem.mkdir()
+    artifacts = tmp_path / "artifacts"
+    artifacts.mkdir()
     workdir = tmp_path / "workdir"
     workdir.mkdir()
+    worker_paths = WorkerPaths(
+        filesystem=filesystem, artifacts=artifacts, workdir=workdir
+    )
     logging_config = LoggingConfig(
         loggers={datashare_python.__name__: "INFO", __name__: "DEBUG"},
         format=LogFormat.DEFAULT,
@@ -65,9 +63,7 @@ def test_worker_config(tmp_path_factory: TempPathFactory) -> ExtractWorkerConfig
         logging=logging_config,
         datashare=DatashareClientConfig(url="http://localhost:8080"),
         temporal=TemporalClientConfig(host="localhost:7233"),
-        docs_root=docs_root,
-        artifacts_root=artifacts_root,
-        workdir=workdir,
+        paths=worker_paths,
     )
 
 
@@ -130,7 +126,7 @@ async def populate_es(
 def docs_with_cached_artifacts(
     populate_es: list[Document],
     test_worker_config: ExtractWorkerConfig,
-) -> list[ProcessedDoc]:
+) -> list[ProcessedFile]:
     config = test_worker_config
     clear_dirs(test_worker_config)
     supported_exts = {SupportedExt.PDF, SupportedExt.DOCX}
@@ -141,15 +137,17 @@ def docs_with_cached_artifacts(
     for doc in docs:
         doc_path = DOCS_PATH / doc.path
         if doc.root_document is None:
-            config.docs_root.mkdir(parents=True, exist_ok=True)
-            shutil.copy(doc_path, config.docs_root / doc.path)
+            config.paths.filesystem.mkdir(parents=True, exist_ok=True)
+            shutil.copy(doc_path, config.paths.filesystem / doc.path)
         else:
             artifact_path = (
-                config.artifacts_root / artifacts_dir(doc.id, project=doc.index) / "raw"
+                config.paths.artifacts
+                / artifacts_dir(doc.id, project=doc.index)
+                / "raw"
             )
             artifact_path.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy(doc_path, artifact_path)
-        fs_doc = doc.to_filesystem()
+        fs_doc = doc.to_processed_file()
         paths.append(fs_doc)
     return paths
 
@@ -158,18 +156,17 @@ def docs_with_cached_artifacts(
 async def workflows_worker(
     test_worker_config: ExtractWorkerConfig,  # noqa: F811
     test_temporal_client_session: TemporalClient,  # noqa: F811
-    test_deps: list[ContextManagerFactory],  # noqa: F811
 ) -> AsyncGenerator[None, None]:
     client = test_temporal_client_session
     worker_id = f"test-extract-workflows-worker-{uuid.uuid4()}"
     task_queue = TaskQueue.WORKFLOWS
-    worker_ctx = worker_context(
+    worker_ctx = dev_worker_context(
         worker_id,
-        workflows=[ExtractMarkdownContentWorkflow],
+        is_async=True,
+        workflows=["extract.markdown"],
         worker_config=test_worker_config,
         client=client,
         task_queue=task_queue,
-        dependencies=test_deps,
     )
     async with worker_ctx:
         yield
@@ -182,16 +179,17 @@ async def io_worker(
 ) -> AsyncGenerator[None, None]:
     client = test_temporal_client_session
     worker_id = f"test-extract-io-worker-{uuid.uuid4()}"
-    acts = MarkdownExtract(temporal_client=client)
-    acts = [acts.extract_worker_config, acts.create_markdown_extract_batches]
+    acts = [Activity.WORKER_CONFIG, Activity.CREATE_MD_BATCHES]
     task_queue = TaskQueue.IO
-    worker_ctx = worker_context(
+    dependencies = "extract.io"
+    worker_ctx = dev_worker_context(
         worker_id,
+        is_async=True,
         activities=acts,
         worker_config=test_worker_config,
         client=client,
         task_queue=task_queue,
-        dependencies=DEPENDENCIES["extract.io"],
+        dependencies=dependencies,
     )
     async with worker_ctx:
         yield
@@ -204,16 +202,17 @@ async def md_extract_cpu_worker(
 ) -> AsyncGenerator[None, None]:
     client = test_temporal_client_session
     worker_id = f"test-extract-cpu-worker-{uuid.uuid4()}"
-    acts = MarkdownExtract(temporal_client=client)
-    acts = [acts.extract_markdown_content]
+    acts = [Activity.EXTRACT_MD_CONTENT]
     task_queue = TaskQueue.EXTRACT_CPU
-    worker_ctx = worker_context(
+    dependencies = "extract.extract"
+    worker_ctx = dev_worker_context(
         worker_id,
+        is_async=True,
         activities=acts,
         worker_config=test_worker_config,
         client=client,
         task_queue=task_queue,
-        dependencies=DEPENDENCIES["extract.extract"],
+        dependencies=dependencies,
     )
     async with worker_ctx:
         yield

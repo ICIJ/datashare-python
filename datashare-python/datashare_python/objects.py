@@ -109,9 +109,15 @@ class DatashareLanguage(str):
         return self.as_language_name.alpha3
 
 
+class WorkerPaths(BaseModel):
+    filesystem: Path
+    artifacts: Path
+    workdir: Path
+
+
 @unique
 class DocumentLocation(StrEnum):
-    ORIGINAL = "original"
+    FILESYSTEM = "filesystem"
     ARTIFACTS = "artifacts"
     WORKDIR = "workdir"
 
@@ -124,28 +130,47 @@ def _is_relative(value: Path) -> Path:
     return value
 
 
-class FilesystemDocument(DatashareModel):
+class ProcessedFile(BaseModel):
     id: str
     path: Annotated[Path, AfterValidator(_is_relative)]
-    index: str
+    project: str
     location: DocumentLocation
     resource_name: str
+    n_pages: int
+    parent: "ProcessedFile | None" = None
 
-    def locate(
-        self, original_root: Path, *, artifacts_root: Path, workdir: Path
-    ) -> Path:
+    @classmethod
+    def from_doc(cls, doc: "Document") -> Self:
+        return doc.to_processed_file()
+
+    def child(self, path: Path, paths: WorkerPaths) -> Self:
+        return ProcessedFile(
+            id=self.id,
+            path=path.relative_to(paths.workdir),
+            project=self.project,
+            location=DocumentLocation.WORKDIR,
+            resource_name=path.name,
+            n_pages=self.n_pages,
+            parent=self,
+        )
+
+    def locate(self, paths: WorkerPaths) -> Path:
         from datashare_python.utils import artifacts_dir  # noqa: PLC0415
 
         match self.location:
-            case DocumentLocation.ORIGINAL:
-                return original_root / self.path
+            case DocumentLocation.FILESYSTEM:
+                return paths.filesystem / self.path
             case DocumentLocation.ARTIFACTS:
-                project = self.index
-                return artifacts_root / artifacts_dir(self.id, project=project) / "raw"
+                project = self.project
+                return paths.artifacts / artifacts_dir(self.id, project=project) / "raw"
             case DocumentLocation.WORKDIR:
-                return workdir / self.path
+                return paths.workdir / self.path
             case _:
                 raise ValueError(f"invalid location: {self.path}")
+
+
+class ProcessedPage(ProcessedFile):
+    page_number: int
 
 
 class IETFLanguage(str):
@@ -227,17 +252,17 @@ class Document(DatashareModel):
             metadata=sources.get(DOC_METADATA),
         )
 
-    def to_filesystem(self) -> FilesystemDocument:
+    def to_processed_file(self) -> ProcessedFile:
         from .utils import artifacts_dir  # noqa: PLC0415
 
         if self.metadata is None:
             raise ValueError(
-                "can't compute filesyste path for document withtout metadata"
+                "can't compute filesystem path for document withtout metadata"
             )
         resource_name = cast(str, self.metadata[TIKA_METADATA_RESOURCENAME])
         if self.root_document is None:
             path = self.path
-            location = DocumentLocation.ORIGINAL
+            location = DocumentLocation.FILESYSTEM
         else:
             if self.index is None:
                 msg = (
@@ -251,12 +276,16 @@ class Document(DatashareModel):
         # we store a relative path otherwise joining with the location will fail
         if path.parts and path.parts[0] == os.path.sep:
             path = Path(*path.parts[1:])
-        return FilesystemDocument(
+        n_pages = 1
+        if self.metadata:
+            n_pages = self.metadata.get("tika_metadata_xmptpg_npages", n_pages)
+        return ProcessedFile(
             id=self.id,
             path=path,
-            index=self.index,
+            project=self.index,
             location=location,
             resource_name=resource_name,
+            n_pages=n_pages,
         )
 
     def to_route(self) -> DocRoute:
@@ -274,17 +303,20 @@ def _is_absolute_path(v: bytes | BytesIO | Path) -> Any:
 class ArtifactType(StrEnum):
     STRUCTURE = "structure"
     ASR_TRANSCRIPTION = "transcription"
+    PASSPORTS = "passports"
 
 
 class ManifestEntryStatus(StrEnum):
     COMPLETE = "complete"
+    PARTIAL = "partial"
 
 
 class TaskArgs(DatashareModel, ABC):
     def as_manifest_task_input(self) -> dict[str, Any]:
         # This is a base implementation, if the input is too large to be dumped,
         # override this and pop large keys
-        as_manifest = self.model_dump(by_alias=True)
+        # Dump in json mode to make testing easier
+        as_manifest = self.model_dump(by_alias=True, mode="json")
         return as_manifest
 
 
@@ -308,6 +340,15 @@ class ManifestEntry(DatashareModel, Generic[A], ABC):
             input=args.as_manifest_task_input(),
             label=label,
             status=ManifestEntryStatus.COMPLETE,
+            **kwargs,
+        )
+
+    @classmethod
+    def partial(cls, args: A, label: str | None = None, **kwargs) -> Self:
+        return cls(
+            input=args.as_manifest_task_input(),
+            label=label,
+            status=ManifestEntryStatus.PARTIAL,
             **kwargs,
         )
 
@@ -384,7 +425,7 @@ class Pages(DatashareModel):
         return self
 
 
-class DocArtifact(BaseModel, ABC):
+class DocArtifact(DatashareModel, ABC):
     # This object is not used for serde, just as a container, it's OK to allow
     # arbitrary types (to allow storing BytesIO)
     model_config = ConfigDict(arbitrary_types_allowed=True)

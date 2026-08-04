@@ -11,9 +11,9 @@ from datashare_python.objects import (
     DatashareLanguage,
     Document,
     DocumentLocation,
-    FilesystemDocument,
     FilesystemPagination,
     Pages,
+    ProcessedFile,
     Task,
     TaskState,
 )
@@ -51,11 +51,11 @@ def test_filesystem_document_should_raise_on_absolute_path() -> None:
     # When/Then
     expected = re.escape("FilesystemDocument path should always be relative")
     with pytest.raises(ValidationError, match=expected):
-        FilesystemDocument(
+        ProcessedFile(
             id="some_id",
             path=path,
-            index="id",
-            location=DocumentLocation.ORIGINAL,
+            project="id",
+            location=DocumentLocation.FILESYSTEM,
             resource_name="aa",
         )
 
@@ -69,7 +69,7 @@ def test_document_to_filesystem_document_use_relative_path() -> None:
         index=TEST_PROJECT, path=path, id="some_id", language="ENGLISH", metadata=meta
     )
     # When
-    fs_doc = doc.to_filesystem()
+    fs_doc = doc.to_processed_file()
     relative_path = Path("some/absolute/path/resource.file")
     assert fs_doc.path == relative_path
 

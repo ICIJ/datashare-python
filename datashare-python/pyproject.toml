@@ -1,6 +1,6 @@
 [project]
 name = "datashare-python"
-version = "0.9.9"
+version = "0.10.0"
 description = "Manage Python tasks and local resources in Datashare"
 authors = [
   { name = "Clément Doumouro", email = "cdoumouro@icij.org" },
@@ -11,6 +11,7 @@ readme = "README.md"
 requires-python = ">=3.11,<4"
 dependencies = [
   "alive-progress~=3.2",
+  "aiofile~=3.11",
   "aiohttp~=3.11",
   "hatchling~=1.27",
   "icij-common[elasticsearch]~=0.8.3",
@@ -18,7 +19,7 @@ dependencies = [
   "python-json-logger~=4.0",
   "pyyaml~=6.0",
   "pydantic-extra-types[pycountry]>=2.11.1",
-  "temporalio~=1.23",
+  "temporalio~=1.31",
   "typer>=0.15.4,<0.25.1",
   "tomlkit~=0.14.0",
   "lru-dict~=1.4",
@@ -65,7 +66,7 @@ datashare-worker-template = { path = "../worker-template", editable = true }
 dev = [
   "datashare-worker-template[ml]~=0.1.5",
   "hatch-build~=0.5.0",
-  "nest-asyncio~=1.6.0",
+  "nest-asyncio~=1.6",
   "pre-commit~=4.5.1",
   "psutil~=6.1.0",
   "pylint~=3.1.0",

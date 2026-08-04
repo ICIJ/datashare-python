@@ -5,7 +5,7 @@ from collections.abc import AsyncGenerator, AsyncIterable, Iterable
 from functools import partial
 from itertools import tee
 from pathlib import Path
-from typing import Annotated, Any, Protocol, cast
+from typing import Annotated, Any, Protocol
 
 from aiofile import async_open
 from caul_core import (
@@ -18,7 +18,7 @@ from caul_core import (
     Preprocessor,
     PreprocessorConfig,
 )
-from datashare_python.dependencies import lifespan_worker_config
+from datashare_python.dependencies import lifespan_es_client, lifespan_worker_config
 from datashare_python.objects import DocRoute, Document
 from datashare_python.types_ import (
     AsyncProgressRateHandler,
@@ -35,7 +35,7 @@ from datashare_python.utils import (
     debuggable_name,
     enter_cm,
     publish_and_consume,
-    read_jsonl,
+    read_jsonl_as,
     safe_dir,
     symlink_embedded_document_to_workdir,
     to_raw_async_progress,
@@ -71,7 +71,6 @@ from .constants import (
     SUPPORTED_CONTENT_TYPES,
 )
 from .dependencies import (
-    lifespan_es_client,
     lifespan_inference_runner_cache,
     lifespan_postprocessor_cache,
     lifespan_preprocessor_cache,
@@ -110,8 +109,8 @@ class ASRActivities(ActivityWithProgress):
         ] = None,
     ) -> list[Path]:
         es_client = lifespan_es_client()
-        worker_config = cast(ASRWorkerConfig, lifespan_worker_config())
-        workdir = worker_config.workdir
+        worker_config = lifespan_worker_config()
+        workdir = worker_config.paths.workdir
         output_dir = activity_workdir(workdir, project)
         output_dir.mkdir(parents=True, exist_ok=True)
         batch_paths = [
@@ -140,8 +139,8 @@ class ASRActivities(ActivityWithProgress):
         # Import caul.tasks to populate the Preprocessor registry
         import caul.tasks  # noqa: F401, PLC0415
 
-        worker_config = cast(ASRWorkerConfig, lifespan_worker_config())
-        workdir = worker_config.workdir
+        worker_config = lifespan_worker_config()
+        workdir = worker_config.paths.workdir
         output_dir = activity_workdir(workdir, project)
         output_dir.mkdir(parents=True, exist_ok=True)
         audio_batch = workdir / audio_batch
@@ -174,8 +173,8 @@ class ASRActivities(ActivityWithProgress):
         # Import caul.tasks to populate the InferenceRunner registry
         import caul.tasks  # noqa: F401, PLC0415
 
-        worker_config = cast(ASRWorkerConfig, lifespan_worker_config())
-        workdir = worker_config.workdir
+        worker_config = lifespan_worker_config()
+        workdir = worker_config.paths.workdir
         output_dir = activity_workdir(workdir, project)
         output_dir.mkdir(parents=True, exist_ok=True)
         preprocessed_inputs = [workdir / p for p in preprocessed_inputs]
@@ -216,16 +215,16 @@ class ASRActivities(ActivityWithProgress):
         # Import caul.tasks to populate the Postprocessor‹ registry
         import caul.tasks  # noqa: F401, PLC0415
 
-        worker_config = cast(ASRWorkerConfig, lifespan_worker_config())
-        workdir = worker_config.workdir
+        worker_config = lifespan_worker_config()
+        workdir = worker_config.paths.workdir
         audio_batch = workdir / audio_batch
-        artifacts_root = worker_config.artifacts_root
+        artifacts_root = worker_config.paths.artifacts
         inference_results = (
             ASRResult.model_validate_json((workdir / p).read_text())
             for p in inference_results
         )
 
-        docs = [Document.model_validate(fs_doc) for fs_doc in read_jsonl(audio_batch)]
+        docs = list(read_jsonl_as(audio_batch, Document))
         if progress is not None:
             progress = to_raw_sync_progress(progress, max_progress=len(docs))
         postprocessor_factory = enter_cm(partial(Postprocessor.from_config, config))
@@ -255,7 +254,7 @@ class ASRActivities(ActivityWithProgress):
             AsyncProgressRateHandler | None, Weight(value=_INDEX_AUDIOS_WEIGHT)
         ] = None,
     ) -> int:
-        worker_config = cast(ASRWorkerConfig, lifespan_worker_config())
+        worker_config = lifespan_worker_config()
         es_client = lifespan_es_client()
         target_bulk_char_size = worker_config.indexing.target_bulk_char_size
         logger.info(
@@ -268,7 +267,7 @@ class ASRActivities(ActivityWithProgress):
             project,
             es_client,
             indexing_config=indexing_config,
-            artifact_root=worker_config.artifacts_root,
+            artifact_root=worker_config.paths.artifacts,
             target_bulk_char_size=target_bulk_char_size,
             progress=progress,
         )
@@ -299,15 +298,11 @@ def preprocess_act(
     output_dir: Path,
 ) -> list[Path]:
     logger.debug("locating files...")
-    audios = (Document.model_validate(doc) for doc in read_jsonl(audio_batch))
-    audios = (a.to_filesystem() for a in audios)
+    audios = read_jsonl_as(audio_batch, Document)
+    audios = (a.to_processed_file() for a in audios)
     audios = (
-        symlink_embedded_document_to_workdir(
-            a, worker_config.artifacts_root, workdir=worker_config.workdir
-        ).locate(
-            worker_config.docs_root,
-            artifacts_root=worker_config.artifacts_root,
-            workdir=worker_config.workdir,
+        symlink_embedded_document_to_workdir(a, worker_config.paths).locate(
+            worker_config.paths
         )
         for a in audios
     )
@@ -326,10 +321,7 @@ async def infer_act(
 ) -> AsyncIterable[Path]:
     # Audios paths in the input are relative to the batch file directory
     inputs = (
-        [
-            _relative_input(PreprocessedInput.model_validate(i), f.parent)
-            for i in read_jsonl(f)
-        ]
+        [_relative_input(i, f.parent) for i in read_jsonl_as(f, PreprocessedInput)]
         for f in preprocessed_inputs
     )
     audio_paths, inputs = tee(inputs)
@@ -389,6 +381,7 @@ def postprocess_act(
     return routes
 
 
+# TODO: try to reduce the number of args here
 async def index_transcriptions_act(  # noqa: PLR0917
     routes: Iterable[DocRoute],
     project: str,

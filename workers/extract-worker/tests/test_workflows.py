@@ -2,11 +2,11 @@ import uuid
 
 import pytest
 from datashare_python.conftest import TEST_PROJECT
+from datashare_python.objects import ProcessedFile
 from extract_core import DoclingPipelineConfig
 from extract_worker.objects import (
     MarkdownExtractArgs,
     MarkdownExtractResponse,
-    ProcessedDoc,
     ProcessingReport,
 )
 from extract_worker.workflows import ExtractMarkdownContentWorkflow, TaskQueues
@@ -20,7 +20,7 @@ async def test_extract_markdown_workflow_e2e(
     io_worker: Worker,  # noqa: ARG001
     md_extract_cpu_worker: Worker,  # noqa: ARG001
     test_temporal_client: TemporalClient,
-    docs_with_cached_artifacts: list[ProcessedDoc],
+    docs_with_cached_artifacts: list[ProcessedFile],
 ) -> None:
     # Given
     client = test_temporal_client

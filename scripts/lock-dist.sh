@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-if [[ "$1" == "worker-template" ]];then
+if [[ "$1" == "worker-template" || "$1" == "datashare-python" ]];then
     cd "$1"
 else
     cd workers/"$1"

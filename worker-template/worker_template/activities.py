@@ -46,8 +46,12 @@ from .objects import ClassificationConfig, TranslationConfig
 
 
 class Pong(ActivityWithProgress):
-    @activity_defn(name="pong")
-    async def pong(self) -> str:
+    @activity_defn(name="pong-async")
+    async def pong_async(self) -> str:
+        return "pong"
+
+    @activity_defn(name="pong-sync")
+    def pong_sync(self) -> str:
         return "pong"
 
 
@@ -515,5 +519,6 @@ ACTIVITIES = [
     CreateClassificationBatches.create_classification_batches,
     TranslateDocs.translate_docs,
     ClassifyDocs.classify_docs,
-    Pong.pong,
+    Pong.pong_sync,
+    Pong.pong_async,
 ]

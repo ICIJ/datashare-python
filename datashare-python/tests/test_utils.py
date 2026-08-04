@@ -337,6 +337,17 @@ def test_artifact_lock_file(tmp_path: Path) -> None:
         f.result()
 
 
+def test_artifact_lock_file_is_freed(tmp_path: Path) -> None:
+    # When
+    timeout_ms = 100
+    artifact_dir = Path(tmp_path)
+    with artifact_lock(artifact_dir, timeout_ms):
+        pass
+    # Then
+    lock_path = artifact_dir / f"{MANIFEST_JSON}.lock"
+    assert not lock_path.exists()
+
+
 async def _sleep_with_lock(
     sleep_s: int, artifact_dir: Path, *, timeout_ms: int
 ) -> None:

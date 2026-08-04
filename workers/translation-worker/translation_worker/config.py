@@ -1,8 +1,7 @@
-from abc import ABC
 from typing import TYPE_CHECKING, ClassVar
 
 from datashare_python.config import ResourceCacheConfig, WorkerConfig
-from datashare_python.objects import BaseModel, DatashareModel
+from datashare_python.objects import BaseModel, DatashareModel, WorkerPaths
 from icij_common.pydantic_utils import make_enum_discriminator, tagged_union
 from icij_common.registrable import RegistrableConfig
 from pydantic import Discriminator, Field
@@ -20,7 +19,7 @@ if TYPE_CHECKING:
 DEFAULT_HUNYUAN_MODEL_REF = "tencent/Hunyuan-MT-Chimera-7B"
 
 
-class _BaseProcessorConfig(BaseModel, RegistrableConfig, ABC): ...
+class _BaseProcessorConfig(DatashareModel, RegistrableConfig): ...
 
 
 class TranslationCache(BaseModel):
@@ -50,6 +49,8 @@ class TranslationWorkerConfig(WorkerConfig):
     cache: TranslationCache = Field(default_factory=TranslationCache)
 
     c2_translate: C2TranslateConfig = Field(default_factory=C2TranslateConfig)
+
+    paths: WorkerPaths
 
 
 class SentenceSplitterConfig(_BaseProcessorConfig):

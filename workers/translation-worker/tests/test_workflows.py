@@ -1,7 +1,7 @@
 import uuid
 
 import pytest
-from datashare_python.conftest import TEST_PROJECT, test_deps  # noqa
+from datashare_python.conftest import TEST_PROJECT
 from datashare_python.objects import DatashareLanguage, Document
 from icij_common.es import HITS, ESClient, has_type
 from temporalio.client import Client as TemporalClient

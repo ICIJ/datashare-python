@@ -36,9 +36,9 @@ from datashare_python.conftest import TEST_PROJECT
 from datashare_python.objects import (
     DatashareLanguage,
     Document,
-    FilesystemDocument,
+    ProcessedFile,
 )
-from datashare_python.utils import read_jsonl
+from datashare_python.utils import read_jsonl_as
 from icij_common.es import HITS, ESClient, ids_query, match_all
 from icij_common.iter_utils import batches
 from icij_common.registrable import RegistrableConfig
@@ -177,7 +177,7 @@ class MockPostprocessor(Postprocessor):
     ],
 )
 async def test_search_audio_paths_act(  # noqa: PLR0917
-    with_audio_docs: list[FilesystemDocument],
+    with_audio_docs: list[ProcessedFile],
     test_es_client: ESClient,
     query: dict,
     expected_batches: list[list[str]],
@@ -202,7 +202,7 @@ async def test_search_audio_paths_act(  # noqa: PLR0917
     # Then
     results = []
     for b in batch_paths:
-        results.append([Document.model_validate(fs_doc).id for fs_doc in read_jsonl(b)])
+        results.append([fs_doc.id for fs_doc in read_jsonl_as(b, Document)])
     expected_batches = [
         [request.getfixturevalue(d).id for d in batch] for batch in expected_batches
     ]
@@ -246,8 +246,7 @@ def test_preprocess_act(test_worker_config: ASRWorkerConfig, tmpdir: Path) -> No
         [PREPROCESSED_INPUT_2],
     ]
     written_batches = [
-        [PreprocessedInput.model_validate(d) for d in read_jsonl(output_dir / f)]
-        for f in batch_files
+        list(read_jsonl_as(output_dir / f, PreprocessedInput)) for f in batch_files
     ]
     assert written_batches == expected_batches
 
@@ -382,7 +381,7 @@ async def test_write_audio_search_results(tmpdir: Path) -> None:
 def with_transcribed_docs(
     with_audio_docs: list[Document], test_worker_config: ASRWorkerConfig
 ) -> list[tuple[Document, str]]:
-    artifacts_root = test_worker_config.artifacts_root
+    artifacts_root = test_worker_config.paths.artifacts
     transcriptions = []
     args = ASRArgs(project=TEST_PROJECT, docs=[], batch_size=2)
     manifest_entry = TranscriptionManifestEntry.complete(args, confidence=1.0)
@@ -416,7 +415,7 @@ async def test_index_transcriptions_act(
         routes,
         project=TEST_PROJECT,
         es_client=test_es_client,
-        artifact_root=test_worker_config.artifacts_root,
+        artifact_root=test_worker_config.paths.artifacts,
         target_bulk_char_size=target_bulk_char_size,
     )
     # Then

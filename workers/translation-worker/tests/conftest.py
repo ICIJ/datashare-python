@@ -13,6 +13,7 @@ from datashare_python.config import (
 )
 from datashare_python.conftest import (  # noqa: F401
     TEST_PROJECT,
+    dev_worker_context,
     index_docs,
     pytest_collection_modifyitems,
     test_es_client,
@@ -22,37 +23,28 @@ from datashare_python.conftest import (  # noqa: F401
     test_temporal_client,
     test_temporal_client_session,
     test_worker_config,
-    worker_lifetime_deps,
 )
-from datashare_python.objects import DatashareLanguage, Document
-from datashare_python.types_ import ContextManagerFactory, TemporalClient
-from datashare_python.worker import worker_context
+from datashare_python.objects import DatashareLanguage, Document, WorkerPaths
+from datashare_python.types_ import TemporalClient
 from icij_common.es import ESClient
-from translation_worker.activities import TranslationActivities
+from translation_worker.activities import Activity
 from translation_worker.config import TranslationWorkerConfig
-from translation_worker.dependencies import REGISTRY
-from translation_worker.workflows import TaskQueue, TranslationWorkflow
-
-
-@pytest.fixture(scope="session")
-def test_io_deps() -> list[ContextManagerFactory]:
-    return REGISTRY["translation.io"]
-
-
-@pytest.fixture(scope="session")
-def test_inference_deps() -> list[ContextManagerFactory]:
-    return REGISTRY["translation.inference"]
+from translation_worker.constants import TRANSLATION_WORKFLOW_NAME
+from translation_worker.workflows import TaskQueue
 
 
 @pytest.fixture(scope="session")
 def test_worker_config(tmp_path_factory: TempPathFactory) -> TranslationWorkerConfig:  # noqa: ANN001, ARG001, F811
     tmp_path = tmp_path_factory.mktemp("test-")
-    audios_root = tmp_path / "audios"
-    audios_root.mkdir()
-    artifacts_root = tmp_path / "artifacts"
-    artifacts_root.mkdir()
+    filesystem = tmp_path / "audios"
+    filesystem.mkdir()
+    artifacts = tmp_path / "artifacts"
+    artifacts.mkdir()
     workdir = tmp_path / "workdir"
     workdir.mkdir()
+    worker_paths = WorkerPaths(
+        filesystem=filesystem, workdir=workdir, artifacts=artifacts
+    )
     logging_config = LoggingConfig(
         loggers={
             datashare_python.__name__: "DEBUG",
@@ -64,8 +56,7 @@ def test_worker_config(tmp_path_factory: TempPathFactory) -> TranslationWorkerCo
         logging=logging_config,
         datashare=DatashareClientConfig(url="http://localhost:8080"),
         temporal=TemporalClientConfig(host="localhost:7233"),
-        artifacts_root=artifacts_root,
-        workdir=workdir,
+        paths=worker_paths,
     )
 
 
@@ -143,10 +134,11 @@ async def workflows_worker(
 ) -> AsyncGenerator[None, None]:
     client = test_temporal_client_session
     worker_id = f"test-translation-io-worker-{uuid.uuid4()}"
-    workflows = [TranslationWorkflow]
+    workflows = [TRANSLATION_WORKFLOW_NAME]
     task_queue = TaskQueue.WORKFLOWS
-    worker_ctx = worker_context(
+    worker_ctx = dev_worker_context(
         worker_id,
+        is_async=True,
         workflows=workflows,
         worker_config=test_worker_config,
         client=client,
@@ -160,25 +152,20 @@ async def workflows_worker(
 async def io_worker(
     test_worker_config: TranslationWorkerConfig,  # noqa: F811
     test_temporal_client_session: TemporalClient,  # noqa: F811
-    test_io_deps: list[ContextManagerFactory],  # noqa: F811
 ) -> AsyncGenerator[None, None]:
     client = test_temporal_client_session
     worker_id = f"test-translation-io-worker-{uuid.uuid4()}"
-    translation_activities = TranslationActivities(temporal_client=client)
-    batching_activities = [
-        translation_activities.translation_worker_config,
-        translation_activities.create_translation_batches,
-    ]
-    workflows = [TranslationWorkflow]
+    batching_activities = [Activity.WORKER_CONFIG, Activity.CREATE_TRANSLATION_BATCHES]
     task_queue = TaskQueue.IO
-    worker_ctx = worker_context(
+    dependencies = "translation.io"
+    worker_ctx = dev_worker_context(
         worker_id,
+        is_async=True,
         activities=batching_activities,
-        workflows=workflows,
         worker_config=test_worker_config,
         client=client,
         task_queue=task_queue,
-        dependencies=test_io_deps,
+        dependencies=dependencies,
     )
     async with worker_ctx:
         yield
@@ -188,20 +175,20 @@ async def io_worker(
 async def translation_inference_worker(
     test_worker_config: TranslationWorkerConfig,  # noqa: F811
     test_temporal_client_session: TemporalClient,  # noqa: F811
-    test_inference_deps: list[ContextManagerFactory],  # noqa: F811
 ) -> AsyncGenerator[None, None]:
     client = test_temporal_client_session
     worker_id = f"test-translation-cpu-worker-{uuid.uuid4()}"
-    create_translation_batches = TranslationActivities(temporal_client=client)
-    translation_activities = [create_translation_batches.translate_docs]
+    translation_activities = [Activity.TRANSLATE_DOCS]
     task_queue = TaskQueue.C2TRANSLATE_INFERENCE
-    worker_ctx = worker_context(
+    dependencies = "translation.inference"
+    worker_ctx = dev_worker_context(
         worker_id,
+        is_async=True,
         activities=translation_activities,
         worker_config=test_worker_config,
         client=client,
         task_queue=task_queue,
-        dependencies=test_inference_deps,
+        dependencies=dependencies,
     )
     async with worker_ctx:
         yield

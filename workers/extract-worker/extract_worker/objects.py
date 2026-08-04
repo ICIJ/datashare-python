@@ -4,9 +4,9 @@ from datashare_python.objects import (
     ArtifactType,
     DatashareModel,
     DocArtifact,
-    FilesystemDocument,
     ManifestEntry,
     Pages,
+    ProcessedFile,
     TaskArgs,
 )
 from extract_core import (
@@ -60,17 +60,8 @@ class ProcessingReport(DatashareModel):
         )
 
 
-class ProcessedDoc(FilesystemDocument):
-    n_pages: int
-
-    @classmethod
-    def from_fs_doc(cls, fs_doc: FilesystemDocument, n_pages: int | None) -> Self:
-        n_pages = n_pages if n_pages is not None else 1
-        return cls(n_pages=n_pages, **fs_doc.model_dump())
-
-
 class ErrorReport(DatashareModel):
-    doc: ProcessedDoc
+    doc: ProcessedFile
     status: Status
     errors: list[Error] = []
 
