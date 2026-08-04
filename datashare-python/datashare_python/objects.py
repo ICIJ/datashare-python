@@ -352,6 +352,15 @@ class ManifestEntry(DatashareModel, Generic[A], ABC):
             **kwargs,
         )
 
+    @classmethod
+    def partial(cls, args: A, label: str | None = None, **kwargs) -> Self:
+        return cls(
+            input=args.as_manifest_task_input(),
+            label=label,
+            status=ManifestEntryStatus.PARTIAL,
+            **kwargs,
+        )
+
 
 class PaginationType(StrEnum):
     FILESYSTEM = "filesystem"
