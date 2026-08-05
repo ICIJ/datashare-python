@@ -10,7 +10,6 @@ from multiprocessing import Event
 from pathlib import Path
 
 import aiohttp
-import nest_asyncio
 import pytest
 from elasticsearch._async.helpers import async_streaming_bulk
 from icij_common.es import DOC_ROOT_ID, ES_DOCUMENT_TYPE, ID, ESClient
@@ -299,6 +298,8 @@ async def all_done(task_client: DatashareTaskClient, not_done: list[str]) -> boo
 
 @pytest.fixture  # noqa: F405
 def typer_asyncio_patch() -> None:
+    import nest_asyncio  # noqa: PLC0415
+
     nest_asyncio.apply()
 
 
