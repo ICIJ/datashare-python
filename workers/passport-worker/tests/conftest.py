@@ -167,7 +167,7 @@ def doc_6() -> Document:
 
 
 @pytest.fixture
-async def indexed_docs(
+async def indexed_docs(  # noqa: PLR0917
     doc_0: Document,
     doc_1: Document,
     doc_2: Document,
@@ -181,7 +181,7 @@ async def indexed_docs(
 
 @pytest.fixture
 def docs_with_cached_artifacts(
-    populate_es: list[Document],
+    populate_es: list[Document],  # noqa: F811
     test_worker_config: PassportWorkerConfig,
 ) -> list[ProcessedFile]:
     config = test_worker_config
@@ -227,7 +227,8 @@ def e2e_doc_from_dir() -> list[Document]:
 
 @pytest.fixture
 async def populate_es_with_e2e_docs(
-    test_es_client: ESClient, e2e_doc_from_dir: list[Document]
+    test_es_client: ESClient,  # noqa: F811
+    e2e_doc_from_dir: list[Document],  # noqa: F811
 ) -> list[Document]:
     async for _ in index_docs(
         test_es_client, docs=e2e_doc_from_dir, index_name=TEST_PROJECT

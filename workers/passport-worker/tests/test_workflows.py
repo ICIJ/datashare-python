@@ -25,7 +25,7 @@ from tests import DOCS_PATH
 
 
 @pytest.mark.e2e
-async def test_passport_detection_workflow(
+async def test_passport_detection_workflow(  # noqa: PLR0917
     workflows_worker: Worker,  # noqa: ARG001
     io_worker: Worker,  # noqa: ARG001
     preprocessing_worker: Worker,  # noqa: ARG001

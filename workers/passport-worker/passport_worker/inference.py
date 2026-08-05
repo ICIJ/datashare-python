@@ -2,10 +2,10 @@ import asyncio
 import csv
 import logging
 from abc import ABC, abstractmethod
-from builtins import int
 from collections.abc import AsyncIterable, Iterable, Sequence
 from functools import cache
 from pathlib import Path
+from types import TracebackType
 from typing import TYPE_CHECKING, Self
 
 from aiofile import async_open
@@ -58,7 +58,7 @@ logger = logging.getLogger(__name__)
 class PassportDetector(RegistrableFromConfig, ABC):
     @abstractmethod
     def detect_passports(
-        self, inputs: Sequence[DetectionInputs]
+        self, ins: Sequence[DetectionInputs]
     ) -> list[list[ObjectDetection]]: ...
 
     @abstractmethod
@@ -122,7 +122,7 @@ async def _inference_batches(
         yield batch
 
 
-async def detect_passports_act(
+async def detect_passports_act(  # noqa: PLR0917
     batch: Path,
     passport_detector: PassportDetector,
     paths: WorkerPaths,
@@ -141,13 +141,15 @@ async def detect_passports_act(
     )
     read_mrz = args.config.inference.passport_detector.read_mrz
     detection_outs = (
-        await _detect_passport_pages(b, passport_detector, read_mrz, progress)
+        await _detect_passport_pages(
+            b, passport_detector, read_mrz=read_mrz, progress=progress
+        )
         async for b in im_batches
     )
     detection_outs = [
         p async for batch_passports in detection_outs for p in batch_passports
     ]
-    incomplete = set(e.file.id for e in read_errors)
+    incomplete = {e.file.id for e in read_errors}
     n_success = 0
     n_success_pages = 0
     with_artifacts = set()
@@ -182,7 +184,7 @@ async def _count_pages(batch: Path) -> int:
 async def _read_images(
     batch: Path, passport_detector: PassportDetector, paths: WorkerPaths, errors: list
 ) -> AsyncIterable[tuple[ProcessedFile, "np.ndarray", "DetectionInputs"]]:
-    import cv2
+    import cv2  # noqa: PLC0415
 
     for page in read_jsonl_as(paths.workdir / batch, ProcessedPage):
         page_path = page.locate(paths)
@@ -192,7 +194,7 @@ async def _read_images(
             im = cv2.imread(str(page_path))
             if im is None:
                 raise InvalidImage(page_path)
-        except Exception as e:
+        except (InvalidImage, FileNotFoundError) as e:
             logger.error("couldn't read page %s of doc %s!", page_path, page)
             errors.append(FileProcessingError.from_exception(page, e))
             continue
@@ -203,10 +205,11 @@ async def _read_images(
 async def _detect_passport_pages(
     batch: Iterable[tuple[ProcessedFile, "np.ndarray", "DetectionInputs"]],
     passport_detector: PassportDetector,
+    *,
     read_mrz: bool,
     progress: RawAsyncProgressHandler | None = None,
 ) -> list[tuple[ProcessedFile, list[Passport]]]:
-    doc_pages, doc_page_ims, detection_ins = zip(*batch)
+    doc_pages, doc_page_ims, detection_ins = zip(*batch, strict=True)
     passport_pages = await asyncio.to_thread(
         passport_detector.detect_passports, detection_ins
     )
@@ -303,7 +306,9 @@ def default_country_codes() -> list[str]:
 @PassportDetector.register(PassportDetectorType.YOLO)
 class YOLOPassportDetector(PassportDetector):
     def __init__(self, config: YOLOPassportDetectorConfig):
-        from passport_service.core.object_detection import inference_session
+        from passport_service.core.object_detection import (  # noqa:PLC0415
+            inference_session,
+        )
 
         self._config = config
         self._path = self._config.model_path
@@ -319,18 +324,25 @@ class YOLOPassportDetector(PassportDetector):
         self._sess = self._sess_cm.__enter__()
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+    def __exit__(
+        self,
+        exc_type: type[BaseException],
+        exc_val: BaseException,
+        exc_tb: TracebackType,
+    ) -> None:
         self._sess_cm.__exit__(exc_type, exc_val, exc_tb)
 
     def detect_passports(
-        self, inputs: Sequence[tuple["MatLike", float]]
+        self, ins: Sequence[tuple["MatLike", float]]
     ) -> list[list[ObjectDetection]]:
-        import numpy as np
-        from passport_service.core.object_detection import detections_from_nn_output
+        import numpy as np  # noqa: PLC0415
+        from passport_service.core.object_detection import (  # noqa: PLC0415
+            detections_from_nn_output,
+        )
 
-        if not inputs:
+        if not ins:
             return []
-        blobs, scales = zip(*inputs, strict=True)
+        blobs, scales = zip(*ins, strict=True)
         blobs = np.concatenate(blobs)
         scales = list(scales)
         input_name = self._sess.get_inputs()[0].name
@@ -372,5 +384,5 @@ class YOLOPassportDetector(PassportDetector):
         return passport
 
     @classmethod
-    def _from_config(cls, config: YOLOPassportDetectorConfig, **extras) -> Self:
+    def _from_config(cls, config: YOLOPassportDetectorConfig, **extras) -> Self:  # noqa:ARG003
         return cls(config)

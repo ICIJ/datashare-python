@@ -7,7 +7,7 @@ from datetime import UTC, datetime
 from enum import StrEnum, unique
 from io import BytesIO
 from pathlib import Path
-from typing import Annotated, Any, ClassVar, Generic, Literal, Self, TypeVar, cast
+from typing import Annotated, Any, ClassVar, Literal, Self, TypeVar, cast
 
 import langcodes
 from icij_common.registrable import Registrable
@@ -323,7 +323,7 @@ class TaskArgs(DatashareModel, ABC):
 A = TypeVar("A", bound=TaskArgs)
 
 
-class ManifestEntry(DatashareModel, Generic[A], ABC):
+class ManifestEntry[A](DatashareModel, ABC):
     status: ManifestEntryStatus
     label: str | None = None
     input: Annotated[
@@ -340,15 +340,6 @@ class ManifestEntry(DatashareModel, Generic[A], ABC):
             input=args.as_manifest_task_input(),
             label=label,
             status=ManifestEntryStatus.COMPLETE,
-            **kwargs,
-        )
-
-    @classmethod
-    def partial(cls, args: A, label: str | None = None, **kwargs) -> Self:
-        return cls(
-            input=args.as_manifest_task_input(),
-            label=label,
-            status=ManifestEntryStatus.PARTIAL,
             **kwargs,
         )
 

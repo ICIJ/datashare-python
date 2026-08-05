@@ -110,7 +110,7 @@ async def _collect_async(gen: AsyncGenerator) -> list:
 T = TypeVar("T")
 
 
-async def _aiter(it: Iterable[T]) -> AsyncGenerator[T, None]:
+async def _aiter[T](it: Iterable[T]) -> AsyncGenerator[T, None]:
     for item in it:
         yield item
 

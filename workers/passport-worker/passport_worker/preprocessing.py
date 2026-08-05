@@ -72,7 +72,7 @@ class DefaultImagePreprocessor(ImagePreprocessor):
         return process_image(image_path, output_dir=output_dir)
 
     @classmethod
-    def _from_config(cls, config: DefaultImagePreprocessorConfig, **extras) -> Self:
+    def _from_config(cls, config: DefaultImagePreprocessorConfig, **extras) -> Self:  # noqa:ARG003
         return cls(config)
 
 
@@ -102,7 +102,7 @@ class GotenbergPDFConverter(GotenbergClient, PDFConverter):
         return converted
 
     @classmethod
-    def _from_config(cls, config: GotenbergPDFConverterConfig, **extras) -> Self:
+    def _from_config(cls, config: GotenbergPDFConverterConfig, **extras) -> Self:  # noqa:ARG003
         return cls(config)
 
 
@@ -112,10 +112,10 @@ class PDFPreprocessor(Protocol):
     ) -> list[Path]: ...
 
 
-def reports_errors(
+def reports_errors[R](
     f: _PreprocessingFunction[R],
 ) -> _PreprocessingFunction[R | FileProcessingError]:
-    from passport_service.core.preprocessing import REPORTED_ERRORS
+    from passport_service.core.preprocessing import REPORTED_ERRORS  # noqa:PLC0415
 
     if iscoroutinefunction(f):
 
