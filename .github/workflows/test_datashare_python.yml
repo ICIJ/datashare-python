@@ -38,7 +38,7 @@ jobs:
         with:
           key: docker-${{ runner.os }}-${{ hashFiles('docker-compose.yml')  }}
       - name: Start test services
-        run: docker compose up -d datashare temporal-post-init elasticsearch
+        run: docker compose up -d temporal-post-init elasticsearch
       - name: Install uv
         uses: astral-sh/setup-uv@v7
         with:

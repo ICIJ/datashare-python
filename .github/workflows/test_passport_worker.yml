@@ -1,4 +1,4 @@
-name: Test extract-worker
+name: Test passport-worker
 
 on:
   push:
@@ -6,27 +6,25 @@ on:
   pull_request:
     paths:
       - 'datashare-python/**'
-      - 'workers/extract-worker/**'
+      - 'workers/passport-worker/**'
 
-# TODO: leverage some caching here
 jobs:
   lint:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-      - uses: astral-sh/ruff-action@v4.1.0
+      - uses: astral-sh/ruff-action@v3
         with:
           args: "--version" # skips test by displaying the version
-          version: "0.16.1"
       - name: Check formatting
-        run: ruff format --config qa/ruff.toml --check workers/extract-worker
+        run: ruff format --config qa/ruff.toml --check workers/passport-worker
       - name: Lint test
-        run: ruff check --config qa/ruff.toml workers/extract-worker
+        run: ruff check --config qa/ruff.toml workers/passport-worker
 
   test:
     runs-on: ubuntu-latest
     env:
-      PYTHON_VERSION: 3.14
+      PYTHON_VERSION: 3.13
       ASTRAL_VERSION: 0.11.24
     steps:
       - uses: actions/checkout@v6
@@ -34,27 +32,37 @@ jobs:
         uses: actions/setup-python@v6
         with:
           python-version: ${{ env.PYTHON_VERSION }}
+      - name: Download test data
+        env:
+          TEST_DATA_REPO: ${{ secrets.GH_TEST_DATA_REPO }}
+          TEST_DATA_TOKEN: ${{ secrets.GH_TEST_DATA_TOKEN }}
+          BASE_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo $TEST_DATA_TOKEN | gh auth login --with-token
+          gh release download -R $TEST_DATA_REPO v0.1.0 -p 'test_model_v0.onnx' -D workers/passport-worker/tests/resources/models
+          echo $BASE_TOKEN | gh auth login --with-token
+      - name: Install Linux packages
+        run: |
+          sudo add-apt-repository ppa:alex-p/tesseract-ocr5
+          sudo apt update
+          sudo apt install tesseract-ocr
       - name: Cache Docker images
         uses: ScribeMD/docker-cache@0.5.0
         with:
           key: docker-${{ runner.os }}-${{ hashFiles('docker-compose.yml')  }}
       - name: Start test services
-        run: docker compose up -d temporal-post-init elasticsearch
+        run: docker compose up -d temporal-post-init elasticsearch gotenberg
       - name: Install uv
         uses: astral-sh/setup-uv@v7
         with:
           version: ${{ env.ASTRAL_VERSION }}
           python-version: ${{ env.PYTHON_VERSION }}
           enable-cache: true
-          working-directory: workers/extract-worker
-      - name: Install ffmpeg
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y ffmpeg libavcodec-dev libavformat-dev libavutil-dev
+          working-directory: workers/passport-worker
       - name: Run tests
         run: |
-          cd workers/extract-worker
-          uv sync --verbose --frozen --extra base --extra cpu --dev
+          cd workers/passport-worker
+          uv sync --verbose --frozen --extra preprocessing --extra inference-cpu
           uv run --frozen python -m pytest --timeout=180 -vvv --cache-clear --show-capture=all -r A
 
 concurrency:
