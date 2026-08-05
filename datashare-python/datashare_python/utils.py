@@ -25,7 +25,7 @@ from functools import cache, wraps
 from hashlib import sha256
 from io import BytesIO
 from pathlib import Path
-from typing import Any, ParamSpec, Self, TypeVar
+from typing import Any, Self, TypeVar
 from uuid import uuid4
 
 import temporalio
@@ -70,8 +70,6 @@ DependencyAsyncSetup = Callable[..., Coroutine[None, None, None]]
 
 PROGRESS_HANDLER_ARG = "progress"
 
-P = ParamSpec("P")
-T = TypeVar("T")
 
 _NEVER_RETRIABLES = {
     "ValidationError",
@@ -178,7 +176,7 @@ async def execute_activity(
     )
 
 
-def positional_args_only(activity_fn: Callable[P, T]) -> Callable[P, T]:
+def positional_args_only[**P, T](activity_fn: Callable[P, T]) -> Callable[P, T]:
     sig = inspect.signature(activity_fn)
 
     # Keep track of kwargs-only
@@ -226,7 +224,7 @@ def _unpack_positional_args(
     return new_args, new_kwargs
 
 
-def with_retriables(
+def with_retriables[**P, T](
     retriables: set[type[Exception]] = None,
 ) -> Callable[[Callable[P, T]], Callable[P, T]]:
     if retriables is None:
@@ -281,7 +279,7 @@ def with_retriables(
     return decorator
 
 
-def activity_defn(
+def activity_defn[**P, T](
     name: str, retriables: set[type[Exception]] = None
 ) -> Callable[[Callable[P, T]], Callable[P, T]]:
 
@@ -615,11 +613,11 @@ def _read_jsonl(path: Path) -> Iterable[dict]:
 M = TypeVar("M", bound=BaseModel)
 
 
-def read_jsonl_as(path: Path, cls: type[M]) -> Iterable[M]:
+def read_jsonl_as[M](path: Path, cls: type[M]) -> Iterable[M]:
     return (cls.model_validate(d) for d in _read_jsonl(path))
 
 
-async def async_read_jsonl_as(
+async def async_read_jsonl_as[M](
     path: Path, processed_file_cls: type[M]
 ) -> AsyncIterable[M]:
     async with async_open(path, "r") as f:

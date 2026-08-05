@@ -33,7 +33,7 @@ class MockImageProcessor(ImagePreprocessor):
     def __init__(self, res: list[list[Path] | Exception]):
         self._res = iter(res)
 
-    def __call__(self, image_path: Path, *, output_dir: Path) -> list[Path]:
+    def __call__(self, image_path: Path, *, output_dir: Path) -> list[Path]:  # noqa: ARG002
         r = next(self._res)
         if isinstance(r, Exception):
             raise r
@@ -47,7 +47,7 @@ class MockConverter(PDFConverter):
     def __init__(self, conversion_results: dict[str, bytes | Exception]):
         self._conversion_results = conversion_results
 
-    async def __call__(self, doc: ProcessedFile, doc_bytes: bytes) -> bytes:
+    async def __call__(self, doc: ProcessedFile, doc_bytes: bytes) -> bytes:  # noqa: ARG002
         res = self._conversion_results[doc.id]
         if isinstance(res, Exception):
             raise res
@@ -63,7 +63,10 @@ class MockPDFPreprocessor(PDFPreprocessor):
         self._res = iter(res)
 
     def __call__(
-        self, pdf_path: Path, pdf_bytes: bytes, output_dir: Path
+        self,
+        pdf_path: Path,  # noqa: ARG002
+        pdf_bytes: bytes,  # noqa: ARG002
+        output_dir: Path,  # noqa: ARG002
     ) -> list[Path]:
         r = next(self._res)
         if isinstance(r, Exception):
@@ -72,7 +75,7 @@ class MockPDFPreprocessor(PDFPreprocessor):
 
 
 @pytest.fixture
-def symlinked_doc_0(test_worker_config: PassportWorkerConfig) -> ProcessedFile:
+def symlinked_doc_0() -> ProcessedFile:
     # Let's test with a symlinked file
     symlink_path = Path(TEST_PROJECT, "symlinks", "do", "c-", "not_a_passport.jpg")
     symlinked_doc = safe_copy(PROCESSED_DOC_0, {"path": symlink_path})
@@ -95,7 +98,7 @@ def symlinked_doc_0_pages(
 def test_preprocess_images_act(
     test_worker_config: PassportWorkerConfig,
     symlinked_doc_0_pages: list[Path],
-):
+) -> None:
     # Given
     config = test_worker_config
     executor = test_worker_config.to_image_preprocessing_executor()
@@ -135,8 +138,8 @@ def test_preprocess_images_act(
 
 async def test_convert_to_pdfs_act(
     test_worker_config: PassportWorkerConfig,
-    docs_with_cached_artifacts: list[ProcessedFile],
-):
+    docs_with_cached_artifacts: list[ProcessedFile],  # noqa: ARG001
+) -> None:
     # Given
     config = test_worker_config
     worker_paths = config.paths
@@ -190,8 +193,8 @@ def doc_1_pages(
 async def test_preprocess_pdfs_act(
     test_worker_config: PassportWorkerConfig,
     doc_1_pages: list[Path],
-    docs_with_cached_artifacts: list[ProcessedFile],
-):
+    docs_with_cached_artifacts: list[ProcessedFile],  # noqa: ARG001
+) -> None:
     # Given
     config = test_worker_config
     worker_paths = config.paths
@@ -225,7 +228,7 @@ async def test_preprocess_pdfs_act(
     assert processing_error.error.title == "InvalidPDF"
 
 
-def test_default_image_preprocessor(tmpdir: Path):
+def test_default_image_preprocessor(tmpdir: Path) -> None:
     # Given
     output_dir = Path(tmpdir)
     im_path = DOCS_PATH / "not_a_passport.jpg"

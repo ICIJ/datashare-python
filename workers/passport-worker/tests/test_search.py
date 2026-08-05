@@ -61,7 +61,7 @@ class _PreprocessingBatches(BaseModel):
         (ids_query(["doc-6"]), _PreprocessingBatches()),
     ],
 )
-async def test_create_preprocessing_batches(
+async def test_create_preprocessing_batches(  # noqa: PLR0917
     test_worker_config: PassportWorkerConfig,
     docs_with_cached_artifacts: list[ProcessedFile],  # noqa: ARG001
     test_es_client: ESClient,

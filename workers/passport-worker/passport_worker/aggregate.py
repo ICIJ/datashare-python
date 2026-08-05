@@ -40,5 +40,5 @@ async def aggregate_results_act(
 T = TypeVar("T")
 
 
-async def _as_list(iterable: AsyncIterable[T]) -> list[T]:
+async def _as_list[T](iterable: AsyncIterable[T]) -> list[T]:
     return [i async for i in iterable]
