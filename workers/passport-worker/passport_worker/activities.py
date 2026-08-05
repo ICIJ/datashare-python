@@ -217,7 +217,7 @@ class PassportDetectionActivities(ActivityWithProgress):
         batches: list[Path],
         project: str,
         *,
-        progress: Annotated[
+        progress: Annotated[  # noqa:ARG002
             AsyncProgressRateHandler | None,
             Weight(value=_CREATE_INFERENCE_BATCH_WEIGHT),
         ] = None,
@@ -282,7 +282,7 @@ class PassportDetectionActivities(ActivityWithProgress):
         error_paths: list[Path],
         result_paths: list[Path],
         *,
-        progress: Annotated[
+        progress: Annotated[  # noqa:ARG002
             AsyncProgressRateHandler | None,
             Weight(value=_CREATE_INFERENCE_BATCH_WEIGHT),
         ] = None,

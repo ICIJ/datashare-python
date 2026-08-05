@@ -35,7 +35,7 @@ from .objects import (
 from .utils import write_batches
 
 
-async def create_preprocessing_batches_act(
+async def create_preprocessing_batches_act(  # noqa: PLR0917
     docs: list[DocId] | DocumentSearchQuery | None,
     project: str,
     es_client: ESClient,
@@ -53,12 +53,11 @@ async def create_preprocessing_batches_act(
     supported_image_exts -= {PDF_EXT}
     supported_doc_exts -= supported_image_exts
     pdf_query = _build_doc_query(docs, {PDF_EXT})
+    pdf_docs = _search_docs(pdf_query, es_client, project, sort=_DOC_SORT)
     pdf_batches = [
         b
-        async for b in _search_and_write_batches(
-            pdf_query,
-            es_client,
-            project,
+        async for b in _write_preprocessing_batches(
+            pdf_docs,
             paths,
             target_n_pages_per_batch,
             output_root,
@@ -66,12 +65,11 @@ async def create_preprocessing_batches_act(
         )
     ]
     im_query = _build_doc_query(docs, restrict_image_formats(supported_image_exts))
+    im_docs = _search_docs(im_query, es_client, project, sort=_DOC_SORT)
     im_batches = [
         b
-        async for b in _search_and_write_batches(
-            im_query,
-            es_client,
-            project,
+        async for b in _write_preprocessing_batches(
+            im_docs,
             paths,
             target_n_pages_per_batch,
             output_root,
@@ -81,12 +79,11 @@ async def create_preprocessing_batches_act(
     to_pdf_query = _build_doc_query(
         docs, restrict_to_pdf_file_formats(supported_doc_exts)
     )
+    to_pdf_docs = _search_docs(to_pdf_query, es_client, project, sort=_DOC_SORT)
     to_pdf_batches = [
         b
-        async for b in _search_and_write_batches(
-            to_pdf_query,
-            es_client,
-            project,
+        async for b in _write_preprocessing_batches(
+            to_pdf_docs,
             paths,
             target_n_pages_per_batch,
             output_root,
@@ -98,16 +95,13 @@ async def create_preprocessing_batches_act(
     )
 
 
-async def _search_and_write_batches(
-    query: dict[str, Any],
-    es_client: ESClient,
-    project: str,
+async def _write_preprocessing_batches(
+    docs: AsyncIterable[Document],
     paths: WorkerPaths,
     target_n_pages_per_batch: int,
     output_dir: Path,
     batch_offset: int,
 ) -> AsyncIterable[Path]:
-    docs = (d async for d in _search_docs(query, es_client, project, sort=_DOC_SORT))
     docs = (symlink_embedded_document_to_workdir(d, paths) async for d in docs)
     batches = _batch_by_n_pages(docs, target_n_pages_per_batch=target_n_pages_per_batch)
     async for p in write_batches(

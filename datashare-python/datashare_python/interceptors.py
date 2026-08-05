@@ -219,7 +219,7 @@ def _trace_context(headers: Mapping[str, Payload]) -> Generator[None, None, None
 InputWithHeaders = TypeVar("InputWithHeaders")
 
 
-def _with_trace_context_header(
+def _with_trace_context_header[InputWithHeaders](
     input_with_headers: InputWithHeaders,
 ) -> InputWithHeaders:
     ctx = get_trace_context()

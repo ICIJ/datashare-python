@@ -1,6 +1,5 @@
 import json
 import os
-from builtins import list
 from collections.abc import Sequence
 from pathlib import Path
 
@@ -51,15 +50,16 @@ class MockPassportDetector(PassportDetector):
         self._mrzs = iter(mrzs)
 
     def detect_passports(
-        self, inputs: Sequence[tuple[MatLike, float]]
+        self,
+        ins: Sequence[tuple[MatLike, float]],  # noqa: ARG002
     ) -> list[list[ObjectDetection]]:
         return next(self._detections)
 
     def read_mrz(
         self,
-        page: "np.array",
-        passport: ObjectDetection,
-        country_codes: list[str] | None = None,
+        page: "np.array",  # noqa: ARG002
+        passport: ObjectDetection,  # noqa: ARG002
+        country_codes: list[str] | None = None,  # noqa: ARG002
     ) -> Passport:
         return next(self._mrzs)
 
@@ -76,7 +76,10 @@ class MockPDFPreprocessor(PDFPreprocessor):
         self._res = iter(res)
 
     def __call__(
-        self, pdf_path: Path, pdf_bytes: bytes, output_dir: Path
+        self,
+        pdf_path: Path,  # noqa: ARG002
+        pdf_bytes: bytes,  # noqa: ARG002
+        output_dir: Path,  # noqa: ARG002
     ) -> list[Path]:
         r = next(self._res)
         if isinstance(r, Exception):
@@ -85,7 +88,7 @@ class MockPDFPreprocessor(PDFPreprocessor):
 
 
 @pytest.fixture
-def symlinked_doc_0(test_worker_config: PassportWorkerConfig) -> ProcessedFile:
+def symlinked_doc_0() -> ProcessedFile:
     # Let's test with a symlinked file
     symlink_path = Path(TEST_PROJECT, "symlinks", "do", "c-", "not_a_passport.jpg")
     symlinked_doc = safe_copy(PROCESSED_DOC_0, {"path": symlink_path})
@@ -145,7 +148,9 @@ _DOC_7_PAGE_0 = ProcessedPage(
 )
 
 
-async def test_create_inference_batches_act(test_worker_config: PassportWorkerConfig):
+async def test_create_inference_batches_act(
+    test_worker_config: PassportWorkerConfig,
+) -> None:
     # Given
     target_batches_per_task = 1
     inference_batch_size = 1
@@ -207,7 +212,7 @@ def _mock_pages(
     worker_paths: WorkerPaths,
     *,
     errors: list[ProcessedPage],
-):
+) -> None:
     for p in batch:
         page_path = worker_paths.workdir / p.path
         page_path.parent.mkdir(parents=True, exist_ok=True)

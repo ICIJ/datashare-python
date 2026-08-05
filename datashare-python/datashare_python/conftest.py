@@ -171,7 +171,7 @@ async def test_temporal_client(
 
 
 @pytest.fixture
-async def indexed_docs(
+async def indexed_docs(  # noqa: PLR0917
     doc_0: Document,
     doc_1: Document,
     doc_2: Document,
