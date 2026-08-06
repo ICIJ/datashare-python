@@ -24,7 +24,7 @@ from icij_common.es import (
     has_type,
 )
 from passport_service.constants import GOTENBERG_SUPPORTED_EXTS, PDF_EXT
-from passport_service.core.preprocessing import PIL_SUPPORTED_EXTENSIONS
+from passport_service.core import get_pil_supported_extensions
 
 from .objects import (
     DocId,
@@ -47,7 +47,7 @@ async def create_preprocessing_batches_act(  # noqa: PLR0917
     supported_doc_exts: set[str] | None = None,
 ) -> PreprocessingBatches:
     if supported_image_exts is None:
-        supported_image_exts = set(PIL_SUPPORTED_EXTENSIONS)
+        supported_image_exts = get_pil_supported_extensions()
     if supported_doc_exts is None:
         supported_doc_exts = GOTENBERG_SUPPORTED_EXTS
     supported_image_exts -= {PDF_EXT}

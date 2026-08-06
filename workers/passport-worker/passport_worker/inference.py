@@ -28,7 +28,6 @@ from icij_common.registrable import (
     RegistrableFromConfig,
 )
 from passport_service import DATA_DIR
-from passport_service.core.object_detection import preprocess_image, read_passport_mrz
 from passport_service.exceptions import InvalidImage
 from passport_service.objects import ObjectDetection, Passport
 
@@ -369,6 +368,10 @@ class YOLOPassportDetector(PassportDetector):
         return detections
 
     def scale_image(self, im: "MatLike") -> "tuple[np.ndarray, MatLike, float]":
+        from passport_service.core.object_detection import (  # noqa: PLC0415
+            preprocess_image,
+        )
+
         return preprocess_image(im, self._config.image_size)
 
     def read_mrz(
@@ -377,6 +380,10 @@ class YOLOPassportDetector(PassportDetector):
         passport: ObjectDetection,
         country_codes: list[str] | None = None,
     ) -> Passport:
+        from passport_service.core.object_detection import (  # noqa: PLC0415
+            read_passport_mrz,
+        )
+
         if country_codes is None:
             country_codes = default_country_codes()
         mrz = read_passport_mrz(page, passport, country_codes=country_codes)

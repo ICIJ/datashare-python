@@ -18,7 +18,7 @@ from datashare_python.objects import (
     TaskArgs,
 )
 from icij_common.registrable import RegistrableConfig
-from passport_service.core.object_detection import (
+from passport_service.constants import (
     DEFAULT_DETECTION_THRESHOLD,
     DEFAULT_NMS_ETA,
     DEFAULT_NMS_SCORE_THRESHOLD,
