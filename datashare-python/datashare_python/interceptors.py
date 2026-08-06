@@ -1,5 +1,4 @@
 import asyncio
-import contextlib
 import dataclasses
 import secrets
 from collections.abc import Callable, Generator, Mapping
@@ -29,6 +28,7 @@ from temporalio.client import WorkflowHandle
 from temporalio.converter import DataConverter
 from temporalio.worker import (
     ActivityInboundInterceptor,
+    ActivityOutboundInterceptor,
     ContinueAsNewInput,
     ExecuteActivityInput,
     ExecuteWorkflowInput,
@@ -360,13 +360,13 @@ class HeartbeatInterceptor(Interceptor):
         return _HeartbeatInboundInterceptor(next, self._n_missed_before_timeout)
 
 
-async def _heartbeat_every(period: float, *details: Any) -> None:
-    with contextlib.suppress(RuntimeError, asyncio.TimeoutError):
-        activity.heartbeat(*details)
+async def _heartbeat_every(
+    heartbeat_fn: Callable[[Any], None], period: float, *details: Any
+) -> None:
+    heartbeat_fn(*details)
     while True:
         await asyncio.sleep(period)
-        with contextlib.suppress(RuntimeError, asyncio.TimeoutError):
-            activity.heartbeat(*details)
+        heartbeat_fn(*details)
 
 
 class _HeartbeatInboundInterceptor(ActivityInboundInterceptor):
@@ -377,13 +377,24 @@ class _HeartbeatInboundInterceptor(ActivityInboundInterceptor):
     ) -> None:
         super().__init__(next)
         self._n_missed_before_timeout = n_missed_before_timeout
+        self._outbound: ActivityOutboundInterceptor | None = None
+
+    def init(self, outbound: ActivityOutboundInterceptor) -> None:
+        super().init(outbound)
+        self._outbound = outbound
 
     async def execute_activity(self, input: ExecuteActivityInput) -> Any:  # noqa: A002
+        # We need to capture the output interceptor to access the outbound hearbeat
+        # function. This inbound interceptor runs on the temporal event loop side.
+        # We want the heartbeat to run on the worker thread, on on the temporal event
+        # loop !
         heartbeat_timeout = activity.info().heartbeat_timeout
         heartbeat_task = None
         if heartbeat_timeout:
             period = heartbeat_timeout.total_seconds() / self._n_missed_before_timeout
-            heartbeat_task = asyncio.create_task(_heartbeat_every(period))
+            heartbeat_task = asyncio.create_task(
+                _heartbeat_every(self._outbound.heartbeat, period)
+            )
         try:
             activity.heartbeat()
             return await super().execute_activity(input)
