@@ -128,7 +128,7 @@ COPY --from=extract-gpu-builder /root/.local/share/uv/python /root/.local/share/
 ENTRYPOINT ["entrypoints/extract_gpu_worker.sh"]
 
 
-FROM runtime-base AS extract-cpu-mineru-builder
+FROM extract-base-builder AS extract-cpu-mineru-builder
 # Install deps first to optimize layer cache
 RUN --mount=type=cache,target=/root/.cache/uv \
     --mount=type=bind,source=uv.dist.lock,target=uv.lock \
@@ -153,7 +153,7 @@ COPY --from=extract-cpu-mineru-builder /root/.local/share/uv/python /root/.local
 ENTRYPOINT ["entrypoints/extract_cpu_mineru_worker.sh"]
 
 
-FROM runtime-base AS extract-gpu-mineru-builder
+FROM extract-base-builder AS extract-gpu-mineru-builder
 # Install deps first to optimize layer cache
 RUN --mount=type=cache,target=/root/.cache/uv \
     --mount=type=bind,source=uv.dist.lock,target=uv.lock \
