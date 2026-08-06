@@ -56,10 +56,6 @@ package = ["passport_worker"]
 [tool.hatch.version]
 source = "uv-dynamic-versioning"
 
-[tool.uv-dynamic-versioning]
-fallback-version = "0.0.0"
-pattern = "default-unprefixed"
-
 [tool.hatch.build.targets.wheel]
 packages = ["passport_worker"]
 
