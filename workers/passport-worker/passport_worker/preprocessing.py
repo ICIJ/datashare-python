@@ -26,7 +26,7 @@ from passport_service.exceptions import UnsupportedDocExtension
 from passport_service.utils import run_with_concurrency
 from pydantic import Field
 
-from passport_worker.constants import pil_supporter_extensions
+from passport_worker.constants import pil_supported_extensions
 from passport_worker.objects import (
     DefaultImagePreprocessorConfig,
     FileProcessingError,
@@ -268,9 +268,9 @@ def _preprocess_image_doc(
     output_root: Path,
 ) -> list[ProcessedPage]:
     ext = doc.path.suffix
-    if ext not in pil_supporter_extensions():
+    if ext not in pil_supported_extensions():
         logger.info("image extension %s not supported !", ext)
-        raise UnsupportedDocExtension(ext, sorted(pil_supporter_extensions()))
+        raise UnsupportedDocExtension(ext, sorted(pil_supported_extensions()))
     output_dir = output_root / safe_dir(doc.id) / doc.id
     output_dir.mkdir(parents=True, exist_ok=True)
     im_paths = image_preprocessor(doc.locate(paths), output_dir=output_dir)
