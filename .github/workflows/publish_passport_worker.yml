@@ -84,7 +84,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v6
         with:
-          images: icij/datashare-passport-cpu-worker
+          images: icij/datashare-passport-preprocessing-worker
           tags: |
             type=match,pattern=passport-worker-(.*),group=1
 
@@ -116,7 +116,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v6
         with:
-          images: icij/datashare-passport-gpu-worker
+          images: icij/datashare-passport-inference-worker
           tags: |
             type=match,pattern=passport-worker-(.*),group=1
 
