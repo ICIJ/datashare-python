@@ -27,7 +27,7 @@ env:
   PACKAGE: ${{ inputs.package }}
   PACKAGE_EXTRAS: ${{ inputs.package_extras }}
   PACKAGE_VERSION: ${{ inputs.package_version }}
-  PYTHON_VERSION: 3.12
+  PYTHON_VERSION: 3.13
   ASTRAL_VERSION: 0.11.6
 
 jobs:
