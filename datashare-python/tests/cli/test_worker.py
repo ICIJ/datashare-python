@@ -19,7 +19,7 @@ async def _mock_worker_is_done(self) -> None:  # noqa: ANN001
     pass
 
 
-async def wtest_start_workers(
+async def test_start_workers(
     typer_asyncio_patch,  # noqa: ANN001, ARG001
     test_worker_config_path: Path,
     monkeypatch: MonkeyPatch,
