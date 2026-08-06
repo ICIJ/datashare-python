@@ -1,12 +1,13 @@
 lock-all:
-	./scripts/lock-dist.sh worker-template
-	./scripts/lock-dist.sh asr-worker
-	./scripts/lock-dist.sh extract-worker
-	./scripts/lock-dist.sh translation-worker
-	./scripts/lock-dist.sh workflows-worker
+	./scripts/lock-dist.sh worker-template ${uv_extra}
+	./scripts/lock-dist.sh asr-worker ${uv_extra}
+	./scripts/lock-dist.sh extract-worker ${uv_extra}
+	./scripts/lock-dist.sh passport-worker ${uv_extra}
+	./scripts/lock-dist.sh translation-worker ${uv_extra}
+	./scripts/lock-dist.sh workflows-worker ${uv_extra}
 
 lock-dist:
-	./scripts/lock-dist.sh ${project}
+	./scripts/lock-dist.sh ${project} ${uv_extra}
 
 create-venv:
 	[ -d .venv ] || uv venv --python 3.13

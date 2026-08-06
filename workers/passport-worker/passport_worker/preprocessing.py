@@ -22,11 +22,11 @@ from icij_common.registrable import RegistrableConfig, RegistrableFromConfig
 from passport_service import GotenbergClient
 from passport_service.constants import Colorspace
 from passport_service.core import process_image, process_pdf
-from passport_service.core.preprocessing import PIL_SUPPORTED_EXTENSIONS
 from passport_service.exceptions import UnsupportedDocExtension
 from passport_service.utils import run_with_concurrency
 from pydantic import Field
 
+from passport_worker.constants import pil_supporter_extensions
 from passport_worker.objects import (
     DefaultImagePreprocessorConfig,
     FileProcessingError,
@@ -115,7 +115,6 @@ class PDFPreprocessor(Protocol):
 def reports_errors[R](
     f: _PreprocessingFunction[R],
 ) -> _PreprocessingFunction[R | FileProcessingError]:
-    from passport_service.core.preprocessing import REPORTED_ERRORS  # noqa:PLC0415
 
     if iscoroutinefunction(f):
 
@@ -123,6 +122,10 @@ def reports_errors[R](
         async def wrapper(
             doc: ProcessedFile, *args, **kwargs
         ) -> R | FileProcessingError:
+            from passport_service.core.preprocessing import (  # noqa:PLC0415
+                REPORTED_ERRORS,
+            )
+
             try:
                 return await f(doc, *args, **kwargs)
             except REPORTED_ERRORS as e:
@@ -133,6 +136,10 @@ def reports_errors[R](
 
         @wraps(f)
         def wrapper(doc: ProcessedFile, *args, **kwargs) -> R | FileProcessingError:
+            from passport_service.core.preprocessing import (  # noqa:PLC0415
+                REPORTED_ERRORS,
+            )
+
             try:
                 return f(doc, *args, **kwargs)
             except REPORTED_ERRORS as e:
@@ -261,9 +268,9 @@ def _preprocess_image_doc(
     output_root: Path,
 ) -> list[ProcessedPage]:
     ext = doc.path.suffix
-    if ext not in PIL_SUPPORTED_EXTENSIONS:
+    if ext not in pil_supporter_extensions():
         logger.info("image extension %s not supported !", ext)
-        raise UnsupportedDocExtension(ext, PIL_SUPPORTED_EXTENSIONS)
+        raise UnsupportedDocExtension(ext, sorted(pil_supporter_extensions()))
     output_dir = output_root / safe_dir(doc.id) / doc.id
     output_dir.mkdir(parents=True, exist_ok=True)
     im_paths = image_preprocessor(doc.locate(paths), output_dir=output_dir)

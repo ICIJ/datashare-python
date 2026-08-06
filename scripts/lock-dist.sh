@@ -6,8 +6,9 @@ if [[ "$1" == "worker-template" || "$1" == "datashare-python" ]];then
 else
     cd workers/"$1"
 fi
+shift 1
 
 # uv bug -n flag to discard cache takes 2 times to work
-uv lock -n --no-sources-package datashare-python || uv lock -n --no-sources-package datashare-python
+uv lock "$@" -n --no-sources-package datashare-python || uv lock "$@" -n --no-sources-package datashare-python
 cp uv.lock uv.dist.lock
 uv lock

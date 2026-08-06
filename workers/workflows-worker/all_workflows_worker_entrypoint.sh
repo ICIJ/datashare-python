@@ -5,5 +5,6 @@ uv run --no-sync datashare-python worker start \
     --skip-config-discovery \
     --queue datashare.workflows \
     --workflow asr.transcription \
-    --workflow translation \
-    --workflow extract.markdown
+    --workflow extract.markdown \
+    --workflow passport-detection.detect-passports \
+    --workflow translation
