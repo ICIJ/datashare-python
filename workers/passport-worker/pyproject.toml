@@ -11,6 +11,7 @@ requires-python = ">=3.12,<3.14"
 dependencies = [
   "datashare-python~=0.10.0",
   "icij-common[elasticsearch]~=0.8.3",
+  "icij-passport-core==0.10.9",
 ]
 
 [project.optional-dependencies]
