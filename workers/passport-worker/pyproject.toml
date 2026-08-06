@@ -27,6 +27,11 @@ inference-cpu = [
 [tool.uv.sources]
 datashare-python = { path = "../../datashare-python", editable = true }
 
+[tool.uv-dynamic-versioning]
+fallback-version = "0.0.0"
+pattern-prefix = "passport-worker-"
+pattern = "default-unprefixed"
+
 [project.entry-points."datashare.workflows"]
 workflows = "passport_worker.workflows:WORKFLOWS"
 
