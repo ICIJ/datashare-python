@@ -11,6 +11,7 @@ on:
           - datashare-asr-worker
           - datashare-extract-worker
           - datashare-python
+          - datashare-passport-worker
           - datashare-translation-worker
       package_version:
         description: 'New version of the worker app'
