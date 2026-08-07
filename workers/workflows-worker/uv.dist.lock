@@ -477,16 +477,16 @@ base = [
 
 [[package]]
 name = "datashare-passport-worker"
-version = "0.1.6"
+version = "0.2.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "datashare-python" },
     { name = "icij-common", extra = ["elasticsearch"] },
     { name = "icij-passport-core" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/a9/72/d25b36d8344505709faab9bf4638ee690aed3de3aebf46f15985891927f8/datashare_passport_worker-0.1.6.tar.gz", hash = "sha256:fad87ca04c6739c3c278a304ebf57fa47920bff396c7485cb7b43abc30914a31", size = 14264, upload-time = "2026-08-07T08:13:08.037Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/b5/1c/61b2c3db812e20d144ed9ddecd26edb4d7efef58be268ccf0ae0cd1a2d7c/datashare_passport_worker-0.2.0.tar.gz", hash = "sha256:445ed86ff2e9134dcd0466650917c41ec63d302dfeb2aeabd79362fb622bffc8", size = 14218, upload-time = "2026-08-07T09:19:43.499Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/eb/3f/9a7df4ef1096bb6943316a290aeab4ef89d9f56c5cc3497284dfbbf38f51/datashare_passport_worker-0.1.6-py3-none-any.whl", hash = "sha256:0fe35679044709840ec9b22c6774fb9fb22f4bba4a443c0427fb2a51d984a9e5", size = 19552, upload-time = "2026-08-07T08:13:07.041Z" },
+    { url = "https://files.pythonhosted.org/packages/c2/0a/10c0ee460670f9e042d791c028c369932c413a0ac5a149812909c76a02e4/datashare_passport_worker-0.2.0-py3-none-any.whl", hash = "sha256:b505f2b6d91b8df4e043340e7bfbbe395b2e6fadd298c8baa5a84361ae843f05", size = 19580, upload-time = "2026-08-07T09:19:42.526Z" },
 ]
 
 [[package]]
@@ -543,7 +543,7 @@ dependencies = [
 requires-dist = [
     { name = "datashare-asr-worker", specifier = "==0.8.17" },
     { name = "datashare-extract-worker", extras = ["base"], specifier = "==0.1.57" },
-    { name = "datashare-passport-worker", specifier = "==0.1.6" },
+    { name = "datashare-passport-worker", specifier = "==0.2.0" },
     { name = "datashare-python", specifier = "~=0.10.0" },
     { name = "datashare-translation-worker", specifier = "==0.7.10" },
 ]
