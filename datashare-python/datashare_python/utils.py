@@ -317,8 +317,8 @@ def to_raw_async_progress(
     if not max_progress > 0:
         raise ValueError("max_progress must be > 0")
 
-    async def raw(p: int) -> None:
-        await progress(p / max_progress)
+    async def raw(p: int, *, force: bool = False) -> None:
+        await progress(p / max_progress, force=force)
 
     return raw
 
@@ -329,10 +329,10 @@ def to_incremental_async_progress(
 
     offset = 0
 
-    async def incremental(p: int) -> None:
+    async def incremental(p: int, *, force: bool = False) -> None:
         nonlocal offset
         offset += p
-        await progress(offset)
+        await progress(offset, force=force)
 
     return incremental
 
@@ -343,8 +343,10 @@ def to_raw_sync_progress(
     if not max_progress > 0:
         raise ValueError("max_progress must be > 0")
 
-    def raw(iteration: int, event_loop: asyncio.AbstractEventLoop) -> None:
-        progress(iteration / max_progress, event_loop)
+    def raw(
+        iteration: int, event_loop: asyncio.AbstractEventLoop, *, force: bool = False
+    ) -> None:
+        progress(iteration / max_progress, event_loop, force=force)
 
     return raw
 
@@ -357,8 +359,8 @@ def to_scaled_async_progress(
     if not start < end <= 1.0:
         raise ValueError("end must be ]start, 1.0]")
 
-    async def _scaled(p: float) -> None:
-        await progress(start + p * (end - start))
+    async def _scaled(p: float, *, force: bool = False) -> None:
+        await progress(start + p * (end - start), force=force)
 
     return _scaled
 

@@ -122,6 +122,7 @@ class WorkerConfig(ICIJSettings, BaseModel):
     temporal: TemporalClientConfig = TemporalClientConfig()
 
     max_concurrent_activities: int = 5
+    min_progress_interval_s: float = 30.0
 
     paths: WorkerPaths | None = None
 

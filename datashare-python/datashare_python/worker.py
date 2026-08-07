@@ -83,6 +83,7 @@ def datashare_worker(
     # at a time
     max_concurrent_activities: int = 1,
     max_activities_per_second: float = 20.0,
+    min_progress_interval_s: float = 30.0,
     sandboxed: bool = True,
 ) -> DatashareWorker:
     if workflows is None:
@@ -108,7 +109,7 @@ def datashare_worker(
             logger.warning(_SEPARATE_IO_AND_CPU_WORKERS)
     interceptors = [
         TraceContextInterceptor(),
-        ProgressInterceptor(),
+        ProgressInterceptor(min_progress_interval_s=min_progress_interval_s),
         HeartbeatInterceptor(),
     ]
     wf_runner = SandboxedWorkflowRunner() if sandboxed else UnsandboxedWorkflowRunner()
@@ -216,6 +217,7 @@ async def worker_context(
             activities=acts,
             task_queue=task_queue,
             max_concurrent_activities=worker_config.max_concurrent_activities,
+            min_progress_interval_s=worker_config.min_progress_interval_s,
             sandboxed=sandboxed,
         )
         async with worker:

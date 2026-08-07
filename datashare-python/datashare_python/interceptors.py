@@ -1,11 +1,12 @@
 import asyncio
 import dataclasses
+import datetime
 import secrets
 from collections.abc import Callable, Generator, Mapping
 from contextlib import contextmanager
 from contextvars import ContextVar
 from copy import deepcopy
-from functools import partial, wraps
+from functools import wraps
 from inspect import signature
 from types import UnionType
 from typing import (
@@ -234,11 +235,14 @@ def _with_trace_context_header[InputWithHeaders](
 
 
 class ProgressInterceptor(Interceptor):
+    def __init__(self, min_progress_interval_s: float = 30.0):
+        self._min_progress_interval_s: float = min_progress_interval_s
+
     def intercept_activity(
         self,
         next: ActivityInboundInterceptor,  # noqa: A002
     ) -> ActivityInboundInterceptor:
-        return _ProgressInboundInterceptor(next)
+        return _ProgressInboundInterceptor(next, self._min_progress_interval_s)
 
 
 def _parse_progress_weight(act_fn: Callable) -> float:
@@ -254,18 +258,41 @@ def _parse_progress_weight(act_fn: Callable) -> float:
     return 1.0
 
 
-async def progress_handler(
-    progress: float,
-    handle: WorkflowHandle,
-    *,
-    activity_id: str,
-    run_id: str,
-    weight: float = 1.0,
-) -> None:
-    signal = ProgressSignal(
-        activity_id=activity_id, run_id=run_id, progress=progress, weight=weight
-    )
-    await handle.signal("update_progress", signal)
+class TemporalProgressHandler:
+    def __init__(
+        self,
+        handle: WorkflowHandle,
+        activity_id: str,
+        *,
+        run_id: str,
+        min_progress_interval_s: float = 30.0,
+        weight: float = 1.0,
+    ) -> None:
+        self._handle = handle
+        self._activity_id = activity_id
+        self._run_id = run_id
+        self._weight = weight
+        self._min_progress_interval_s = min_progress_interval_s
+        self._last: datetime.datetime | None = None
+
+    async def progress(self, progress: float, *, force: bool = False) -> None:
+        # TODO: we could lock here to avoid race conditions, it's not critical though
+        now = datetime.datetime.now(datetime.UTC)
+        report_progress = (
+            force
+            or self._last is None
+            or (now - self._last).total_seconds() >= self._min_progress_interval_s
+        )
+        if not report_progress:
+            return
+        self._last = now
+        signal = ProgressSignal(
+            activity_id=self._activity_id,
+            run_id=self._run_id,
+            progress=progress,
+            weight=self._weight,
+        )
+        await self._handle.signal("update_progress", signal)
 
 
 def supports_progress(task_fn: Callable) -> bool:
@@ -275,7 +302,9 @@ def supports_progress(task_fn: Callable) -> bool:
     )
 
 
-def _get_progress_handler(act_fn: Callable) -> ProgressRateHandler:
+def _get_progress_handler(
+    act_fn: Callable, min_progress_interval_s: float
+) -> ProgressRateHandler:
     act = getattr(act_fn, "__self__", None)
     # Weirdly isinstance doesn't work here
     if act is None or not isinstance(act, ActivityWithProgress):
@@ -291,14 +320,14 @@ def _get_progress_handler(act_fn: Callable) -> ProgressRateHandler:
     activity_id = activity.info().activity_id
     client = act._temporal_client
     workflow_handle = client.get_workflow_handle(workflow_id, run_id=run_id)
-    handler = partial(
-        progress_handler,
-        handle=workflow_handle,
+    handler = TemporalProgressHandler(
+        workflow_handle,
+        activity_id,
         run_id=run_id,
-        activity_id=activity_id,
         weight=weight,
+        min_progress_interval_s=min_progress_interval_s,
     )
-    return handler
+    return handler.progress
 
 
 def _is_progress(t: type) -> bool:
@@ -320,13 +349,23 @@ def _without_progress(arg_types: list[type] | None) -> list[type] | None:
 
 
 class _ProgressInboundInterceptor(ActivityInboundInterceptor):
+    def __init__(
+        self,
+        next: ActivityInboundInterceptor,  # noqa: A002
+        min_progress_interval_s: float,
+    ) -> None:
+        super().__init__(next)
+        self._min_progress_interval_s = min_progress_interval_s
+
     async def execute_activity(self, input: ExecuteActivityInput) -> Any:  # noqa: A002
         if not supports_progress(input.fn):
             return await super().execute_activity(input)
         # The progress args breaks trigger a bypass of the dataloader:
         # https://github.com/temporalio/sdk-python/blob/631ebaf0e20fb214b16589b45627b358048a5d77/temporalio/worker/_activity.py#L600
         # we have to force it here again
-        progress_handler = _get_progress_handler(input.fn)
+        progress_handler = _get_progress_handler(
+            input.fn, self._min_progress_interval_s
+        )
         new_args = []
         act_definition = _Definition.must_from_callable(input.fn)
         if input.args:
@@ -343,9 +382,9 @@ class _ProgressInboundInterceptor(ActivityInboundInterceptor):
         )
         new_args.append(injected_progress)
         new_input = dataclasses.replace(input, args=new_args)
-        await progress_handler(0.0)
+        await progress_handler(0.0, force=True)
         res = await super().execute_activity(new_input)
-        await progress_handler(1.0)
+        await progress_handler(1.0, force=True)
         return res
 
 
@@ -408,9 +447,11 @@ def _sync_progress(
     progress_handler: AsyncProgressRateHandler,
 ) -> SyncProgressRateHandler:
     @wraps(progress_handler)
-    def p(progress: float, event_loop: asyncio.AbstractEventLoop) -> None:
+    def p(
+        progress: float, event_loop: asyncio.AbstractEventLoop, *, force: bool = False
+    ) -> None:
         asyncio.run_coroutine_threadsafe(
-            progress_handler(progress), event_loop
+            progress_handler(progress, force=force), event_loop
         ).result()
 
     return p

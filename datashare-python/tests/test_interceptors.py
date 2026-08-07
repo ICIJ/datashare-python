@@ -5,12 +5,14 @@ from collections.abc import AsyncGenerator
 from concurrent.futures import ThreadPoolExecutor
 from datetime import timedelta
 from typing import Annotated, Any
+from unittest.mock import AsyncMock, call
 
 import pytest
 import temporalio
 from datashare_python.objects import DatashareModel
 from datashare_python.utils import (
     ActivityWithProgress,
+    ProgressSignal,
     WorkflowWithProgress,
     activity_defn,
     execute_activity,
@@ -23,6 +25,7 @@ with temporalio.workflow.unsafe.imports_passed_through():
     from datashare_python.interceptors import (
         HeartbeatInterceptor,
         ProgressInterceptor,
+        TemporalProgressHandler,
         TraceContext,
         TraceContextInterceptor,
         get_trace_context,
@@ -409,3 +412,91 @@ async def test_heartbeat_interceptor_should_fail_when_no_heartbeat(
     cause = ctx.value.cause.__cause__
     assert isinstance(cause, temporalio_exceptions.TimeoutError)
     assert "Heartbeat timeout" in cause.args[0]
+
+
+async def test_should_progress_handler_should_not_report_progress() -> None:
+    # Given
+    mocked_wf_handle = AsyncMock()
+    activity_id = "activity-id"
+    run_id = "run-id"
+    min_progress_interval_s = float("inf")
+    handler = TemporalProgressHandler(
+        mocked_wf_handle,
+        activity_id,
+        run_id=run_id,
+        min_progress_interval_s=min_progress_interval_s,
+    )
+    # When
+    await handler.progress(0.1)
+    await handler.progress(0.2)
+    # Then
+    expected_signal = ProgressSignal(
+        activity_id=activity_id, run_id=run_id, progress=0.1, weight=1.0
+    )
+    mocked_wf_handle.signal.assert_called_once_with("update_progress", expected_signal)
+
+
+async def test_should_progress_handler_should_report_progress() -> None:
+    # Given
+    mocked_wf_handle = AsyncMock()
+    activity_id = "activity-id"
+    run_id = "run-id"
+    min_progress_interval_s = 0.0
+    handler = TemporalProgressHandler(
+        mocked_wf_handle,
+        activity_id,
+        run_id=run_id,
+        min_progress_interval_s=min_progress_interval_s,
+    )
+    # When
+    await handler.progress(0.1)
+    await handler.progress(0.2)
+    # Then
+    expected_calls = [
+        call(
+            "update_progress",
+            ProgressSignal(
+                activity_id=activity_id, run_id=run_id, progress=0.1, weight=1.0
+            ),
+        ),
+        call(
+            "update_progress",
+            ProgressSignal(
+                activity_id=activity_id, run_id=run_id, progress=0.2, weight=1.0
+            ),
+        ),
+    ]
+    mocked_wf_handle.signal.assert_has_calls(expected_calls)
+
+
+async def test_should_progress_handler_should_report_progress_on_force() -> None:
+    # Given
+    mocked_wf_handle = AsyncMock()
+    activity_id = "activity-id"
+    run_id = "run-id"
+    min_progress_interval_s = float("inf")
+    handler = TemporalProgressHandler(
+        mocked_wf_handle,
+        activity_id,
+        run_id=run_id,
+        min_progress_interval_s=min_progress_interval_s,
+    )
+    # When
+    await handler.progress(0.1)
+    await handler.progress(0.2, force=True)
+    # Then
+    expected_calls = [
+        call(
+            "update_progress",
+            ProgressSignal(
+                activity_id=activity_id, run_id=run_id, progress=0.1, weight=1.0
+            ),
+        ),
+        call(
+            "update_progress",
+            ProgressSignal(
+                activity_id=activity_id, run_id=run_id, progress=0.2, weight=1.0
+            ),
+        ),
+    ]
+    mocked_wf_handle.signal.assert_has_calls(expected_calls)
