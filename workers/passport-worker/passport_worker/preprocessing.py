@@ -204,16 +204,17 @@ async def convert_to_pdfs_act(
     res_i = 0
     successes = []
     errors = []
+    progress_modulo = n_docs // 5
     async for res in run_with_concurrency(aws, max_concurrency):
         if isinstance(res, FileProcessingError):
             errors.append(res)
         else:
             successes.append(res)
-        if progress is not None and res_i % 10 == 0:
+        if progress is not None and res_i % progress_modulo == 0:
             await progress(res_i)
         res_i += 1
     logger.info(
-        "done converting docs to PDfs: %s success, %s errors",
+        "done converting docs to PDFs: %s success, %s errors",
         len(successes),
         len(errors),
     )
