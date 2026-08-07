@@ -6,7 +6,7 @@ from functools import partial, wraps
 from inspect import iscoroutinefunction
 from pathlib import Path
 from types import TracebackType
-from typing import ClassVar, Protocol, Self, TypeVar
+from typing import Protocol, Self, TypeVar
 
 from aiofile import async_open
 from datashare_python.objects import ProcessedPage, WorkerPaths
@@ -18,21 +18,19 @@ from datashare_python.utils import (
     to_raw_async_progress,
     to_raw_sync_progress,
 )
-from icij_common.registrable import RegistrableConfig, RegistrableFromConfig
+from icij_common.registrable import RegistrableFromConfig
 from passport_service import GotenbergClient
 from passport_service.constants import Colorspace
 from passport_service.core import process_image, process_pdf
 from passport_service.exceptions import UnsupportedDocExtension
 from passport_service.utils import run_with_concurrency
-from pydantic import Field
 
+from passport_worker.config import GotenbergPDFConverterConfig, PDFConverterType
 from passport_worker.constants import pil_supported_extensions
 from passport_worker.objects import (
     DefaultImagePreprocessorConfig,
     FileProcessingError,
-    GotenbergPDFConverterConfig,
     ImagePreprocessorType,
-    PDFConverterType,
     ProcessedFile,
 )
 
@@ -74,11 +72,6 @@ class DefaultImagePreprocessor(ImagePreprocessor):
     @classmethod
     def _from_config(cls, config: DefaultImagePreprocessorConfig, **extras) -> Self:  # noqa:ARG003
         return cls(config)
-
-
-class PDFConverterConfig(RegistrableConfig):
-    registry_key: ClassVar[str] = Field(frozen=True, default="type")
-    type: ClassVar[PDFConverterType]
 
 
 class PDFConverter(RegistrableFromConfig):

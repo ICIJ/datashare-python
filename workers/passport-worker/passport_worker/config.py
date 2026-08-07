@@ -1,4 +1,6 @@
 from concurrent.futures import ProcessPoolExecutor
+from enum import StrEnum
+from typing import ClassVar
 
 import datashare_python
 from datashare_python.config import (
@@ -8,6 +10,7 @@ from datashare_python.config import (
     WorkerConfig,
 )
 from datashare_python.objects import DatashareModel, WorkerPaths
+from icij_common.registrable import RegistrableConfig
 from pydantic import Field
 
 _ALL_LOGGERS = [datashare_python.__name__, __name__, "__main__"]
@@ -31,8 +34,36 @@ class ImagePreprocessingWorkerConfig(DatashareModel):
         return ProcessPoolExecutor(max_workers=self.n_processes)
 
 
+class PDFConverterType(StrEnum):
+    GOTENBERG = "gotenberg"
+
+
+class PDFConverterConfigBase(DatashareModel, RegistrableConfig):
+    registry_key: ClassVar[str] = Field(frozen=True, default="type")
+    type: ClassVar[PDFConverterType]
+
+
+class GotenbergPDFConverterConfig(PDFConverterConfigBase):
+    type: ClassVar[PDFConverterType] = Field(
+        frozen=True, default=PDFConverterType.GOTENBERG
+    )
+    gotenberg_url: str = "http://localhost:3000"
+    max_retries: int = 5
+    min_retry_wait_s: float = 5.0
+    max_retry_wait_s: float = 30.0
+    max_retry_randomness_s: float = 2.0
+
+
+# TODO: use a tagged union here when we have more options
+PDFConverterConfig = GotenbergPDFConverterConfig
+
+
 class PDFConversionWorkerConfig(DatashareModel):
     max_concurrency: int = 10
+
+    pdf_converter: PDFConverterConfig = Field(
+        default_factory=GotenbergPDFConverterConfig
+    )
 
 
 class PreprocessingWorkerConfig(DatashareModel):

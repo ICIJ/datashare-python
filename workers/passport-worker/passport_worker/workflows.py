@@ -16,7 +16,6 @@ with workflow.unsafe.imports_passed_through():
         ImagePreprocessorConfig,
         PassportDetectionArgs,
         PassportDetectionResponse,
-        PDFConverterConfig,
         PreprocessingBatches,
     )
 
@@ -99,7 +98,7 @@ async def preprocess(
         preprocessing_batches.images, args.project, args.config.preprocessing.images
     )
     convert_to_pdf_tasks = _convert_to_pdfs_tasks(
-        preprocessing_batches.to_pdf, args.project, args.config.preprocessing.pdfs
+        preprocessing_batches.to_pdf, args.project
     )
     im_preprocessing_tasks = asyncio.gather(*im_preprocessing_tasks)
     convert_to_pdf_tasks = asyncio.gather(*convert_to_pdf_tasks)
@@ -157,15 +156,13 @@ def _im_processing_tasks(
     return im_preprocessing_tasks
 
 
-def _convert_to_pdfs_tasks(
-    batches: Batches, project: str, config: PDFConverterConfig
-) -> list[Coroutine]:
+def _convert_to_pdfs_tasks(batches: Batches, project: str) -> list[Coroutine]:
     all_tasks = []
     for b in batches:
         all_tasks.append(
             execute_activity(
                 PassportDetectionActivities.convert_to_pdfs,
-                args=(b, project, config),
+                args=(b, project),
                 task_queue=TaskQueue.IO,
                 start_to_close_timeout=_CONVERT_TO_PDF_TIMEOUT,
             )

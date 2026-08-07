@@ -294,6 +294,7 @@ source = { editable = "." }
 dependencies = [
     { name = "datashare-python" },
     { name = "icij-common", extra = ["elasticsearch"] },
+    { name = "icij-passport-core" },
 ]
 
 [package.optional-dependencies]
@@ -320,6 +321,7 @@ dev = [
 requires-dist = [
     { name = "datashare-python", editable = "../../datashare-python" },
     { name = "icij-common", extras = ["elasticsearch"], specifier = "~=0.8.3" },
+    { name = "icij-passport-core", specifier = "==0.10.9" },
     { name = "icij-passport-core", extras = ["cpu", "inference"], marker = "extra == 'inference-cpu'", specifier = "==0.10.9" },
     { name = "icij-passport-core", extras = ["gpu", "inference"], marker = "extra == 'inference-gpu'", specifier = "==0.10.9" },
     { name = "icij-passport-core", extras = ["preprocessing"], marker = "extra == 'preprocessing'", specifier = "==0.10.9" },

@@ -60,36 +60,10 @@ class DefaultImagePreprocessorConfig(ImagePreprocessorConfigBase):
 ImagePreprocessorConfig = DefaultImagePreprocessorConfig
 
 
-class PDFConverterType(StrEnum):
-    GOTENBERG = "gotenberg"
-
-
-class PDFConverterConfigBase(DatashareModel, RegistrableConfig):
-    registry_key: ClassVar[str] = Field(frozen=True, default="type")
-    type: ClassVar[PDFConverterType]
-
-
-class GotenbergPDFConverterConfig(PDFConverterConfigBase):
-    type: ClassVar[PDFConverterType] = Field(
-        frozen=True, default=PDFConverterType.GOTENBERG
-    )
-
-    gotenberg_url: str = "http://localhost:3000"
-    max_retries: int = 5
-    min_retry_wait_s: float = 5.0
-    max_retry_wait_s: float = 30.0
-    max_retry_randomness_s: float = 2.0
-
-
-# TODO: use a tagged union here when we have more options
-PDFConverterConfig = GotenbergPDFConverterConfig
-
-
 class PreprocessingConfig(DatashareModel):
     images: ImagePreprocessorConfig = Field(
         default_factory=DefaultImagePreprocessorConfig
     )
-    pdfs: PDFConverterConfig = Field(default_factory=GotenbergPDFConverterConfig)
 
 
 class PassportDetectorType(StrEnum):

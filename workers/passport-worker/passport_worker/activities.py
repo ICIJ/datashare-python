@@ -38,7 +38,6 @@ from .objects import (
     ImagePreprocessorConfig,
     PassportDetectionArgs,
     PassportDetectionResponse,
-    PDFConverterConfig,
     PreprocessingBatches,
 )
 from .preprocessing import (
@@ -147,17 +146,17 @@ class PassportDetectionActivities(ActivityWithProgress):
         self,
         batch: Path,
         project: str,
-        config: PDFConverterConfig,
         *,
         progress: Annotated[
             AsyncProgressRateHandler | None, Weight(value=_CONVERT_TO_PDF_WEIGHT)
         ] = None,
     ) -> tuple[Path, Path]:
         worker_config = cast(PassportWorkerConfig, lifespan_worker_config())
+        config = worker_config.preprocessing.pdfs
         cache = lifespan_pdf_converter_cache()
-        pdf_converter_cache_key = config_cache_key(config)
+        pdf_converter_cache_key = config_cache_key(config.pdf_converter)
         pdf_converter_factory = async_enter_cm(
-            partial(PDFConverter.from_config, config)
+            partial(PDFConverter.from_config, config.pdf_converter)
         )
         pdf_converter = await cache.async_get_or_cache_resource(
             pdf_converter_cache_key, pdf_converter_factory
@@ -165,12 +164,11 @@ class PassportDetectionActivities(ActivityWithProgress):
         workdir = worker_config.paths.workdir
         pdfs_root = activity_workdir(workdir, project, act_context=False)
         pdfs_root.mkdir(parents=True, exist_ok=True)
-        max_concurrency = worker_config.preprocessing.pdfs.max_concurrency
         successes, errors = await convert_to_pdfs_act(
             batch,
             pdf_converter,
             worker_config.paths,
-            max_concurrency,
+            config.max_concurrency,
             output_root=pdfs_root,
             progress=progress,
         )
