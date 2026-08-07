@@ -261,7 +261,7 @@ def _preprocess_image_doc(
     *,
     output_root: Path,
 ) -> list[ProcessedPage]:
-    ext = doc.path.suffix
+    ext = doc.path.suffix.lower()
     if ext not in pil_supported_extensions():
         logger.info("image extension %s not supported !", ext)
         raise UnsupportedDocExtension(ext, sorted(pil_supported_extensions()))
