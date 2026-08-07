@@ -204,7 +204,7 @@ async def convert_to_pdfs_act(
     res_i = 0
     successes = []
     errors = []
-    progress_modulo = n_docs // 5
+    progress_modulo = max(n_docs // 5, 1)
     async for res in run_with_concurrency(aws, max_concurrency):
         if isinstance(res, FileProcessingError):
             errors.append(res)

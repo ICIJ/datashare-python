@@ -10,15 +10,17 @@ TemporalClient = Client
 
 
 class AsyncProgressRateHandler(Protocol):
-    async def __call__(self, progress_rate: float) -> None:
-        pass
+    async def __call__(self, progress_rate: float, *, force: bool = False) -> None: ...
 
 
 class SyncProgressRateHandler(Protocol):
     def __call__(
-        self, progress_rate: float, event_loop: asyncio.AbstractEventLoop
-    ) -> None:
-        pass
+        self,
+        progress_rate: float,
+        event_loop: asyncio.AbstractEventLoop,
+        *,
+        force: bool = False,
+    ) -> None: ...
 
 
 ProgressRateHandler = SyncProgressRateHandler | AsyncProgressRateHandler
@@ -30,12 +32,16 @@ class Weight:
 
 
 class RawAsyncProgressHandler(Protocol):
-    async def __call__(self, iteration: int) -> None: ...
+    async def __call__(self, iteration: int, *, force: bool = False) -> None: ...
 
 
 class RawSyncProgressHandler(Protocol):
     async def __call__(
-        self, iteration: int, event_loop: asyncio.AbstractEventLoop
+        self,
+        iteration: int,
+        event_loop: asyncio.AbstractEventLoop,
+        *,
+        force: bool = False,
     ) -> None: ...
 
 
