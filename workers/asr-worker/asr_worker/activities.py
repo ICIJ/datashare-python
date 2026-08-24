@@ -9,15 +9,14 @@ from typing import Annotated, Any, Protocol
 
 from aiofile import async_open
 from caul_core import (
-    ASRResult,
     InferenceRunner,
     InferenceRunnerConfig,
     Postprocessor,
     PostprocessorConfig,
-    PreprocessedInput,
     Preprocessor,
     PreprocessorConfig,
 )
+from caul_core.objects import ASRResult, PreprocessedInput
 from datashare_python.dependencies import lifespan_es_client, lifespan_worker_config
 from datashare_python.objects import DocRoute, Document
 from datashare_python.types_ import (
@@ -428,6 +427,14 @@ def _preprocess(
         logger.debug("writing batch to %s", batch_file)
         with batch_file.open("w") as f:
             for processed in batch:
+                if processed.metadata.error is not None:
+                    logger.error(
+                        "PreprocessedInput '%s' was not properly decoded with"
+                        "error '%s'. Skipping.",
+                        processed.metadata.input_file_path,
+                        processed.metadata.error,
+                    )
+                    continue
                 f.write(processed.model_dump_json() + "\n")
         yield batch_file
 
