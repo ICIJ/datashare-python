@@ -15,8 +15,15 @@ from asr_worker.activities import (
 )
 from asr_worker.config import ASRWorkerConfig
 from asr_worker.objects import DocId, Transcription
-from caul.objects import ASRResult, InputMetadata, PreprocessedInput, PreprocessorOutput
-from caul.tasks import InferenceRunner, Postprocessor, Preprocessor
+from caul_core import (
+    ASRResult,
+    InferenceRunner,
+    InputMetadata,
+    Postprocessor,
+    PreprocessedInput,
+    Preprocessor,
+    PreprocessorOutput,
+)
 from datashare_python.conftest import TEST_PROJECT
 from datashare_python.objects import DocumentLocation, FilesystemDocument
 from datashare_python.utils import read_jsonl
@@ -43,6 +50,14 @@ PREPROCESSED_INPUT_2 = PreprocessedInput(
         input_ordering=2,
         duration_s=2.0,
         preprocessed_file_path=Path("preprocessed_2.wav"),
+    )
+)
+PREPROCESSED_INPUT_ERROR = PreprocessedInput(
+    metadata=InputMetadata(
+        input_ordering=0,
+        duration_s=0.0,
+        preprocessed_file_path=Path("preprocessed_error.wav"),
+        error="failed to decode audio",
     )
 )
 
@@ -99,6 +114,28 @@ class MockPreprocessor(Preprocessor):
         outputs = cycle(
             [PREPROCESSED_INPUT_0, PREPROCESSED_INPUT_1, PREPROCESSED_INPUT_2]
         )
+        outputs = [next(outputs) for _ in audios]
+        for b in batches(outputs, self._batch_size):
+            yield list(b)
+
+
+class MockErroringPreprocessor(Preprocessor):
+    def __init__(self, batch_size: int) -> None:
+        self._batch_size = batch_size
+
+    @classmethod
+    def cache_models(cls, cache_dir: Path | None = None) -> None: ...
+
+    @classmethod
+    def _from_config(cls, config: RegistrableConfig, **kwargs) -> Self:  # noqa: ARG003
+        return cls(**kwargs)
+
+    def process(
+        self,
+        audios: Iterable[Path],  # noqa: ARG002
+        **kwargs,  # noqa: ARG002
+    ) -> Iterable[list[PreprocessedInput]]:
+        outputs = cycle([PREPROCESSED_INPUT_ERROR, PREPROCESSED_INPUT_1])
         outputs = [next(outputs) for _ in audios]
         for b in batches(outputs, self._batch_size):
             yield list(b)
@@ -233,6 +270,46 @@ def test_preprocess_act(test_worker_config: ASRWorkerConfig, tmpdir: Path) -> No
         for f in batch_files
     ]
     assert written_batches == expected_batches
+
+
+def test_preprocess_act_skips_input_with_error(
+    test_worker_config: ASRWorkerConfig, tmpdir: Path
+) -> None:
+    # Given
+    output_dir = Path(tmpdir)
+    n_audios = 2
+    batch_size = n_audios
+    audio_batch = tmpdir / "audio_batch.txt"
+    batch = [
+        FilesystemDocument(
+            id=f"doc-{i}",
+            path=Path(str(i)),
+            location=DocumentLocation.ARTIFACTS,
+            index=TEST_PROJECT,
+            resource_name=f"doc-{i}.wav",
+        )
+        for i in range(n_audios)
+    ]
+    with audio_batch.open("w") as f:
+        for fs_doc in batch:
+            f.write(fs_doc.model_dump_json() + "\n")
+    preprocessor = MockErroringPreprocessor(batch_size=batch_size)
+
+    # When
+    batch_files = preprocess_act(
+        preprocessor,
+        audio_batch=audio_batch,
+        worker_config=test_worker_config,
+        output_dir=output_dir,
+    )
+
+    # Then
+    assert len(batch_files) == 1
+    written_batches = [
+        [PreprocessedInput.model_validate(d) for d in read_jsonl(output_dir / f)]
+        for f in batch_files
+    ]
+    assert written_batches == [[PREPROCESSED_INPUT_1]]
 
 
 async def test_infer_act(tmpdir: Path) -> None:

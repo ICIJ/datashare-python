@@ -6,14 +6,14 @@ from itertools import tee
 from pathlib import Path
 from typing import Any, cast
 
-from caul.objects import ASRResult, PreprocessedInput
-from caul.tasks import (
+from caul_core import (
     InferenceRunner,
     ParakeetPostprocessorConfig,
     ParakeetPreprocessorConfig,
     Postprocessor,
     Preprocessor,
 )
+from caul_core.objects import ASRResult, PreprocessedInput
 from datashare_python.dependencies import lifespan_worker_config
 from datashare_python.objects import (
     DocArtifact,
@@ -323,6 +323,14 @@ def _preprocess(
         logger.debug("writing batch to %s", batch_file)
         with batch_file.open("w") as f:
             for processed in batch:
+                if processed.metadata.error is not None:
+                    logger.error(
+                        "PreprocessedInput '%s' was not properly decoded with"
+                        "error '%s'. Skipping.",
+                        processed.metadata.input_file_path,
+                        processed.metadata.error,
+                    )
+                    continue
                 f.write(processed.model_dump_json() + "\n")
         yield batch_file
 
