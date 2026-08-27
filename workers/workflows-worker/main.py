@@ -57,11 +57,11 @@ def _bump_version(current: Version, *, breaking: bool) -> tuple[Version, BumpTyp
     patch = release[2]
     if current < _1_0_0:
         if breaking:
-            return Version(f"0.{minor + 1}.{patch}"), BumpType.MINOR
+            return Version(f"0.{minor + 1}.0"), BumpType.MINOR
         return Version(f"0.{minor}.{patch + 1}"), BumpType.PATCH
     if breaking:
-        return Version(f"{major + 1}.{0}.{0}"), BumpType.MAJOR
-    return Version(f"{major}.{minor + 1}.{0}"), BumpType.MINOR
+        return Version(f"{major + 1}.0.0"), BumpType.MAJOR
+    return Version(f"{major}.{minor + 1}.0"), BumpType.MINOR
 
 
 def _validate_version(current: Version) -> None:
