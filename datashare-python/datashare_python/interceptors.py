@@ -1,6 +1,7 @@
 import asyncio
 import dataclasses
 import datetime
+import logging
 import secrets
 from collections.abc import Callable, Generator, Mapping
 from contextlib import contextmanager
@@ -65,6 +66,8 @@ from .utils import (
     ActivityWithProgress,
     ProgressSignal,
 )
+
+logger = logging.getLogger(__name__)
 
 _TRACEPARENT = "traceparent"
 _DEFAULT_PAYLOAD_CONVERTER = DataConverter.default.payload_converter
@@ -431,9 +434,10 @@ class _HeartbeatInboundInterceptor(ActivityInboundInterceptor):
         heartbeat_task = None
         if heartbeat_timeout:
             period = heartbeat_timeout.total_seconds() / self._n_missed_before_timeout
-            heartbeat_task = asyncio.create_task(
-                _heartbeat_every(self._outbound.heartbeat, period)
-            )
+            # We don't want a failing hearbeat to fail the worker task so we just
+            # ignore any exception
+            heartbeat_fn = _fail_safe(self._outbound.heartbeat)
+            heartbeat_task = asyncio.create_task(_heartbeat_every(heartbeat_fn, period))
         try:
             activity.heartbeat()
             return await super().execute_activity(input)
@@ -441,6 +445,23 @@ class _HeartbeatInboundInterceptor(ActivityInboundInterceptor):
             if heartbeat_task:
                 heartbeat_task.cancel()
                 await asyncio.wait([heartbeat_task])
+
+
+def _fail_safe(
+    fn: Callable[[Any], None], excs: tuple[type[Exception]] | None = None
+) -> Callable[[Any], None]:
+    if excs is None:
+        excs = (Exception,)
+
+    @wraps(fn)
+    def wrapper(*args, **kwargs) -> None:
+        try:
+            fn(*args, **kwargs)
+        except excs as exc:
+            msg = f"failed to heartbeat due to {exc}"
+            logger.exception(msg)
+
+    return wrapper
 
 
 def _sync_progress(
