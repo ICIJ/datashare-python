@@ -296,7 +296,7 @@ wheels = [
 
 [[package]]
 name = "caul"
-version = "0.10.2"
+version = "0.10.3"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "caul-core", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu') or sys_platform == 'darwin' or (sys_platform != 'linux' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu')" },
@@ -309,9 +309,9 @@ dependencies = [
     { name = "tiktoken", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu') or sys_platform == 'darwin' or (sys_platform != 'linux' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu')" },
     { name = "typer", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu') or sys_platform == 'darwin' or (sys_platform != 'linux' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu')" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/7d/bb/1808df4f36fa29a6f7dff855557ec3db89eb694397de4986576141f435ad/caul-0.10.2.tar.gz", hash = "sha256:50581b9a97f2e96cb395dd03dc7cc47cf3f1b57c06bae7cc9a3a96b5790ddb72", size = 248621, upload-time = "2026-07-16T10:08:52.018Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/41/e5/4afdda804e9518bf7165b35c875b63a69c7c8d05717238df4037fbb331dc/caul-0.10.3.tar.gz", hash = "sha256:42edd399ebc1190154a9b5a0ffcfce0a23229b824e7cbb14d7f1c3f67adc2335", size = 248728, upload-time = "2026-08-24T09:18:03.566Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/3a/8b/54b18a5185e4b895321e62e28d710472b429bdee574a4b84be3fbd62a8c5/caul-0.10.2-py3-none-any.whl", hash = "sha256:21b9f24f6b743956e14ac2eec1925a4e22602d5e0b9447e439c8a370009184c8", size = 39296, upload-time = "2026-07-16T10:08:51.056Z" },
+    { url = "https://files.pythonhosted.org/packages/3a/14/b68831f0da9ce7f010d3abc982f2c359125f5da97876fdcda4798a964a79/caul-0.10.3-py3-none-any.whl", hash = "sha256:6703c3dba20f53700ee0d6e3f384a1c91c315e708a14e23cd68b708dc822f381", size = 39462, upload-time = "2026-08-24T09:18:02.237Z" },
 ]
 
 [package.optional-dependencies]
@@ -325,15 +325,15 @@ nemo = [
 
 [[package]]
 name = "caul-core"
-version = "0.3.1"
+version = "0.4.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "icij-common", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu') or sys_platform == 'darwin' or (sys_platform != 'linux' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu')" },
     { name = "pydantic-extra-types", extra = ["pycountry"], marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu') or sys_platform == 'darwin' or (sys_platform != 'linux' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu')" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/25/c1/165544ebbc1c4fdb8ec863a09e9d026cc5d77883f5ef3ec3912037514b3c/caul_core-0.3.1.tar.gz", hash = "sha256:30797791726c3c4a36e403f0a1cf18aecce42620fcfed1fe7fd72d00dae26476", size = 21880, upload-time = "2026-07-16T09:17:34.959Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/2d/de/0d6b5f7a4a90dc030399e4c8bf30a7e3cb5ab9374c9ceeea047056bf6fbc/caul_core-0.4.0.tar.gz", hash = "sha256:f9553cad04cf8faa765ac396729adb227da26616fa5c4e9311ecc18414c41d07", size = 21885, upload-time = "2026-08-24T09:13:05.008Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/41/df/53a0fc06ccf7dbd5a5ce4514ac3ce553b7ec56b3c078e668ea5ea0f5feef/caul_core-0.3.1-py3-none-any.whl", hash = "sha256:97c5f46ea2f2cd245aa9efce53c0e6c1e0af6006e2031a8150ecb867d7075743", size = 12676, upload-time = "2026-07-16T09:17:34.137Z" },
+    { url = "https://files.pythonhosted.org/packages/d0/70/939889f8025d3ad2bc3d05ee19e887adbb4b141b1c7efd2e0f66c66ba256/caul_core-0.4.0-py3-none-any.whl", hash = "sha256:dcbde135c37bb6a99ff0901fe64bc3421b5b59b6a99628ce7ba4f783ed39515f", size = 12679, upload-time = "2026-08-24T09:13:04.12Z" },
 ]
 
 [[package]]
@@ -570,8 +570,8 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "caul", extras = ["nemo"], marker = "extra == 'inference'", specifier = "==0.10.2" },
-    { name = "caul-core", specifier = "==0.3.1" },
+    { name = "caul", extras = ["nemo"], marker = "extra == 'inference'", specifier = "==0.10.3" },
+    { name = "caul-core", specifier = "==0.4.0" },
     { name = "cuda-bindings", marker = "sys_platform == 'linux' and extra == 'gpu'", specifier = "==12.9.4" },
     { name = "datashare-python", specifier = "~=0.10.0" },
     { name = "kaldialign", marker = "extra == 'inference'", specifier = "==0.9.3" },
@@ -604,7 +604,7 @@ dev = [
 
 [[package]]
 name = "datashare-python"
-version = "0.10.0"
+version = "0.10.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiofile", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu') or sys_platform == 'darwin' or (sys_platform != 'linux' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu')" },
@@ -621,9 +621,9 @@ dependencies = [
     { name = "tomlkit", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu') or sys_platform == 'darwin' or (sys_platform != 'linux' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu')" },
     { name = "typer", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu') or sys_platform == 'darwin' or (sys_platform != 'linux' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu')" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/cb/26/2f89e31fb49fcdaa158a6ad9bca2cd3d3d824929f4b307349d36381c8dc7/datashare_python-0.10.0.tar.gz", hash = "sha256:3dec83b306e772ce25d2aeac4d4eac0fbce871e0523c6edc474f6ec72c3f60d9", size = 324972, upload-time = "2026-08-05T15:14:42.088Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/a7/d9/4118b01d4980efd55bfc698a7fbd22e83d385e1daac15f0887e9821bd47e/datashare_python-0.10.1.tar.gz", hash = "sha256:39a1fdba4b5506a8c87e6c91139287029d1ceb03086329a606260c362ae9d4fc", size = 327680, upload-time = "2026-08-07T15:40:31.946Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/d2/12/7c8dbd0e6690ecd9ff0bb905313350e3233fcd831f7ce20eb666ee49db57/datashare_python-0.10.0-py3-none-any.whl", hash = "sha256:3862cfc53f697bedfa05139a2b901e28adc99ab87eed644b6113c31b550eafe9", size = 330926, upload-time = "2026-08-05T15:14:43.106Z" },
+    { url = "https://files.pythonhosted.org/packages/47/45/4ee927c9a06441be5f00feac2e15bc909de48fd8dd5d342cd785bc1d70dc/datashare_python-0.10.1-py3-none-any.whl", hash = "sha256:dacc9fbea8cb0e8f39d7cfc1c73d05d6f394a14eaaf961e41983289958493dfe", size = 333573, upload-time = "2026-08-07T15:40:30.514Z" },
 ]
 
 [[package]]
