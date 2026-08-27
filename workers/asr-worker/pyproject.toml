@@ -37,6 +37,7 @@ inference = [
   "pyarrow==20.0.0",
 ]
 preprocessing = [
+  "caul==0.10.3",
 ]
 
 [project.entry-points."datashare.workflows"]
