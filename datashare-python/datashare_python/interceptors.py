@@ -193,6 +193,8 @@ class _TraceContextWorkflowOutboundInterceptor(WorkflowOutboundInterceptor):
 
 class _TraceContextActivityInboundInterceptor(ActivityInboundInterceptor):
     async def execute_activity(self, input: ExecuteActivityInput) -> Any:  # noqa: A002
+        info = activity.info()
+        logger.info("start executing activity: %s", info.activity_id)
         with _trace_context(input.headers):
             return await super().execute_activity(input)
 
