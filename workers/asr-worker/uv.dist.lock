@@ -325,15 +325,15 @@ nemo = [
 
 [[package]]
 name = "caul-core"
-version = "0.4.0"
+version = "0.4.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "icij-common", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu') or sys_platform == 'darwin' or (sys_platform != 'linux' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu')" },
     { name = "pydantic-extra-types", extra = ["pycountry"], marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu') or sys_platform == 'darwin' or (sys_platform != 'linux' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu')" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/2d/de/0d6b5f7a4a90dc030399e4c8bf30a7e3cb5ab9374c9ceeea047056bf6fbc/caul_core-0.4.0.tar.gz", hash = "sha256:f9553cad04cf8faa765ac396729adb227da26616fa5c4e9311ecc18414c41d07", size = 21885, upload-time = "2026-08-24T09:13:05.008Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/d0/19/bca61d31990bc4353cecf41cb8c3df5c07358d5534a0e3eac9d1a4364832/caul_core-0.4.2.tar.gz", hash = "sha256:5aad8302b33af014c8ca649c24a5e4a4150ed2ce588b9f7ccf11529bd482d266", size = 21933, upload-time = "2026-08-27T16:08:54.32Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/d0/70/939889f8025d3ad2bc3d05ee19e887adbb4b141b1c7efd2e0f66c66ba256/caul_core-0.4.0-py3-none-any.whl", hash = "sha256:dcbde135c37bb6a99ff0901fe64bc3421b5b59b6a99628ce7ba4f783ed39515f", size = 12679, upload-time = "2026-08-24T09:13:04.12Z" },
+    { url = "https://files.pythonhosted.org/packages/28/07/3f18e6f127f452a2d1e8d86c3964f300b9d9522bc8da2db99288d7fa15fc/caul_core-0.4.2-py3-none-any.whl", hash = "sha256:2b44c39b39af9b2a420e02753d6763f4218b66ce4af54c217ea2d69d13670c0f", size = 12807, upload-time = "2026-08-27T16:08:53.391Z" },
 ]
 
 [[package]]
@@ -575,7 +575,7 @@ dev = [
 requires-dist = [
     { name = "caul", marker = "extra == 'preprocessing'", specifier = "==0.10.3" },
     { name = "caul", extras = ["nemo"], marker = "extra == 'inference'", specifier = "==0.10.3" },
-    { name = "caul-core", specifier = "==0.4.0" },
+    { name = "caul-core", specifier = "==0.4.2" },
     { name = "cuda-bindings", marker = "sys_platform == 'linux' and extra == 'gpu'", specifier = "==12.9.4" },
     { name = "datashare-python", specifier = "~=0.10.0" },
     { name = "kaldialign", marker = "extra == 'inference'", specifier = "==0.9.3" },

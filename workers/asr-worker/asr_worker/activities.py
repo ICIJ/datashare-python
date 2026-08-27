@@ -5,7 +5,7 @@ from collections.abc import AsyncGenerator, AsyncIterable, Iterable
 from functools import partial
 from itertools import tee
 from pathlib import Path
-from typing import Annotated, Any, Protocol
+from typing import Annotated, Any, Protocol, cast
 
 from aiofile import async_open
 from caul_core import (
@@ -172,7 +172,7 @@ class ASRActivities(ActivityWithProgress):
         # Import caul.tasks to populate the InferenceRunner registry
         import caul.tasks  # noqa: F401, PLC0415
 
-        worker_config = lifespan_worker_config()
+        worker_config = cast(ASRWorkerConfig, lifespan_worker_config())
         workdir = worker_config.paths.workdir
         output_dir = activity_workdir(workdir, project)
         output_dir.mkdir(parents=True, exist_ok=True)
@@ -182,7 +182,13 @@ class ASRActivities(ActivityWithProgress):
                 progress, max_progress=len(preprocessed_inputs)
             )
         logger.info("loading model %s", config.model)
-        runner_factory = enter_cm(partial(InferenceRunner.from_config, config))
+        runner_factory = enter_cm(
+            partial(
+                InferenceRunner.from_config,
+                config,
+                device=worker_config.devices.inference,
+            )
+        )
         runner_key = config_cache_key(config)
         cache = lifespan_inference_runner_cache()
         inference_runner = cache.get_or_cache_resource(runner_key, runner_factory)

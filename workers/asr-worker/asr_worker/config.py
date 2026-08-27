@@ -1,4 +1,5 @@
 import datashare_python
+from caul_core import TorchDevice
 from datashare_python.config import (
     LogFormat,
     LoggingConfig,
@@ -30,6 +31,10 @@ class IndexingWorkerConfig(BaseModel):
     target_bulk_char_size: int = 50_000
 
 
+class ASRWorkerDevices(BaseModel):
+    inference: TorchDevice = TorchDevice.CPU
+
+
 class ASRWorkerConfig(WorkerConfig):
     logging: LoggingConfig = _DEFAULT_LOGGING_CONFIG
 
@@ -42,6 +47,8 @@ class ASRWorkerConfig(WorkerConfig):
     max_concurrent_activities: int = Field(frozen=True, default=1)
 
     cache: ASRCache = Field(default_factory=ASRCache)
+
+    devices: ASRWorkerDevices = Field(default_factory=ASRWorkerDevices)
 
 
 WORKER_CONFIG_CLS = ASRWorkerConfig
