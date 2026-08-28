@@ -250,6 +250,7 @@ class PassportDetectionActivities(ActivityWithProgress):
         batch_size = worker_config.inference.batch_size
         cache = lifespan_passport_detector_cache()
         passport_detector_config = args.config.inference.passport_detector
+        passport_detector_config = passport_detector_config.resolve(worker_config.paths)
         passport_detector_key = config_cache_key(passport_detector_config)
         passport_detector_factory = enter_cm(
             partial(PassportDetector.from_config, passport_detector_config)

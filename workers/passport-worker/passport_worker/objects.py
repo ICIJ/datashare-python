@@ -16,7 +16,9 @@ from datashare_python.objects import (
     ProcessedFile,
     ProcessedPage,
     TaskArgs,
+    WorkerPaths,
 )
+from icij_common.pydantic_utils import safe_copy
 from icij_common.registrable import RegistrableConfig
 from passport_service.constants import (
     DEFAULT_DETECTION_THRESHOLD,
@@ -89,6 +91,10 @@ class YOLOPassportDetectorConfig(PassportDetectorConfigBase):
     nms_score_threshold: float = DEFAULT_NMS_SCORE_THRESHOLD
     nms_eta: float = DEFAULT_NMS_ETA
     image_size: int = 640
+
+    def resolve(self, paths: WorkerPaths) -> "YOLOPassportDetectorConfig":
+        update = {"model_path": paths.workdir / self.model_path}
+        return safe_copy(self, update=update)
 
 
 # TODO: use a tagged union here when we have more implem
