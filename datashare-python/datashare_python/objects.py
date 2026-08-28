@@ -14,7 +14,7 @@ from icij_common.registrable import Registrable
 from pydantic_core import PydanticCustomError, ValidationError, core_schema
 from pydantic_core.core_schema import PlainValidatorFunctionSchema
 from pydantic_extra_types.language_code import LanguageName
-from temporalio import workflow
+from temporalio import activity, workflow
 
 from .constants import TIKA_METADATA_RESOURCENAME
 
@@ -325,6 +325,8 @@ A = TypeVar("A", bound=TaskArgs)
 
 class ManifestEntry[A](DatashareModel, ABC):
     status: ManifestEntryStatus
+    # TODO: make this one non optional in the next major !
+    task_id: str | None
     label: str | None = None
     input: Annotated[
         dict[str, Any] | None,
@@ -336,7 +338,11 @@ class ManifestEntry[A](DatashareModel, ABC):
 
     @classmethod
     def complete(cls, args: A, label: str | None = None, **kwargs) -> Self:
+        task_id = None
+        if activity.in_activity():
+            task_id = activity.info().workflow_id
         return cls(
+            task_id=task_id,
             input=args.as_manifest_task_input(),
             label=label,
             status=ManifestEntryStatus.COMPLETE,
@@ -345,7 +351,11 @@ class ManifestEntry[A](DatashareModel, ABC):
 
     @classmethod
     def partial(cls, args: A, label: str | None = None, **kwargs) -> Self:
+        task_id = None
+        if activity.in_activity():
+            task_id = activity.info().workflow_id
         return cls(
+            task_id=task_id,
             input=args.as_manifest_task_input(),
             label=label,
             status=ManifestEntryStatus.PARTIAL,
