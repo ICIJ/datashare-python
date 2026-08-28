@@ -133,7 +133,7 @@ jobs:
       - name: Build and push image
         uses: docker/build-push-action@v7
         with:
-          target: passport-preprocessing-worker
+          target: passport-inference-worker
           context: ./workers/passport-worker
           platforms: linux/amd64
           push: true
