@@ -181,13 +181,10 @@ class ASRActivities(ActivityWithProgress):
             progress = to_raw_async_progress(
                 progress, max_progress=len(preprocessed_inputs)
             )
-        logger.info("loading model %s", config.model)
+        device = worker_config.devices.inference
+        logger.info("loading model %s on %s device", config.model, device)
         runner_factory = enter_cm(
-            partial(
-                InferenceRunner.from_config,
-                config,
-                device=worker_config.devices.inference,
-            )
+            partial(InferenceRunner.from_config, config, device=device)
         )
         runner_key = config_cache_key(config)
         cache = lifespan_inference_runner_cache()
