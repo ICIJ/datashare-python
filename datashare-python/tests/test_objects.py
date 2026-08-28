@@ -2,8 +2,10 @@ import json
 import re
 from datetime import datetime
 from pathlib import Path
+from unittest.mock import MagicMock, PropertyMock
 
 import pytest
+from _pytest.monkeypatch import MonkeyPatch
 from datashare_python.conftest import TEST_PROJECT
 from datashare_python.constants import TIKA_METADATA_RESOURCENAME
 from datashare_python.objects import (
@@ -12,12 +14,21 @@ from datashare_python.objects import (
     Document,
     DocumentLocation,
     FilesystemPagination,
+    ManifestEntry,
     Pages,
     ProcessedFile,
     Task,
+    TaskArgs,
     TaskState,
 )
 from pydantic import TypeAdapter, ValidationError
+from temporalio import activity
+
+
+class MockedManifestEntry(ManifestEntry): ...
+
+
+class MockedArgs(TaskArgs): ...
 
 
 def test_task_ser() -> None:
@@ -139,3 +150,43 @@ def test_pages_validation_should_raise_for_inconsistent_byte_ranges() -> None:
             pagination=ByteRangesPagination(byte_ranges=[(0, 1), (1, 2), (2, 3)]),
             total=2,
         )
+
+
+@pytest.mark.parametrize("in_activity", [True, False])
+def test_manifest_entry_complete_task_id(
+    *, in_activity: bool, monkeypatch: MonkeyPatch
+) -> None:
+    # Given
+    args = MockedArgs()
+    mocked_info = MagicMock()
+    type(mocked_info).workflow_id = PropertyMock(return_value="some_value")
+    if in_activity:
+        monkeypatch.setattr(activity, "in_activity", lambda: True)
+        monkeypatch.setattr(activity, "info", lambda: mocked_info)
+    # When
+    manifest_entry = MockedManifestEntry.complete(args)
+    # Then
+    if in_activity:
+        assert manifest_entry.task_id is not None
+    else:
+        assert manifest_entry.task_id is None
+
+
+@pytest.mark.parametrize("in_activity", [True, False])
+def test_manifest_entry_partial_task_id(
+    *, in_activity: bool, monkeypatch: MonkeyPatch
+) -> None:
+    # Given
+    args = MockedArgs()
+    mocked_info = MagicMock()
+    type(mocked_info).workflow_id = PropertyMock(return_value="some_value")
+    if in_activity:
+        monkeypatch.setattr(activity, "in_activity", lambda: True)
+        monkeypatch.setattr(activity, "info", lambda: mocked_info)
+    # When
+    manifest_entry = MockedManifestEntry.partial(args)
+    # Then
+    if in_activity:
+        assert manifest_entry.task_id is not None
+    else:
+        assert manifest_entry.task_id is None

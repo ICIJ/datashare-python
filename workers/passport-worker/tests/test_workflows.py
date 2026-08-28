@@ -6,6 +6,7 @@ import pytest
 from datashare_python.conftest import TEST_PROJECT
 from datashare_python.objects import ProcessedFile
 from datashare_python.utils import safe_dir
+from icij_common.pydantic_utils import safe_copy
 from passport_worker.config import PassportWorkerConfig
 from passport_worker.objects import (
     PassportDetectionArgs,
@@ -71,6 +72,9 @@ async def test_passport_detection_workflow(  # noqa: PLR0917
         has_passport = "not_a" not in f.name
         expected.append((f"e2e-doc-{len(expected)}", has_manifest, has_passport))
     expected_manifest_entry = PassportManifestEntry.complete(args)
+    expected_manifest_entry = safe_copy(
+        expected_manifest_entry, update={"task_id": wf_id}
+    )
     for doc_id, has_manifest, has_passport in expected:
         artifacts_path = (
             worker_paths.artifacts / TEST_PROJECT / safe_dir(doc_id) / doc_id

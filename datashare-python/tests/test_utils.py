@@ -179,6 +179,7 @@ def test_write_artifact(tmp_path: Path) -> None:
     expected_manifest = {
         "structure": {
             "status": "complete",
+            "taskId": None,
             "taskInput": {"someValue": "value"},
             "label": None,
         }
@@ -219,6 +220,7 @@ def test_write_artifact_with_existing_metadata(tmp_path: Path) -> None:
     expected_manifest = {
         "structure": {
             "status": "complete",
+            "taskId": None,
             "taskInput": {"someValue": "value"},
             "label": None,
         },
@@ -303,6 +305,7 @@ def test_overwrite_artifact(tmp_path: Path) -> None:
     expected_manifest = {
         "structure": {
             "status": "complete",
+            "taskId": None,
             "taskInput": {"someValue": "value"},
             "label": None,
         },
