@@ -1,4 +1,5 @@
 import json
+import os
 import uuid
 from pathlib import Path
 
@@ -37,15 +38,22 @@ async def test_passport_detection_workflow(  # noqa: PLR0917
     e2e_docs: list[ProcessedFile],
 ) -> None:
     # Given
+    # We do this inplace rather than in a fixture because the e2e_docs fixture clears
+    # dirs
+    model_path = test_worker_config.paths.workdir / test_model_path.name
+    os.symlink(test_model_path, model_path)
+    worker_model_path = model_path.relative_to(test_worker_config.paths.workdir)
     temporal_client = test_temporal_client
     worker_paths = test_worker_config.paths
     docs = [d.id for d in e2e_docs]
-    passport_detector_path = YOLOPassportDetectorConfig(model_path=test_model_path)
+    passport_detector_config = YOLOPassportDetectorConfig(model_path=worker_model_path)
     args = PassportDetectionArgs(
         project=TEST_PROJECT,
         docs=docs,
         config=PassportDetectionConfig(
-            inference=PassportInferenceConfig(passport_detector=passport_detector_path)
+            inference=PassportInferenceConfig(
+                passport_detector=passport_detector_config
+            )
         ),
     )
     wf_id = f"detect-passports-{uuid.uuid4()}"
