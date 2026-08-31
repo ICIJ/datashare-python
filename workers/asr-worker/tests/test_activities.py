@@ -23,6 +23,7 @@ from asr_worker.objects import (
     TranscriptionArtifact,
     TranscriptionManifestEntry,
 )
+from caul.tasks.postprocessing.asr_postprocessor import PostprocessorMixin
 from caul_core import (
     ASRResult,
     InferenceRunner,
@@ -407,6 +408,103 @@ def test_postprocess_act(tmpdir: Path) -> None:
         )
         expected_transcription = Transcription.from_asr_handler_result(res)
         assert transcription == expected_transcription
+
+
+def test_postprocess_act_with_misaligned_indices(tmpdir: Path) -> None:
+    postprocessor = PostprocessorMixin()
+    doc_0_part_a_transcription = "doc_0_part_a_transcription"
+    doc_0_part_b_transcription = "doc_0_part_b_transcription"
+    doc_2_transcription = "doc_2_transcription"
+    with pytest.raises(ValueError, match="expected contiguous batches"):
+        list(
+            postprocessor.process(
+                [
+                    ASRResult(
+                        input_ordering=0,
+                        transcription=[(0.0, 1.0, doc_0_part_a_transcription)],
+                        score=1.0,
+                    ),
+                    ASRResult(
+                        input_ordering=2,
+                        transcription=[(0.0, 1.0, doc_2_transcription)],
+                        score=1.0,
+                    ),
+                    ASRResult(
+                        input_ordering=0,
+                        transcription=[(1.0, 2.0, doc_0_part_a_transcription)],
+                        score=1.0,
+                    ),
+                ]
+            )
+        )
+
+    args = ASRArgs(project=TEST_PROJECT, docs=[], batch_size=2)
+    project = TEST_PROJECT
+    artifacts_root = Path(tmpdir)
+    docs = [
+        Document(
+            id=f"{str(i) * 4}-doc-{i}",
+            language=DatashareLanguage("ENGLISH"),
+            root_document=f"root-{i}",
+            path=Path(str(i)),
+            index=TEST_PROJECT,
+            metadata={"tika_metadata_resourcename": f"doc-{i}.wav"},
+        )
+        for i in range(3)
+    ]
+    inference_results = [
+        ASRResult(
+            input_ordering=0,
+            transcription=[(0.0, 1.0, doc_0_part_a_transcription)],
+            score=1.0,
+        ),
+        ASRResult(
+            input_ordering=2,
+            transcription=[(0.0, 1.0, doc_2_transcription)],
+            score=1.0,
+        ),
+        ASRResult(
+            input_ordering=0,
+            transcription=[(1.0, 2.0, doc_0_part_b_transcription)],
+            score=1.0,
+        ),
+    ]
+
+    # When
+    routes = postprocess_act(
+        inference_results,
+        docs,
+        postprocessor,
+        args,
+        artifacts_root=artifacts_root,
+    )
+
+    assert routes == [
+        ("root-0", "0000-doc-0"),
+        ("root-2", "2222-doc-2"),
+    ]
+
+    skipped_doc_dir = artifacts_root / project / "11" / "11" / "1111-doc-1"
+    assert not skipped_doc_dir.exists()
+
+    doc_0_dir = artifacts_root / project / "00" / "00" / "0000-doc-0"
+    doc_0_transcription = Transcription.model_validate_json(
+        (doc_0_dir / "transcription.json").read_text()
+    )
+    expected_doc_0_transcription = Transcription.from_asr_handler_result(
+        ASRResult(
+            input_ordering=0,
+            transcription=[
+                (0.0, 1.0, doc_0_part_a_transcription),
+                (1.0, 2.0, doc_0_part_b_transcription),
+            ],
+            score=1.0,
+        )
+    )
+    assert doc_0_transcription == expected_doc_0_transcription
+
+    doc_2_dir = artifacts_root / project / "22" / "22" / "2222-doc-2"
+    assert doc_2_dir.exists()
 
 
 async def test_write_audio_search_results(tmpdir: Path) -> None:

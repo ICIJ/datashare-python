@@ -363,23 +363,31 @@ def postprocess_act(
     event_loop: AbstractEventLoop | None = None,
     progress: SyncProgressRateHandler | None = None,
 ) -> list[DocRoute]:
-    transcriptions = postprocessor.process(inference_results)
-    # Strict is important here !
-    for i, (doc, asr_result) in enumerate(zip(docs, transcriptions, strict=True)):
-        manifest_entry = TranscriptionManifestEntry.complete(
-            args, confidence=asr_result.score
-        )
-        artifact_factory = partial(
-            TranscriptionArtifact,
-            project=args.project,
-            doc_id=doc.id,
-            manifest_entry=manifest_entry,
-        )
-        t_path = write_transcription(asr_result, artifact_factory, artifacts_root)
-        logger.debug("wrote transcription for %s", t_path)
+    # sort here rather than relying on the order results were written/read
+    inference_results = sorted(inference_results, key=lambda r: r.input_ordering)
+    transcriptions_by_ordering = {
+        t.input_ordering: t for t in postprocessor.process(inference_results)
+    }
+    routes = []
+    for i, doc in enumerate(docs):
+        asr_result = transcriptions_by_ordering.get(i)
+        if asr_result is None:
+            logger.warning("%s has no transcription result. Skipping.", doc.id)
+        else:
+            manifest_entry = TranscriptionManifestEntry.complete(
+                args, confidence=asr_result.score
+            )
+            artifact_factory = partial(
+                TranscriptionArtifact,
+                project=args.project,
+                doc_id=doc.id,
+                manifest_entry=manifest_entry,
+            )
+            t_path = write_transcription(asr_result, artifact_factory, artifacts_root)
+            logger.debug("wrote transcription for %s", t_path)
+            routes.append(doc.to_route())
         if progress is not None and event_loop is not None:
             progress(i, event_loop)
-    routes = [d.to_route() for d in docs]
     return routes
 
 
