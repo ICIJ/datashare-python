@@ -8,12 +8,13 @@ from contextlib import contextmanager
 from contextvars import ContextVar
 from copy import deepcopy
 from functools import wraps
-from inspect import signature
+from inspect import iscoroutinefunction, signature
 from types import UnionType
 from typing import (
     Annotated,
     Any,
     NoReturn,
+    ParamSpec,
     Self,
     TypeVar,
     get_args,
@@ -28,6 +29,7 @@ from temporalio.activity import _Definition
 from temporalio.api.common.v1 import Payload
 from temporalio.client import WorkflowHandle
 from temporalio.converter import DataConverter
+from temporalio.service import RPCError
 from temporalio.worker import (
     ActivityInboundInterceptor,
     ActivityOutboundInterceptor,
@@ -332,7 +334,8 @@ def _get_progress_handler(
         weight=weight,
         min_progress_interval_s=min_progress_interval_s,
     )
-    return handler.progress
+    handler = _fail_safe(handler.progress, "emit progress", excs=(RPCError,))
+    return handler
 
 
 def _is_progress(t: type) -> bool:
@@ -438,7 +441,7 @@ class _HeartbeatInboundInterceptor(ActivityInboundInterceptor):
             period = heartbeat_timeout.total_seconds() / self._n_missed_before_timeout
             # We don't want a failing hearbeat to fail the worker task so we just
             # ignore any exception
-            heartbeat_fn = _fail_safe(self._outbound.heartbeat)
+            heartbeat_fn = _fail_safe(self._outbound.heartbeat, "heartbeat")
             heartbeat_task = asyncio.create_task(_heartbeat_every(heartbeat_fn, period))
         try:
             activity.heartbeat()
@@ -449,19 +452,36 @@ class _HeartbeatInboundInterceptor(ActivityInboundInterceptor):
                 await asyncio.wait([heartbeat_task])
 
 
-def _fail_safe(
-    fn: Callable[[Any], None], excs: tuple[type[Exception]] | None = None
-) -> Callable[[Any], None]:
+P = ParamSpec("P")
+T = TypeVar("T")
+
+
+def _fail_safe[P, T](
+    fn: Callable[P, T],
+    action: str,
+    excs: tuple[type[Exception]] | None = None,
+) -> Callable[P, T]:
     if excs is None:
         excs = (Exception,)
+    if iscoroutinefunction(fn):
 
-    @wraps(fn)
-    def wrapper(*args, **kwargs) -> None:
-        try:
-            fn(*args, **kwargs)
-        except excs as exc:
-            msg = f"failed to heartbeat due to {exc}"
-            logger.exception(msg)
+        @wraps(fn)
+        async def wrapper(*args, **kwargs) -> None:
+            try:
+                await fn(*args, **kwargs)
+            except excs as exc:
+                msg = f"failed to {action} due to {exc}"
+                logger.exception(msg)
+
+    else:
+
+        @wraps(fn)
+        def wrapper(*args, **kwargs) -> None:
+            try:
+                fn(*args, **kwargs)
+            except excs as exc:
+                msg = f"failed to {action} due to {exc}"
+                logger.exception(msg)
 
     return wrapper
 
