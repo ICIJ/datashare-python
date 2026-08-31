@@ -321,10 +321,10 @@ dev = [
 requires-dist = [
     { name = "datashare-python", editable = "../../datashare-python" },
     { name = "icij-common", extras = ["elasticsearch"], specifier = "~=0.8.3" },
-    { name = "icij-passport-core", specifier = "==0.11.3" },
-    { name = "icij-passport-core", extras = ["cpu", "inference"], marker = "extra == 'inference-cpu'", specifier = "==0.11.3" },
-    { name = "icij-passport-core", extras = ["gpu", "inference"], marker = "extra == 'inference-gpu'", specifier = "==0.11.3" },
-    { name = "icij-passport-core", extras = ["preprocessing"], marker = "extra == 'preprocessing'", specifier = "==0.11.3" },
+    { name = "icij-passport-core", specifier = "==0.11.4" },
+    { name = "icij-passport-core", extras = ["cpu", "inference"], marker = "extra == 'inference-cpu'", specifier = "==0.11.4" },
+    { name = "icij-passport-core", extras = ["gpu", "inference"], marker = "extra == 'inference-gpu'", specifier = "==0.11.4" },
+    { name = "icij-passport-core", extras = ["preprocessing"], marker = "extra == 'preprocessing'", specifier = "==0.11.4" },
 ]
 provides-extras = ["inference-cpu", "inference-gpu", "preprocessing"]
 
@@ -543,15 +543,15 @@ elasticsearch = [
 
 [[package]]
 name = "icij-passport-core"
-version = "0.11.3"
+version = "0.11.4"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiostream" },
     { name = "icij-common" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/f3/11/dd340c3b2cb231a6cdea233174b568da63432e57a9d26358efdc561cd327/icij_passport_core-0.11.3.tar.gz", hash = "sha256:b79d8b8172717faec6f00ede075e8990b0a0808fd8c7fd6d2b75e871302b15a3", size = 14578958, upload-time = "2026-08-31T10:37:24.512Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/b1/1f/abd3fbbae124e8a39d65078e82dce923f7dd772ef1017487fcda3ffddca4/icij_passport_core-0.11.4.tar.gz", hash = "sha256:19891aff9346ec030a6216a9b32c60a710ca32e2223c41bd7bcc45975d11aaf2", size = 14579023, upload-time = "2026-08-31T11:20:23.068Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/86/7a/4d4673bbade8fa632629c5f8c6e091201571b668df7604f01a8fa543d7ea/icij_passport_core-0.11.3-py3-none-any.whl", hash = "sha256:9d5eec21f5f857122bfed584d0b7beccef0605dccc93db5554db424bd58b9a17", size = 10958911, upload-time = "2026-08-31T10:37:21.35Z" },
+    { url = "https://files.pythonhosted.org/packages/91/61/35655be0c872aa9a02f9900dad155a8c94b4ecf300b60f23989b717f91e5/icij_passport_core-0.11.4-py3-none-any.whl", hash = "sha256:8b241103efbfb033e48d06899ab02d328efb7351257192faac51913bc783ec13", size = 10959009, upload-time = "2026-08-31T11:20:20.722Z" },
 ]
 
 [package.optional-dependencies]

@@ -9,6 +9,7 @@ from types import TracebackType
 from typing import Protocol, Self, TypeVar
 
 from aiofile import async_open
+from aiohttp import ClientResponseError
 from datashare_python.objects import ProcessedPage, WorkerPaths
 from datashare_python.types_ import AsyncProgressRateHandler, SyncProgressRateHandler
 from datashare_python.utils import (
@@ -22,7 +23,7 @@ from icij_common.registrable import RegistrableFromConfig
 from passport_service import GotenbergClient
 from passport_service.constants import Colorspace
 from passport_service.core import process_image, process_pdf
-from passport_service.exceptions import UnsupportedDocExtension
+from passport_service.exceptions import ProcessingTimeout, UnsupportedDocExtension
 from passport_service.utils import run_with_concurrency
 
 from passport_worker.config import GotenbergPDFConverterConfig, PDFConverterType
@@ -91,7 +92,12 @@ class GotenbergPDFConverter(GotenbergClient, PDFConverter):
 
     async def __call__(self, doc: ProcessedFile, doc_bytes: bytes) -> bytes:
         ext = doc.path.suffix
-        converted = await self.convert_doc_to_pdf(doc_bytes, ext)
+        try:
+            converted = await self.convert_doc_to_pdf(doc_bytes, ext)
+        except ClientResponseError as e:
+            if e.status == 429:
+                raise ProcessingTimeout(doc.path) from e
+            raise
         return converted
 
     @classmethod
