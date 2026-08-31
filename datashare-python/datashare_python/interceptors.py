@@ -14,7 +14,6 @@ from typing import (
     Annotated,
     Any,
     NoReturn,
-    ParamSpec,
     Self,
     TypeVar,
     get_args,
@@ -452,11 +451,7 @@ class _HeartbeatInboundInterceptor(ActivityInboundInterceptor):
                 await asyncio.wait([heartbeat_task])
 
 
-P = ParamSpec("P")
-T = TypeVar("T")
-
-
-def _fail_safe[P, T](
+def _fail_safe[**P, T](
     fn: Callable[P, T],
     action: str,
     excs: tuple[type[Exception]] | None = None,
@@ -466,9 +461,9 @@ def _fail_safe[P, T](
     if iscoroutinefunction(fn):
 
         @wraps(fn)
-        async def wrapper(*args, **kwargs) -> None:
+        async def wrapper(*args: P.args, **kwargs: P.kwargs) -> None:
             try:
-                await fn(*args, **kwargs)
+                return await fn(*args, **kwargs)
             except excs as exc:
                 msg = f"failed to {action} due to {exc}"
                 logger.exception(msg)
@@ -476,9 +471,9 @@ def _fail_safe[P, T](
     else:
 
         @wraps(fn)
-        def wrapper(*args, **kwargs) -> None:
+        def wrapper(*args: P.args, **kwargs: P.kwargs) -> None:
             try:
-                fn(*args, **kwargs)
+                return fn(*args, **kwargs)
             except excs as exc:
                 msg = f"failed to {action} due to {exc}"
                 logger.exception(msg)
