@@ -10,7 +10,7 @@ from datashare_python.utils import WorkflowWithProgress, execute_activity
 from temporalio import workflow
 
 with workflow.unsafe.imports_passed_through():
-    from .activities import Activity, PassportDetectionActivities
+    from .activities import PassportDetectionActivities
     from .objects import (
         Batches,
         ImagePreprocessorConfig,
@@ -61,7 +61,7 @@ class PassportDetectionWorkflow(WorkflowWithProgress):
         preprocessing_output = await preprocess(args, preprocessing_batches)
         # Create inference batches
         inference_batches = await execute_activity(
-            Activity.CREATE_INFERENCE_BATCHES,
+            PassportDetectionActivities.create_inference_batches,
             args=[preprocessing_output.pages, args.project],
             task_queue=TaskQueue.IO,
             start_to_close_timeout=_CREATE_BATCHES_TIMEOUT,

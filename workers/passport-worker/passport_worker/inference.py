@@ -361,6 +361,9 @@ class YOLOPassportDetector(PassportDetector):
         input_name = self._sess.get_inputs()[0].name
         label_name = self._sess.get_outputs()[0].name
         model_inputs = {input_name: blobs.astype(np.float32)}
+        logger.debug(
+            "running YOLO passport detection on a batch of size %s", blobs.shape[0]
+        )
         try:
             outputs = (
                 self._sess.run(  # [batch_size, n_classes + dim_box, max_boxes = 8400]
