@@ -22,8 +22,11 @@ from icij_common.registrable import RegistrableFromConfig
 from passport_service import GotenbergClient
 from passport_service.constants import Colorspace
 from passport_service.core import process_image, process_pdf
-from passport_service.core.preprocessing import REPORTED_ERRORS
-from passport_service.exceptions import ProcessingTimeout, UnsupportedDocExtension
+from passport_service.exceptions import (
+    REPORTED_ERRORS,
+    ProcessingTimeout,
+    UnsupportedDocExtension,
+)
 from passport_service.utils import run_with_concurrency
 
 from passport_worker.config import GotenbergPDFConverterConfig, PDFConverterType
