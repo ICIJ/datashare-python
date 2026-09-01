@@ -30,14 +30,14 @@ gpu = [
   "torchcodec==0.10.0+cu129; sys_platform == 'linux'",
 ]
 inference = [
-  "caul[nemo]==0.10.3",
+  "caul[nemo]==0.10.5",
   "kaldialign==0.9.3",
   "ml-dtypes==0.5.4",
   "numpy==2.3.0",
   "pyarrow==20.0.0",
 ]
 preprocessing = [
-  "caul==0.10.3",
+  "caul==0.10.5",
 ]
 
 [project.entry-points."datashare.workflows"]

@@ -295,7 +295,7 @@ wheels = [
 
 [[package]]
 name = "caul"
-version = "0.10.3"
+version = "0.10.5"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "caul-core", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu') or sys_platform == 'darwin' or (sys_platform != 'linux' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu')" },
@@ -308,9 +308,9 @@ dependencies = [
     { name = "tiktoken", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu') or sys_platform == 'darwin' or (sys_platform != 'linux' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu')" },
     { name = "typer", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu') or sys_platform == 'darwin' or (sys_platform != 'linux' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu')" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/41/e5/4afdda804e9518bf7165b35c875b63a69c7c8d05717238df4037fbb331dc/caul-0.10.3.tar.gz", hash = "sha256:42edd399ebc1190154a9b5a0ffcfce0a23229b824e7cbb14d7f1c3f67adc2335", size = 248728, upload-time = "2026-08-24T09:18:03.566Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/5c/03/49ccb1d08119ee580d15d96af153148ca2ab3d4d8630d84f04ce342f2099/caul-0.10.5.tar.gz", hash = "sha256:adfbab5dee14b2f5002ef3469ae8886948c0f3229da3acc4ed4d2bf0ae56c4bf", size = 248515, upload-time = "2026-09-01T15:57:55.826Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/3a/14/b68831f0da9ce7f010d3abc982f2c359125f5da97876fdcda4798a964a79/caul-0.10.3-py3-none-any.whl", hash = "sha256:6703c3dba20f53700ee0d6e3f384a1c91c315e708a14e23cd68b708dc822f381", size = 39462, upload-time = "2026-08-24T09:18:02.237Z" },
+    { url = "https://files.pythonhosted.org/packages/f4/13/b8e6fb23e7167708e04273ced4f6496e185d746bdec1a0f6b8421306c0d7/caul-0.10.5-py3-none-any.whl", hash = "sha256:360d6f3ca633d03d37b2f1771b303df2b6aeadd93a851aa534e68dfbdca059ce", size = 39206, upload-time = "2026-09-01T15:57:54.896Z" },
 ]
 
 [package.optional-dependencies]
@@ -572,8 +572,8 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "caul", marker = "extra == 'preprocessing'", specifier = "==0.10.3" },
-    { name = "caul", extras = ["nemo"], marker = "extra == 'inference'", specifier = "==0.10.3" },
+    { name = "caul", marker = "extra == 'preprocessing'", specifier = "==0.10.5" },
+    { name = "caul", extras = ["nemo"], marker = "extra == 'inference'", specifier = "==0.10.5" },
     { name = "caul-core", specifier = "==0.4.2" },
     { name = "cuda-bindings", marker = "sys_platform == 'linux' and extra == 'gpu'", specifier = "==12.9.4" },
     { name = "datashare-python", editable = "../../datashare-python" },
@@ -607,7 +607,7 @@ dev = [
 
 [[package]]
 name = "datashare-python"
-version = "0.10.5"
+version = "0.10.6"
 source = { editable = "../../datashare-python" }
 dependencies = [
     { name = "aiofile", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu') or sys_platform == 'darwin' or (sys_platform != 'linux' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu')" },
