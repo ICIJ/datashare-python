@@ -19,6 +19,7 @@ from icij_common.pydantic_utils import safe_copy
 from icij_common.registrable import FromConfig, RegistrableConfig
 from passport_service.objects import MRZ, ObjectDetection, Passport
 from passport_worker.config import PassportWorkerConfig
+from passport_worker.exceptions import InferenceRuntimeError
 from passport_worker.inference import (
     PassportDetector,
     YOLOPassportDetector,
@@ -62,6 +63,22 @@ class MockPassportDetector(PassportDetector):
         country_codes: list[str] | None = None,  # noqa: ARG002
     ) -> Passport:
         return next(self._mrzs)
+
+    def scale_image(self, im: "MatLike") -> "tuple[np.ndarray, MatLike, float]":
+        return np.zeros((640, 640, 3), np.uint8), im, 1.0
+
+    @classmethod
+    def _from_config(cls, config: RegistrableConfig, **extras) -> FromConfig:
+        pass
+
+
+class FailingPassportDetector:
+    def __init__(self): ...
+    def detect_passports(
+        self,
+        ins: Sequence[tuple[MatLike, float]],  # noqa: ARG002
+    ) -> list[list[ObjectDetection]]:
+        raise InferenceRuntimeError("i'm always failing")
 
     def scale_image(self, im: "MatLike") -> "tuple[np.ndarray, MatLike, float]":
         return np.zeros((640, 640, 3), np.uint8), im, 1.0
@@ -289,6 +306,44 @@ async def test_detect_passports_act(
         assert passports_path.exists()
         passports = Passports.model_validate_json(passports_path.read_text())
         assert passports == expected_passports
+
+
+async def test_detect_passports_act_should_report_inference_failure(
+    test_worker_config: PassportWorkerConfig, test_model_path: Path
+) -> None:
+    # Given
+    config = test_worker_config
+    docs = [f"doc-{i}" for i in range(8)]
+    worker_paths = config.paths
+    args = PassportDetectionArgs(
+        project=TEST_PROJECT,
+        docs=docs,
+        config=PassportDetectionConfig(
+            inference=PassportInferenceConfig(
+                passport_detector=YOLOPassportDetectorConfig(model_path=test_model_path)
+            )
+        ),
+    )
+    batch = [_DOC_6_PAGE_0]
+    _mock_pages(batch, worker_paths, errors=[])
+    batches = [b async for b in write_batches([batch], worker_paths.workdir)]
+    batch = batches[0]
+    passport_detector = FailingPassportDetector()
+    # When
+    res = await detect_passports_act(
+        batch,
+        passport_detector,
+        worker_paths,
+        args,
+        batch_size=1,
+    )
+    # Then
+    assert res.processed == ProcessingReport(n_docs=1, n_pages=1)
+    assert res.successes == ProcessingReport(n_docs=0, n_pages=0)
+    assert len(res.errors) == 1
+    error = res.errors[0]
+    assert error.file == _DOC_6_PAGE_0
+    assert error.error.title == "InferenceRuntimeError"
 
 
 TESTED_DOCS = sorted(

@@ -27,10 +27,12 @@ from icij_common.iter_utils import async_batches
 from icij_common.registrable import (
     RegistrableFromConfig,
 )
+from onnxruntime.capi.onnxruntime_pybind11_state import Fail
 from passport_service import DATA_DIR
 from passport_service.exceptions import InvalidImage
 from passport_service.objects import ObjectDetection, Passport
 
+from passport_worker.exceptions import InferenceRuntimeError
 from passport_worker.objects import (
     FileProcessingError,
     PagePassports,
@@ -134,26 +136,33 @@ async def detect_passports_act(  # noqa: PLR0917
         progress = to_incremental_async_progress(
             to_raw_async_progress(progress, n_pages)
         )
-    read_errors = []
+    errors = []
     im_batches = async_batches(
-        _read_images(batch, passport_detector, paths, read_errors), batch_size
+        _read_images(batch, passport_detector, paths, errors), batch_size
     )
     read_mrz = args.config.inference.passport_detector.read_mrz
-    detection_outs = (
+    incomplete = {e.file.id for e in errors}
+    detection_outs = [
         await _detect_passport_pages(
             b, passport_detector, read_mrz=read_mrz, progress=progress
         )
         async for b in im_batches
-    )
-    detection_outs = [
-        p async for batch_passports in detection_outs for p in batch_passports
     ]
-    incomplete = {e.file.id for e in read_errors}
+    detection_outs = sum(detection_outs, start=[])
+    successes = []
+    for res in detection_outs:
+        if isinstance(res, FileProcessingError):
+            errors.append(res)
+            incomplete.add(res.file.id)
+        else:
+            successes.append(res)
+    del detection_outs
+
     n_success = 0
     n_success_pages = 0
     with_artifacts = set()
     for passport_artifact, n_doc_success_pages in _aggregate_doc_passports(
-        detection_outs, incomplete, args
+        successes, incomplete, args
     ):
         if passport_artifact.manifest_entry.status is ManifestEntryStatus.COMPLETE:
             n_success += 1
@@ -167,7 +176,7 @@ async def detect_passports_act(  # noqa: PLR0917
     processed = ProcessingReport(n_docs=n_docs, n_pages=n_pages)
     successes = ProcessingReport(n_docs=n_success, n_pages=n_success_pages)
     return PartialDetectionResult(
-        processed=processed, successes=successes, errors=read_errors
+        processed=processed, successes=successes, errors=errors
     )
 
 
@@ -207,11 +216,14 @@ async def _detect_passport_pages(
     *,
     read_mrz: bool,
     progress: RawAsyncProgressHandler | None = None,
-) -> list[tuple[ProcessedFile, list[Passport]]]:
+) -> list[tuple[ProcessedFile, list[Passport]] | FileProcessingError]:
     doc_pages, doc_page_ims, detection_ins = zip(*batch, strict=True)
-    passport_pages = await asyncio.to_thread(
-        passport_detector.detect_passports, detection_ins
-    )
+    try:
+        passport_pages = await asyncio.to_thread(
+            passport_detector.detect_passports, detection_ins
+        )
+    except InferenceRuntimeError as e:
+        return [FileProcessingError.from_exception(d, e) for d in doc_pages]
     if read_mrz:
         passports = [
             [
@@ -347,9 +359,15 @@ class YOLOPassportDetector(PassportDetector):
         input_name = self._sess.get_inputs()[0].name
         label_name = self._sess.get_outputs()[0].name
         model_inputs = {input_name: blobs.astype(np.float32)}
-        outputs = self._sess.run(  # [batch_size, n_classes + dim_box, max_boxes = 8400]
-            [label_name], model_inputs
-        )[0]
+        try:
+            outputs = (
+                self._sess.run(  # [batch_size, n_classes + dim_box, max_boxes = 8400]
+                    [label_name], model_inputs
+                )[0]
+            )
+        except Fail as e:
+            msg = "YOLO onnx inference failed"
+            raise InferenceRuntimeError(msg) from e
         outputs = np.array(outputs, dtype=np.float32).reshape(
             (-1, outputs.shape[-2], outputs.shape[-1])
         )

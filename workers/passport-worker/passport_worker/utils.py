@@ -1,8 +1,16 @@
-from collections.abc import AsyncIterable, Iterable
+import logging
+from collections.abc import AsyncIterable, Callable, Iterable
+from functools import wraps
+from inspect import iscoroutinefunction
 from pathlib import Path
+from typing import Protocol
 
 from aiofile import async_open
 from datashare_python.objects import ProcessedFile
+
+from passport_worker.objects import FileProcessingError
+
+logger = logging.getLogger(__name__)
 
 
 async def write_batches(
@@ -51,3 +59,79 @@ async def _write_batches(
                 await f.write(f"{fs_doc.model_dump_json()}\n")
         yield batch_path
         batch_id += 1
+
+
+class _PreprocessingFunction[R](Protocol):
+    def __call__(self, doc: ProcessedFile, *args, **kwargs) -> R: ...
+
+
+def reports_errors[R](
+    errors: tuple[type[Exception]],
+) -> Callable[
+    [_PreprocessingFunction[R]], _PreprocessingFunction[R | FileProcessingError]
+]:
+
+    def parent_wrapper(f) -> _PreprocessingFunction[R | FileProcessingError]:
+        if iscoroutinefunction(f):
+
+            @wraps(f)  # noqa: F821
+            async def wrapper(
+                doc: ProcessedFile, *args, **kwargs
+            ) -> R | FileProcessingError:
+                try:
+                    return await f(doc, *args, **kwargs)
+                except errors as e:
+                    logger.exception("error while processing doc %s", doc)
+                    report = FileProcessingError.from_exception(doc, e)
+                    return report
+        else:
+
+            @wraps(f)
+            def wrapper(doc: ProcessedFile, *args, **kwargs) -> R | FileProcessingError:
+
+                try:
+                    return f(doc, *args, **kwargs)
+                except errors as e:
+                    logger.exception("error while processing doc %s", doc)
+                    report = FileProcessingError.from_exception(doc, e)
+                    return report
+
+        return wrapper
+
+    return parent_wrapper
+
+
+def reports_errors[R](
+    errors: tuple[type[Exception]],
+) -> Callable[
+    [_PreprocessingFunction[R]], _PreprocessingFunction[R | FileProcessingError]
+]:
+
+    def parent_wrapper(f) -> _PreprocessingFunction[R | FileProcessingError]:
+        if iscoroutinefunction(f):
+
+            @wraps(f)  # noqa: F821
+            async def wrapper(
+                doc: ProcessedFile, *args, **kwargs
+            ) -> R | FileProcessingError:
+                try:
+                    return await f(doc, *args, **kwargs)
+                except errors as e:
+                    logger.exception("error while processing doc %s", doc)
+                    report = FileProcessingError.from_exception(doc, e)
+                    return report
+        else:
+
+            @wraps(f)
+            def wrapper(doc: ProcessedFile, *args, **kwargs) -> R | FileProcessingError:
+
+                try:
+                    return f(doc, *args, **kwargs)
+                except errors as e:
+                    logger.exception("error while processing doc %s", doc)
+                    report = FileProcessingError.from_exception(doc, e)
+                    return report
+
+        return wrapper
+
+    return parent_wrapper

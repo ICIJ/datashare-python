@@ -2,8 +2,7 @@ import asyncio
 import logging
 from abc import abstractmethod
 from concurrent.futures import ProcessPoolExecutor
-from functools import partial, wraps
-from inspect import iscoroutinefunction
+from functools import partial
 from pathlib import Path
 from types import TracebackType
 from typing import Protocol, Self, TypeVar
@@ -23,6 +22,7 @@ from icij_common.registrable import RegistrableFromConfig
 from passport_service import GotenbergClient
 from passport_service.constants import Colorspace
 from passport_service.core import process_image, process_pdf
+from passport_service.core.preprocessing import REPORTED_ERRORS
 from passport_service.exceptions import ProcessingTimeout, UnsupportedDocExtension
 from passport_service.utils import run_with_concurrency
 
@@ -34,15 +34,12 @@ from passport_worker.objects import (
     ImagePreprocessorType,
     ProcessedFile,
 )
+from passport_worker.utils import reports_errors
 
 logger = logging.getLogger(__name__)
 
 
 R = TypeVar("R")
-
-
-class _PreprocessingFunction[R](Protocol):
-    def __call__(self, doc: ProcessedFile, *args, **kwargs) -> R: ...
 
 
 class ImagePreprocessor(RegistrableFromConfig):
@@ -109,44 +106,6 @@ class PDFPreprocessor(Protocol):
     def __call__(
         self, pdf_path: Path, pdf_bytes: bytes, output_dir: Path
     ) -> list[Path]: ...
-
-
-def reports_errors[R](
-    f: _PreprocessingFunction[R],
-) -> _PreprocessingFunction[R | FileProcessingError]:
-
-    if iscoroutinefunction(f):
-
-        @wraps(f)
-        async def wrapper(
-            doc: ProcessedFile, *args, **kwargs
-        ) -> R | FileProcessingError:
-            from passport_service.core.preprocessing import (  # noqa:PLC0415
-                REPORTED_ERRORS,
-            )
-
-            try:
-                return await f(doc, *args, **kwargs)
-            except REPORTED_ERRORS as e:
-                logger.exception("error while processing doc %s", doc)
-                report = FileProcessingError.from_exception(doc, e)
-                return report
-    else:
-
-        @wraps(f)
-        def wrapper(doc: ProcessedFile, *args, **kwargs) -> R | FileProcessingError:
-            from passport_service.core.preprocessing import (  # noqa:PLC0415
-                REPORTED_ERRORS,
-            )
-
-            try:
-                return f(doc, *args, **kwargs)
-            except REPORTED_ERRORS as e:
-                logger.exception("error while processing doc %s", doc)
-                report = FileProcessingError.from_exception(doc, e)
-                return report
-
-    return wrapper
 
 
 def preprocess_images_act(
@@ -259,7 +218,7 @@ async def preprocess_pdfs_act(
     return successes, errors
 
 
-@reports_errors
+@reports_errors(errors=REPORTED_ERRORS)
 def _preprocess_image_doc(
     doc: ProcessedFile,
     image_preprocessor: ImagePreprocessor,
@@ -281,7 +240,7 @@ def _preprocess_image_doc(
     return pages
 
 
-@reports_errors
+@reports_errors(errors=REPORTED_ERRORS)
 async def _convert_doc_to_pdf(
     doc: ProcessedFile, converter: PDFConverter, paths: WorkerPaths, output_root: Path
 ) -> ProcessedFile:
@@ -296,7 +255,7 @@ async def _convert_doc_to_pdf(
     return processed
 
 
-@reports_errors
+@reports_errors(errors=REPORTED_ERRORS)
 async def _preprocess_pdf(
     doc: ProcessedFile,
     pdf_processor: PDFPreprocessor,
