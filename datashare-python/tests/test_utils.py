@@ -7,9 +7,11 @@ from concurrent.futures import ProcessPoolExecutor
 from datetime import timedelta
 from pathlib import Path
 from typing import ClassVar
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, PropertyMock
 
 import pytest
+from _pytest.monkeypatch import MonkeyPatch
+from conftest import TEST_PROJECT
 from datashare_python.constants import MANIFEST_JSON
 from datashare_python.objects import (
     ArtifactType,
@@ -23,6 +25,7 @@ from datashare_python.utils import (
     _LOCKED,
     SharedResources,
     activity_defn,
+    activity_workdir,
     artifact_lock,
     positional_args_only,
     write_artifact,
@@ -411,3 +414,94 @@ def test_get_or_cache_eviction_callback_is_called_on_exit() -> None:
         shared.get_or_cache_resource(key, factory)
     # Then
     eviction_callback.assert_called_once_with(key, "value")
+
+
+@pytest.mark.parametrize(
+    ("wf_context", "act_context", "run_context", "expected_work_dir"),
+    [
+        (
+            True,
+            True,
+            True,
+            Path(
+                "workdir",
+                TEST_PROJECT,
+                "wf_type",
+                "act_type",
+                "processing_cache",
+                "caching_hash",
+            ),
+        ),
+        (
+            True,
+            True,
+            False,
+            Path(
+                "workdir",
+                TEST_PROJECT,
+                "wf_type",
+                "act_type",
+                "processing_cache",
+                "caching_hash",
+            ),
+        ),
+        (
+            True,
+            False,
+            True,
+            Path(
+                "workdir", TEST_PROJECT, "wf_type", "processing_cache", "caching_hash"
+            ),
+        ),
+        (
+            True,
+            False,
+            False,
+            Path(
+                "workdir", TEST_PROJECT, "wf_type", "processing_cache", "caching_hash"
+            ),
+        ),
+        (
+            False,
+            True,
+            True,
+            Path(
+                "workdir", TEST_PROJECT, "act_type", "processing_cache", "caching_hash"
+            ),
+        ),
+        (
+            False,
+            True,
+            False,
+            Path(
+                "workdir", TEST_PROJECT, "act_type", "processing_cache", "caching_hash"
+            ),
+        ),
+    ],
+)
+def test_cached_activity_workdir(
+    *,
+    wf_context: bool,
+    act_context: bool,
+    run_context: bool,
+    expected_work_dir: Path,
+    monkeypatch: MonkeyPatch,
+) -> None:
+    # Given
+    caching_hash = "caching_hash"
+    base_workdir = Path("workdir")
+    mocked_info = MagicMock()
+    type(mocked_info).workflow_type = PropertyMock(return_value="wf_type")
+    type(mocked_info).activity_type = PropertyMock(return_value="act_type")
+    monkeypatch.setattr(activity, "info", lambda: mocked_info)
+    # When
+    workdir = activity_workdir(
+        base_workdir,
+        project=TEST_PROJECT,
+        caching_hash=caching_hash,
+        wf_context=wf_context,
+        act_context=act_context,
+        run_context=run_context,
+    )
+    # Then
+    assert workdir == expected_work_dir
