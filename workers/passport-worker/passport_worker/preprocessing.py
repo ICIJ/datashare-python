@@ -91,7 +91,7 @@ class GotenbergPDFConverter(GotenbergClient, PDFConverter):
         super().__init__(**kwargs)
 
     async def __call__(self, doc: ProcessedFile, doc_bytes: bytes) -> bytes:
-        ext = doc.path.suffix
+        ext = doc.path.suffix.lower()
         try:
             converted = await self.convert_doc_to_pdf(doc_bytes, ext)
         except ClientResponseError as e:
