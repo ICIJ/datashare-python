@@ -27,7 +27,6 @@ from icij_common.iter_utils import async_batches
 from icij_common.registrable import (
     RegistrableFromConfig,
 )
-from onnxruntime.capi.onnxruntime_pybind11_state import Fail
 from passport_service import DATA_DIR
 from passport_service.exceptions import InvalidImage
 from passport_service.objects import ObjectDetection, Passport
@@ -347,6 +346,7 @@ class YOLOPassportDetector(PassportDetector):
         self, ins: Sequence[tuple["MatLike", float]]
     ) -> list[list[ObjectDetection]]:
         import numpy as np  # noqa: PLC0415
+        from onnxruntime.capi.onnxruntime_pybind11_state import Fail  # noqa: PLC0415
         from passport_service.core.object_detection import (  # noqa: PLC0415
             detections_from_nn_output,
         )
