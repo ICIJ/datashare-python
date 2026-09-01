@@ -62,6 +62,8 @@ from .objects import (
 )
 from .types_ import RawAsyncProgressHandler
 
+_CACHE_DIR = "processing_cache"
+
 logger = logging.getLogger(__name__)
 
 DependencyLabel = str | None
@@ -533,7 +535,11 @@ activity_contextual_id = contextual_id
 
 
 def _contextual_path(
-    *, wf_context: bool = True, act_context: bool = True, run_context: bool = False
+    *,
+    wf_context: bool = True,
+    act_context: bool = True,
+    run_context: bool = False,
+    caching_hash: str | None = None,
 ) -> Path:
     act_info = activity.info()
     path = []
@@ -541,14 +547,18 @@ def _contextual_path(
         raise ValueError("at least one of wf_context and act_context must be True")
     if wf_context:
         path = [act_info.workflow_type]
-        path.append(act_info.workflow_id)
-        if run_context:
-            path.append(act_info.workflow_run_id)
+        if not caching_hash:
+            path.append(act_info.workflow_id)
+            if run_context:
+                path.append(act_info.workflow_run_id)
     if act_context:
         path.append(act_info.activity_type)
-        path.append(act_info.activity_id)
-        if run_context:
-            path.append(act_info.activity_run_id)
+        if not caching_hash:
+            path.append(act_info.activity_id)
+            if run_context:
+                path.append(act_info.activity_run_id)
+    if caching_hash:
+        path += [_CACHE_DIR, caching_hash]
     return Path(*path)
 
 
@@ -559,9 +569,13 @@ def activity_workdir(
     wf_context: bool = True,
     act_context: bool = True,
     run_context: bool = False,
+    caching_hash: str | None = None,
 ) -> Path:
     ctx_path = _contextual_path(
-        wf_context=wf_context, act_context=act_context, run_context=run_context
+        wf_context=wf_context,
+        act_context=act_context,
+        run_context=run_context,
+        caching_hash=caching_hash,
     )
     return workdir.joinpath(project, ctx_path)
 
