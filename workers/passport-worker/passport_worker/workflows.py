@@ -151,6 +151,7 @@ def _im_processing_tasks(
                 args=(b, project, config),
                 task_queue=TaskQueue.PREPROCESSING,
                 start_to_close_timeout=_PREPROCESS_IMAGES_TIMEOUT,
+                heartbeat_timeout=timedelta(minutes=3),
             )
         )
     return im_preprocessing_tasks
