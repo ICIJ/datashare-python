@@ -47,7 +47,9 @@ R = TypeVar("R")
 
 class ImagePreprocessor(RegistrableFromConfig):
     @abstractmethod
-    def __call__(self, image_path: Path, *, output_dir: Path) -> list[Path]: ...
+    def __call__(
+        self, image_path: Path, *, output_dir: Path, force_reprocessing: bool
+    ) -> list[Path]: ...
 
     def __enter__(self) -> Self:
         return self
@@ -67,8 +69,13 @@ class DefaultImagePreprocessor(ImagePreprocessor):
             config = DefaultImagePreprocessorConfig()
         self._config = config
 
-    def __call__(self, image_path: Path, *, output_dir: Path) -> list[Path]:
-        return process_image(image_path, output_dir=output_dir)
+    def __call__(
+        self, image_path: Path, *, output_dir: Path, force_reprocessing: bool
+    ) -> list[Path]:
+        output_dir.mkdir(parents=True, exist_ok=True)
+        return process_image(
+            image_path, output_dir=output_dir, force_reprocessing=force_reprocessing
+        )
 
     @classmethod
     def _from_config(cls, config: DefaultImagePreprocessorConfig, **extras) -> Self:  # noqa:ARG003
@@ -107,7 +114,12 @@ class GotenbergPDFConverter(GotenbergClient, PDFConverter):
 
 class PDFPreprocessor(Protocol):
     def __call__(
-        self, pdf_path: Path, pdf_bytes: bytes, output_dir: Path
+        self,
+        pdf_path: Path,
+        pdf_bytes: bytes,
+        output_dir: Path,
+        *,
+        force_reprocessing: bool,
     ) -> list[Path]: ...
 
 
@@ -117,6 +129,7 @@ def preprocess_images_act(
     *,
     output_root: Path,
     image_preprocessor: ImagePreprocessor,
+    force_reprocessing: bool = True,
     executor: ProcessPoolExecutor | None = None,
     chunk_size: int = 1,
     event_loop: asyncio.AbstractEventLoop | None = None,
@@ -131,6 +144,7 @@ def preprocess_images_act(
     chunk_size = 1 if n_docs < n_processes * chunk_size else chunk_size
     process_doc_fn = partial(
         _preprocess_image_doc,
+        force_reprocessing=force_reprocessing,
         image_preprocessor=image_preprocessor,
         paths=paths,
         output_root=output_root,
@@ -160,6 +174,7 @@ async def convert_to_pdfs_act(
     paths: WorkerPaths,
     max_concurrency: int,
     *,
+    force_reprocessing: bool,
     output_root: Path,
     progress: AsyncProgressRateHandler | None = None,
 ) -> tuple[list[ProcessedFile], list[FileProcessingError]]:
@@ -168,7 +183,12 @@ async def convert_to_pdfs_act(
     n_docs = len(docs)
     if progress is not None:
         progress = to_raw_async_progress(progress, max_progress=n_docs)
-    aws = (_convert_doc_to_pdf(doc, converter, paths, output_root) for doc in docs)
+    aws = (
+        _convert_doc_to_pdf(
+            doc, converter, paths, output_root, force_reprocessing=force_reprocessing
+        )
+        for doc in docs
+    )
     res_i = 0
     successes = []
     errors = []
@@ -189,12 +209,37 @@ async def convert_to_pdfs_act(
     return successes, errors
 
 
+@reports_errors(errors=REPORTED_ERRORS)
+def _preprocess_image_doc(
+    doc: ProcessedFile,
+    image_preprocessor: ImagePreprocessor,
+    paths: WorkerPaths,
+    *,
+    output_root: Path,
+    force_reprocessing: bool,
+) -> list[ProcessedPage]:
+    ext = doc.path.suffix.lower()
+    if ext not in pil_supported_extensions():
+        logger.info("image extension %s not supported !", ext)
+        raise UnsupportedDocExtension(ext, sorted(pil_supported_extensions()))
+    output_dir = output_root / safe_dir(doc.id) / doc.id
+    im_paths = image_preprocessor(
+        doc.locate(paths), output_dir=output_dir, force_reprocessing=force_reprocessing
+    )
+    pages = [
+        ProcessedPage(page_number=p_i + 1, **doc.child(p, paths).model_dump())
+        for p_i, p in enumerate(im_paths)
+    ]
+    return pages
+
+
 async def preprocess_pdfs_act(
     batch: Path,
     paths: WorkerPaths,
     pdf_preprocessor: PDFPreprocessor | None = None,
     *,
     output_root: Path,
+    force_reprocessing: bool,
     progress: AsyncProgressRateHandler | None = None,
 ) -> tuple[list[ProcessedPage], list[FileProcessingError]]:
     if pdf_preprocessor is None:
@@ -207,7 +252,11 @@ async def preprocess_pdfs_act(
     errors = []
     for doc_i, doc in enumerate(docs):
         res = await _preprocess_pdf(
-            doc, pdf_preprocessor, paths, output_root=output_root
+            doc,
+            pdf_preprocessor,
+            paths,
+            force_reprocessing=force_reprocessing,
+            output_root=output_root,
         )
         if isinstance(res, FileProcessingError):
             errors.append(res)
@@ -222,38 +271,23 @@ async def preprocess_pdfs_act(
 
 
 @reports_errors(errors=REPORTED_ERRORS)
-def _preprocess_image_doc(
-    doc: ProcessedFile,
-    image_preprocessor: ImagePreprocessor,
-    paths: WorkerPaths,
-    *,
-    output_root: Path,
-) -> list[ProcessedPage]:
-    ext = doc.path.suffix.lower()
-    if ext not in pil_supported_extensions():
-        logger.info("image extension %s not supported !", ext)
-        raise UnsupportedDocExtension(ext, sorted(pil_supported_extensions()))
-    output_dir = output_root / safe_dir(doc.id) / doc.id
-    output_dir.mkdir(parents=True, exist_ok=True)
-    im_paths = image_preprocessor(doc.locate(paths), output_dir=output_dir)
-    pages = [
-        ProcessedPage(page_number=p_i + 1, **doc.child(p, paths).model_dump())
-        for p_i, p in enumerate(im_paths)
-    ]
-    return pages
-
-
-@reports_errors(errors=REPORTED_ERRORS)
 async def _convert_doc_to_pdf(
-    doc: ProcessedFile, converter: PDFConverter, paths: WorkerPaths, output_root: Path
+    doc: ProcessedFile,
+    converter: PDFConverter,
+    paths: WorkerPaths,
+    output_root: Path,
+    *,
+    force_reprocessing: bool,
 ) -> ProcessedFile:
-    async with async_open(doc.locate(paths), "rb") as f:
-        doc_bytes = await f.read()
-    pdf_bytes = await converter(doc, doc_bytes)
     pdf_path = output_root / safe_dir(doc.id) / f"{doc.id}.pdf"
-    pdf_path.parent.mkdir(parents=True, exist_ok=True)
-    async with async_open(pdf_path, "wb") as f:
-        await f.write(pdf_bytes)
+    valid_pdf = await is_valid_pdf(pdf_path)
+    if force_reprocessing or not valid_pdf:
+        async with async_open(doc.locate(paths), "rb") as f:
+            doc_bytes = await f.read()
+        pdf_bytes = await converter(doc, doc_bytes)
+        pdf_path.parent.mkdir(parents=True, exist_ok=True)
+        async with async_open(pdf_path, "wb") as f:
+            await f.write(pdf_bytes)
     processed = doc.child(pdf_path, paths)
     return processed
 
@@ -264,6 +298,7 @@ async def _preprocess_pdf(
     pdf_processor: PDFPreprocessor,
     paths: WorkerPaths,
     *,
+    force_reprocessing: bool,
     output_root: Path,
 ) -> list[ProcessedPage]:
     pdf_path = doc.locate(paths)
@@ -272,10 +307,33 @@ async def _preprocess_pdf(
     output_dir = output_root / safe_dir(doc.id) / doc.id
     output_dir.mkdir(parents=True, exist_ok=True)
     pages = await asyncio.to_thread(
-        pdf_processor, pdf_path, pdf_bytes, output_dir=output_dir
+        pdf_processor,
+        pdf_path,
+        pdf_bytes,
+        output_dir=output_dir,
+        force_reprocessing=force_reprocessing,
     )
     pages = [
         ProcessedPage(page_number=p_i + 1, **doc.child(p, paths).model_dump())
         for p_i, p in enumerate(pages)
     ]
     return pages
+
+
+async def is_valid_pdf(path: Path) -> bool:
+    import pymupdf  # noqa: PLC0415
+
+    if not path.exists():
+        return False
+    async with async_open(path, "rb") as f:
+        pdf_bytes = await f.read()
+
+    doc = None
+    try:
+        doc = pymupdf.open(stream=pdf_bytes, filetype="pdf")
+        return doc.is_pdf
+    except Exception:  # noqa: BLE001
+        return False
+    finally:
+        if doc is not None:
+            doc.close()

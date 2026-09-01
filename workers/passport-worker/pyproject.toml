@@ -11,18 +11,18 @@ requires-python = ">=3.12,<3.14"
 dependencies = [
   "datashare-python~=0.10.6",
   "icij-common[elasticsearch]~=0.8.3",
-  "icij-passport-core==0.11.6",
+  "icij-passport-core==0.11.7",
 ]
 
 [project.optional-dependencies]
 preprocessing = [
-  "icij-passport-core[preprocessing]==0.11.6",
+  "icij-passport-core[preprocessing]==0.11.7",
 ]
 inference-gpu = [
-  "icij-passport-core[inference,gpu]==0.11.6"
+  "icij-passport-core[inference,gpu]==0.11.7"
 ]
 inference-cpu = [
-  "icij-passport-core[inference,cpu]==0.11.6"
+  "icij-passport-core[inference,cpu]==0.11.7"
 ]
 
 [tool.uv.sources]

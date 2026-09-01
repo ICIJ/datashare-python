@@ -35,10 +35,10 @@ from .inference import (
 from .objects import (
     DocId,
     DocumentSearchQuery,
-    ImagePreprocessorConfig,
     PassportDetectionArgs,
     PassportDetectionResponse,
     PreprocessingBatches,
+    PreprocessingConfig,
 )
 from .preprocessing import (
     ImagePreprocessor,
@@ -101,7 +101,7 @@ class PassportDetectionActivities(ActivityWithProgress):
         self,
         batch: Path,
         project: str,
-        config: ImagePreprocessorConfig,
+        config: PreprocessingConfig,
         *,
         progress: Annotated[
             SyncProgressRateHandler | None, Weight(value=_PREPROCESS_IMAGES_WEIGHT)
@@ -111,21 +111,25 @@ class PassportDetectionActivities(ActivityWithProgress):
         workdir = worker_config.paths.workdir
         logger.info("loading image preprocessor...")
         cache = lifespan_image_preprocessor_cache()
-        image_preprocessor_cache_key = config_cache_key(config)
+        cache_key = config_cache_key(config)
         image_preprocessor_factory = enter_cm(
-            partial(ImagePreprocessor.from_config, config)
+            partial(ImagePreprocessor.from_config, config.images)
         )
         image_preprocessor = cache.get_or_cache_resource(
-            image_preprocessor_cache_key, image_preprocessor_factory
+            cache_key, image_preprocessor_factory
         )
         logger.info("loaded image preprocessor !")
-        pages_root = activity_workdir(workdir, project, act_context=False)
+        # We cache processing at the config level, we ignore package updates,
+        # to discard the cache we just need to disable it in the args to overwrite
+        pages_root = activity_workdir(workdir, project, caching_key=cache_key)
         pages_root.mkdir(parents=True, exist_ok=True)
         executor = worker_config.to_image_preprocessing_executor()
         chunk_size = worker_config.preprocessing.images.chunk_size
+        force_reprocessing = not config.use_caching
         success, errors = preprocess_images_act(
             batch,
             worker_config.paths,
+            force_reprocessing=force_reprocessing,
             output_root=pages_root,
             image_preprocessor=image_preprocessor,
             executor=executor,
@@ -133,7 +137,7 @@ class PassportDetectionActivities(ActivityWithProgress):
             event_loop=self._event_loop,
             progress=progress,
         )
-        res_root = activity_workdir(workdir, project, act_context=True)
+        res_root = activity_workdir(workdir, project)
         res_root.mkdir(parents=True, exist_ok=True)
         successes_path = res_root / "pages.jsonl"
         successes_path.write_text("\n".join(p.model_dump_json() for p in success))
@@ -147,6 +151,7 @@ class PassportDetectionActivities(ActivityWithProgress):
         batch: Path,
         project: str,
         *,
+        force_reprocessing: bool,
         progress: Annotated[
             AsyncProgressRateHandler | None, Weight(value=_CONVERT_TO_PDF_WEIGHT)
         ] = None,
@@ -154,15 +159,17 @@ class PassportDetectionActivities(ActivityWithProgress):
         worker_config = cast(PassportWorkerConfig, lifespan_worker_config())
         config = worker_config.preprocessing.pdfs
         cache = lifespan_pdf_converter_cache()
-        pdf_converter_cache_key = config_cache_key(config.pdf_converter)
+        cache_key = config_cache_key(config.pdf_converter)
         pdf_converter_factory = async_enter_cm(
             partial(PDFConverter.from_config, config.pdf_converter)
         )
         pdf_converter = await cache.async_get_or_cache_resource(
-            pdf_converter_cache_key, pdf_converter_factory
+            cache_key, pdf_converter_factory
         )
         workdir = worker_config.paths.workdir
-        pdfs_root = activity_workdir(workdir, project, act_context=False)
+        # We cache processing at the config level, we ignore package updates,
+        # to discard the cache we just need to disable it in the args to overwrite
+        pdfs_root = activity_workdir(workdir, project, caching_key=cache_key)
         pdfs_root.mkdir(parents=True, exist_ok=True)
         successes, errors = await convert_to_pdfs_act(
             batch,
@@ -170,6 +177,7 @@ class PassportDetectionActivities(ActivityWithProgress):
             worker_config.paths,
             config.max_concurrency,
             output_root=pdfs_root,
+            force_reprocessing=force_reprocessing,
             progress=progress,
         )
         res_root = activity_workdir(workdir, project, act_context=True)
@@ -188,16 +196,23 @@ class PassportDetectionActivities(ActivityWithProgress):
         batch: Path,
         project: str,
         *,
+        force_reprocessing: bool,
         progress: Annotated[
             AsyncProgressRateHandler | None, Weight(value=_PREPROCESS_PDF_WEIGHT)
         ] = None,
     ) -> tuple[Path, Path]:
         worker_config = cast(PassportWorkerConfig, lifespan_worker_config())
         workdir = worker_config.paths.workdir
-        output_root = activity_workdir(workdir, project, act_context=False)
+        # We cache processing at the config level, we ignore package updates,
+        # to discard the cache we just need to disable it in the args to overwrite
+        output_root = activity_workdir(workdir, project, caching_key="pdf-preprocessor")
         output_root.mkdir(parents=True, exist_ok=True)
         successes, errors = await preprocess_pdfs_act(
-            batch, worker_config.paths, output_root=output_root, progress=progress
+            batch,
+            worker_config.paths,
+            output_root=output_root,
+            force_reprocessing=force_reprocessing,
+            progress=progress,
         )
         res_root = activity_workdir(workdir, project, act_context=True)
         res_root.mkdir(parents=True, exist_ok=True)

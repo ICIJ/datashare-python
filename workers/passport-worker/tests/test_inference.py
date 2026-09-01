@@ -233,7 +233,8 @@ def _mock_pages(
     for p in batch:
         page_path = worker_paths.workdir / p.path
         page_path.parent.mkdir(parents=True, exist_ok=True)
-        os.symlink(DOCS_PATH / "passport.png", page_path)
+        if not page_path.exists():
+            os.symlink(DOCS_PATH / "passport.png", page_path)
     for error in errors:
         # Generate an error
         invalid_im_path = worker_paths.workdir / error.path

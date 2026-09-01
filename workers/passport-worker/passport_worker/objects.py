@@ -63,6 +63,8 @@ ImagePreprocessorConfig = DefaultImagePreprocessorConfig
 
 
 class PreprocessingConfig(DatashareModel):
+    use_caching: bool = True
+
     images: ImagePreprocessorConfig = Field(
         default_factory=DefaultImagePreprocessorConfig
     )

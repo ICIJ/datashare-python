@@ -1,3 +1,5 @@
+import hashlib
+import json
 import logging
 import os
 from abc import ABC
@@ -62,6 +64,12 @@ Predicate = Callable[[T], bool] | Callable[[T], Awaitable[bool]]
 
 class BaseModel(_BaseModel):
     model_config = merge_configs(icij_config(), no_enum_values_config())
+
+    def __hash__(self) -> int:
+        digest = hashlib.md5(
+            json.dumps(self.model_dump(mode="json"), sort_keys=True).encode()
+        ).digest()
+        return int.from_bytes(digest[:8])
 
 
 class DatashareModel(BaseModel):

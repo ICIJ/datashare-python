@@ -13,10 +13,10 @@ with workflow.unsafe.imports_passed_through():
     from .activities import PassportDetectionActivities
     from .objects import (
         Batches,
-        ImagePreprocessorConfig,
         PassportDetectionArgs,
         PassportDetectionResponse,
         PreprocessingBatches,
+        PreprocessingConfig,
     )
 
 logger = logging.getLogger(__name__)
@@ -95,10 +95,13 @@ async def preprocess(
     args: PassportDetectionArgs, preprocessing_batches: PreprocessingBatches
 ) -> PreprocessingOutput:
     im_preprocessing_tasks = _im_processing_tasks(
-        preprocessing_batches.images, args.project, args.config.preprocessing.images
+        preprocessing_batches.images, args.project, args.config.preprocessing
     )
+    force_reprocessing = not args.config.preprocessing.use_caching
     convert_to_pdf_tasks = _convert_to_pdfs_tasks(
-        preprocessing_batches.to_pdf, args.project
+        preprocessing_batches.to_pdf,
+        args.project,
+        force_reprocessing=force_reprocessing,
     )
     im_preprocessing_tasks = asyncio.gather(*im_preprocessing_tasks)
     convert_to_pdf_tasks = asyncio.gather(*convert_to_pdf_tasks)
@@ -125,7 +128,9 @@ async def preprocess(
     # Preprocess all files converted into PDFs + original PDFs
     logger.info("converting PDF pages to PNG...")
     pdf_batches = preprocessing_batches.pdfs + pdf_paths
-    preprocess_pdfs_tasks = _process_pdfs_tasks(pdf_batches, args.project)
+    preprocess_pdfs_tasks = _process_pdfs_tasks(
+        pdf_batches, args.project, force_reprocessing=force_reprocessing
+    )
     pdf_pages_res = await asyncio.gather(*preprocess_pdfs_tasks)
     if pdf_pages_res:
         pdfs_pages_paths, pdf_processing_errors = zip(*pdf_pages_res, strict=True)
@@ -141,7 +146,7 @@ async def preprocess(
 
 
 def _im_processing_tasks(
-    batches: Batches, project: str, config: ImagePreprocessorConfig
+    batches: Batches, project: str, config: PreprocessingConfig
 ) -> list:
     im_preprocessing_tasks = []
     for b in batches:
@@ -157,13 +162,15 @@ def _im_processing_tasks(
     return im_preprocessing_tasks
 
 
-def _convert_to_pdfs_tasks(batches: Batches, project: str) -> list[Coroutine]:
+def _convert_to_pdfs_tasks(
+    batches: Batches, project: str, *, force_reprocessing: bool
+) -> list[Coroutine]:
     all_tasks = []
     for b in batches:
         all_tasks.append(
             execute_activity(
                 PassportDetectionActivities.convert_to_pdfs,
-                args=(b, project),
+                args=(b, project, force_reprocessing),
                 task_queue=TaskQueue.IO,
                 start_to_close_timeout=_CONVERT_TO_PDF_TIMEOUT,
                 heartbeat_timeout=timedelta(minutes=2),
@@ -172,13 +179,15 @@ def _convert_to_pdfs_tasks(batches: Batches, project: str) -> list[Coroutine]:
     return all_tasks
 
 
-def _process_pdfs_tasks(batches: Batches, project: str) -> list[Coroutine]:
+def _process_pdfs_tasks(
+    batches: Batches, project: str, *, force_reprocessing: bool
+) -> list[Coroutine]:
     all_tasks = []
     for b in batches:
         all_tasks.append(
             execute_activity(
                 PassportDetectionActivities.preprocess_pdfs,
-                args=(b, project),
+                args=(b, project, force_reprocessing),
                 task_queue=TaskQueue.IO,
                 start_to_close_timeout=_CONVERT_TO_PDF_TIMEOUT,
             )

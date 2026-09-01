@@ -10,8 +10,11 @@ from typing import ClassVar
 from unittest.mock import MagicMock, PropertyMock
 
 import pytest
+import temporalio
 from _pytest.monkeypatch import MonkeyPatch
-from conftest import TEST_PROJECT
+
+with temporalio.workflow.unsafe.imports_passed_through():
+    from datashare_python.conftest import TEST_PROJECT
 from datashare_python.constants import MANIFEST_JSON
 from datashare_python.objects import (
     ArtifactType,
@@ -428,8 +431,8 @@ def test_get_or_cache_eviction_callback_is_called_on_exit() -> None:
                 TEST_PROJECT,
                 "wf_type",
                 "act_type",
-                "processing_cache",
-                "caching_hash",
+                "__cache__",
+                "caching_key",
             ),
         ),
         (
@@ -441,41 +444,33 @@ def test_get_or_cache_eviction_callback_is_called_on_exit() -> None:
                 TEST_PROJECT,
                 "wf_type",
                 "act_type",
-                "processing_cache",
-                "caching_hash",
+                "__cache__",
+                "caching_key",
             ),
         ),
         (
             True,
             False,
             True,
-            Path(
-                "workdir", TEST_PROJECT, "wf_type", "processing_cache", "caching_hash"
-            ),
+            Path("workdir", TEST_PROJECT, "wf_type", "__cache__", "caching_key"),
         ),
         (
             True,
             False,
             False,
-            Path(
-                "workdir", TEST_PROJECT, "wf_type", "processing_cache", "caching_hash"
-            ),
+            Path("workdir", TEST_PROJECT, "wf_type", "__cache__", "caching_key"),
         ),
         (
             False,
             True,
             True,
-            Path(
-                "workdir", TEST_PROJECT, "act_type", "processing_cache", "caching_hash"
-            ),
+            Path("workdir", TEST_PROJECT, "act_type", "__cache__", "caching_key"),
         ),
         (
             False,
             True,
             False,
-            Path(
-                "workdir", TEST_PROJECT, "act_type", "processing_cache", "caching_hash"
-            ),
+            Path("workdir", TEST_PROJECT, "act_type", "__cache__", "caching_key"),
         ),
     ],
 )
@@ -488,7 +483,7 @@ def test_cached_activity_workdir(
     monkeypatch: MonkeyPatch,
 ) -> None:
     # Given
-    caching_hash = "caching_hash"
+    caching_key = "caching_key"
     base_workdir = Path("workdir")
     mocked_info = MagicMock()
     type(mocked_info).workflow_type = PropertyMock(return_value="wf_type")
@@ -498,7 +493,7 @@ def test_cached_activity_workdir(
     workdir = activity_workdir(
         base_workdir,
         project=TEST_PROJECT,
-        caching_hash=caching_hash,
+        caching_key=caching_key,
         wf_context=wf_context,
         act_context=act_context,
         run_context=run_context,

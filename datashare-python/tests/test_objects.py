@@ -9,6 +9,7 @@ from _pytest.monkeypatch import MonkeyPatch
 from datashare_python.conftest import TEST_PROJECT
 from datashare_python.constants import TIKA_METADATA_RESOURCENAME
 from datashare_python.objects import (
+    BaseModel,
     ByteRangesPagination,
     DatashareLanguage,
     Document,
@@ -190,3 +191,15 @@ def test_manifest_entry_partial_task_id(
         assert manifest_entry.task_id is not None
     else:
         assert manifest_entry.task_id is None
+
+
+def test_base_model_hash_is_constant() -> None:
+    # Given
+    class MockConfig(BaseModel):
+        some_key: str = "some_value"
+
+    cfg = MockConfig()
+
+    # When
+    hashed = hash(cfg)
+    assert hashed == 1821116217857887821
