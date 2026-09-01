@@ -379,16 +379,16 @@ wheels = [
 
 [[package]]
 name = "datashare-passport-worker"
-version = "0.2.11"
+version = "0.2.12"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "datashare-python" },
     { name = "icij-common", extra = ["elasticsearch"] },
     { name = "icij-passport-core" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/02/58/1cca9aa0fe498d9b0a369403720562a2304b27458727d7638d8e94a7f001/datashare_passport_worker-0.2.11.tar.gz", hash = "sha256:14dbe7886e55005b03eef7eedb038b1844cac7798e33ff3df0db2ed951ee2df6", size = 14759, upload-time = "2026-09-01T10:18:38.022Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/49/ee/3fcfc95c02084551a2c8daf22101efa157094007e7c4a7388b01ea597183/datashare_passport_worker-0.2.12.tar.gz", hash = "sha256:fd3950f9a82d35c59c9ecf3a6b3b0072f0a48f779d42cfe5c13b2bd94c195e57", size = 14764, upload-time = "2026-09-01T10:23:25.488Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/79/c7/38a9426d4aa44094a700947f985919a6d86472e8f9878479812484387088/datashare_passport_worker-0.2.11-py3-none-any.whl", hash = "sha256:371468dd481fa47828893280e10d2b63f22a60fe6927e576aa48dd8695911fe4", size = 20409, upload-time = "2026-09-01T10:18:38.729Z" },
+    { url = "https://files.pythonhosted.org/packages/04/68/01dbebc4cbd44c5d050be5febc7dad21151bf321f00627b511f375d5fe9d/datashare_passport_worker-0.2.12-py3-none-any.whl", hash = "sha256:f90d68d17afd7543fc1f6b878d5c7feb472640036e5461650dc489e638c80aa3", size = 20415, upload-time = "2026-09-01T10:23:24.641Z" },
 ]
 
 [[package]]
@@ -445,7 +445,7 @@ dependencies = [
 requires-dist = [
     { name = "datashare-asr-worker", specifier = "==0.9.4" },
     { name = "datashare-extract-worker", specifier = "==0.1.57" },
-    { name = "datashare-passport-worker", specifier = "==0.2.11" },
+    { name = "datashare-passport-worker", specifier = "==0.2.12" },
     { name = "datashare-python", specifier = "~=0.10.6" },
     { name = "datashare-translation-worker", specifier = "==0.7.10" },
 ]
