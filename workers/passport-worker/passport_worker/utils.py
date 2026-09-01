@@ -71,7 +71,9 @@ def reports_errors[R](
     [_PreprocessingFunction[R]], _PreprocessingFunction[R | FileProcessingError]
 ]:
 
-    def parent_wrapper(f) -> _PreprocessingFunction[R | FileProcessingError]:
+    def parent_wrapper(
+        f: _PreprocessingFunction[R],
+    ) -> _PreprocessingFunction[R | FileProcessingError]:
         if iscoroutinefunction(f):
 
             @wraps(f)  # noqa: F821

@@ -32,6 +32,7 @@ import temporalio
 from aiofile import async_open
 from lru import LRU
 from pydantic import ValidationError
+from pydantic.alias_generators import to_snake
 from temporalio import activity, workflow
 from temporalio.api.common.v1 import Payload
 from temporalio.client import Client
@@ -62,7 +63,7 @@ from .objects import (
 )
 from .types_ import RawAsyncProgressHandler
 
-_CACHE_DIR = "processing_cache"
+_CACHE_DIR = "__cache__"
 
 logger = logging.getLogger(__name__)
 
@@ -539,7 +540,7 @@ def _contextual_path(
     wf_context: bool = True,
     act_context: bool = True,
     run_context: bool = False,
-    caching_hash: str | None = None,
+    caching_key: str | None = None,
 ) -> Path:
     act_info = activity.info()
     path = []
@@ -547,18 +548,18 @@ def _contextual_path(
         raise ValueError("at least one of wf_context and act_context must be True")
     if wf_context:
         path = [act_info.workflow_type]
-        if not caching_hash:
+        if not caching_key:
             path.append(act_info.workflow_id)
             if run_context:
                 path.append(act_info.workflow_run_id)
     if act_context:
         path.append(act_info.activity_type)
-        if not caching_hash:
+        if not caching_key:
             path.append(act_info.activity_id)
             if run_context:
                 path.append(act_info.activity_run_id)
-    if caching_hash:
-        path += [_CACHE_DIR, caching_hash]
+    if caching_key:
+        path += [_CACHE_DIR, caching_key]
     return Path(*path)
 
 
@@ -569,13 +570,13 @@ def activity_workdir(
     wf_context: bool = True,
     act_context: bool = True,
     run_context: bool = False,
-    caching_hash: str | None = None,
+    caching_key: str | None = None,
 ) -> Path:
     ctx_path = _contextual_path(
         wf_context=wf_context,
         act_context=act_context,
         run_context=run_context,
-        caching_hash=caching_hash,
+        caching_key=caching_key,
     )
     return workdir.joinpath(project, ctx_path)
 
@@ -822,4 +823,10 @@ def async_enter_cm(
 
 
 def config_cache_key(config: BaseModel) -> str:
-    return str(hash(config))
+    # BaseModel support deterministic hash we can call hash on it
+    config_label = (
+        to_snake(config.__class__.__name__.replace("Config", ""))
+        .lower()
+        .replace("_", "-")
+    )
+    return f"{config_label}-{str(hash(config))}"

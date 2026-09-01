@@ -15,6 +15,7 @@ from passport_worker.preprocessing import (
     PDFConverter,
     PDFPreprocessor,
     convert_to_pdfs_act,
+    is_valid_pdf,
     preprocess_images_act,
     preprocess_pdfs_act,
 )
@@ -32,11 +33,21 @@ from tests.conftest import (
 class MockImageProcessor(ImagePreprocessor):
     def __init__(self, res: list[list[Path] | Exception]):
         self._res = iter(res)
+        self.processed = []
 
-    def __call__(self, image_path: Path, *, output_dir: Path) -> list[Path]:  # noqa: ARG002
+    def __call__(
+        self,
+        image_path: Path,
+        *,
+        output_dir: Path,  # noqa: ARG002
+        force_reprocessing: bool,
+    ) -> list[Path]:
         r = next(self._res)
         if isinstance(r, Exception):
             raise r
+        for im_path in r:
+            if force_reprocessing and not im_path.exists():
+                self.processed.append(image_path)
         return r
 
     @classmethod
@@ -46,11 +57,13 @@ class MockImageProcessor(ImagePreprocessor):
 class MockConverter(PDFConverter):
     def __init__(self, conversion_results: dict[str, bytes | Exception]):
         self._conversion_results = conversion_results
+        self.call_count = 0
 
     async def __call__(self, doc: ProcessedFile, doc_bytes: bytes) -> bytes:  # noqa: ARG002
         res = self._conversion_results[doc.id]
         if isinstance(res, Exception):
             raise res
+        self.call_count += 1
         return res
 
     @classmethod
@@ -61,16 +74,22 @@ class MockConverter(PDFConverter):
 class MockPDFPreprocessor(PDFPreprocessor):
     def __init__(self, res: list[list[Path] | Exception]):
         self._res = iter(res)
+        self.processed = []
 
     def __call__(
         self,
-        pdf_path: Path,  # noqa: ARG002
+        pdf_path: Path,
         pdf_bytes: bytes,  # noqa: ARG002
         output_dir: Path,  # noqa: ARG002
+        *,
+        force_reprocessing: bool,
     ) -> list[Path]:
         r = next(self._res)
         if isinstance(r, Exception):
             raise r
+        for im_path in r:
+            if force_reprocessing and not im_path.exists():
+                self.processed.append(pdf_path)
         return r
 
 
@@ -119,6 +138,7 @@ def test_preprocess_images_act(
         output_root=output_root,
         executor=executor,
         image_preprocessor=processor,
+        force_reprocessing=True,
     )
 
     # Then
@@ -134,6 +154,46 @@ def test_preprocess_images_act(
     processing_error = errors[0]
     assert processing_error.file.id == PROCESSED_DOC_1.id
     assert processing_error.error.title == "UnsupportedDocExtension"
+
+
+async def test_preprocess_images_act_caching(
+    test_worker_config: PassportWorkerConfig,
+    symlinked_doc_0_pages: list[Path],
+) -> None:
+    # Given
+    config = test_worker_config
+    executor = test_worker_config.to_image_preprocessing_executor()
+    worker_paths = config.paths
+    workdir = worker_paths.workdir
+    output_root = workdir.joinpath("workflow_id")
+    output_root.mkdir(parents=True, exist_ok=True)
+    doc_0_pages = symlinked_doc_0_pages
+    processor = MockImageProcessor([doc_0_pages])
+    batch_path = output_root / "batch.jsonl"
+    batch = [SYMLINKED_PROCESSED_DOC_0]
+    batch_path.write_text("\n".join(d.model_dump_json() for d in batch))
+
+    # When
+    successes, errors = preprocess_images_act(
+        batch_path,
+        worker_paths,
+        output_root=output_root,
+        executor=executor,
+        image_preprocessor=processor,
+        force_reprocessing=False,
+    )
+
+    # Then
+    assert not processor.processed
+    expected_successes = [
+        ProcessedPage(
+            page_number=page_number + 1,
+            **SYMLINKED_PROCESSED_DOC_0.child(p, worker_paths).model_dump(),
+        )
+        for page_number, p in enumerate(doc_0_pages)
+    ]
+    assert successes == expected_successes
+    assert not errors
 
 
 async def test_convert_to_pdfs_act(
@@ -164,6 +224,7 @@ async def test_convert_to_pdfs_act(
         worker_paths,
         max_concurrency=max_concurrency,
         output_root=output_root,
+        force_reprocessing=True,
     )
     # Then
     doc_2_as_pdf_path = (
@@ -175,6 +236,43 @@ async def test_convert_to_pdfs_act(
     processing_error = errors[0]
     assert processing_error.file.id == PROCESSED_DOC_1.id
     assert processing_error.error.title == "UnsupportedDocExtension"
+
+
+async def test_convert_to_pdfs_act_caching(
+    test_worker_config: PassportWorkerConfig,
+    docs_with_cached_artifacts: list[ProcessedFile],  # noqa: ARG001
+) -> None:
+    # Given
+    config = test_worker_config
+    worker_paths = config.paths
+    workdir = worker_paths.workdir
+    output_root = workdir.joinpath("workflow_id")
+    output_root.mkdir(parents=True)
+    max_concurrency = 1
+    batch = [PROCESSED_DOC_2]
+    conversion_results = {PROCESSED_DOC_2.id: b"doc_2_as_pdf"}
+    pdf_converter = MockConverter(conversion_results=conversion_results)
+    batch_path = output_root / "batch.jsonl"
+    batch_path.write_text("\n".join(d.model_dump_json() for d in batch))
+    doc_2_as_pdf_path = (
+        output_root / safe_dir(PROCESSED_DOC_2.id) / f"{PROCESSED_DOC_2.id}.pdf"
+    )
+    doc_2_as_pdf_path.parent.mkdir(parents=True, exist_ok=True)
+    doc_2_as_pdf_path.write_bytes((DOCS_PATH / "passport.pdf").read_bytes())
+    # When
+    successes, errors = await convert_to_pdfs_act(
+        batch_path,
+        pdf_converter,
+        worker_paths,
+        max_concurrency=max_concurrency,
+        output_root=output_root,
+        force_reprocessing=False,
+    )
+    # Then
+    assert not pdf_converter.call_count
+    expected_successes = [PROCESSED_DOC_2.child(doc_2_as_pdf_path, worker_paths)]
+    assert successes == expected_successes
+    assert not errors
 
 
 @pytest.fixture
@@ -212,6 +310,7 @@ async def test_preprocess_pdfs_act(
         worker_paths,
         preprocessor,
         output_root=output_root,
+        force_reprocessing=True,
     )
     # Then
     expected_successes = [
@@ -228,15 +327,66 @@ async def test_preprocess_pdfs_act(
     assert processing_error.error.title == "InvalidPDF"
 
 
+async def test_preprocess_pdfs_act_caching(
+    test_worker_config: PassportWorkerConfig,
+    doc_1_pages: list[Path],
+    docs_with_cached_artifacts: list[ProcessedFile],  # noqa: ARG001
+) -> None:
+    # Given
+    config = test_worker_config
+    worker_paths = config.paths
+    workdir = worker_paths.workdir
+    output_root = workdir.joinpath("workflow_id")
+    output_root.mkdir(parents=True, exist_ok=True)
+    batch = [PROCESSED_DOC_1]
+    results = [doc_1_pages]
+    preprocessor = MockPDFPreprocessor(results)
+    batch_path = output_root / "pdfs.jsonl"
+    batch_path.write_text("\n".join(d.model_dump_json() for d in batch))
+    for p in doc_1_pages:
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_bytes((DOCS_PATH / "passport.png").read_bytes())
+    # When
+    successes, errors = await preprocess_pdfs_act(
+        batch_path,
+        worker_paths,
+        preprocessor,
+        output_root=output_root,
+        force_reprocessing=False,
+    )
+    # Then
+    assert not preprocessor.processed
+    expected_successes = [
+        ProcessedPage(
+            page_number=page_number + 1,
+            **PROCESSED_DOC_1.child(p, worker_paths).model_dump(),
+        )
+        for page_number, p in enumerate(doc_1_pages)
+    ]
+    assert successes == expected_successes
+    assert not errors
+
+
 def test_default_image_preprocessor(tmpdir: Path) -> None:
     # Given
     output_dir = Path(tmpdir)
     im_path = DOCS_PATH / "not_a_passport.jpg"
     preprocessor = DefaultImagePreprocessor()
     # When
-    paths = preprocessor(im_path, output_dir=output_dir)
+    paths = preprocessor(im_path, output_dir=output_dir, force_reprocessing=True)
     assert len(paths) == 1
     processed_path = paths[0]
     assert processed_path.name.endswith(".png")
     im = Image.open(processed_path)
     assert im.mode == "RGB"
+
+
+@pytest.mark.parametrize(
+    ("filename", "expected_is_valid"),
+    [("not_a_passport.jpg", False), ("idontexist", False), ("passport.pdf", True)],
+)
+async def test_is_valid_pdf(filename: str, *, expected_is_valid: bool) -> None:
+    # When
+    is_valid = await is_valid_pdf(DOCS_PATH / filename)
+    # Then
+    assert is_valid == expected_is_valid
