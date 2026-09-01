@@ -165,6 +165,7 @@ def _convert_to_pdfs_tasks(batches: Batches, project: str) -> list[Coroutine]:
                 args=(b, project),
                 task_queue=TaskQueue.IO,
                 start_to_close_timeout=_CONVERT_TO_PDF_TIMEOUT,
+                heartbeat_timeout=timedelta(minutes=2),
             )
         )
     return all_tasks
