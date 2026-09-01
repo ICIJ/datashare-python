@@ -364,8 +364,13 @@ def postprocess_act(
     progress: SyncProgressRateHandler | None = None,
 ) -> list[DocRoute]:
     transcriptions = postprocessor.process(inference_results)
-    # Strict is important here !
-    for i, (doc, asr_result) in enumerate(zip(docs, transcriptions, strict=True)):
+    # Documents that fail preprocessing never produce a segment, so they're
+    # absent from transcriptions. Match results to docs by input_ordering
+    # rather than position so we don't misalign the two lists or crash on
+    # missing entries.
+    transcribed_docs: list[Document] = []
+    for idx, asr_result in enumerate(transcriptions):
+        doc = docs[asr_result.input_ordering]
         manifest_entry = TranscriptionManifestEntry.complete(
             args, confidence=asr_result.score
         )
@@ -377,9 +382,16 @@ def postprocess_act(
         )
         t_path = write_transcription(asr_result, artifact_factory, artifacts_root)
         logger.debug("wrote transcription for %s", t_path)
+        transcribed_docs.append(doc)
         if progress is not None and event_loop is not None:
-            progress(i, event_loop)
-    routes = [d.to_route() for d in docs]
+            progress(idx, event_loop)
+    if len(transcribed_docs) != len(docs):
+        logger.warning(
+            "%s/%s documents had no transcription and were skipped",
+            len(docs) - len(transcribed_docs),
+            len(docs),
+        )
+    routes = [d.to_route() for d in transcribed_docs]
     return routes
 
 
@@ -427,8 +439,10 @@ def _preprocess(
         # TODO: we might to create safe subdirs to avoid creating too many
         #  files in the same dir
         batch_file = output_dir / f"{batch_i}.jsonl"
+        batch_errors_file = output_dir / f"{batch_i}_errors.jsonl"
         logger.debug("writing batch to %s", batch_file)
-        with batch_file.open("w") as f:
+        logger.debug("writing batch errors to %s", batch_errors_file)
+        with batch_file.open("w") as bf, batch_errors_file.open("w") as ef:
             for processed in batch:
                 if processed.metadata.error is not None:
                     logger.error(
@@ -437,8 +451,9 @@ def _preprocess(
                         processed.metadata.input_file_path,
                         processed.metadata.error,
                     )
+                    ef.write(processed.model_dump_json() + "\n")
                     continue
-                f.write(processed.model_dump_json() + "\n")
+                bf.write(processed.model_dump_json() + "\n")
         yield batch_file
 
 

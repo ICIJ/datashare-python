@@ -409,6 +409,43 @@ def test_postprocess_act(tmpdir: Path) -> None:
         assert transcription == expected_transcription
 
 
+def test_postprocess_act_skips_docs_with_no_transcription(tmpdir: Path) -> None:
+    # Given
+    args = ASRArgs(project=TEST_PROJECT, docs=[], batch_size=2)
+    postprocessor = MockPostprocessor()
+    artifacts_root = Path(tmpdir)
+    docs = [
+        Document(
+            id=f"{str(i) * 4}-doc-{i}",
+            language=DatashareLanguage("ENGLISH"),
+            root_document=f"root-{i}",
+            path=Path(str(i)),
+            index=TEST_PROJECT,
+            metadata={"tika_metadata_resourcename": f"doc-{i}.wav"},
+        )
+        for i in range(3)
+    ]
+    # doc-1's preprocessing failed entirely, so it never produced a segment and
+    # is absent from the ASR results (input_ordering 1 is skipped)
+    inference_results = [
+        ASRResult(input_ordering=0, transcription=[(0.0, 0.0, "doc-0")], score=1.0),
+        ASRResult(input_ordering=2, transcription=[(0.0, 0.0, "doc-2")], score=1.0),
+    ]
+    # When
+    routes = postprocess_act(
+        inference_results,
+        docs,
+        postprocessor,
+        args,
+        artifacts_root=artifacts_root,
+    )
+    # Then
+    assert routes == [
+        ("root-0", "0000-doc-0"),
+        ("root-2", "2222-doc-2"),
+    ]
+
+
 async def test_write_audio_search_results(tmpdir: Path) -> None:
     # Given
     root = Path(tmpdir)
