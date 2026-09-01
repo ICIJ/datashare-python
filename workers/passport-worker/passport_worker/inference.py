@@ -222,6 +222,8 @@ async def _detect_passport_pages(
             passport_detector.detect_passports, detection_ins
         )
     except InferenceRuntimeError as e:
+        doc_pages = list(doc_pages)
+        logger.exception("error while running inference on batch: %s", doc_pages)
         return [FileProcessingError.from_exception(d, e) for d in doc_pages]
     if read_mrz:
         passports = [
