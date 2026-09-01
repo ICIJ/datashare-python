@@ -99,39 +99,3 @@ def reports_errors[R](
         return wrapper
 
     return parent_wrapper
-
-
-def reports_errors[R](
-    errors: tuple[type[Exception]],
-) -> Callable[
-    [_PreprocessingFunction[R]], _PreprocessingFunction[R | FileProcessingError]
-]:
-
-    def parent_wrapper(f) -> _PreprocessingFunction[R | FileProcessingError]:
-        if iscoroutinefunction(f):
-
-            @wraps(f)  # noqa: F821
-            async def wrapper(
-                doc: ProcessedFile, *args, **kwargs
-            ) -> R | FileProcessingError:
-                try:
-                    return await f(doc, *args, **kwargs)
-                except errors as e:
-                    logger.exception("error while processing doc %s", doc)
-                    report = FileProcessingError.from_exception(doc, e)
-                    return report
-        else:
-
-            @wraps(f)
-            def wrapper(doc: ProcessedFile, *args, **kwargs) -> R | FileProcessingError:
-
-                try:
-                    return f(doc, *args, **kwargs)
-                except errors as e:
-                    logger.exception("error while processing doc %s", doc)
-                    report = FileProcessingError.from_exception(doc, e)
-                    return report
-
-        return wrapper
-
-    return parent_wrapper

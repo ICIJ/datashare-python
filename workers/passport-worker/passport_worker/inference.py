@@ -140,13 +140,13 @@ async def detect_passports_act(  # noqa: PLR0917
         _read_images(batch, passport_detector, paths, errors), batch_size
     )
     read_mrz = args.config.inference.passport_detector.read_mrz
-    incomplete = {e.file.id for e in errors}
     detection_outs = [
         await _detect_passport_pages(
             b, passport_detector, read_mrz=read_mrz, progress=progress
         )
         async for b in im_batches
     ]
+    incomplete = {e.file.id for e in errors}
     detection_outs = sum(detection_outs, start=[])
     successes = []
     for res in detection_outs:
