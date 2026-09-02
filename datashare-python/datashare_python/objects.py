@@ -267,7 +267,14 @@ class Document(DatashareModel):
             raise ValueError(
                 "can't compute filesystem path for document withtout metadata"
             )
-        resource_name = cast(str, self.metadata[TIKA_METADATA_RESOURCENAME])
+        resource_name = self.metadata.get(TIKA_METADATA_RESOURCENAME)
+        if resource_name is None:
+            msg = (
+                f"doc {self} can't turn ES document into a {ProcessedFile.__name__} "
+                f"without tika metadata resources name in metadata: {self.metadata}"
+            )
+            raise ValueError(msg)
+        resource_name = cast(str, resource_name)
         if self.root_document is None:
             path = self.path
             location = DocumentLocation.FILESYSTEM
