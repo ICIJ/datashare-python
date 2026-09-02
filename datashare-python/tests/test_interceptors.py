@@ -182,7 +182,7 @@ class _TestHeartbeatWorkflow(WorkflowWithProgress):
             arg=1,
             task_queue=TestTaskQueue.HEARTBEAT,
             start_to_close_timeout=_TIMEOUT,
-            heartbeat_timeout=timedelta(milliseconds=100),
+            heartbeat_timeout=timedelta(milliseconds=500),
             retry_policy=RetryPolicy(maximum_attempts=1),
         )
 
@@ -196,7 +196,7 @@ class _TestNoHeartbeatWorkflow(WorkflowWithProgress):
             arg=1,
             task_queue=TestTaskQueue.NO_HEARTBEAT,
             start_to_close_timeout=_TIMEOUT,
-            heartbeat_timeout=timedelta(milliseconds=100),
+            heartbeat_timeout=timedelta(milliseconds=500),
             retry_policy=RetryPolicy(maximum_attempts=1),
         )
 
