@@ -45,6 +45,7 @@ from elasticsearch._async.helpers import async_bulk
 from icij_common.es import (
     DOC_CONTENT,
     DOC_CONTENT_TYPE,
+    DOC_EXTRACTION_LEVEL,
     DOC_LANGUAGE,
     DOC_METADATA,
     DOC_PATH,
@@ -483,7 +484,14 @@ async def write_audio_batches(
 
 
 _DOC_TYPE_QUERY = has_type(type_field="type", type_value=ES_DOCUMENT_TYPE)
-_DOC_CONTENT_SOURCES = [DOC_PATH, DOC_ROOT_ID, DOC_LANGUAGE, DOC_METADATA, DOC_ROOT_ID]
+_DOC_CONTENT_SOURCES = [
+    DOC_PATH,
+    DOC_ROOT_ID,
+    DOC_LANGUAGE,
+    DOC_METADATA,
+    DOC_ROOT_ID,
+    DOC_EXTRACTION_LEVEL,
+]
 
 
 async def _search_audio_paths(

@@ -15,6 +15,7 @@ from icij_common.es import (
     BOOL,
     COUNT,
     DOC_CONTENT,
+    DOC_EXTRACTION_LEVEL,
     DOC_LANGUAGE,
     DOC_ROOT_ID,
     HITS,
@@ -111,7 +112,12 @@ async def create_translation_batches(
     return batches
 
 
-_TRANSLATION_DOC_SOURCES = [DOC_CONTENT, DOC_ROOT_ID, DOC_LANGUAGE]
+_TRANSLATION_DOC_SOURCES = [
+    DOC_CONTENT,
+    DOC_ROOT_ID,
+    DOC_LANGUAGE,
+    DOC_EXTRACTION_LEVEL,
+]
 
 
 async def translate_docs(

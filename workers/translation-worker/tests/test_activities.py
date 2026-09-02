@@ -9,6 +9,7 @@ import pytest
 from datashare_python.objects import DatashareLanguage, Document, Language, Translation
 from icij_common.es import (
     DOC_CONTENT,
+    DOC_EXTRACTION_LEVEL,
     DOC_LANGUAGE,
     DOC_ROOT_ID,
     HITS,
@@ -20,6 +21,7 @@ from icij_common.es import (
 from icij_common.registrable import RegistrableConfig
 from translation_worker import activities
 from translation_worker.activities import (
+    _DOC_CONTENT_TEXT_LENGTH,
     _get_es_docs_by_language,
     _split_sentences,
     _update_docs_translation,
@@ -31,7 +33,6 @@ from translation_worker.config import (
     TranslationModel,
     TranslationWorkerConfig,
 )
-from translation_worker.constants import DOC_CONTENT_TEXT_LENGTH
 from translation_worker.objects import untranslated_query
 from translation_worker.processors import SentenceSplitter, Translator
 
@@ -99,7 +100,12 @@ class MockTranslator(Translator):
 def _make_es_doc(
     doc_id: str, *, content: str, language: str, root_document: str
 ) -> dict:
-    sources = {DOC_CONTENT: content, DOC_LANGUAGE: language, DOC_ROOT_ID: root_document}
+    sources = {
+        DOC_CONTENT: content,
+        DOC_LANGUAGE: language,
+        DOC_ROOT_ID: root_document,
+        DOC_EXTRACTION_LEVEL: 1,
+    }
     return {ID_: doc_id, SOURCE: sources}
 
 
@@ -194,7 +200,10 @@ async def test__iter_sentences__yields_sentences_with_correct_indices(
 def _make_batching_doc(
     doc_id: str, language: DatashareLanguage, content_text_length: int = 0
 ) -> dict:
-    source = {DOC_LANGUAGE: language, DOC_CONTENT_TEXT_LENGTH: content_text_length}
+    source = {
+        DOC_LANGUAGE: language,
+        _DOC_CONTENT_TEXT_LENGTH: content_text_length,
+    }
     return {ID_: doc_id, SOURCE: source}
 
 
@@ -445,14 +454,24 @@ async def test_translate_docs_act__es_update(
 
 async def test__update_docs() -> None:
     # Given
-    doc_1 = Document(id="doc_1", language=DS_ENGLISH, root_document=ROOT_DOCUMENT_1)
+    doc_1 = Document(
+        id="doc_1",
+        language=DS_ENGLISH,
+        root_document=ROOT_DOCUMENT_1,
+        extraction_level=1,
+    )
     t_1 = Translation(
         source_language=DS_ENGLISH,
         target_language=DS_FRENCH,
         translator=TranslationModel.ARGOS,
         content="1",
     )
-    doc_2 = Document(id="doc_2", language=DS_ENGLISH, root_document=ROOT_DOCUMENT_2)
+    doc_2 = Document(
+        id="doc_2",
+        language=DS_ENGLISH,
+        root_document=ROOT_DOCUMENT_2,
+        extraction_level=1,
+    )
     t_2 = Translation(
         source_language=DS_ENGLISH,
         target_language=DatashareLanguage(FRENCH),

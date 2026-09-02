@@ -83,6 +83,7 @@ def doc_0() -> Document:
     return Document(
         id="doc-0",
         root_document="root-0",
+        extraction_level=1,
         index=TEST_PROJECT,
         language=DatashareLanguage("ENGLISH"),
         path=Path("not_a_passport.jpg"),
@@ -190,7 +191,7 @@ def docs_with_cached_artifacts(
     worker_paths = config.paths
     for doc in populate_es:
         doc_path = DOCS_PATH / doc.path
-        if doc.root_document is None:
+        if doc.is_root_document:
             worker_paths.filesystem.mkdir(parents=True, exist_ok=True)
             shutil.copy(doc_path, worker_paths.filesystem / doc.path)
         else:
@@ -247,7 +248,7 @@ def e2e_docs(
     worker_paths = config.paths
     for doc in populate_es_with_e2e_docs:
         doc_path = DOCS_PATH / doc.path
-        if doc.root_document is None:
+        if doc.is_root_document:
             worker_paths.filesystem.mkdir(parents=True, exist_ok=True)
             shutil.copy(doc_path, worker_paths.filesystem / doc.path)
         else:

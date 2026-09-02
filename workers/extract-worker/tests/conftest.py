@@ -72,6 +72,7 @@ def doc_0() -> Document:
     return Document(
         id="doc-0",
         root_document="root-0",
+        extraction_level=1,
         index=TEST_PROJECT,
         language="ENGLISH",
         content_type="application/pdf",
@@ -88,6 +89,7 @@ def doc_1() -> Document:
     return Document(
         id="doc-1",
         root_document="root-1",
+        extraction_level=1,
         index=TEST_PROJECT,
         language="ENGLISH",
         content_type="audio/wav",
@@ -136,7 +138,7 @@ def docs_with_cached_artifacts(
     paths = []
     for doc in docs:
         doc_path = DOCS_PATH / doc.path
-        if doc.root_document is None:
+        if doc.is_root_document:
             config.paths.filesystem.mkdir(parents=True, exist_ok=True)
             shutil.copy(doc_path, config.paths.filesystem / doc.path)
         else:

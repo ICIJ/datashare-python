@@ -24,6 +24,7 @@ with workflow.unsafe.imports_passed_through():
     from icij_common.es import (
         DOC_CONTENT,
         DOC_CONTENT_TRANSLATED,
+        DOC_EXTRACTION_LEVEL,
         DOC_LANGUAGE,
         DOC_METADATA,
         DOC_PATH,
@@ -222,6 +223,8 @@ class Document(DatashareModel):
     language: DatashareLanguage
     index: str | None = None
     root_document: str | None = None
+    content: Annotated[str, BeforeValidator(_from_sentences)]
+    extraction_level: int = 0
     content: str | None = None
     content_text_length: int | None = None
     content_type: str | None = None
@@ -244,6 +247,37 @@ class Document(DatashareModel):
                 data["content_text_length"] = len(content)
         return data
 
+    @model_validator(mode="before")
+    @classmethod
+    def _set_root_document_to_self_when_not_provided(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            root = data.get("root_document")
+            if root is None:
+                data["root_document"] = data.get("id")
+        return data
+
+    @model_validator(mode="after")
+    def _validate_root_document(self) -> Any:
+        if self.root_document is None:
+            msg = (
+                "inconsistent state, root_document cannot be after validation, "
+                "there's a bug in this object's implementation."
+                " Please report to a developer."
+            )
+            raise ValueError(msg)
+        if self.is_root_document:
+            if self.extraction_level > 0:
+                msg = "extraction_level should be <= 0 for root documents"
+                raise ValueError(msg)
+        elif self.extraction_level <= 0:
+            msg = "extraction_level should be > 0 for embedded documents"
+            raise ValueError(msg)
+        return self
+
+    @property
+    def is_root_document(self) -> bool:
+        return self.root_document == self.id and self.extraction_level <= 0
+
     @classmethod
     def from_es(cls, es_doc: dict) -> Self:
         sources = es_doc[SOURCE]
@@ -255,6 +289,7 @@ class Document(DatashareModel):
             content_text_length=sources.get("content_text_length"),
             language=DatashareLanguage(sources[DOC_LANGUAGE]),
             root_document=sources.get(DOC_ROOT_ID),
+            extraction_level=sources.get(DOC_EXTRACTION_LEVEL),
             tags=sources.get("tags", []),
             path=sources.get(DOC_PATH),
             metadata=sources.get(DOC_METADATA),
@@ -275,7 +310,7 @@ class Document(DatashareModel):
             )
             raise ValueError(msg)
         resource_name = cast(str, resource_name)
-        if self.root_document is None:
+        if self.is_root_document:
             path = self.path
             location = DocumentLocation.FILESYSTEM
         else:

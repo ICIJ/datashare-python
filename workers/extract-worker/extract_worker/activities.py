@@ -35,6 +35,7 @@ from extract_core import (
 )
 from icij_common.es import (
     DOC_CONTENT_TYPE,
+    DOC_EXTRACTION_LEVEL,
     DOC_LANGUAGE,
     DOC_METADATA,
     DOC_PATH,
@@ -149,7 +150,13 @@ class MarkdownExtract(ActivityWithProgress):
 
 # Sort documents aiming for consistent processing type in a batch
 _DOC_SORT = [f"{DOC_CONTENT_TYPE}:asc", f"{DOC_LANGUAGE}:asc", "_doc:asc"]
-_DOC_CONTENT_SOURCES = [DOC_PATH, DOC_ROOT_ID, DOC_LANGUAGE, DOC_METADATA]
+_DOC_CONTENT_SOURCES = [
+    DOC_PATH,
+    DOC_ROOT_ID,
+    DOC_LANGUAGE,
+    DOC_METADATA,
+    DOC_EXTRACTION_LEVEL,
+]
 
 
 async def create_markdown_extract_batches_act(

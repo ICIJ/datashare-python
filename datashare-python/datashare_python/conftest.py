@@ -233,14 +233,22 @@ def text_1() -> str:
 @pytest.fixture(scope="session")
 def doc_0(text_0: str) -> Document:
     return Document(
-        id="doc-0", root_document="root-0", language="ENGLISH", content=text_0
+        id="doc-0",
+        root_document="root-0",
+        extraction_level=1,
+        language="ENGLISH",
+        content=text_0,
     )
 
 
 @pytest.fixture(scope="session")
 def doc_1(text_1: str) -> Document:
     return Document(
-        id="doc-1", root_document="root-1", language="ENGLISH", content=text_1
+        id="doc-1",
+        root_document="root-1",
+        extraction_level=1,
+        language="ENGLISH",
+        content=text_1,
     )
 
 
@@ -249,6 +257,7 @@ def doc_2() -> Document:
     return Document(
         id="doc-2",
         root_document="root-2",
+        extraction_level=1,
         language="FRENCH",
         content="traduis ce texte en anglais",
     )
@@ -260,6 +269,7 @@ def doc_3() -> Document:
         id="doc-3",
         index=TEST_PROJECT,
         root_document="root-3",
+        extraction_level=1,
         language="SPANISH",
         content="traduce este texto al inglés",
     )
