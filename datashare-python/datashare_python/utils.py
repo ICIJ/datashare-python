@@ -228,7 +228,7 @@ def _unpack_positional_args(
 
 
 def with_retriables[**P, T](
-    retriables: set[type[Exception]] = None,
+    logger: logging.Logger, retriables: set[type[Exception]] = None
 ) -> Callable[[Callable[P, T]], Callable[P, T]]:
     if retriables is None:
 
@@ -240,6 +240,7 @@ def with_retriables[**P, T](
                     try:
                         return await activity_fn(*args, **kwargs)
                     except Exception as e:
+                        logger.exception("failing activity due to non retriable error")
                         raise fatal_error_from_exception(e) from e
             else:
 
@@ -248,6 +249,7 @@ def with_retriables[**P, T](
                     try:
                         return activity_fn(*args, **kwargs)
                     except Exception as e:
+                        logger.exception("failing activity due to non retriable error")
                         raise fatal_error_from_exception(e) from e
 
             return wrapper
@@ -262,8 +264,12 @@ def with_retriables[**P, T](
                 try:
                     return await activity_fn(*args, **kwargs)
                 except retriables:
+                    logger.exception(
+                        "retriable error occurred during activity, will retry !"
+                    )
                     raise
                 except Exception as e:
+                    logger.exception("failing activity due to non retriable error")
                     raise fatal_error_from_exception(e) from e
 
         else:
@@ -273,8 +279,12 @@ def with_retriables[**P, T](
                 try:
                     return activity_fn(*args, **kwargs)
                 except retriables:
+                    logger.exception(
+                        "retriable error occurred during activity, will retry !"
+                    )
                     raise
                 except Exception as e:
+                    logger.exception("failing activity due to non retriable error")
                     raise fatal_error_from_exception(e) from e
 
         return wrapper
@@ -283,12 +293,19 @@ def with_retriables[**P, T](
 
 
 def activity_defn[**P, T](
-    name: str, retriables: set[type[Exception]] = None
+    name: str,
+    retriables: set[type[Exception]] = None,
+    logger: logging.Logger | None = None,
 ) -> Callable[[Callable[P, T]], Callable[P, T]]:
+
+    if logger is None:
+        frame = inspect.stack()[1]
+        caller_module = inspect.getmodule(frame[0])
+        logger = logging.getLogger(caller_module.__name__)
 
     def decorator(activity_fn: Callable[P, T]) -> Callable[P, T]:
         activity_fn = positional_args_only(activity_fn)
-        activity_fn = with_retriables(retriables)(activity_fn)
+        activity_fn = with_retriables(logger, retriables)(activity_fn)
         activity_fn = activity.defn(activity_fn, name=name)
 
         is_async = inspect.iscoroutinefunction(activity_fn)
