@@ -735,12 +735,14 @@ class _PydanticPayloadConverter(CompositePayloadConverter):
         try:
             return super().from_payloads(payloads, type_hints)
         except (TypeError, ValidationError) as e:
+            logger.exception("failing activity due to non retriable error")
             raise fatal_error_from_exception(e) from e
 
     def to_payloads(self, values: Sequence[Any]) -> list[Payload]:
         try:
             return super().to_payloads(values)
         except (TypeError, ValidationError) as e:
+            logger.exception("failing activity due to non retriable error")
             raise fatal_error_from_exception(e) from e
 
 
