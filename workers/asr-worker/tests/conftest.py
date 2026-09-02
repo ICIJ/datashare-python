@@ -61,6 +61,7 @@ def doc_0() -> Document:
     return Document(
         id="doc-0",
         root_document="root-0",
+        extraction_level=1,
         index=TEST_PROJECT,
         language="ENGLISH",
         content_type="audio/wav",
@@ -74,6 +75,7 @@ def doc_1() -> Document:
     return Document(
         id="doc-1",
         root_document="root-1",
+        extraction_level=1,
         index=TEST_PROJECT,
         language="ENGLISH",
         content_type="application/json",
@@ -119,7 +121,7 @@ def with_audio_docs(
     ]
     audio_path = AUDIOS_PATH / "asr_test.wav"
     for doc in docs:
-        if doc.root_document is None:
+        if doc.is_root_document:
             config.paths.filesystem.mkdir(parents=True, exist_ok=True)
             shutil.copy(audio_path, config.paths.filesystem / doc.path)
         else:

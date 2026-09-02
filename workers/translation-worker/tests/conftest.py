@@ -94,7 +94,13 @@ CHINESE_TEXT = (
 def _create_doc(
     doc_id: str, root_doc: str, text: str, language: DatashareLanguage = DS_ENGLISH
 ) -> Document:
-    return Document(id=doc_id, root_document=root_doc, language=language, content=text)
+    return Document(
+        id=doc_id,
+        root_document=root_doc,
+        language=language,
+        content=text,
+        extraction_level=1,
+    )
 
 
 @pytest.fixture

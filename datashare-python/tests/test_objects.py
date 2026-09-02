@@ -57,6 +57,58 @@ def test_task_ser() -> None:
     assert serialized == expected
 
 
+def test_embedded_document_should_have_extraction_level() -> None:
+    # When/Then
+    expected = "extraction_level should be > 0 for embedded documents"
+    with pytest.raises(ValidationError, match=expected):
+        Document(
+            id="some_id", root_document="root_id", language=DatashareLanguage("ENGLISH")
+        )
+
+
+def test_embedded_document_should_have_extraction_level_greater_than_0() -> None:
+    # When/Then
+    expected = "extraction_level should be > 0 for embedded documents"
+    with pytest.raises(ValidationError, match=expected):
+        Document(
+            id="some_id",
+            root_document="root_id",
+            language=DatashareLanguage("ENGLISH"),
+            extraction_level=0,
+        )
+
+
+def test_embedded_document_should_have_consistent_extraction_level() -> None:
+    # When/Then
+    expected = "extraction_level should be > 0 for embedded documents"
+    with pytest.raises(ValidationError, match=expected):
+        Document(
+            id="some_id",
+            root_document="root_id",
+            language=DatashareLanguage("ENGLISH"),
+            extraction_level=0,
+        )
+
+
+@pytest.mark.parametrize(
+    ("doc", "is_root"),
+    [
+        (Document(id="some_id", language=DatashareLanguage("ENGLISH")), True),
+        (
+            Document(
+                id="some_id",
+                root_document="root_id",
+                extraction_level=1,
+                language=DatashareLanguage("ENGLISH"),
+            ),
+            False,
+        ),
+    ],
+)
+def test_is_root_document(doc: Document, *, is_root: bool) -> None:
+    assert doc.is_root_document == is_root
+
+
 def test_filesystem_document_should_raise_on_absolute_path() -> None:
     # Given
     path = Path("/some/absolute/path")
@@ -78,7 +130,11 @@ def test_document_to_filesystem_document_use_relative_path() -> None:
     assert path.is_absolute()
     meta = {TIKA_METADATA_RESOURCENAME: "resource.file"}
     doc = Document(
-        index=TEST_PROJECT, path=path, id="some_id", language="ENGLISH", metadata=meta
+        index=TEST_PROJECT,
+        path=path,
+        id="some_id",
+        language=DatashareLanguage("ENGLISH"),
+        metadata=meta,
     )
     # When
     fs_doc = doc.to_processed_file()

@@ -1,8 +1,6 @@
 from enum import StrEnum
 from typing import Self
 
-from icij_common.es import DOC_CONTENT, DOC_LANGUAGE, DOC_ROOT_ID
-
 from .config import TranslationConfig
 from .objects import TranslationModel
 
@@ -26,10 +24,5 @@ class TaskQueue(StrEnum):
 
 
 TRANSLATION_TASK_NAME = "translation"
-
 TRANSLATION_WORKER_NAME = "translation-worker"
 TRANSLATION_WORKFLOW_NAME = "translation"
-
-DOC_CONTENT_TEXT_LENGTH = "contentTextLength"
-TRANSLATION_DOC_SOURCES = [DOC_CONTENT, DOC_ROOT_ID, DOC_LANGUAGE]
-BATCHING_DOC_SOURCES = TRANSLATION_DOC_SOURCES[1:] + [DOC_CONTENT_TEXT_LENGTH]

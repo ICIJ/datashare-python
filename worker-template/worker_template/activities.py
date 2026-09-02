@@ -19,6 +19,7 @@ from icij_common.es import (
     COUNT,
     DOC_CONTENT,
     DOC_CONTENT_TRANSLATED,
+    DOC_EXTRACTION_LEVEL,
     DOC_LANGUAGE,
     DOC_ROOT_ID,
     HITS,
@@ -191,7 +192,12 @@ async def create_classification_batches(
     return clf_batches
 
 
-_TRANSLATION_DOC_SOURCES = [DOC_CONTENT, DOC_ROOT_ID, DOC_LANGUAGE]
+_TRANSLATION_DOC_SOURCES = [
+    DOC_CONTENT,
+    DOC_ROOT_ID,
+    DOC_LANGUAGE,
+    DOC_EXTRACTION_LEVEL,
+]
 
 
 async def translate_docs(
@@ -264,7 +270,13 @@ async def translate_docs(
     return n_docs
 
 
-_CLASSIF_DOC_SOURCES = [DOC_CONTENT, DOC_ROOT_ID, DOC_CONTENT_TRANSLATED, DOC_LANGUAGE]
+_CLASSIF_DOC_SOURCES = [
+    DOC_CONTENT,
+    DOC_ROOT_ID,
+    DOC_CONTENT_TRANSLATED,
+    DOC_LANGUAGE,
+    DOC_EXTRACTION_LEVEL,
+]
 
 
 async def classify_docs(

@@ -18,8 +18,11 @@ from datashare_python.utils import (
 )
 from elasticsearch._async.helpers import async_bulk
 from icij_common.es import (
+    DOC_CONTENT,
     DOC_CONTENT_TRANSLATED,
+    DOC_EXTRACTION_LEVEL,
     DOC_LANGUAGE,
+    DOC_ROOT_ID,
     ES_DOCUMENT_TYPE,
     HITS,
     ID_,
@@ -32,15 +35,12 @@ from icij_common.es import (
 )
 from icij_common.iter_utils import async_batches, before_and_after, once
 
-from translation_worker.constants import DOC_CONTENT_TEXT_LENGTH
-
 from .config import (
     SentenceSplitterConfig,
     TranslationConfig,
     TranslationWorkerConfig,
     TranslatorConfig,
 )
-from .constants import BATCHING_DOC_SOURCES, TRANSLATION_DOC_SOURCES
 from .dependencies import lifespan_sentence_splitter_cache, lifespan_translator_cache
 from .processors import SentenceSplitter, Translator
 
@@ -48,6 +48,9 @@ logger = logging.getLogger(__name__)
 
 DocId = str
 Batch = list[DocId]
+
+
+_DOC_CONTENT_TEXT_LENGTH = "contentTextLength"
 
 
 class Activity(StrEnum):
@@ -153,6 +156,15 @@ def _load_splitter_from_config(
     return splitter
 
 
+_TRANSLATION_DOC_SOURCES = [
+    DOC_CONTENT,
+    DOC_ROOT_ID,
+    DOC_LANGUAGE,
+    DOC_EXTRACTION_LEVEL,
+]
+_BATCHING_DOC_SOURCES = _TRANSLATION_DOC_SOURCES[1:] + [_DOC_CONTENT_TEXT_LENGTH]
+
+
 async def create_translation_batches_act(
     project: str,
     query: dict[str, Any],
@@ -162,7 +174,7 @@ async def create_translation_batches_act(
     # Retrieve unprocessed docs.
     query = _with_doc_type(query)
     es_docs = _get_es_docs_by_language(
-        es_client, project, query, source_includes=BATCHING_DOC_SOURCES
+        es_client, project, query, source_includes=_BATCHING_DOC_SOURCES
     )
     async for language_docs in es_docs:
         language_batches: list[Batch] = []
@@ -172,7 +184,7 @@ async def create_translation_batches_act(
 
         async for doc in language_docs:
             doc_id: str = doc[ID_]
-            doc_length = doc[SOURCE][DOC_CONTENT_TEXT_LENGTH]
+            doc_length = doc[SOURCE][_DOC_CONTENT_TEXT_LENGTH]
             if current_language is None:
                 current_language = DatashareLanguage(doc[SOURCE][DOC_LANGUAGE])
                 logger.debug("creating batches for %s docs...", current_language)
@@ -259,7 +271,7 @@ async def _translate_and_queue(  # noqa: PLR0917
             es_client,
             project,
             body={QUERY: has_id(doc_ids)},
-            source_includes=TRANSLATION_DOC_SOURCES,
+            source_includes=_TRANSLATION_DOC_SOURCES,
         )
         doc_sents = _split_sentences(docs, sentence_splitter)
         # TODO: ideally we should aim at having almost constant size batches,

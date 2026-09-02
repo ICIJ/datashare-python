@@ -250,6 +250,7 @@ def test_preprocess_act(test_worker_config: ASRWorkerConfig, tmpdir: Path) -> No
             id=f"doc-{i}",
             language=DatashareLanguage("ENGLISH"),
             root_document=f"root-{i}",
+            extraction_level=1,
             path=Path(str(i)),
             index=TEST_PROJECT,
             metadata={"tika_metadata_resourcename": f"doc-{i}.wav"},
@@ -295,6 +296,7 @@ def test_preprocess_act_skips_input_with_error(
             language=DatashareLanguage("ENGLISH"),
             path=Path(str(i)),
             root_document=f"root-{i}",
+            extraction_level=1,
             index=TEST_PROJECT,
             metadata={"tika_metadata_resourcename": f"doc-{i}.wav"},
         )
@@ -364,6 +366,7 @@ def test_postprocess_act(tmpdir: Path) -> None:
             id=f"{str(i) * 4}-doc-{i}",
             language=DatashareLanguage("ENGLISH"),
             root_document=f"root-{i}",
+            extraction_level=1,
             path=Path(str(i)),
             index=TEST_PROJECT,
             metadata={"tika_metadata_resourcename": f"doc-{i}.wav"},
@@ -433,11 +436,11 @@ async def test_write_audio_search_results(tmpdir: Path) -> None:
     async def expected_content() -> AsyncGenerator[str, None]:
         contents = [
             [
-                '{"id":"doc-0","language":"ENGLISH","index":"test-project","path":"doc-0.wav","metadata":{"tika_metadata_resourcename":"doc-0.wav"}}',
-                '{"id":"doc-1","language":"ENGLISH","index":"test-project","path":"doc-1.wav","metadata":{"tika_metadata_resourcename":"doc-1.wav"}}',
+                '{"id":"doc-0","language":"ENGLISH","index":"test-project","root_document":"doc-0","extraction_level":0,"path":"doc-0.wav","metadata":{"tika_metadata_resourcename":"doc-0.wav"}}',
+                '{"id":"doc-1","language":"ENGLISH","index":"test-project","root_document":"doc-1","extraction_level":0,"path":"doc-1.wav","metadata":{"tika_metadata_resourcename":"doc-1.wav"}}',
             ],
             [
-                '{"id":"doc-2","language":"ENGLISH","index":"test-project","path":"doc-2.wav","metadata":{"tika_metadata_resourcename":"doc-2.wav"}}'
+                '{"id":"doc-2","language":"ENGLISH","index":"test-project","root_document":"doc-2","extraction_level":0,"path":"doc-2.wav","metadata":{"tika_metadata_resourcename":"doc-2.wav"}}'
             ],
         ]
         for line in contents:
