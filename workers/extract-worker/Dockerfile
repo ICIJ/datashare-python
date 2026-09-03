@@ -67,7 +67,7 @@ FROM runtime-base AS extract-base-builder
 
 # TODO: do we really need tesseract here ?
 RUN apt update && \
-    apt install -y --no-install-recommends build-essential g++ ca-certificates && \
+    apt install -y --no-install-recommends build-essential g++ && \
     apt install -y tesseract-ocr && \
     rm -rf /var/lib/apt/lists/*
 
@@ -90,7 +90,9 @@ RUN --mount=type=cache,target=/root/.cache/uv uv sync -v --frozen --no-editable 
 RUN rm -rf ~/.cache/pip
 
 FROM runtime-base AS extract-cpu-worker
-
+RUN apt update && \
+    apt install -y --no-install-recommends tesseract-ocr ca-certificates && \
+    rm -rf /var/lib/apt/lists/*
 COPY --from=extract-cpu-builder /app /app
 COPY --from=extract-cpu-builder /root/.local/share/uv/python /root/.local/share/uv/python
 ENTRYPOINT ["entrypoints/extract_cpu_worker.sh"]
@@ -121,7 +123,7 @@ RUN rm -rf ~/.cache/pip
 # Slim runtime (as extract-cpu-worker): no toolchain, keep tesseract
 FROM runtime-base AS extract-gpu-worker
 RUN apt update && \
-    apt install -y --no-install-recommends tesseract-ocr && \
+    apt install -y --no-install-recommends tesseract-ocr ca-certificates && \
     rm -rf /var/lib/apt/lists/*
 COPY --from=extract-gpu-builder /app /app
 COPY --from=extract-gpu-builder /root/.local/share/uv/python /root/.local/share/uv/python
@@ -147,7 +149,9 @@ RUN rm -rf ~/.cache/pip
 
 # Slim runtime (as extract-cpu-worker): no toolchain, keep tesseract
 FROM runtime-base AS extract-cpu-mineru-worker
-
+RUN apt update && \
+    apt install -y --no-install-recommends ca-certificates && \
+    rm -rf /var/lib/apt/lists/*
 COPY --from=extract-cpu-mineru-builder /app /app
 COPY --from=extract-cpu-mineru-builder /root/.local/share/uv/python /root/.local/share/uv/python
 ENTRYPOINT ["entrypoints/extract_cpu_mineru_worker.sh"]
@@ -172,7 +176,9 @@ RUN rm -rf ~/.cache/pip
 
 # Slim runtime (as extract-cpu-worker): no toolchain, keep tesseract
 FROM runtime-base AS extract-gpu-mineru-worker
-
+RUN apt update && \
+    apt install -y --no-install-recommends ca-certificates && \
+    rm -rf /var/lib/apt/lists/*
 COPY --from=extract-gpu-mineru-builder /app /app
 COPY --from=extract-gpu-mineru-builder /root/.local/share/uv/python /root/.local/share/uv/python
 ENTRYPOINT ["entrypoints/extract_gpu_mineru_worker.sh"]
