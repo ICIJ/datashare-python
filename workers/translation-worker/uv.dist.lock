@@ -468,7 +468,7 @@ wheels = [
 
 [[package]]
 name = "datashare-python"
-version = "0.10.0"
+version = "0.11.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiofile" },
@@ -485,9 +485,9 @@ dependencies = [
     { name = "tomlkit" },
     { name = "typer" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/cb/26/2f89e31fb49fcdaa158a6ad9bca2cd3d3d824929f4b307349d36381c8dc7/datashare_python-0.10.0.tar.gz", hash = "sha256:3dec83b306e772ce25d2aeac4d4eac0fbce871e0523c6edc474f6ec72c3f60d9", size = 324972, upload-time = "2026-08-05T15:14:42.088Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/b5/f3/e8ac39ed9c92deae796a618168b545b527385b862f5a06315ccb8f0e8c03/datashare_python-0.11.0.tar.gz", hash = "sha256:c4d42f76bfb691b9f5f9a8b10a30bc5128183019f76003565196b60ed279b01c", size = 284023, upload-time = "2026-09-03T09:36:36.869Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/d2/12/7c8dbd0e6690ecd9ff0bb905313350e3233fcd831f7ce20eb666ee49db57/datashare_python-0.10.0-py3-none-any.whl", hash = "sha256:3862cfc53f697bedfa05139a2b901e28adc99ab87eed644b6113c31b550eafe9", size = 330926, upload-time = "2026-08-05T15:14:43.106Z" },
+    { url = "https://files.pythonhosted.org/packages/59/ec/b62ff69c76b51b2ac9c3ccb32cd40c07fcbaded5b466b3a39065764f9402/datashare_python-0.11.0-py3-none-any.whl", hash = "sha256:36a64e80b937ea1e1073a4a37038f8af86c1df544c1a440717f9c1626a5498ff", size = 289893, upload-time = "2026-09-03T09:36:35.545Z" },
 ]
 
 [[package]]
@@ -530,7 +530,7 @@ requires-dist = [
     { name = "accelerate", marker = "extra == 'torch'", specifier = "==1.14.0" },
     { name = "argostranslate", marker = "extra == 'c2translate'", specifier = "==1.11.0" },
     { name = "argostranslate", marker = "extra == 'inference'", specifier = "==1.11.0" },
-    { name = "datashare-python", specifier = "~=0.10.0" },
+    { name = "datashare-python", specifier = "~=0.11.0" },
     { name = "language-data", specifier = ">=1.4.0" },
     { name = "pydantic-extra-types", extras = ["pycountry"], specifier = "==2.11.1" },
     { name = "torch", marker = "extra == 'torch'", specifier = "==2.11.0" },
