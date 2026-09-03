@@ -67,7 +67,7 @@ FROM runtime-base AS extract-base-builder
 
 # TODO: do we really need tesseract here ?
 RUN apt update && \
-    apt install -y --no-install-recommends build-essential g++ && \
+    apt install -y --no-install-recommends build-essential g++ ca-certificates && \
     apt install -y tesseract-ocr && \
     rm -rf /var/lib/apt/lists/*
 
