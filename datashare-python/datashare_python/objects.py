@@ -309,8 +309,9 @@ class Document(DatashareModel):
                 resource_name = self.path.name
             else:
                 msg = (
-                    f"doc {self} can't turn ES document into a {ProcessedFile.__name__} "
-                    f"without tika metadata resources name in metadata: {self.metadata}"
+                    f"doc {self} can't turn ES document into a"
+                    f" {ProcessedFile.__name__} without tika metadata resources name"
+                    f" in metadata: {self.metadata}"
                 )
                 raise ValueError(msg)
         resource_name = cast(str, resource_name)
