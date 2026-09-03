@@ -10,7 +10,7 @@ authors = [
 readme = "README.md"
 requires-python = ">=3.11.0, <3.13"
 dependencies = [
-  "datashare-python~=0.11.0",
+  "datashare-python~=0.11.1",
   "caul-core==0.4.2",
 ]
 
