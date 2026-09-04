@@ -27,11 +27,13 @@ from datashare_python.conftest import (  # noqa: F401
     test_worker_config,
     typer_asyncio_patch,
 )
-from datashare_python.objects import Document, WorkerPaths
+from datashare_python.objects import DatashareLanguage, Document, WorkerPaths
 from datashare_python.utils import artifacts_dir
 from icij_common.es import ESClient
 
 from tests import AUDIOS_PATH
+
+DS_ENGLISH = DatashareLanguage("ENGLISH")
 
 
 @pytest.fixture(scope="session")

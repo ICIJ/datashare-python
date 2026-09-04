@@ -43,6 +43,8 @@ from icij_common.es import HITS, ESClient, ids_query, match_all
 from icij_common.iter_utils import batches
 from icij_common.registrable import RegistrableConfig
 
+from .conftest import DS_ENGLISH
+
 PREPROCESSED_INPUT_0 = PreprocessedInput(
     metadata=InputMetadata(
         input_ordering=0,
@@ -357,7 +359,7 @@ async def test_infer_act(tmpdir: Path) -> None:
 
 def test_postprocess_act(tmpdir: Path) -> None:
     # Given
-    args = ASRArgs(project=TEST_PROJECT, docs=[], batch_size=2)
+    args = ASRArgs(project=TEST_PROJECT, docs=[], batch_size=2, language=DS_ENGLISH)
     postprocessor = MockPostprocessor()
     project = TEST_PROJECT
     artifacts_root = Path(tmpdir)
@@ -460,7 +462,7 @@ def with_transcribed_docs(
 ) -> list[tuple[Document, str]]:
     artifacts_root = test_worker_config.paths.artifacts
     transcriptions = []
-    args = ASRArgs(project=TEST_PROJECT, docs=[], batch_size=2)
+    args = ASRArgs(project=TEST_PROJECT, docs=[], batch_size=2, language=DS_ENGLISH)
     manifest_entry = TranscriptionManifestEntry.complete(args, confidence=1.0)
     for doc_i, doc in enumerate(with_audio_docs):
         artifact_factory = partial(

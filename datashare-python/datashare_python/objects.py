@@ -366,7 +366,17 @@ class ManifestEntryStatus(StrEnum):
     PARTIAL = "partial"
 
 
+class User(DatashareModel):
+    id: str
+    name: str | None = None
+    email: str | None = None
+    provider: str | None = None
+    details: dict[str, Any] = Field(default_factory=dict)
+
+
 class TaskArgs(DatashareModel, ABC):
+    user: User | None = None
+
     def as_manifest_task_input(self) -> dict[str, Any]:
         # This is a base implementation, if the input is too large to be dumped,
         # override this and pop large keys

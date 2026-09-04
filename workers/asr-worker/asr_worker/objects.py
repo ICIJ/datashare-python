@@ -7,6 +7,7 @@ from caul_core import ASRPipelineConfig, ASRResult
 from caul_core.objects import ASRLanguage, ASRModel
 from datashare_python.objects import (
     ArtifactType,
+    DatashareLanguage,
     DatashareModel,
     DocArtifact,
     ManifestEntry,
@@ -38,6 +39,7 @@ class ASRIndexingConfig(DatashareModel):
 class ASRArgs(TaskArgs):
     project: str
     docs: list[DocId] | DocumentSearchQuery
+    language: DatashareLanguage
     config: ASRPipelineConfig = Field(default_factory=ASRPipelineConfig.parakeet)
     batch_size: int
     indexing: ASRIndexingConfig = Field(default_factory=ASRIndexingConfig)
