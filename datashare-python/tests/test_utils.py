@@ -186,7 +186,7 @@ def test_write_artifact(tmp_path: Path) -> None:
         "structure": {
             "status": "complete",
             "taskId": None,
-            "taskInput": {"someValue": "value"},
+            "taskInput": {"someValue": "value", "user": None},
             "label": None,
         }
     }
@@ -227,7 +227,7 @@ def test_write_artifact_with_existing_metadata(tmp_path: Path) -> None:
         "structure": {
             "status": "complete",
             "taskId": None,
-            "taskInput": {"someValue": "value"},
+            "taskInput": {"someValue": "value", "user": None},
             "label": None,
         },
         "some": "value",
@@ -312,7 +312,7 @@ def test_overwrite_artifact(tmp_path: Path) -> None:
         "structure": {
             "status": "complete",
             "taskId": None,
-            "taskInput": {"someValue": "value"},
+            "taskInput": {"someValue": "value", "user": None},
             "label": None,
         },
     }

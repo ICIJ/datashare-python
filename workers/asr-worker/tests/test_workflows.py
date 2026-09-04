@@ -29,6 +29,8 @@ from datashare_python.types_ import TemporalClient
 from pydantic import TypeAdapter
 from temporalio.worker import Worker
 
+from tests.conftest import DS_ENGLISH
+
 _LIST_OF_PATH_ADAPTER = TypeAdapter(list[Path])
 
 _MODEL_RESULT_0 = ASRResult(
@@ -171,6 +173,7 @@ async def test_asr_workflow_e2e(  # noqa: PLR0917
         docs=doc_ids,
         config=ASRPipelineConfig.parakeet(),
         batch_size=batch_size,
+        language=DS_ENGLISH,
     )
     workflow_id = f"asr-{uuid.uuid4().hex}"
 
