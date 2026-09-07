@@ -30,7 +30,8 @@ gpu = [
   "torchcodec==0.10.0+cu129; sys_platform == 'linux'",
 ]
 inference = [
-  "caul[nemo]==0.10.5",
+  "caul[nemo,fireredasr2]==0.10.5",
+  "fireredasr2s @ git+https://github.com/FireRedTeam/FireRedASR2S/4e7d9aaf4482a47cec1724807026b9b151926eb5",
   "kaldialign==0.9.3",
   "ml-dtypes==0.5.4",
   "numpy==2.3.0",
