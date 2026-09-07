@@ -133,6 +133,9 @@ prerelease = "if-necessary"
 requires = ["hatchling", "uv-dynamic-versioning"]
 build-backend = "hatchling.build"
 
+[tool.hatch.metadata]
+allow-direct-references = true # Needed for direct reference to firedasr2 commit hash
+
 [tool.hatch.version]
 source = "uv-dynamic-versioning"
 
