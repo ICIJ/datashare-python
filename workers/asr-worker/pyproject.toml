@@ -31,11 +31,7 @@ gpu = [
 ]
 inference = [
   "caul[nemo,fireredasr2]==0.10.6",
-  "fireredasr2s @ git+https://github.com/FireRedTeam/FireRedASR2S@4e7d9aaf4482a47cec1724807026b9b151926eb5",
-  "kaldialign==0.9.3",
-  "ml-dtypes==0.5.4",
-  "numpy==2.3.0",
-  "pyarrow==20.0.0",
+  "fireredasr2s",
 ]
 preprocessing = [
   "caul==0.10.6",
@@ -116,6 +112,7 @@ override-dependencies = [
   "torchcodec==0.10.0",
   "huggingface-hub==0.36.2",
   "numpy==2.3.0",
+  "fireredasr2s @ git+https://github.com/FireRedTeam/FireRedASR2S@4e7d9aaf4482a47cec1724807026b9b151926eb5",
 ]
 environments = [
   "sys_platform == 'darwin'",
@@ -133,9 +130,6 @@ prerelease = "if-necessary"
 [build-system]
 requires = ["hatchling", "uv-dynamic-versioning"]
 build-backend = "hatchling.build"
-
-[tool.hatch.metadata]
-allow-direct-references = true # Needed for direct reference to firedasr2 commit hash
 
 [tool.hatch.version]
 source = "uv-dynamic-versioning"

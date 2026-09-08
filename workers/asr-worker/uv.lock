@@ -23,6 +23,7 @@ prerelease-mode = "if-necessary"
 
 [manifest]
 overrides = [
+  { name = "fireredasr2s", git = "https://github.com/FireRedTeam/FireRedASR2S?rev=4e7d9aaf4482a47cec1724807026b9b151926eb5" },
     { name = "huggingface-hub", specifier = "==0.36.2" },
     { name = "kaldialign", specifier = "==0.9.3" },
   { name = "numpy", specifier = "==2.3.0" },
@@ -499,10 +500,6 @@ gpu = [
 inference = [
   { name = "caul", extra = ["fireredasr2", "nemo"], marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu') or sys_platform == 'darwin' or (sys_platform != 'linux' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu')" },
   { name = "fireredasr2s", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu') or sys_platform == 'darwin' or (sys_platform != 'linux' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu')" },
-    { name = "kaldialign", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu') or sys_platform == 'darwin' or (sys_platform != 'linux' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu')" },
-    { name = "ml-dtypes", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu') or sys_platform == 'darwin' or (sys_platform != 'linux' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu')" },
-    { name = "numpy", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu') or sys_platform == 'darwin' or (sys_platform != 'linux' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu')" },
-    { name = "pyarrow", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu') or sys_platform == 'darwin' or (sys_platform != 'linux' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu')" },
 ]
 preprocessing = [
     { name = "caul", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu') or sys_platform == 'darwin' or (sys_platform != 'linux' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu')" },
@@ -530,11 +527,7 @@ requires-dist = [
     { name = "caul-core", specifier = "==0.4.2" },
     { name = "cuda-bindings", marker = "sys_platform == 'linux' and extra == 'gpu'", specifier = "==12.9.4" },
     { name = "datashare-python", editable = "../../datashare-python" },
-  { name = "fireredasr2s", marker = "extra == 'inference'", git = "https://github.com/FireRedTeam/FireRedASR2S?rev=4e7d9aaf4482a47cec1724807026b9b151926eb5" },
-    { name = "kaldialign", marker = "extra == 'inference'", specifier = "==0.9.3" },
-    { name = "ml-dtypes", marker = "extra == 'inference'", specifier = "==0.5.4" },
-    { name = "numpy", marker = "extra == 'inference'", specifier = "==2.3.0" },
-    { name = "pyarrow", marker = "extra == 'inference'", specifier = "==20.0.0" },
+  { name = "fireredasr2s", marker = "extra == 'inference'" },
     { name = "torch", marker = "sys_platform == 'linux' and extra == 'gpu'", specifier = "==2.10.0+cu129", index = "https://download.pytorch.org/whl/cu129", conflict = { package = "datashare-asr-worker", extra = "gpu" } },
     { name = "torch", marker = "extra == 'cpu'", specifier = "==2.10.0", index = "https://download.pytorch.org/whl/cpu", conflict = { package = "datashare-asr-worker", extra = "cpu" } },
     { name = "torchaudio", marker = "sys_platform == 'linux' and extra == 'gpu'", specifier = "==2.10.0+cu129", index = "https://download.pytorch.org/whl/cu129", conflict = { package = "datashare-asr-worker", extra = "gpu" } },
