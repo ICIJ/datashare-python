@@ -63,7 +63,7 @@ ENTRYPOINT ["entrypoints/cpu_worker.sh"]
 
 
 FROM asr-worker-builder AS inference-gpu-worker
-RUN apt-get update && apt-get install -y build-essential
+RUN apt-get update && apt-get install -y build-essential git
 # Install deps first to optimize layer cache
 RUN --mount=type=cache,target=~/.cache/uv \
     --mount=type=bind,source=uv.dist.lock,target=uv.lock \
