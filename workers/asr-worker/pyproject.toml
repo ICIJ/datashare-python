@@ -110,7 +110,6 @@ exclude-dependencies = [
 override-dependencies = [
   "kaldialign==0.9.3",
   "torchcodec==0.10.0",
-  "huggingface-hub==0.36.2",
   "numpy==2.3.0",
   "fireredasr2s @ git+https://github.com/FireRedTeam/FireRedASR2S@4e7d9aaf4482a47cec1724807026b9b151926eb5",
 ]
