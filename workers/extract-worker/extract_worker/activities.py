@@ -198,7 +198,6 @@ async def extract_markdown_content_act(
     results = pipeline.extract_content(
         input_docs, output_format=OutputFormat.MARKDOWN, output_path=output_dir
     )
-    docs = iter(docs)
     n_docs, n_pages, n_successes, n_successes_pages = 0, 0, 0, 0
     errors = []
     manifest_entry_factory = partial(StructureManifestEntry.complete, args=args)
@@ -206,8 +205,8 @@ async def extract_markdown_content_act(
         # Heartbeat explicitly to avoid heartbeat timeout
         with contextlib.suppress(RuntimeError):
             activity.heartbeat()
-        doc = next(docs)
         n_docs += 1
+        doc = extract_res.input
         n_pages += doc.n_pages
         if extract_res.errors:
             error = ErrorReport(
