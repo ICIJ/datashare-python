@@ -1,6 +1,6 @@
 import json
 import shutil
-from collections.abc import AsyncGenerator, Iterable
+from collections.abc import AsyncIterable, Iterable
 from pathlib import Path
 from typing import Any
 
@@ -38,19 +38,27 @@ from tests import DOCS_PATH
 
 
 class MockPipeline(Pipeline):
-    def __init__(self, results: list[Result]) -> None:
-        self._results = results
+    def __init__(self, results: list[ConversionOutput | list[Error]]) -> None:
+        self._results = iter(results)
 
     async def extract_content(
         self,
         docs: Iterable[InputDoc],  # noqa: ARG002
         output_format: OutputFormat,  # noqa: ARG002
         output_path: Path,  # noqa: ARG002
-    ) -> AsyncGenerator[Result, None]:
-        for res in self._results:
-            if res.status == Status.SUCCESS:
-                shutil.copytree(DOCS_PATH / "markdown", output_path / res.output.path)
-            yield res
+    ) -> AsyncIterable[Result]:
+        for doc in docs:
+            res = next(self._results)
+            match res:
+                case list():
+                    yield Result(
+                        input=doc, status=Status.FAILURE, output=None, errors=res
+                    )
+                case ConversionOutput():
+                    shutil.copytree(DOCS_PATH / "markdown", output_path / res.path)
+                    yield Result(input=doc, status=Status.SUCCESS, output=res)
+                case _:
+                    raise TypeError(f"unexpected result type {res}")
 
     @classmethod
     def _from_config(cls, config: RegistrableConfig, **extras) -> FromConfig: ...
@@ -121,21 +129,13 @@ async def test_create_markdown_extraction_batches_act(
     assert results == expected_batches
 
 
-_RES_0 = Result(
-    input=InputDoc(ext=SupportedExt.PDF, path=Path("doc-0.pdf")),
-    status=Status.SUCCESS,
-    output=ConversionOutput(
-        path=Path("markdown"), pages=Pages(total=2, byte_ranges=[(0, 1), (1, 2)])
-    ),
+_RES_0 = ConversionOutput(
+    path=Path("markdown"),
+    pages=Pages(total=2, byte_ranges=[(0, 1), (1, 2)]),
+    confidence=None,
 )
 
-_RES_2_ERRORS = [Error(id="error-id", title="error-title", detail="error-detail")]
-_RES_2 = Result(
-    input=InputDoc(ext=SupportedExt.DOCX, path=Path("doc-2.docx")),
-    status=Status.FAILURE,
-    output=None,
-    errors=_RES_2_ERRORS,
-)
+_RES_2 = [Error(id="error-id", title="error-title", detail="error-detail")]
 
 
 async def test_extract_markdown_content_act(
@@ -164,9 +164,7 @@ async def test_extract_markdown_content_act(
         output_dir=output_dir,
     )
     # Then
-    errors = ErrorReport(
-        doc=PROCESSED_DOC_2, status=Status.FAILURE, errors=_RES_2_ERRORS
-    )
+    errors = ErrorReport(doc=PROCESSED_DOC_2, status=Status.FAILURE, errors=_RES_2)
     expected_res = MarkdownExtractResponse(
         processed=ProcessingReport(n_docs=2, n_pages=3),
         successes=ProcessingReport(n_docs=1, n_pages=2),

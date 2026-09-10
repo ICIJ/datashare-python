@@ -191,31 +191,36 @@ async def extract_markdown_content_act(
     progress: AsyncProgressRateHandler | None = None,
 ) -> MarkdownExtractResponse:
     docs = list(read_jsonl_as(batch, ProcessedFile))
-    if progress is not None:
-        progress = to_raw_async_progress(progress, max_progress=len(docs))
     artifacts_root = worker_config.paths.artifacts
-    input_docs = (InputDoc.from_path(d.locate(worker_config.paths)) for d in docs)
+    n_docs = len(docs)
+    if progress is not None:
+        progress = to_raw_async_progress(progress, max_progress=n_docs)
+    input_docs = []
+    by_input_path = dict()
+    for d in docs:
+        input_doc = InputDoc.from_path(d.locate(worker_config.paths), d.n_pages)
+        input_docs.append(input_doc)
+        by_input_path[input_doc.path] = d
     results = pipeline.extract_content(
         input_docs, output_format=OutputFormat.MARKDOWN, output_path=output_dir
     )
-    n_docs, n_pages, n_successes, n_successes_pages = 0, 0, 0, 0
+    n_pages, n_successes, n_successes_pages = 0, 0, 0
     errors = []
     manifest_entry_factory = partial(StructureManifestEntry.complete, args=args)
     async for extract_res in results:
         # Heartbeat explicitly to avoid heartbeat timeout
         with contextlib.suppress(RuntimeError):
             activity.heartbeat()
-        n_docs += 1
-        doc = extract_res.input
-        n_pages += doc.n_pages
+        processed = by_input_path.pop(extract_res.input.path)
+        n_pages += processed.n_pages
         if extract_res.errors:
             error = ErrorReport(
-                doc=doc, status=extract_res.status, errors=extract_res.errors
+                doc=processed, status=extract_res.status, errors=extract_res.errors
             )
             errors.append(error)
         else:
             n_successes += 1
-            n_successes_pages += doc.n_pages
+            n_successes_pages += processed.n_pages
             md_path = output_dir / extract_res.output.path
             pages = extract_res.output.pages
             pages = Pages(
@@ -224,8 +229,8 @@ async def extract_markdown_content_act(
             )
             manifest_entry = manifest_entry_factory(pages=pages)
             artifact = StructureArtifact(
-                project=doc.project,
-                doc_id=doc.id,
+                project=processed.project,
+                doc_id=processed.id,
                 artifact=md_path,
                 manifest_entry=manifest_entry,
             )
