@@ -6,7 +6,7 @@ from extract_core import (
     DoclingPipelineConfig,
     DoclingSettings,
 )
-from extract_worker.config import MarkdownInferenceWorkerConfig
+from extract_worker.config import DoclingWorkerConfig, MarkdownInferenceWorkerConfig
 
 
 @pytest.mark.parametrize(
@@ -37,8 +37,10 @@ def test_resolve_pipeline_config(
 ) -> None:
     # Given
     worker_config = MarkdownInferenceWorkerConfig(
-        docling=DoclingSettings(
-            perf=BatchConcurrencySettings(page_batch_size=2, max_page_batches=2)
+        docling=DoclingWorkerConfig(
+            settings=DoclingSettings(
+                perf=BatchConcurrencySettings(page_batch_size=2, max_page_batches=2)
+            )
         )
     )
     # When

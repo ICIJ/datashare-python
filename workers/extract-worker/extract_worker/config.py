@@ -34,14 +34,14 @@ class DoclingWorkerConfig(BaseModel):
 class MarkdownInferenceWorkerConfig(BaseModel):
     default_target_n_pages_per_task: int = 100
 
-    docling: DoclingSettings
+    docling: DoclingWorkerConfig = Field(default_factory=DoclingWorkerConfig)
 
     def resolve_target_n_pages_per_task(
         self, pipeline_config: BasePipelineConfig
     ) -> int:
         match pipeline_config:
             case DoclingPipelineConfig():
-                perf_settings = self.docling.perf
+                perf_settings = self.docling.settings.perf
                 return (
                     10 * perf_settings.page_batch_size * perf_settings.max_page_batches
                 )
@@ -59,7 +59,7 @@ class MarkdownInferenceWorkerConfig(BaseModel):
         self, pipeline_config: DoclingPipelineConfig
     ) -> DoclingPipelineConfig:
         resolved_batching = pipeline_config.settings.perf.model_dump()
-        resolved_batching.update(self.docling.perf.model_dump())
+        resolved_batching.update(self.docling.settings.perf.model_dump())
         resolved_batching = BatchConcurrencySettings.model_validate(resolved_batching)
         resolved_settings = safe_copy(
             pipeline_config.settings, update={"perf": resolved_batching}
