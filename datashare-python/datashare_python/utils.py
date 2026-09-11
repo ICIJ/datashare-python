@@ -522,7 +522,7 @@ def _write_artifact_bytes(path: Path, artifact: bytes | BytesIO | Path) -> None:
 def _remove_previous_artifacts(path: Path) -> None:
     if isinstance(path, Path) and path.exists():
         with contextlib.suppress(FileNotFoundError):
-            path.rmdir()
+            shutil.rmtree(path)
     else:
         path.unlink(missing_ok=True)
 
