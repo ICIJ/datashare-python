@@ -43,7 +43,7 @@ class MarkdownInferenceWorkerConfig(BaseModel):
             case DoclingPipelineConfig():
                 perf_settings = self.docling.settings.perf
                 return (
-                    10 * perf_settings.page_batch_size * perf_settings.max_page_batches
+                    2 * perf_settings.page_batch_size * perf_settings.max_page_batches
                 )
         return self.default_target_n_pages_per_task
 
