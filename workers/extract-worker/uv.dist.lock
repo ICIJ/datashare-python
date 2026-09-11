@@ -626,7 +626,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "cuda-bindings", marker = "sys_platform == 'linux' and extra == 'gpu'", specifier = "==12.9.4" },
-    { name = "datashare-python", specifier = "~=0.11.2" },
+    { name = "datashare-python", specifier = "~=0.11.3" },
     { name = "extract-core", specifier = "==0.8.1" },
     { name = "extract-python", extras = ["docling", "marker"], marker = "extra == 'base'", specifier = "==0.8.3" },
     { name = "extract-python", extras = ["mineru"], marker = "extra == 'mineru'", specifier = "==0.8.3" },
@@ -657,7 +657,7 @@ dev = [
 
 [[package]]
 name = "datashare-python"
-version = "0.11.2"
+version = "0.11.3"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiofile", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-24-datashare-extract-worker-base' and extra == 'extra-24-datashare-extract-worker-mineru') or (platform_machine != 'x86_64' and extra == 'extra-24-datashare-extract-worker-cpu' and extra == 'extra-24-datashare-extract-worker-gpu') or sys_platform == 'darwin' or (sys_platform != 'linux' and extra == 'extra-24-datashare-extract-worker-base' and extra == 'extra-24-datashare-extract-worker-mineru') or (sys_platform != 'linux' and extra == 'extra-24-datashare-extract-worker-cpu' and extra == 'extra-24-datashare-extract-worker-gpu')" },
@@ -674,9 +674,9 @@ dependencies = [
     { name = "tomlkit", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-24-datashare-extract-worker-base' and extra == 'extra-24-datashare-extract-worker-mineru') or (platform_machine != 'x86_64' and extra == 'extra-24-datashare-extract-worker-cpu' and extra == 'extra-24-datashare-extract-worker-gpu') or sys_platform == 'darwin' or (sys_platform != 'linux' and extra == 'extra-24-datashare-extract-worker-base' and extra == 'extra-24-datashare-extract-worker-mineru') or (sys_platform != 'linux' and extra == 'extra-24-datashare-extract-worker-cpu' and extra == 'extra-24-datashare-extract-worker-gpu')" },
     { name = "typer", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-24-datashare-extract-worker-base' and extra == 'extra-24-datashare-extract-worker-mineru') or (platform_machine != 'x86_64' and extra == 'extra-24-datashare-extract-worker-cpu' and extra == 'extra-24-datashare-extract-worker-gpu') or sys_platform == 'darwin' or (sys_platform != 'linux' and extra == 'extra-24-datashare-extract-worker-base' and extra == 'extra-24-datashare-extract-worker-mineru') or (sys_platform != 'linux' and extra == 'extra-24-datashare-extract-worker-cpu' and extra == 'extra-24-datashare-extract-worker-gpu')" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/8b/8b/5779e695bc885f07737323435a8bd99733e3f33c087c27db0956dcff772a/datashare_python-0.11.2.tar.gz", hash = "sha256:cb1a539adc09201b6553515f591b0f118d217ac0e913017fa550ad369623b837", size = 284631, upload-time = "2026-09-11T09:53:01.648Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/f3/04/0593eaa45528ea3e6cbb9b97562264297395d541220cf3a5356c79cb247e/datashare_python-0.11.3.tar.gz", hash = "sha256:5dce272a9410bdc492e50aac18f6dae65addf63522e9fa6080481ed16f11c99f", size = 284638, upload-time = "2026-09-11T10:32:53.501Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/d6/04/37b7b85c8c0e6a9625dda04a04a91562c7b9482f17f2752efe0a78d8cd4c/datashare_python-0.11.2-py3-none-any.whl", hash = "sha256:c00a920c4065c23f6f2e787c23940419120b38fb7d2818ad19ba084b6b86b913", size = 290654, upload-time = "2026-09-11T09:53:02.784Z" },
+    { url = "https://files.pythonhosted.org/packages/d4/ca/c17db4f4a903a49c7a5e9caf1b4c66b1cde28803196799f48b3bacd9c088/datashare_python-0.11.3-py3-none-any.whl", hash = "sha256:0b6406b351858819611ff650b60aad6bf1be57f44444d1747676de0028dcde3f", size = 290631, upload-time = "2026-09-11T10:32:52.113Z" },
 ]
 
 [[package]]
