@@ -132,13 +132,16 @@ class MarkdownExtract(ActivityWithProgress):
             MinerUPipeline,
         )
 
-        pipeline = Pipeline.from_config(args.config)
-        w_config = lifespan_worker_config()
+        w_config = cast(ExtractWorkerConfig, lifespan_worker_config())
+        w_inference_config = w_config.markdown.inference
+        config = w_inference_config.resolve_pipeline_config(args.config)
+        logger.debug("loading pipeline with %s as effective config...", config)
+        pipeline = Pipeline.from_config(config)
+        logger.debug("pipeline loaded !")
         workdir = w_config.paths.workdir
         output_dir = activity_workdir(workdir, args.project)
         output_dir.mkdir(parents=True, exist_ok=True)
         batch = workdir / batch
-        logger.debug("extracting doc content as markdown...")
         res = await extract_markdown_content_act(
             pipeline,
             batch,
