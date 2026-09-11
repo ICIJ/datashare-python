@@ -123,7 +123,7 @@ RUN rm -rf ~/.cache/pip
 # Slim runtime (as extract-cpu-worker): no toolchain, keep tesseract
 FROM runtime-base AS extract-gpu-worker
 RUN apt update && \
-    apt install -y --no-install-recommends tesseract-ocr ca-certificates && \
+    apt install -y --no-install-recommends tesseract-ocr ca-certificates watch && \
     rm -rf /var/lib/apt/lists/*
 COPY --from=extract-gpu-builder /app /app
 COPY --from=extract-gpu-builder /root/.local/share/uv/python /root/.local/share/uv/python
@@ -177,7 +177,7 @@ RUN rm -rf ~/.cache/pip
 # Slim runtime (as extract-cpu-worker): no toolchain, keep tesseract
 FROM runtime-base AS extract-gpu-mineru-worker
 RUN apt update && \
-    apt install -y --no-install-recommends ca-certificates && \
+    apt install -y --no-install-recommends ca-certificates watch && \
     rm -rf /var/lib/apt/lists/*
 COPY --from=extract-gpu-mineru-builder /app /app
 COPY --from=extract-gpu-mineru-builder /root/.local/share/uv/python /root/.local/share/uv/python
