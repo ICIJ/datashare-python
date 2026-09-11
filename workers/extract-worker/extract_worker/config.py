@@ -12,7 +12,7 @@ from extract_core import (
 )
 from extract_core.docling_ import InferenceSettings
 from icij_common.pydantic_utils import safe_copy
-from pydantic import BaseModel, Field
+from pydantic import Field
 
 from .constants import TorchDevice
 
