@@ -9,14 +9,17 @@ from typing import Annotated, Any, Protocol, cast
 
 from aiofile import async_open
 from caul_core import (
+    ASRResult,
+    Error,
+    FSProcessedSegment,
     InferenceRunner,
     InferenceRunnerConfig,
     Postprocessor,
     PostprocessorConfig,
     Preprocessor,
     PreprocessorConfig,
+    ProcessedAudioSegment,
 )
-from caul_core.objects import ASRResult, PreprocessedInput
 from datashare_python.dependencies import lifespan_es_client, lifespan_worker_config
 from datashare_python.objects import DocRoute, Document
 from datashare_python.types_ import (
@@ -59,7 +62,6 @@ from icij_common.es import (
     has_type,
 )
 from icij_common.iter_utils import async_batches
-from icij_common.pydantic_utils import safe_copy
 
 from .config import ASRWorkerConfig
 from .constants import (
@@ -135,7 +137,7 @@ class ASRActivities(ActivityWithProgress):
         progress: Annotated[  # noqa: ARG002
             SyncProgressRateHandler | None, Weight(value=_PREPROCESS_WEIGHT)
         ] = None,
-    ) -> list[Path]:
+    ) -> tuple[list[Path], Path]:
         # Import caul.tasks to populate the Preprocessor registry
         import caul.tasks  # noqa: F401, PLC0415
 
@@ -150,19 +152,24 @@ class ASRActivities(ActivityWithProgress):
         preprocessor = cache.get_or_cache_resource(
             preprocessor_key, preprocessor_factory
         )
-        batch_paths = preprocess_act(
-            preprocessor,
-            audio_batch,
-            worker_config=worker_config,
-            output_dir=output_dir,
+        batches, errors = preprocess_act(
+            preprocessor, audio_batch, worker_config, output_dir=output_dir
         )
-        batches = [p.relative_to(workdir) for p in batch_paths]
-        return batches
+        res_root = activity_workdir(workdir, project)
+        res_root.mkdir(parents=True, exist_ok=True)
+        batch_files = []
+        for batch_i, batch in enumerate(batches):
+            batch_file = output_dir / f"batch-{batch_i}.jsonl"
+            batch_file.write_text("\n".join(seg.model_dump_json() for seg in batch))
+            batch_files.append(batch_file)
+        errors_path = res_root / "errors.jsonl"
+        errors_path.write_text("\n".join(p.model_dump_json() for p in errors))
+        return batch_files, errors_path
 
     @activity_defn(name=RUN_INFERENCE_ACTIVITY)
     async def infer(
         self,
-        preprocessed_inputs: list[Path],
+        batches: list[Path],
         project: str,
         config: InferenceRunnerConfig,
         *,
@@ -177,11 +184,9 @@ class ASRActivities(ActivityWithProgress):
         workdir = worker_config.paths.workdir
         output_dir = activity_workdir(workdir, project)
         output_dir.mkdir(parents=True, exist_ok=True)
-        preprocessed_inputs = [workdir / p for p in preprocessed_inputs]
+        batches = [workdir / p for p in batches]
         if progress is not None:
-            progress = to_raw_async_progress(
-                progress, max_progress=len(preprocessed_inputs)
-            )
+            progress = to_raw_async_progress(progress, max_progress=len(batches))
         device = worker_config.devices.inference
         logger.info("loading model %s on %s device", config.model, device)
         runner_factory = enter_cm(
@@ -192,11 +197,11 @@ class ASRActivities(ActivityWithProgress):
         inference_runner = cache.get_or_cache_resource(runner_key, runner_factory)
         logger.info(
             "model loaded, starting inference on %s audio chunks !",
-            len(preprocessed_inputs),
+            len(batches),
         )
         inference_res = infer_act(
             inference_runner,
-            preprocessed_inputs,
+            batches,
             output_dir=output_dir,
             progress=progress,
         )
@@ -296,10 +301,10 @@ async def search_audios_act(
 def preprocess_act(
     preprocessor: Preprocessor,
     audio_batch: Path,
-    *,
     worker_config: ASRWorkerConfig,
+    *,
     output_dir: Path,
-) -> list[Path]:
+) -> tuple[list[tuple[ProcessedAudioSegment, ...]], list[Error]]:
     logger.debug("locating files...")
     audios = read_jsonl_as(audio_batch, Document)
     audios = (a.to_processed_file() for a in audios)
@@ -312,23 +317,30 @@ def preprocess_act(
     # TODO: implement a caching strategy here, we could avoid processing files
     #  which have already been preprocessed
     logger.debug("starting preprocessing...")
-    return list(_preprocess(preprocessor, audios, output_dir))
+    batches = []
+    errors = []
+    for res in preprocessor.process(audios, output_dir=output_dir):
+        if isinstance(res, Error):
+            errors.append(res)
+        else:
+            batches.append(res)
+    return batches, errors
 
 
 async def infer_act(
     inference_runner: InferenceRunner,
-    preprocessed_inputs: list[Path],
+    batches: list[Path],
     output_dir: Path,
     event_loop: AbstractEventLoop | None = None,
     progress: RawAsyncProgressHandler | None = None,
 ) -> AsyncIterable[Path]:
     # Audios paths in the input are relative to the batch file directory
     inputs = (
-        [_relative_input(i, f.parent) for i in read_jsonl_as(f, PreprocessedInput)]
-        for f in preprocessed_inputs
+        [_relative_segment(i, f.parent) for i in read_jsonl_as(f, FSProcessedSegment)]
+        for f in batches
     )
     audio_paths, inputs = tee(inputs)
-    audio_paths = (i.metadata.preprocessed_file_path for b in audio_paths for i in b)
+    audio_paths = (i.path for b in audio_paths for i in b)
     # TODO: implement caching
     inference_results = await asyncio.to_thread(
         _transcribe_as_list, inference_runner, list(inputs)
@@ -349,7 +361,7 @@ async def infer_act(
 
 
 def _transcribe_as_list(
-    inference_runner: InferenceRunner, inputs: Iterable[list[PreprocessedInput]]
+    inference_runner: InferenceRunner, inputs: Iterable[list[FSProcessedSegment]]
 ) -> list[ASRResult]:
     return list(inference_runner.process(inputs))
 
@@ -418,31 +430,6 @@ async def index_transcriptions_act(  # noqa: PLR0917
     return n_docs
 
 
-def _preprocess(
-    preprocessor: Preprocessor, audios: Iterable[Path], output_dir: Path
-) -> Iterable[Path]:
-    audios = (str(a) for a in audios)
-    for batch_i, batch in enumerate(
-        preprocessor.process(audios, output_dir=output_dir)
-    ):
-        # TODO: we might to create safe subdirs to avoid creating too many
-        #  files in the same dir
-        batch_file = output_dir / f"{batch_i}.jsonl"
-        logger.debug("writing batch to %s", batch_file)
-        with batch_file.open("w") as f:
-            for processed in batch:
-                if processed.metadata.error is not None:
-                    logger.error(
-                        "PreprocessedInput '%s' was not properly decoded with"
-                        "error '%s'. Skipping.",
-                        processed.metadata.input_file_path,
-                        processed.metadata.error,
-                    )
-                    continue
-                f.write(processed.model_dump_json() + "\n")
-        yield batch_file
-
-
 def write_transcription(
     asr_result: ASRResult, artifact_factory: ArtifactFactory, artifacts_root: Path
 ) -> Path:
@@ -455,13 +442,9 @@ def write_transcription(
     return rel_path
 
 
-def _relative_input(
-    preprocess_input: PreprocessedInput, root: Path
-) -> PreprocessedInput:
-    path = root / preprocess_input.metadata.preprocessed_file_path
-    update = {"preprocessed_file_path": path}
-    metadata = safe_copy(preprocess_input.metadata, update=update)
-    return PreprocessedInput(metadata=metadata)  # noqa: F821
+def _relative_segment(segment: FSProcessedSegment, root: Path) -> FSProcessedSegment:
+    path = root / segment.path
+    return FSProcessedSegment(path=path, metadata=segment.metadata)
 
 
 _EXCLUDED_FROM_BATCH_SERIALIZATION = {"type", "tags"}

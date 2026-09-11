@@ -4,7 +4,7 @@ from functools import cache
 from typing import Any, ClassVar, Self
 
 from caul_core import ASRPipelineConfig, ASRResult
-from caul_core.objects import ASRLanguage, ASRModel
+from caul_core.objects import ASRLanguage, ASRModel, Error
 from datashare_python.objects import (
     ArtifactType,
     DatashareLanguage,
@@ -41,6 +41,7 @@ class ASRArgs(TaskArgs):
     docs: list[DocId] | DocumentSearchQuery
     language: DatashareLanguage
     config: ASRPipelineConfig = Field(default_factory=ASRPipelineConfig.parakeet)
+    # TODO: put this on the worker side
     batch_size: int
     indexing: ASRIndexingConfig = Field(default_factory=ASRIndexingConfig)
 
@@ -52,6 +53,7 @@ class ASRArgs(TaskArgs):
 
 class ASRResponse(DatashareModel):
     n_transcribed: int
+    errors: list[Error]
 
 
 class Timestamp(DatashareModel):
