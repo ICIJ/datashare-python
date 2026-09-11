@@ -1,13 +1,18 @@
+from copy import deepcopy
+
 from datashare_python.config import LoggingConfig, WorkerConfig
 from datashare_python.objects import BaseModel, WorkerPaths
+from docling.datamodel.base_models import InputFormat
 from extract_core import (
     BasePipelineConfig,
     BatchConcurrencySettings,
+    DoclingFormatOption,
     DoclingPipelineConfig,
     DoclingSettings,
 )
+from extract_core.docling_ import InferenceSettings
 from icij_common.pydantic_utils import safe_copy
-from pydantic import Field
+from pydantic import BaseModel, Field
 
 from .constants import TorchDevice
 
@@ -58,13 +63,34 @@ class MarkdownInferenceWorkerConfig(BaseModel):
     def _resolve_docling_config(
         self, pipeline_config: DoclingPipelineConfig
     ) -> DoclingPipelineConfig:
-        resolved_batching = pipeline_config.settings.perf.model_dump()
-        resolved_batching.update(self.docling.settings.perf.model_dump())
-        resolved_batching = BatchConcurrencySettings.model_validate(resolved_batching)
-        resolved_settings = safe_copy(
-            pipeline_config.settings, update={"perf": resolved_batching}
-        )
-        resolved = safe_copy(pipeline_config, update={"settings": resolved_settings})
+        resolved_settings = self._resolve_docling_settings(pipeline_config)
+        format_options = self._resolve_docling_format_options(pipeline_config)
+        update = {"settings": resolved_settings, "format_options": format_options}
+        resolved = safe_copy(pipeline_config, update=update)
+        return resolved
+
+    def _resolve_docling_settings(
+        self, pipeline_config: DoclingPipelineConfig
+    ) -> BaseModel:
+        resolved_perf = pipeline_config.settings.perf.model_dump()
+        resolved_perf.update(self.docling.settings.perf.model_dump())
+        resolved_perf = BatchConcurrencySettings.model_validate(resolved_perf)
+        resolved_inference = pipeline_config.settings.inference.model_dump()
+        resolved_inference.update(self.docling.settings.inference.model_dump())
+        resolved_inference = InferenceSettings.model_validate(resolved_inference)
+        update = {"perf": resolved_perf, "inference": resolved_inference}
+        resolved_settings = safe_copy(pipeline_config.settings, update=update)
+        return resolved_settings
+
+    def _resolve_docling_format_options(
+        self, pipeline_config: DoclingPipelineConfig
+    ) -> dict[InputFormat, DoclingFormatOption]:
+        resolved = dict()
+        doc_timeout = self.docling.settings.inference.document_timeout
+        for fmt, opts in pipeline_config.format_options.items():
+            pipeline_opts = deepcopy(opts.pipeline_options)
+            pipeline_opts.update({"document_timeout": doc_timeout})
+            resolved[fmt] = safe_copy(opts, update={"pipeline_options": pipeline_opts})
         return resolved
 
 
