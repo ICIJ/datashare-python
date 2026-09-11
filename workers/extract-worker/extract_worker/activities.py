@@ -90,12 +90,15 @@ class MarkdownExtract(ActivityWithProgress):
         config: PipelineConfig,
     ) -> list[Path]:
         es_client = lifespan_es_client()
-        worker_config = lifespan_worker_config()
-        workdir = worker_config.paths.workdir
-        artifacts_root = worker_config.paths.artifacts
+        w_config = cast(ExtractWorkerConfig, lifespan_worker_config())
+        workdir = w_config.paths.workdir
+        w_inference_config = w_config.markdown.inference
+        artifacts_root = w_config.paths.artifacts
         output_dir = activity_workdir(workdir, project)
         output_dir.mkdir(parents=True, exist_ok=True)
-        target_n_pages_per_batch = worker_config.markdown.target_n_pages_per_batch
+        target_n_pages_per_task = w_inference_config.resolve_target_n_pages_per_task(
+            config
+        )
         supported_exts = config.supported_exts()
         logger.debug("creating extraction batches...")
         batch_paths = [
@@ -107,7 +110,7 @@ class MarkdownExtract(ActivityWithProgress):
                 artifacts_root=artifacts_root,
                 workdir=workdir,
                 output_dir=output_dir,
-                target_n_pages_per_batch=target_n_pages_per_batch,
+                target_n_pages_per_task=target_n_pages_per_task,
                 es_client=es_client,
             )
         ]
@@ -130,8 +133,8 @@ class MarkdownExtract(ActivityWithProgress):
         )
 
         pipeline = Pipeline.from_config(args.config)
-        worker_config = lifespan_worker_config()
-        workdir = worker_config.paths.workdir
+        w_config = lifespan_worker_config()
+        workdir = w_config.paths.workdir
         output_dir = activity_workdir(workdir, args.project)
         output_dir.mkdir(parents=True, exist_ok=True)
         batch = workdir / batch
@@ -140,7 +143,7 @@ class MarkdownExtract(ActivityWithProgress):
             pipeline,
             batch,
             args,
-            worker_config=worker_config,
+            worker_config=w_config,
             output_dir=output_dir,
             progress=progress,
         )
@@ -167,7 +170,7 @@ async def create_markdown_extract_batches_act(
     artifacts_root: Path,
     workdir: Path,
     output_dir: Path,
-    target_n_pages_per_batch: int,
+    target_n_pages_per_task: int,
     es_client: ESClient | None = None,
 ) -> AsyncIterable[Path]:
     # TODO: supported content types should be args
@@ -176,7 +179,7 @@ async def create_markdown_extract_batches_act(
         _symlink_embedded_processed_doc_to_workdir(d, artifacts_root, workdir=workdir)
         async for d in _search_docs(es_client, project, query, sort=_DOC_SORT)
     )
-    batches = _batch_by_n_pages(docs, target_n_pages_per_batch=target_n_pages_per_batch)
+    batches = _batch_by_n_pages(docs, target_n_pages_per_task=target_n_pages_per_task)
     async for p in _write_batches(batches, output_dir):
         yield p
 
@@ -285,12 +288,12 @@ async def _search_docs(
 
 
 async def _batch_by_n_pages(
-    docs: AsyncIterable[ProcessedFile], target_n_pages_per_batch: int
+    docs: AsyncIterable[ProcessedFile], target_n_pages_per_task: int
 ) -> AsyncIterable[list[ProcessedFile]]:
     current_n_pages = 0
     current_batch = []
     async for d in docs:
-        if current_n_pages >= target_n_pages_per_batch:
+        if current_n_pages >= target_n_pages_per_task:
             yield current_batch
             current_n_pages = 0
             current_batch = []

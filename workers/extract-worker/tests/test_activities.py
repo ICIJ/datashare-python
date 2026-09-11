@@ -118,7 +118,7 @@ async def test_create_markdown_extraction_batches_act(
             artifacts_root=artifacts_root,
             workdir=workdir,
             output_dir=tmpdir,
-            target_n_pages_per_batch=target_n_pages_per_batch,
+            target_n_pages_per_task=target_n_pages_per_batch,
             es_client=client,
         )
     ]
