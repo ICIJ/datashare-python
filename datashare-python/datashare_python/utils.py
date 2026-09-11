@@ -512,11 +512,19 @@ def _write_artifact_bytes(path: Path, artifact: bytes | BytesIO | Path) -> None:
             with path.open("wb") as f:
                 f.write(artifact.read())
         case Path():
-            path.unlink(missing_ok=True)
+            _remove_previous_artifacts(path)
             shutil.move(artifact, path)
         case _:
             msg = f"unsupported artifact type: {artifact.__class__.__name__}"
             raise ValueError(msg)
+
+
+def _remove_previous_artifacts(path: Path) -> None:
+    if isinstance(path, Path) and path.exists():
+        with contextlib.suppress(FileNotFoundError):
+            path.rmdir()
+    else:
+        path.unlink(missing_ok=True)
 
 
 def debuggable_name(
