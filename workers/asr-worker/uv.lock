@@ -310,7 +310,7 @@ wheels = [
 
 [[package]]
 name = "caul"
-version = "0.10.7"
+version = "0.13.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "caul-core", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu') or sys_platform == 'darwin' or (sys_platform != 'linux' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu')" },
@@ -323,9 +323,9 @@ dependencies = [
     { name = "tiktoken", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu') or sys_platform == 'darwin' or (sys_platform != 'linux' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu')" },
     { name = "typer", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu') or sys_platform == 'darwin' or (sys_platform != 'linux' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu')" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/9c/40/b17d04929b2af672667637ded7c00201c3eee33890e28d592de0d24aabab/caul-0.10.7.tar.gz", hash = "sha256:5f4572982a01736ad449c3606684cba2758bca9c381be16f1e5cb3242d70448c", size = 239776, upload-time = "2026-09-08T08:14:27.422Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/b2/19/d1d6ad74255b40e1d3d19c1cb7f42386a841a6552ca3020a8563bb482acc/caul-0.13.0.tar.gz", hash = "sha256:c4c8d87ddf85fe622b7e907fcb4a58c711a3f3859d1e74f9bd7b536f9a4003b0", size = 242045, upload-time = "2026-09-16T08:03:57.792Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/54/e7/4e0626c24b4c242962b401e57034128361cdcf21e3773d87af97b5129f74/caul-0.10.7-py3-none-any.whl", hash = "sha256:25dfd5e47477b31ba8df01e8db78e11479e6c98a1d1f03daa9f4b4d01cacd61e", size = 36959, upload-time = "2026-09-08T08:14:26.319Z" },
+    { url = "https://files.pythonhosted.org/packages/65/01/be2c87a55694958b6360f769719e6b46bd7b839580ee51742be352146be6/caul-0.13.0-py3-none-any.whl", hash = "sha256:72ad28b3f3d750a67853642332771489c677f7c3602759e38240e49650f0dc8d", size = 38568, upload-time = "2026-09-16T08:03:56.731Z" },
 ]
 
 [package.optional-dependencies]
@@ -345,20 +345,20 @@ nemo = [
     { name = "torch", version = "2.10.0+cu129", source = { registry = "https://download.pytorch.org/whl/cu129" }, marker = "(platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'extra-20-datashare-asr-worker-gpu') or (platform_machine != 'x86_64' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu') or (sys_platform != 'linux' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu')" },
 ]
 parakeet-trt = [
-    { name = "tensorrt-lean", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu') or sys_platform == 'darwin' or (sys_platform != 'linux' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu')" },
+    { name = "tensorrt-lean", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu') or (sys_platform != 'linux' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu')" },
 ]
 
 [[package]]
 name = "caul-core"
-version = "0.4.3"
+version = "0.6.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "icij-common", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu') or sys_platform == 'darwin' or (sys_platform != 'linux' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu')" },
     { name = "pydantic-extra-types", extra = ["pycountry"], marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu') or sys_platform == 'darwin' or (sys_platform != 'linux' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu')" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/d8/b2/f037f9051be2e89d75f77532f7843d8e7a36303b903238a6388fb5d4a511/caul_core-0.4.3.tar.gz", hash = "sha256:e97449569e0e7eb9558719eec87a61dd4bd85fa04caae46f16b10e14c3df7897", size = 21974, upload-time = "2026-09-08T08:10:05.69Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/de/7e/069dfeb4b097f1850940fa0b1046df3dd0c2a4bc3edeb0478853cf697bc2/caul_core-0.6.0.tar.gz", hash = "sha256:93d326a1b7c95d27c2125369f73a58bd6bf4ca94bbfc8a59574f27ffe8328e72", size = 22907, upload-time = "2026-09-16T07:55:23.64Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/0b/c8/42d73cd882005aff5cd4fed667a67174d6f0efc980245e2ea8c3e8cd2a15/caul_core-0.4.3-py3-none-any.whl", hash = "sha256:3b330e9bfbcdb263ea63762d8ba32019d8f87e5af87e962fa18196a378649332", size = 12851, upload-time = "2026-09-08T08:10:04.797Z" },
+    { url = "https://files.pythonhosted.org/packages/fe/04/0f80af8c0020be883acf8d65c6f8837325865aa79ceee1298dcfc226747c/caul_core-0.6.0-py3-none-any.whl", hash = "sha256:31aa38556d2ced0aaf8781133e631b91bfea7d30e4546d483fdfb7e99abcef8f", size = 13853, upload-time = "2026-09-16T07:55:22.814Z" },
 ]
 
 [[package]]
@@ -647,9 +647,9 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "caul", marker = "extra == 'preprocessing'", specifier = "==0.10.7" },
-    { name = "caul", extras = ["fireredasr2", "nemo", "parakeet-trt"], marker = "extra == 'inference'", specifier = "==0.10.7" },
-    { name = "caul-core", specifier = "==0.4.3" },
+    { name = "caul", marker = "extra == 'preprocessing'", specifier = "==0.13.0" },
+    { name = "caul", extras = ["fireredasr2", "nemo", "parakeet-trt"], marker = "extra == 'inference'", specifier = "==0.13.0" },
+    { name = "caul-core", specifier = "==0.6.0" },
     { name = "cuda-bindings", marker = "sys_platform == 'linux' and extra == 'gpu'", specifier = "==12.9.4" },
     { name = "datashare-python", editable = "../../datashare-python" },
     { name = "fireredasr2s", marker = "extra == 'inference'" },
@@ -679,7 +679,7 @@ dev = [
 
 [[package]]
 name = "datashare-python"
-version = "0.11.1"
+version = "0.11.3"
 source = { editable = "../../datashare-python" }
 dependencies = [
     { name = "aiofile", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu') or sys_platform == 'darwin' or (sys_platform != 'linux' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu')" },
@@ -3065,7 +3065,7 @@ name = "tensorrt-lean"
 version = "11.2.1.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "tensorrt-lean-cu13", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu') or sys_platform == 'darwin' or (sys_platform != 'linux' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu')" },
+    { name = "tensorrt-lean-cu13", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu') or (sys_platform != 'linux' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu')" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/14/71/aebf24f3435b0268c5f5f28da192d9cbeae261bf618ff6a35add17c43626/tensorrt_lean-11.2.1.2.tar.gz", hash = "sha256:28717e198350bcf1f2a91082151efa014cb873a78f49c9056cc42964f0dbdbb4", size = 16653, upload-time = "2026-07-30T19:10:52.258Z" }
 
@@ -3074,8 +3074,8 @@ name = "tensorrt-lean-cu13"
 version = "11.2.1.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "tensorrt-lean-cu13-bindings", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu') or sys_platform == 'darwin' or (sys_platform != 'linux' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu')" },
-    { name = "tensorrt-lean-cu13-libs", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu') or sys_platform == 'darwin' or (sys_platform != 'linux' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu')" },
+    { name = "tensorrt-lean-cu13-bindings", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu') or (sys_platform != 'linux' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu')" },
+    { name = "tensorrt-lean-cu13-libs", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu') or (sys_platform != 'linux' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu')" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/70/43/f4e5b174686d865506ef981d34beb3c57349248216cae6c309081ef157f4/tensorrt_lean_cu13-11.2.1.2.tar.gz", hash = "sha256:344a772ddf05f1126aeee7e66977d8b1251628b93e9d0b748f1b3765465dfee3", size = 17985, upload-time = "2026-07-30T19:18:36.141Z" }
 
