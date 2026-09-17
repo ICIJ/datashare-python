@@ -253,15 +253,16 @@ wheels = [
 
 [[package]]
 name = "caul-core"
-version = "0.6.0"
+version = "0.6.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "icij-common" },
+    { name = "overrides" },
     { name = "pydantic-extra-types", extra = ["pycountry"] },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/de/7e/069dfeb4b097f1850940fa0b1046df3dd0c2a4bc3edeb0478853cf697bc2/caul_core-0.6.0.tar.gz", hash = "sha256:93d326a1b7c95d27c2125369f73a58bd6bf4ca94bbfc8a59574f27ffe8328e72", size = 22907, upload-time = "2026-09-16T07:55:23.64Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/fd/21/1e2e4b0cc91afdeb069c4a259f7e96371362c3972c46f296ec344b5c4e43/caul_core-0.6.1.tar.gz", hash = "sha256:7d2d0276a00892414f1dfb6135e514680f5f2d58a83c31fd463f08cc163bb3f8", size = 23168, upload-time = "2026-09-17T08:48:08.714Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/fe/04/0f80af8c0020be883acf8d65c6f8837325865aa79ceee1298dcfc226747c/caul_core-0.6.0-py3-none-any.whl", hash = "sha256:31aa38556d2ced0aaf8781133e631b91bfea7d30e4546d483fdfb7e99abcef8f", size = 13853, upload-time = "2026-09-16T07:55:22.814Z" },
+    { url = "https://files.pythonhosted.org/packages/a8/1c/fe62bca401eae4e552e9a96e4238ac7891c9b5468834d8f1776191845b52/caul_core-0.6.1-py3-none-any.whl", hash = "sha256:c67de9925efe707e55a108c48151fc4574a85a8017211b96da3612516b2079ee", size = 13867, upload-time = "2026-09-17T08:48:07.828Z" },
 ]
 
 [[package]]
@@ -353,15 +354,15 @@ wheels = [
 
 [[package]]
 name = "datashare-asr-worker"
-version = "0.11.14"
+version = "0.11.15"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "caul-core" },
     { name = "datashare-python" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/47/47/76770938f31ba0c2a264bfaca929cdad9a96ea2a561de67a780fb6d5af41/datashare_asr_worker-0.11.14.tar.gz", hash = "sha256:6d16d28ec27633193413bcfb899a1ceb285f96b50607c70c93379575f784f726", size = 11121, upload-time = "2026-09-16T12:58:37.654Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/33/69/e6cb4701b37c4697a5cde7641793fbee47502a553e7f0bb88a8486eca61d/datashare_asr_worker-0.11.15.tar.gz", hash = "sha256:7beb4e829ec1de60eb8480a529b821163c6859bf909a24192035ed74d5b48b2c", size = 11124, upload-time = "2026-09-17T08:51:39.953Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/16/7b/3697b2cdc1cd1fb52c9c6edcc413db06c1df3b848793ad7c74bd8c1ccf77/datashare_asr_worker-0.11.14-py3-none-any.whl", hash = "sha256:733569be08c642adde6a6eed1942a517e881077a5c67ab59726f18027a1ed379", size = 13951, upload-time = "2026-09-16T12:58:36.796Z" },
+    { url = "https://files.pythonhosted.org/packages/f4/77/2ee6ea0980a8e90800eb96d190f974c08cca0d9f534db8f247fd6d66790c/datashare_asr_worker-0.11.15-py3-none-any.whl", hash = "sha256:b8f50dbcfbf095a35a1421a62f556aaf9d551fe4c02e2829bbad02b6146428a4", size = 13953, upload-time = "2026-09-17T08:51:39.057Z" },
 ]
 
 [[package]]
@@ -443,7 +444,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "datashare-asr-worker", specifier = "==0.11.14" },
+    { name = "datashare-asr-worker", specifier = "==0.11.15" },
     { name = "datashare-extract-worker", specifier = "==0.4.8" },
     { name = "datashare-passport-worker", specifier = "==0.3.0" },
     { name = "datashare-python", specifier = "~=0.11.3" },
@@ -1003,6 +1004,15 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/9c/50/0753655aa844c99cd9e018aacf76f130f1bd81d881bb74bc0aef5d73a8ba/numpy-2.4.6-cp314-cp314t-win32.whl", hash = "sha256:260a5d70215b61ab4fadf5c7baacd64821842975eea312125ed3c39a6391b063", size = 6156982, upload-time = "2026-05-18T23:36:40.817Z" },
     { url = "https://files.pythonhosted.org/packages/b2/d4/7c67becf668f973cb490cec3e98dfd799d866f9c989a54d355672cfa0db6/numpy-2.4.6-cp314-cp314t-win_amd64.whl", hash = "sha256:81a1cca95ed5bb92aa8b10dd2cdc9a0d3853a50fad926c28b5d7e8ea54389627", size = 12638908, upload-time = "2026-05-18T23:36:43.996Z" },
     { url = "https://files.pythonhosted.org/packages/43/bb/e1c71a4295b1b1d1393d50dbb4f2a36283c6859d9d3892e84f00ec5a91d5/numpy-2.4.6-cp314-cp314t-win_arm64.whl", hash = "sha256:0c9136e14ed34a9e343a31c533d78a9813a69a3148332bce5e9821cb2f996e66", size = 10565867, upload-time = "2026-05-18T23:36:47.114Z" },
+]
+
+[[package]]
+name = "overrides"
+version = "7.7.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/36/86/b585f53236dec60aba864e050778b25045f857e17f6e5ea0ae95fe80edd2/overrides-7.7.0.tar.gz", hash = "sha256:55158fa3d93b98cc75299b1e67078ad9003ca27945c76162c1c0766d6f91820a", size = 22812, upload-time = "2024-01-27T21:01:33.423Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/2c/ab/fc8290c6a4c722e5514d80f62b2dc4c4df1a68a41d1364e625c35990fcf3/overrides-7.7.0-py3-none-any.whl", hash = "sha256:c7ed9d062f78b8e4c1a7b70bd8796b35ead4d9f510227ef9c5dc7626c60d7e49", size = 17832, upload-time = "2024-01-27T21:01:31.393Z" },
 ]
 
 [[package]]
