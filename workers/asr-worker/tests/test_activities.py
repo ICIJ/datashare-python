@@ -25,12 +25,14 @@ from asr_worker.objects import (
 )
 from caul_core import (
     ASRResult,
+    Error,
+    FSProcessedSegment,
     InferenceRunner,
-    InputMetadata,
     Postprocessor,
-    PreprocessedInput,
     Preprocessor,
-    PreprocessorOutput,
+    ProcessedAudioSegment,
+    SegmentIndex,
+    SegmentMetadata,
 )
 from datashare_python.conftest import TEST_PROJECT
 from datashare_python.objects import (
@@ -45,49 +47,49 @@ from icij_common.registrable import RegistrableConfig
 
 from .conftest import DS_ENGLISH
 
-PREPROCESSED_INPUT_0 = PreprocessedInput(
-    metadata=InputMetadata(
-        input_ordering=0,
+PREPROCESSED_INPUT_0 = FSProcessedSegment(
+    metadata=SegmentMetadata(
+        index=SegmentIndex(audio=0, segment=0),
         duration_s=0.0,
-        preprocessed_file_path=Path("preprocessed_0.wav"),
-    )
+    ),
+    path=Path("preprocessed_0.wav"),
 )
-PREPROCESSED_INPUT_1 = PreprocessedInput(
-    metadata=InputMetadata(
-        input_ordering=1,
+PREPROCESSED_INPUT_1 = FSProcessedSegment(
+    metadata=SegmentMetadata(
+        index=SegmentIndex(audio=1, segment=0),
         duration_s=1.0,
-        preprocessed_file_path=Path("preprocessed_1.wav"),
-    )
+    ),
+    path=Path("preprocessed_1.wav"),
 )
-PREPROCESSED_INPUT_2 = PreprocessedInput(
-    metadata=InputMetadata(
-        input_ordering=2,
+PREPROCESSED_INPUT_2 = FSProcessedSegment(
+    metadata=SegmentMetadata(
+        index=SegmentIndex(audio=2, segment=0),
         duration_s=2.0,
-        preprocessed_file_path=Path("preprocessed_2.wav"),
-    )
+    ),
+    path=Path("preprocessed_2.wav"),
 )
-PREPROCESSED_INPUT_ERROR = PreprocessedInput(
-    metadata=InputMetadata(
-        input_ordering=0,
+PREPROCESSING_ERROR = Error(
+    title="UnreadableAudio",
+    detail="failed to decode audio",
+    metadata=SegmentMetadata(
+        index=SegmentIndex(audio=0, segment=0),
         duration_s=0.0,
-        preprocessed_file_path=Path("preprocessed_error.wav"),
-        error="failed to decode audio",
-    )
+    ),
 )
 
 INFERENCE_RESULTS = [
     ASRResult(
-        input_ordering=0,
+        index=SegmentIndex(audio=0, segment=0),
         transcription=[(0.0, 0.0, "preprocessed_0")],
         score=1.0,
     ),
     ASRResult(
-        input_ordering=1,
+        index=SegmentIndex(audio=1, segment=0),
         transcription=[(0.0, 1.0, "preprocessed_1")],
         score=1.0,
     ),
     ASRResult(
-        input_ordering=2,
+        index=SegmentIndex(audio=2, segment=0),
         transcription=[(0.0, 2.0, "preprocessed_2")],
         score=1.0,
     ),
@@ -122,13 +124,13 @@ class MockPreprocessor(Preprocessor):
         self,
         audios: Iterable[Path],  # noqa: ARG002
         **kwargs,  # noqa: ARG002
-    ) -> Iterable[list[PreprocessedInput]]:
+    ) -> Iterable[tuple[ProcessedAudioSegment, ...]]:
         outputs = cycle(
             [PREPROCESSED_INPUT_0, PREPROCESSED_INPUT_1, PREPROCESSED_INPUT_2]
         )
         outputs = [next(outputs) for _ in audios]
         for b in batches(outputs, self._batch_size):
-            yield list(b)
+            yield tuple(b)
 
 
 class MockErroringPreprocessor(Preprocessor):
@@ -146,11 +148,14 @@ class MockErroringPreprocessor(Preprocessor):
         self,
         audios: Iterable[Path],  # noqa: ARG002
         **kwargs,  # noqa: ARG002
-    ) -> Iterable[list[PreprocessedInput]]:
-        outputs = cycle([PREPROCESSED_INPUT_ERROR, PREPROCESSED_INPUT_1])
+    ) -> Iterable[tuple[ProcessedAudioSegment, ...] | Error]:
+        outputs = cycle([PREPROCESSING_ERROR, PREPROCESSED_INPUT_1])
         outputs = [next(outputs) for _ in audios]
-        for b in batches(outputs, self._batch_size):
-            yield list(b)
+        successes = [o for o in outputs if not isinstance(o, Error)]
+        errors = [o for o in outputs if isinstance(o, Error)]
+        for b in batches(successes, self._batch_size):
+            yield tuple(b)
+        yield from errors
 
 
 class MockInferenceRunner(InferenceRunner):
@@ -163,21 +168,19 @@ class MockInferenceRunner(InferenceRunner):
 
     def process(
         self,
-        inputs: Iterable[list[PreprocessorOutput]],
+        inputs: Iterable[tuple[ProcessedAudioSegment, ...]],
         *args,  # noqa: ARG002
         **kwargs,  # noqa: ARG002
     ) -> Iterable[ASRResult]:
         i = 0
         for batch in inputs:
             for preprocessed in batch:
-                transcription = (
-                    preprocessed.metadata.preprocessed_file_path.name.replace(
-                        ".wav", ""
-                    )
-                )
+                transcription = preprocessed.path.name.replace(".wav", "")
                 transcription = [(0.0, float(i), transcription)]
                 yield ASRResult(
-                    input_ordering=i, transcription=transcription, score=1.0
+                    index=SegmentIndex(audio=i, segment=0),
+                    transcription=transcription,
+                    score=1.0,
                 )
                 i += 1
 
@@ -279,7 +282,7 @@ def test_preprocess_act(test_worker_config: ASRWorkerConfig, tmpdir: Path) -> No
         [PREPROCESSED_INPUT_2],
     ]
     written_batches = [
-        list(read_jsonl_as(output_dir / f, PreprocessedInput)) for f in batch_files
+        list(read_jsonl_as(output_dir / f, FSProcessedSegment)) for f in batch_files
     ]
     assert written_batches == expected_batches
 
@@ -321,8 +324,8 @@ def test_preprocess_act_skips_input_with_error(
     assert len(batch_files) == 1
     written_batches = [
         [
-            PreprocessedInput.model_validate(d)
-            for d in read_jsonl_as(output_dir / f, PreprocessedInput)
+            FSProcessedSegment.model_validate(d)
+            for d in read_jsonl_as(output_dir / f, FSProcessedSegment)
         ]
         for f in batch_files
     ]

@@ -16,7 +16,12 @@ from caul_core import (
     Preprocessor,
     PreprocessorConfig,
 )
-from caul_core.objects import ASRResult, PreprocessedInput
+from caul_core.objects import (
+    ASRResult,
+    Error,
+    FSProcessedSegment,
+    ProcessedAudioSegment,
+)
 from datashare_python.dependencies import lifespan_es_client, lifespan_worker_config
 from datashare_python.objects import DocRoute, Document
 from datashare_python.types_ import (
@@ -324,11 +329,13 @@ async def infer_act(
 ) -> AsyncIterable[Path]:
     # Audios paths in the input are relative to the batch file directory
     inputs = (
-        [_relative_input(i, f.parent) for i in read_jsonl_as(f, PreprocessedInput)]
+        tuple(
+            _relative_input(i, f.parent) for i in read_jsonl_as(f, FSProcessedSegment)
+        )
         for f in preprocessed_inputs
     )
     audio_paths, inputs = tee(inputs)
-    audio_paths = (i.metadata.preprocessed_file_path for b in audio_paths for i in b)
+    audio_paths = (i.path for b in audio_paths for i in b)
     # TODO: implement caching
     inference_results = await asyncio.to_thread(
         _transcribe_as_list, inference_runner, list(inputs)
@@ -349,7 +356,8 @@ async def infer_act(
 
 
 def _transcribe_as_list(
-    inference_runner: InferenceRunner, inputs: Iterable[list[PreprocessedInput]]
+    inference_runner: InferenceRunner,
+    inputs: Iterable[tuple[ProcessedAudioSegment, ...]],
 ) -> list[ASRResult]:
     return list(inference_runner.process(inputs))
 
@@ -425,20 +433,19 @@ def _preprocess(
     for batch_i, batch in enumerate(
         preprocessor.process(audios, output_dir=output_dir)
     ):
+        if isinstance(batch, Error):
+            logger.error(
+                "segment '%s' was not properly decoded with error '%s'. Skipping.",
+                batch.metadata,
+                batch.detail,
+            )
+            continue
         # TODO: we might to create safe subdirs to avoid creating too many
         #  files in the same dir
         batch_file = output_dir / f"{batch_i}.jsonl"
         logger.debug("writing batch to %s", batch_file)
         with batch_file.open("w") as f:
             for processed in batch:
-                if processed.metadata.error is not None:
-                    logger.error(
-                        "PreprocessedInput '%s' was not properly decoded with"
-                        "error '%s'. Skipping.",
-                        processed.metadata.input_file_path,
-                        processed.metadata.error,
-                    )
-                    continue
                 f.write(processed.model_dump_json() + "\n")
         yield batch_file
 
@@ -456,12 +463,10 @@ def write_transcription(
 
 
 def _relative_input(
-    preprocess_input: PreprocessedInput, root: Path
-) -> PreprocessedInput:
-    path = root / preprocess_input.metadata.preprocessed_file_path
-    update = {"preprocessed_file_path": path}
-    metadata = safe_copy(preprocess_input.metadata, update=update)
-    return PreprocessedInput(metadata=metadata)  # noqa: F821
+    processed_segment: FSProcessedSegment, root: Path
+) -> FSProcessedSegment:
+    path = root / processed_segment.path
+    return safe_copy(processed_segment, update={"path": path})
 
 
 _EXCLUDED_FROM_BATCH_SERIALIZATION = {"type", "tags"}
