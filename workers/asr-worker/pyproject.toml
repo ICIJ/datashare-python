@@ -30,11 +30,11 @@ gpu = [
   "torchcodec==0.10.0+cu129; sys_platform == 'linux'",
 ]
 inference = [
-  "caul[nemo,fireredasr2,parakeet-trt]==0.13.6",
+  "caul[nemo,fireredasr2,parakeet-trt]==0.13.7",
   "fireredasr2s",
 ]
 preprocessing = [
-  "caul==0.13.6",
+  "caul==0.13.7",
 ]
 
 [project.entry-points."datashare.workflows"]
