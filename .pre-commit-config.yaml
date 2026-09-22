@@ -7,3 +7,11 @@ repos:
         types_or: [python, pyi]
       - id: ruff-format
         types_or: [python, pyi]
+  - repo: local
+    hooks:
+      - id: lock-dist
+        name: Rebuild uv dist lock for changed workers
+        entry: scripts/lock-dist-precommit.sh
+        language: system
+        files: ^(worker-template|workers/[^/]+)/pyproject\.toml$
+        pass_filenames: true
