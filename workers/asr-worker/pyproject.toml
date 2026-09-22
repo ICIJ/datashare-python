@@ -11,7 +11,7 @@ readme = "README.md"
 requires-python = ">=3.11.0, <3.13"
 dependencies = [
   "datashare-python~=0.11.1",
-  "caul-core==0.6.2",
+  "caul-core==0.6.4",
 ]
 
 [project.scripts]
@@ -30,11 +30,11 @@ gpu = [
   "torchcodec==0.10.0+cu129; sys_platform == 'linux'",
 ]
 inference = [
-  "caul[nemo,fireredasr2,parakeet-trt]==0.13.5",
+  "caul[nemo,fireredasr2,parakeet-trt]==0.13.6",
   "fireredasr2s",
 ]
 preprocessing = [
-  "caul==0.13.5",
+  "caul==0.13.6",
 ]
 
 [project.entry-points."datashare.workflows"]
