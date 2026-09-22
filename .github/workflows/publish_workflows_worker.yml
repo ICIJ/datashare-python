@@ -22,6 +22,9 @@ on:
         required: false
         default: ""
         type: string
+  push:
+    tags:
+      - 'workflows-worker-*'
 
 env:
   PACKAGE: ${{ inputs.package }}
@@ -33,6 +36,10 @@ env:
 jobs:
   bump-workflows-worker:
     runs-on: ubuntu-latest
+    # Only bump/tag on a manual dispatch. The tag it pushes below re-triggers
+    # this workflow via the `push: tags:` trigger, which runs
+    # publish-workflows-worker on its own.
+    if: github.event_name == 'workflow_dispatch'
     permissions:
       id-token: write
       contents: write
@@ -88,13 +95,59 @@ jobs:
 
   publish-workflows-worker:
     runs-on: ubuntu-latest
-    needs: bump-workflows-worker
+    # Runs off the tag push (including the one bump-workflows-worker creates
+    # above), so it always has a real workflows-worker-* tag to build from.
+    if: github.event_name == 'push'
+    permissions:
+      contents: write
     steps:
+      - name: Derive tag
+        id: tag
+        run: |
+          raw_version="${GITHUB_REF_NAME#workflows-worker-}"
+          echo "workflows_worker_tag=$raw_version" >> "$GITHUB_OUTPUT"
+
       - uses: actions/checkout@v6
         with:
-          # We checkout main to avoid creating a tag from a detached head
-          ref: workflows-worker-${{ needs.bump-workflows-worker.outputs.workflows_worker_tag }}
+          # main, not the tag: a tag pushed straight from git (skipping
+          # workflow_dispatch) may point at a commit whose pyproject.toml
+          # doesn't have this version yet, so sync main to match the tag.
+          ref: main
           token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: ${{ env.ASTRAL_VERSION }}
+          python-version: ${{ env.PYTHON_VERSION }}
+          enable-cache: true
+          working-directory: workers/workflows-worker
+      - name: Sync pyproject.toml version with tag
+        run: |
+          cd workers/workflows-worker
+          uv version --frozen "${{ steps.tag.outputs.workflows_worker_tag }}"
+          cd ../..
+          make lock-dist project=workflows-worker
+          cd workers/workflows-worker
+          uv sync --frozen
+          git add uv.lock uv.dist.lock pyproject.toml
+          if git diff --cached --quiet; then
+            echo "pyproject.toml already at ${{ steps.tag.outputs.workflows_worker_tag }}, nothing to sync"
+          else
+            git commit -m "chore(workflows-worker): sync version to ${{ steps.tag.outputs.workflows_worker_tag }}"
+            git pull --rebase
+            git push
+          fi
+
+      - uses: actions/checkout@v6
+        with:
+          # Build from the tagged commit itself, now that main matches it.
+          ref: ${{ github.ref }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          clean: true
 
       - name: Docker meta
         id: meta
@@ -102,7 +155,7 @@ jobs:
         with:
           images: icij/datashare-workflows-worker
           tags: |
-            type=raw,value=${{ needs.bump-workflows-worker.outputs.workflows_worker_tag }}
+            type=raw,value=${{ steps.tag.outputs.workflows_worker_tag }}
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v4
 
