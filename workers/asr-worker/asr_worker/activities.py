@@ -123,13 +123,13 @@ class ASRActivities(ActivityWithProgress):
         preprocessor_factory = enter_cm(partial(Preprocessor.from_config, config))
         preprocessor_key = config_cache_key(config)
         cache = lifespan_preprocessor_cache()
+        audios = list(read_jsonl_as(audio_batch, PROCESSED_FILE_TA))
         with cache.get_or_cache_resource(
             preprocessor_key, preprocessor_factory
         ) as preprocessor:
-            audios = list(read_jsonl_as(audio_batch, PROCESSED_FILE_TA))
-        batches, errors, audio_routes = preprocess_act(
-            preprocessor, audios, worker_config, output_dir=output_dir
-        )
+            batches, errors, audio_routes = preprocess_act(
+                preprocessor, audios, worker_config, output_dir=output_dir
+            )
         res_root = activity_workdir(workdir, project)
         res_root.mkdir(parents=True, exist_ok=True)
         batch_files = []
