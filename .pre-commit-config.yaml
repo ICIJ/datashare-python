@@ -14,4 +14,5 @@ repos:
         entry: scripts/lock-dist-precommit.sh
         language: system
         files: ^(worker-template|workers/[^/]+)/pyproject\.toml$
+        exclude: ^workers/workflows-worker/
         pass_filenames: true
