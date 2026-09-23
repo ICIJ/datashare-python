@@ -3,10 +3,11 @@ from itertools import chain
 from pathlib import Path
 from typing import Any
 
-from datashare_python.objects import Document, WorkerPaths
+from datashare_python.objects import Document, ProcessedFile, WorkerPaths
 from datashare_python.utils import (
     ext_to_mime_types,
     symlink_embedded_document_to_workdir,
+    write_batches,
 )
 from icij_common.es import (
     DOC_CONTENT_TYPE,
@@ -27,8 +28,7 @@ from icij_common.es import (
 from passport_service.constants import GOTENBERG_SUPPORTED_EXTS, PDF_EXT
 
 from .constants import pil_supported_extensions
-from .objects import DocId, DocumentSearchQuery, PreprocessingBatches, ProcessedFile
-from .utils import write_batches
+from .objects import DocId, DocumentSearchQuery, PreprocessingBatches
 
 
 async def create_preprocessing_batches_act(  # noqa: PLR0917
@@ -133,26 +133,17 @@ def _with_supported_exts_query(supported_exts: set[str]) -> dict[str, Any]:
 
 
 _DOC_SORT = [f"{DOC_CONTENT_TYPE}:asc", "_doc:asc"]
-_DOC_CONTENT_SOURCES = [
-    DOC_PATH,
-    DOC_ROOT_ID,
-    DOC_LANGUAGE,
-    DOC_METADATA,
-    DOC_EXTRACTION_LEVEL,
-]
+DOC_SOURCES = [DOC_PATH, DOC_ROOT_ID, DOC_LANGUAGE, DOC_METADATA, DOC_EXTRACTION_LEVEL]
 
 
 async def _search_docs(
     query: dict[str, Any], es_client: ESClient, project: str, sort: ESSort = None
-) -> AsyncIterable[ProcessedFile]:
+) -> AsyncIterable[Document]:
     async for page in es_client.poll_search_pages(
-        index=project,
-        body=query,
-        sort=sort,
-        _source_includes=_DOC_CONTENT_SOURCES,
+        index=project, body=query, sort=sort, _source_includes=DOC_SOURCES
     ):
         for hit in page[HITS][HITS]:
-            yield ProcessedFile.from_doc(Document.from_es(hit))
+            yield Document.from_es(hit)
 
 
 async def _batch_by_n_pages(

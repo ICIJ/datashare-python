@@ -10,7 +10,12 @@ from datashare_python.objects import (
     DatashareLanguage,
     DatashareModel,
     DocArtifact,
+    DocID,
+    ErrorReport,
+    ErrorSource,
     ManifestEntry,
+    ProcessingError,
+    ProcessingReport,
     TaskArgs,
 )
 from icij_common.pydantic_utils import make_enum_discriminator
@@ -19,7 +24,7 @@ from pydantic import Field, RootModel
 model_discriminator = make_enum_discriminator("model", ASRModel)
 
 DocumentSearchQuery = dict[str, Any]
-DocId = str
+DocRoutes = dict[str | int, str]
 
 
 class TranscriptionManifestEntry(ManifestEntry):
@@ -38,9 +43,10 @@ class ASRIndexingConfig(DatashareModel):
 
 class ASRArgs(TaskArgs):
     project: str
-    docs: list[DocId] | DocumentSearchQuery
+    docs: list[DocID] | DocumentSearchQuery
     language: DatashareLanguage
     config: ASRPipelineConfig = Field(default_factory=ASRPipelineConfig.parakeet)
+    # TODO: put this on the worker side
     batch_size: int
     indexing: ASRIndexingConfig = Field(default_factory=ASRIndexingConfig)
 
@@ -50,8 +56,16 @@ class ASRArgs(TaskArgs):
         return as_entry
 
 
+class ASRErrorSource(ErrorSource): ...
+
+
+class ASRError(ProcessingError[ASRErrorSource]): ...
+
+
 class ASRResponse(DatashareModel):
-    n_transcribed: int
+    processed: ProcessingReport = Field(default_factory=ProcessingReport)
+    successes: ProcessingReport = Field(default_factory=ProcessingReport)
+    errors: ErrorReport = Field(default_factory=ErrorReport)
 
 
 class Timestamp(DatashareModel):

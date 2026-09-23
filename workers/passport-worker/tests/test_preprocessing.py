@@ -2,13 +2,20 @@ from pathlib import Path
 
 import pytest
 from datashare_python.conftest import TEST_PROJECT
-from datashare_python.objects import Document, ProcessedFile, ProcessedPage
+from datashare_python.objects import (
+    DatashareFile,
+    Document,
+    FileLocation,
+    WorkerFile,
+    WorkerFilePath,
+)
 from datashare_python.utils import safe_dir
 from icij_common.pydantic_utils import safe_copy
 from icij_common.registrable import FromConfig, RegistrableConfig
 from passport_service.constants import GOTENBERG_SUPPORTED_EXTS
 from passport_service.exceptions import InvalidPDF, UnsupportedDocExtension
 from passport_worker.config import PassportWorkerConfig
+from passport_worker.objects import ProcessedPage
 from passport_worker.preprocessing import (
     DefaultImagePreprocessor,
     ImagePreprocessor,
@@ -23,10 +30,10 @@ from PIL import Image
 
 from tests import DOCS_PATH
 from tests.conftest import (
-    PROCESSED_DOC_0,
-    PROCESSED_DOC_1,
-    PROCESSED_DOC_2,
-    SYMLINKED_PROCESSED_DOC_0,
+    DS_FILE_0,
+    DS_FILE_1,
+    DS_FILE_2,
+    SYMLINKED_DS_FILE_0,
 )
 
 
@@ -59,8 +66,8 @@ class MockConverter(PDFConverter):
         self._conversion_results = conversion_results
         self.call_count = 0
 
-    async def __call__(self, doc: ProcessedFile, doc_bytes: bytes) -> bytes:  # noqa: ARG002
-        res = self._conversion_results[doc.id]
+    async def __call__(self, doc: DatashareFile, doc_bytes: bytes) -> bytes:  # noqa: ARG002
+        res = self._conversion_results[doc.doc_id]
         if isinstance(res, Exception):
             raise res
         self.call_count += 1
@@ -94,22 +101,25 @@ class MockPDFPreprocessor(PDFPreprocessor):
 
 
 @pytest.fixture
-def symlinked_doc_0() -> ProcessedFile:
+def symlinked_doc_0() -> DatashareFile:
     # Let's test with a symlinked file
     symlink_path = Path(TEST_PROJECT, "symlinks", "do", "c-", "not_a_passport.jpg")
-    symlinked_doc = safe_copy(PROCESSED_DOC_0, {"path": symlink_path})
+    path = WorkerFilePath(path=symlink_path, location=FileLocation.ARTIFACTS)
+    symlinked_doc = safe_copy(DS_FILE_0, {"value": path})
     return symlinked_doc
 
 
 @pytest.fixture
 def symlinked_doc_0_pages(
-    test_worker_config: PassportWorkerConfig, symlinked_doc_0: ProcessedFile
+    test_worker_config: PassportWorkerConfig, symlinked_doc_0: DatashareFile
 ) -> list[Path]:
     worker_paths = test_worker_config.paths
     workdir = worker_paths.workdir
-    output_root = workdir.joinpath("workflow_id")
+    output_root = workdir.joinpath(TEST_PROJECT, "workflow_id")
     output_root.mkdir(parents=True, exist_ok=True)
-    doc_0_page_dir = output_root / safe_dir(symlinked_doc_0.id) / symlinked_doc_0.id
+    doc_0_page_dir = (
+        output_root / safe_dir(symlinked_doc_0.doc_id) / symlinked_doc_0.doc_id
+    )
     doc_0_pages = [doc_0_page_dir / "page_1.png", doc_0_page_dir / "page_2.png"]
     return doc_0_pages
 
@@ -123,12 +133,12 @@ def test_preprocess_images_act(
     executor = test_worker_config.to_image_preprocessing_executor()
     worker_paths = config.paths
     workdir = worker_paths.workdir
-    output_root = workdir.joinpath("workflow_id")
+    output_root = workdir.joinpath(TEST_PROJECT, "workflow_id")
     output_root.mkdir(parents=True, exist_ok=True)
     doc_0_pages = symlinked_doc_0_pages
     processor = MockImageProcessor([doc_0_pages])
     batch_path = output_root / "batch.jsonl"
-    batch = [SYMLINKED_PROCESSED_DOC_0, PROCESSED_DOC_1]
+    batch = [SYMLINKED_DS_FILE_0, DS_FILE_1]
     batch_path.write_text("\n".join(d.model_dump_json() for d in batch))
 
     # When
@@ -143,16 +153,15 @@ def test_preprocess_images_act(
 
     # Then
     expected_successes = [
-        ProcessedPage(
-            page_number=page_number + 1,
-            **SYMLINKED_PROCESSED_DOC_0.child(p, worker_paths).model_dump(),
+        ProcessedPage.from_parent(
+            SYMLINKED_DS_FILE_0, p, worker_paths, page=page_number + 1
         )
         for page_number, p in enumerate(doc_0_pages)
     ]
     assert successes == expected_successes
     assert len(errors) == 1
     processing_error = errors[0]
-    assert processing_error.file.id == PROCESSED_DOC_1.id
+    assert processing_error.source.doc_id == DS_FILE_1.doc_id
     assert processing_error.error.title == "UnsupportedDocExtension"
 
 
@@ -165,12 +174,12 @@ async def test_preprocess_images_act_caching(
     executor = test_worker_config.to_image_preprocessing_executor()
     worker_paths = config.paths
     workdir = worker_paths.workdir
-    output_root = workdir.joinpath("workflow_id")
+    output_root = workdir.joinpath(TEST_PROJECT, "workflow_id")
     output_root.mkdir(parents=True, exist_ok=True)
     doc_0_pages = symlinked_doc_0_pages
     processor = MockImageProcessor([doc_0_pages])
     batch_path = output_root / "batch.jsonl"
-    batch = [SYMLINKED_PROCESSED_DOC_0]
+    batch = [SYMLINKED_DS_FILE_0]
     batch_path.write_text("\n".join(d.model_dump_json() for d in batch))
 
     # When
@@ -186,9 +195,8 @@ async def test_preprocess_images_act_caching(
     # Then
     assert not processor.processed
     expected_successes = [
-        ProcessedPage(
-            page_number=page_number + 1,
-            **SYMLINKED_PROCESSED_DOC_0.child(p, worker_paths).model_dump(),
+        ProcessedPage.from_parent(
+            SYMLINKED_DS_FILE_0, p, worker_paths, page=page_number + 1
         )
         for page_number, p in enumerate(doc_0_pages)
     ]
@@ -198,19 +206,19 @@ async def test_preprocess_images_act_caching(
 
 async def test_convert_to_pdfs_act(
     test_worker_config: PassportWorkerConfig,
-    docs_with_cached_artifacts: list[ProcessedFile],  # noqa: ARG001
+    docs_with_cached_artifacts: list[DatashareFile],  # noqa: ARG001
 ) -> None:
     # Given
     config = test_worker_config
     worker_paths = config.paths
     workdir = worker_paths.workdir
-    output_root = workdir.joinpath("workflow_id")
+    output_root = workdir.joinpath(TEST_PROJECT, "workflow_id")
     output_root.mkdir(parents=True)
     max_concurrency = 1
-    batch = [PROCESSED_DOC_2, PROCESSED_DOC_1]
+    batch = [DS_FILE_2, DS_FILE_1]
     conversion_results = {
-        PROCESSED_DOC_2.id: b"doc_2_as_pdf",
-        PROCESSED_DOC_1.id: UnsupportedDocExtension(
+        DS_FILE_2.doc_id: b"doc_2_as_pdf",
+        DS_FILE_1.doc_id: UnsupportedDocExtension(
             ".weirdext", sorted(GOTENBERG_SUPPORTED_EXTS)
         ),
     }
@@ -228,34 +236,36 @@ async def test_convert_to_pdfs_act(
     )
     # Then
     doc_2_as_pdf_path = (
-        output_root / safe_dir(PROCESSED_DOC_2.id) / f"{PROCESSED_DOC_2.id}.pdf"
+        output_root / safe_dir(DS_FILE_2.doc_id) / f"{DS_FILE_2.doc_id}.pdf"
     )
-    expected_successes = [PROCESSED_DOC_2.child(doc_2_as_pdf_path, worker_paths)]
+    expected_successes = [
+        WorkerFile.from_parent(DS_FILE_2, doc_2_as_pdf_path, worker_paths)
+    ]
     assert successes == expected_successes
     assert len(errors) == 1
     processing_error = errors[0]
-    assert processing_error.file.id == PROCESSED_DOC_1.id
+    assert processing_error.source.doc_id == DS_FILE_1.doc_id
     assert processing_error.error.title == "UnsupportedDocExtension"
 
 
 async def test_convert_to_pdfs_act_caching(
     test_worker_config: PassportWorkerConfig,
-    docs_with_cached_artifacts: list[ProcessedFile],  # noqa: ARG001
+    docs_with_cached_artifacts: list[DatashareFile],  # noqa: ARG001
 ) -> None:
     # Given
     config = test_worker_config
     worker_paths = config.paths
     workdir = worker_paths.workdir
-    output_root = workdir.joinpath("workflow_id")
+    output_root = workdir.joinpath(TEST_PROJECT, "workflow_id")
     output_root.mkdir(parents=True)
     max_concurrency = 1
-    batch = [PROCESSED_DOC_2]
-    conversion_results = {PROCESSED_DOC_2.id: b"doc_2_as_pdf"}
+    batch = [DS_FILE_2]
+    conversion_results = {DS_FILE_2.doc_id: b"doc_2_as_pdf"}
     pdf_converter = MockConverter(conversion_results=conversion_results)
     batch_path = output_root / "batch.jsonl"
     batch_path.write_text("\n".join(d.model_dump_json() for d in batch))
     doc_2_as_pdf_path = (
-        output_root / safe_dir(PROCESSED_DOC_2.id) / f"{PROCESSED_DOC_2.id}.pdf"
+        output_root / safe_dir(DS_FILE_2.doc_id) / f"{DS_FILE_2.doc_id}.pdf"
     )
     doc_2_as_pdf_path.parent.mkdir(parents=True, exist_ok=True)
     doc_2_as_pdf_path.write_bytes((DOCS_PATH / "passport.pdf").read_bytes())
@@ -270,7 +280,9 @@ async def test_convert_to_pdfs_act_caching(
     )
     # Then
     assert not pdf_converter.call_count
-    expected_successes = [PROCESSED_DOC_2.child(doc_2_as_pdf_path, worker_paths)]
+    expected_successes = [
+        WorkerFile.from_parent(DS_FILE_2, doc_2_as_pdf_path, worker_paths)
+    ]
     assert successes == expected_successes
     assert not errors
 
@@ -281,7 +293,7 @@ def doc_1_pages(
 ) -> list[Path]:
     worker_paths = test_worker_config.paths
     workdir = worker_paths.workdir
-    output_root = workdir.joinpath("workflow_id")
+    output_root = workdir.joinpath(TEST_PROJECT, "workflow_id")
     output_root.mkdir(parents=True, exist_ok=True)
     doc_0_page_dir = output_root / safe_dir(doc_0.id) / doc_0.id
     doc_0_pages = [doc_0_page_dir / "page_0.png", doc_0_page_dir / "page_1.png"]
@@ -291,16 +303,16 @@ def doc_1_pages(
 async def test_preprocess_pdfs_act(
     test_worker_config: PassportWorkerConfig,
     doc_1_pages: list[Path],
-    docs_with_cached_artifacts: list[ProcessedFile],  # noqa: ARG001
+    docs_with_cached_artifacts: list[DatashareFile],  # noqa: ARG001
 ) -> None:
     # Given
     config = test_worker_config
     worker_paths = config.paths
     workdir = worker_paths.workdir
-    output_root = workdir.joinpath("workflow_id")
+    output_root = workdir.joinpath(TEST_PROJECT, "workflow_id")
     output_root.mkdir(parents=True, exist_ok=True)
-    batch = [PROCESSED_DOC_1, PROCESSED_DOC_0]
-    results = [doc_1_pages, InvalidPDF(PROCESSED_DOC_0.id)]
+    batch = [DS_FILE_1, DS_FILE_0]
+    results = [doc_1_pages, InvalidPDF(DS_FILE_0.doc_id)]
     preprocessor = MockPDFPreprocessor(results)
     batch_path = output_root / "pdfs.jsonl"
     batch_path.write_text("\n".join(d.model_dump_json() for d in batch))
@@ -314,31 +326,33 @@ async def test_preprocess_pdfs_act(
     )
     # Then
     expected_successes = [
-        ProcessedPage(
-            page_number=page_number + 1,
-            **PROCESSED_DOC_1.child(p, worker_paths).model_dump(),
+        ProcessedPage.from_parent(
+            DS_FILE_1,
+            p,
+            worker_paths,
+            page=page_number + 1,
         )
         for page_number, p in enumerate(doc_1_pages)
     ]
     assert successes == expected_successes
     assert len(errors) == 1
     processing_error = errors[0]
-    assert processing_error.file.id == PROCESSED_DOC_0.id
+    assert processing_error.source.doc_id == DS_FILE_0.doc_id
     assert processing_error.error.title == "InvalidPDF"
 
 
 async def test_preprocess_pdfs_act_caching(
     test_worker_config: PassportWorkerConfig,
     doc_1_pages: list[Path],
-    docs_with_cached_artifacts: list[ProcessedFile],  # noqa: ARG001
+    docs_with_cached_artifacts: list[DatashareFile],  # noqa: ARG001
 ) -> None:
     # Given
     config = test_worker_config
     worker_paths = config.paths
     workdir = worker_paths.workdir
-    output_root = workdir.joinpath("workflow_id")
+    output_root = workdir.joinpath(TEST_PROJECT, "workflow_id")
     output_root.mkdir(parents=True, exist_ok=True)
-    batch = [PROCESSED_DOC_1]
+    batch = [DS_FILE_1]
     results = [doc_1_pages]
     preprocessor = MockPDFPreprocessor(results)
     batch_path = output_root / "pdfs.jsonl"
@@ -357,10 +371,7 @@ async def test_preprocess_pdfs_act_caching(
     # Then
     assert not preprocessor.processed
     expected_successes = [
-        ProcessedPage(
-            page_number=page_number + 1,
-            **PROCESSED_DOC_1.child(p, worker_paths).model_dump(),
-        )
+        ProcessedPage.from_parent(DS_FILE_1, p, worker_paths, page=page_number + 1)
         for page_number, p in enumerate(doc_1_pages)
     ]
     assert successes == expected_successes

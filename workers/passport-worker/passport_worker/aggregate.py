@@ -7,9 +7,9 @@ from datashare_python.objects import WorkerPaths
 from datashare_python.utils import async_read_jsonl_as
 
 from passport_worker.objects import (
-    FileProcessingError,
     PartialDetectionResult,
     PassportDetectionResponse,
+    PassportProcessingError,
 )
 
 
@@ -19,7 +19,7 @@ async def aggregate_results_act(
     workdir = paths.workdir
     preprocessing_errors = await asyncio.gather(
         *(
-            _as_list(async_read_jsonl_as(workdir / p, FileProcessingError))
+            _as_list(async_read_jsonl_as(workdir / p, PassportProcessingError))
             for p in error_paths
         )
     )
