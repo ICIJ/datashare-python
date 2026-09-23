@@ -2,13 +2,13 @@ import uuid
 
 import pytest
 from datashare_python.conftest import TEST_PROJECT
-from datashare_python.objects import ProcessedFile
-from extract_core import DoclingPipelineConfig
-from extract_worker.objects import (
-    MarkdownExtractArgs,
-    MarkdownExtractResponse,
-    ProcessingReport,
+from datashare_python.objects import (
+    ErrorReportWithPages,
+    ProcessedFile,
+    ProcessingReportWithPages,
 )
+from extract_core import DoclingPipelineConfig
+from extract_worker.objects import MarkdownExtractArgs, MarkdownExtractResponse
 from extract_worker.workflows import ExtractMarkdownContentWorkflow, TaskQueues
 from temporalio.client import Client as TemporalClient
 from temporalio.worker import Worker
@@ -25,7 +25,7 @@ async def test_extract_markdown_workflow_e2e(
     # Given
     client = test_temporal_client
     wf_id = f"extract-markdown-{uuid.uuid4()}"
-    doc_ids = [d.id for d in docs_with_cached_artifacts]
+    doc_ids = [d.doc_id for d in docs_with_cached_artifacts]
     args = MarkdownExtractArgs(
         project=TEST_PROJECT, docs=doc_ids, config=DoclingPipelineConfig()
     )
@@ -41,8 +41,8 @@ async def test_extract_markdown_workflow_e2e(
     # Then
     response = response.model_dump()
     expected_res = MarkdownExtractResponse(
-        processed=ProcessingReport(n_docs=2, n_pages=3),
-        successes=ProcessingReport(n_docs=2, n_pages=3),
-        errors=[],
+        processed=ProcessingReportWithPages(n_docs=2, n_pages=3),
+        successes=ProcessingReportWithPages(n_docs=2, n_pages=3),
+        errors=ErrorReportWithPages(n_docs=0, n_pages=0),
     ).model_dump()
     assert response == expected_res

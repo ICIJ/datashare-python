@@ -9,11 +9,12 @@ from typing import Protocol, Self, TypeVar
 
 from aiofile import async_open
 from aiohttp import ClientResponseError
-from datashare_python.objects import ProcessedPage, WorkerPaths
+from datashare_python.objects import PROCESSED_FILE_TA, DatashareFile, WorkerFile
 from datashare_python.types_ import AsyncProgressRateHandler, SyncProgressRateHandler
 from datashare_python.utils import (
     async_read_jsonl_as,
     read_jsonl_as,
+    reports_errors,
     safe_dir,
     to_raw_async_progress,
     to_raw_sync_progress,
@@ -33,11 +34,11 @@ from passport_worker.config import GotenbergPDFConverterConfig, PDFConverterType
 from passport_worker.constants import pil_supported_extensions
 from passport_worker.objects import (
     DefaultImagePreprocessorConfig,
-    FileProcessingError,
     ImagePreprocessorType,
-    ProcessedFile,
+    PassportProcessingError,
+    ProcessedPage,
+    WorkerPaths,
 )
-from passport_worker.utils import reports_errors
 
 logger = logging.getLogger(__name__)
 
@@ -86,7 +87,7 @@ class PDFConverter(RegistrableFromConfig):
     max_concurrency: int = 10
 
     @abstractmethod
-    async def __call__(self, doc: ProcessedFile, doc_bytes: bytes) -> bytes: ...
+    async def __call__(self, doc: DatashareFile, doc_bytes: bytes) -> bytes: ...
 
 
 @PDFConverter.register(PDFConverterType.GOTENBERG)
@@ -97,13 +98,13 @@ class GotenbergPDFConverter(GotenbergClient, PDFConverter):
         kwargs.pop("type")
         super().__init__(**kwargs)
 
-    async def __call__(self, doc: ProcessedFile, doc_bytes: bytes) -> bytes:
-        ext = doc.path.suffix.lower()
+    async def __call__(self, doc: DatashareFile, doc_bytes: bytes) -> bytes:
+        ext = doc.value.path.suffix.lower()
         try:
             converted = await self.convert_doc_to_pdf(doc_bytes, ext)
         except ClientResponseError as e:
             if e.status == 429:
-                raise ProcessingTimeout(doc.path) from e
+                raise ProcessingTimeout(doc.value.path) from e
             raise
         return converted
 
@@ -134,12 +135,12 @@ def preprocess_images_act(
     chunk_size: int = 1,
     event_loop: asyncio.AbstractEventLoop | None = None,
     progress: SyncProgressRateHandler | None = None,
-) -> tuple[list[ProcessedPage], list[FileProcessingError]]:
+) -> tuple[list[ProcessedPage], list[PassportProcessingError]]:
     if executor is None:
         executor = ProcessPoolExecutor(max_workers=1)
     n_processes = executor._max_workers
     logger.info("preprocessing images with %s worker processes", n_processes)
-    docs = list(read_jsonl_as(batch, ProcessedFile))
+    docs = list(read_jsonl_as(batch, PROCESSED_FILE_TA))
     n_docs = len(docs)
     chunk_size = 1 if n_docs < n_processes * chunk_size else chunk_size
     process_doc_fn = partial(
@@ -156,7 +157,7 @@ def preprocess_images_act(
     for res_i, res in enumerate(
         executor.map(process_doc_fn, docs, chunksize=chunk_size)
     ):
-        if isinstance(res, FileProcessingError):
+        if isinstance(res, PassportProcessingError):
             errors.append(res)
         else:
             successes.extend(res)
@@ -177,9 +178,9 @@ async def convert_to_pdfs_act(
     force_reprocessing: bool,
     output_root: Path,
     progress: AsyncProgressRateHandler | None = None,
-) -> tuple[list[ProcessedFile], list[FileProcessingError]]:
+) -> tuple[list[DatashareFile], list[PassportProcessingError]]:
     logger.info("converting documents to PDFs, %s docs at a time", max_concurrency)
-    docs = [d async for d in async_read_jsonl_as(batch, ProcessedFile)]
+    docs = [d async for d in async_read_jsonl_as(batch, PROCESSED_FILE_TA)]
     n_docs = len(docs)
     if progress is not None:
         progress = to_raw_async_progress(progress, max_progress=n_docs)
@@ -194,7 +195,7 @@ async def convert_to_pdfs_act(
     errors = []
     progress_modulo = max(n_docs // 5, 1)
     async for res in run_with_concurrency(aws, max_concurrency):
-        if isinstance(res, FileProcessingError):
+        if isinstance(res, PassportProcessingError):
             errors.append(res)
         else:
             successes.append(res)
@@ -209,25 +210,25 @@ async def convert_to_pdfs_act(
     return successes, errors
 
 
-@reports_errors(errors=REPORTED_ERRORS)
+@reports_errors(errors=REPORTED_ERRORS, exc_cls=PassportProcessingError)
 def _preprocess_image_doc(
-    doc: ProcessedFile,
+    doc: DatashareFile,
     image_preprocessor: ImagePreprocessor,
     paths: WorkerPaths,
     *,
     output_root: Path,
     force_reprocessing: bool,
 ) -> list[ProcessedPage]:
-    ext = doc.path.suffix.lower()
+    ext = doc.value.path.suffix.lower()
     if ext not in pil_supported_extensions():
         logger.info("image extension %s not supported !", ext)
         raise UnsupportedDocExtension(ext, sorted(pil_supported_extensions()))
-    output_dir = output_root / safe_dir(doc.id) / doc.id
+    output_dir = output_root / safe_dir(doc.doc_id) / doc.doc_id
     im_paths = image_preprocessor(
         doc.locate(paths), output_dir=output_dir, force_reprocessing=force_reprocessing
     )
     pages = [
-        ProcessedPage(page_number=p_i + 1, **doc.child(p, paths).model_dump())
+        ProcessedPage.from_parent(doc, p, paths, page=p_i + 1)
         for p_i, p in enumerate(im_paths)
     ]
     return pages
@@ -241,10 +242,10 @@ async def preprocess_pdfs_act(
     output_root: Path,
     force_reprocessing: bool,
     progress: AsyncProgressRateHandler | None = None,
-) -> tuple[list[ProcessedPage], list[FileProcessingError]]:
+) -> tuple[list[ProcessedPage], list[PassportProcessingError]]:
     if pdf_preprocessor is None:
         pdf_preprocessor = partial(process_pdf, colorspace=Colorspace.RGB)
-    docs = [d async for d in async_read_jsonl_as(batch, ProcessedFile)]
+    docs = [d async for d in async_read_jsonl_as(batch, PROCESSED_FILE_TA)]
     n_docs = len(docs)
     if progress is not None:
         progress = to_raw_async_progress(progress, max_progress=n_docs)
@@ -258,7 +259,7 @@ async def preprocess_pdfs_act(
             force_reprocessing=force_reprocessing,
             output_root=output_root,
         )
-        if isinstance(res, FileProcessingError):
+        if isinstance(res, PassportProcessingError):
             errors.append(res)
         else:
             successes.extend(res)
@@ -270,16 +271,16 @@ async def preprocess_pdfs_act(
     return successes, errors
 
 
-@reports_errors(errors=REPORTED_ERRORS)
+@reports_errors(errors=REPORTED_ERRORS, exc_cls=PassportProcessingError)
 async def _convert_doc_to_pdf(
-    doc: ProcessedFile,
+    doc: DatashareFile | WorkerFile,
     converter: PDFConverter,
     paths: WorkerPaths,
     output_root: Path,
     *,
     force_reprocessing: bool,
-) -> ProcessedFile:
-    pdf_path = output_root / safe_dir(doc.id) / f"{doc.id}.pdf"
+) -> WorkerFile:
+    pdf_path = output_root / safe_dir(doc.doc_id) / f"{doc.doc_id}.pdf"
     valid_pdf = await is_valid_pdf(pdf_path)
     if force_reprocessing or not valid_pdf:
         async with async_open(doc.locate(paths), "rb") as f:
@@ -288,13 +289,13 @@ async def _convert_doc_to_pdf(
         pdf_path.parent.mkdir(parents=True, exist_ok=True)
         async with async_open(pdf_path, "wb") as f:
             await f.write(pdf_bytes)
-    processed = doc.child(pdf_path, paths)
+    processed = WorkerFile.from_parent(doc, pdf_path, paths)
     return processed
 
 
-@reports_errors(errors=REPORTED_ERRORS)
+@reports_errors(errors=REPORTED_ERRORS, exc_cls=PassportProcessingError)
 async def _preprocess_pdf(
-    doc: ProcessedFile,
+    doc: DatashareFile | WorkerFile,
     pdf_processor: PDFPreprocessor,
     paths: WorkerPaths,
     *,
@@ -304,7 +305,7 @@ async def _preprocess_pdf(
     pdf_path = doc.locate(paths)
     async with async_open(pdf_path, "rb") as f:
         pdf_bytes = await f.read()
-    output_dir = output_root / safe_dir(doc.id) / doc.id
+    output_dir = output_root / safe_dir(doc.doc_id) / doc.doc_id
     output_dir.mkdir(parents=True, exist_ok=True)
     pages = await asyncio.to_thread(
         pdf_processor,
@@ -314,7 +315,7 @@ async def _preprocess_pdf(
         force_reprocessing=force_reprocessing,
     )
     pages = [
-        ProcessedPage(page_number=p_i + 1, **doc.child(p, paths).model_dump())
+        ProcessedPage.from_parent(doc, p, paths, page=p_i + 1)
         for p_i, p in enumerate(pages)
     ]
     return pages

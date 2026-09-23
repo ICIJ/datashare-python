@@ -29,7 +29,7 @@ from datashare_python.conftest import (  # noqa: F401
     text_0,
     text_1,
 )
-from datashare_python.objects import Document, ProcessedFile, WorkerPaths
+from datashare_python.objects import DatashareFile, Document, ProcessedFile, WorkerPaths
 from datashare_python.types_ import TemporalClient
 from datashare_python.utils import artifacts_dir
 from extract_core.objects import SupportedExt
@@ -135,7 +135,7 @@ def docs_with_cached_artifacts(
     docs = [
         d for d in populate_es if d.path is not None and d.path.suffix in supported_exts
     ]
-    paths = []
+    files = []
     for doc in docs:
         doc_path = DOCS_PATH / doc.path
         if doc.is_root_document:
@@ -144,14 +144,14 @@ def docs_with_cached_artifacts(
         else:
             artifact_path = (
                 config.paths.artifacts
-                / artifacts_dir(doc.id, project=doc.index)
+                / artifacts_dir(doc.id, project=doc.project)
                 / "raw"
             )
             artifact_path.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy(doc_path, artifact_path)
-        fs_doc = doc.to_processed_file()
-        paths.append(fs_doc)
-    return paths
+        ds_file = DatashareFile.from_parent(doc)
+        files.append(ds_file)
+    return files
 
 
 @pytest.fixture(scope="session")

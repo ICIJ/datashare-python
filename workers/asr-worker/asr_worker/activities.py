@@ -1,32 +1,26 @@
-import asyncio
+import json
 import logging
-from asyncio import AbstractEventLoop
-from collections.abc import AsyncGenerator, AsyncIterable, Iterable
+from enum import StrEnum, unique
 from functools import partial
-from itertools import tee
 from pathlib import Path
-from typing import Annotated, Any, Protocol, cast
+from typing import Annotated, Any, cast
 
-from aiofile import async_open
 from caul_core import (
+    ASRResult,
+    FSProcessedSegment,
     InferenceRunner,
     InferenceRunnerConfig,
     Postprocessor,
-    PostprocessorConfig,
     Preprocessor,
     PreprocessorConfig,
 )
-from caul_core.objects import (
-    ASRResult,
-    Error,
-    FSProcessedSegment,
-    ProcessedAudioSegment,
-)
 from datashare_python.dependencies import lifespan_es_client, lifespan_worker_config
-from datashare_python.objects import DocRoute, Document
+from datashare_python.objects import (
+    PROCESSED_FILE_TA,
+    WorkerPaths,
+)
 from datashare_python.types_ import (
     AsyncProgressRateHandler,
-    RawAsyncProgressHandler,
     SyncProgressRateHandler,
     Weight,
 )
@@ -34,59 +28,26 @@ from datashare_python.utils import (
     ActivityWithProgress,
     activity_defn,
     activity_workdir,
-    artifact_path,
     config_cache_key,
-    debuggable_name,
     enter_cm,
-    publish_and_consume,
     read_jsonl_as,
-    safe_dir,
-    symlink_embedded_document_to_workdir,
     to_raw_async_progress,
     to_raw_sync_progress,
-    write_artifact,
 )
-from elasticsearch._async.helpers import async_bulk
-from icij_common.es import (
-    DOC_CONTENT,
-    DOC_CONTENT_TYPE,
-    DOC_EXTRACTION_LEVEL,
-    DOC_LANGUAGE,
-    DOC_METADATA,
-    DOC_PATH,
-    DOC_ROOT_ID,
-    ES_DOCUMENT_TYPE,
-    HITS,
-    ID_,
-    QUERY,
-    ESClient,
-    and_query,
-    has_type,
-)
-from icij_common.iter_utils import async_batches
 from icij_common.pydantic_utils import safe_copy
 
+from .aggregate import aggregate_results_act
 from .config import ASRWorkerConfig
-from .constants import (
-    INDEX_TRANSCRIPTION_ACTIVITY,
-    POSTPROCESS_ACTIVITY,
-    PREPROCESS_ACTIVITY,
-    RUN_INFERENCE_ACTIVITY,
-    SEARCH_AUDIOS_ACTIVITY,
-    SUPPORTED_CONTENT_TYPES,
-)
 from .dependencies import (
     lifespan_inference_runner_cache,
     lifespan_postprocessor_cache,
     lifespan_preprocessor_cache,
 )
-from .objects import (
-    ASRArgs,
-    ASRIndexingConfig,
-    Transcription,
-    TranscriptionArtifact,
-    TranscriptionManifestEntry,
-)
+from .es import index_transcriptions_act, search_audios_act
+from .inference import infer_act
+from .objects import ASRArgs, ASRIndexingConfig, ASRResponse
+from .postprocessing import postprocess_act
+from .preprocessing import preprocess_act
 
 logger = logging.getLogger(__name__)
 
@@ -95,14 +56,22 @@ _SEARCH_AUDIOS_WEIGHT = _BASE_WEIGHT * 2
 _INDEX_AUDIOS_WEIGHT = _BASE_WEIGHT * 3
 _PREPROCESS_WEIGHT = 5 * _BASE_WEIGHT
 _INFERENCE_WEIGHT = 10 * _PREPROCESS_WEIGHT
+_AGGREGATE_RESULT_WEIGHT = _SEARCH_AUDIOS_WEIGHT
 
 
-class ArtifactFactory(Protocol):
-    def __call__(self, artifact: bytes) -> TranscriptionArtifact: ...
+@unique
+class Activity(StrEnum):
+    LOAD_WORKER_CONFIG = "asr.transcription.config"
+    SEARCH_AUDIOS = "asr.transcription.search-audios"
+    PREPROCESS = "asr.transcription.preprocess"
+    INFER = "asr.transcription.infer"
+    POSTPROCESS = "asr.transcription.postprocess"
+    INDEX_TRANSCRIPTIONS = "asr.transcription.index"
+    AGGREGATE_RESULTS = "asr.transcription.aggregate-results"
 
 
 class ASRActivities(ActivityWithProgress):
-    @activity_defn(name=SEARCH_AUDIOS_ACTIVITY)
+    @activity_defn(name=Activity.SEARCH_AUDIOS)
     async def search_audio_paths(
         self,
         project: str,
@@ -122,6 +91,7 @@ class ASRActivities(ActivityWithProgress):
             p.relative_to(workdir)
             async for p in search_audios_act(
                 project,
+                worker_config.paths,
                 es_client,
                 query,
                 output_dir=output_dir,
@@ -130,7 +100,7 @@ class ASRActivities(ActivityWithProgress):
         ]
         return batch_paths
 
-    @activity_defn(name=PREPROCESS_ACTIVITY)
+    @activity_defn(name=Activity.PREPROCESS)
     def preprocess(
         self,
         audio_batch: Path,
@@ -140,12 +110,13 @@ class ASRActivities(ActivityWithProgress):
         progress: Annotated[  # noqa: ARG002
             SyncProgressRateHandler | None, Weight(value=_PREPROCESS_WEIGHT)
         ] = None,
-    ) -> list[Path]:
+    ) -> tuple[list[Path], Path, Path]:
         # Import caul.tasks to populate the Preprocessor registry
         import caul.tasks  # noqa: F401, PLC0415
 
-        worker_config = lifespan_worker_config()
-        workdir = worker_config.paths.workdir
+        worker_config = cast(ASRWorkerConfig, lifespan_worker_config())
+        paths = worker_config.paths
+        workdir = paths.workdir
         output_dir = activity_workdir(workdir, project)
         output_dir.mkdir(parents=True, exist_ok=True)
         audio_batch = workdir / audio_batch
@@ -155,38 +126,51 @@ class ASRActivities(ActivityWithProgress):
         preprocessor = cache.get_or_cache_resource(
             preprocessor_key, preprocessor_factory
         )
-        batch_paths = preprocess_act(
-            preprocessor,
-            audio_batch,
-            worker_config=worker_config,
-            output_dir=output_dir,
+        audios = list(read_jsonl_as(audio_batch, PROCESSED_FILE_TA))
+        batches, errors, audio_routes = preprocess_act(
+            preprocessor, audios, worker_config, output_dir=output_dir
         )
-        batches = [p.relative_to(workdir) for p in batch_paths]
-        return batches
+        res_root = activity_workdir(workdir, project)
+        res_root.mkdir(parents=True, exist_ok=True)
+        batch_files = []
+        for batch_i, batch in enumerate(batches):
+            batch = (_relative_to_workdir(seg, res_root, paths) for seg in batch)  # noqa: PLW2901
+            batch_file = output_dir / f"batch-{batch_i}.jsonl"
+            batch_file.write_text("\n".join(seg.model_dump_json() for seg in batch))
+            batch_files.append(batch_file.relative_to(workdir))
+        errors_path = res_root / "errors.jsonl"
+        errors_path.write_text("\n".join(p.model_dump_json() for p in errors))
+        audio_routes_path = res_root / "routes.json"
+        audio_routes_path.write_text(json.dumps(audio_routes))
+        return batch_files, errors_path, audio_routes_path
 
-    @activity_defn(name=RUN_INFERENCE_ACTIVITY)
+    @activity_defn(name=Activity.INFER)
     async def infer(
         self,
-        preprocessed_inputs: list[Path],
+        batches: list[Path],
         project: str,
         config: InferenceRunnerConfig,
         *,
         progress: Annotated[  # noqa: ARG002
             AsyncProgressRateHandler | None, Weight(value=_INFERENCE_WEIGHT)
         ] = None,
-    ) -> list[Path]:
+    ) -> tuple[list[Path], Path]:
         # Import caul.tasks to populate the InferenceRunner registry
         import caul.tasks  # noqa: F401, PLC0415
 
+        n_batches = len(batches)
+        if progress is not None:
+            progress = to_raw_async_progress(progress, max_progress=n_batches)
         worker_config = cast(ASRWorkerConfig, lifespan_worker_config())
         workdir = worker_config.paths.workdir
         output_dir = activity_workdir(workdir, project)
         output_dir.mkdir(parents=True, exist_ok=True)
-        preprocessed_inputs = [workdir / p for p in preprocessed_inputs]
-        if progress is not None:
-            progress = to_raw_async_progress(
-                progress, max_progress=len(preprocessed_inputs)
-            )
+        batches = (workdir / p for p in batches)
+        batches = (read_jsonl_as(b, FSProcessedSegment) for b in batches)
+        batches = (
+            tuple(safe_copy(seg, update={"path": workdir / seg.path}) for seg in b)
+            for b in batches
+        )
         device = worker_config.devices.inference
         logger.info("loading model %s on %s device", config.model, device)
         runner_factory = enter_cm(
@@ -197,64 +181,69 @@ class ASRActivities(ActivityWithProgress):
         inference_runner = cache.get_or_cache_resource(runner_key, runner_factory)
         logger.info(
             "model loaded, starting inference on %s audio chunks !",
-            len(preprocessed_inputs),
+            n_batches,
         )
-        inference_res = infer_act(
-            inference_runner,
-            preprocessed_inputs,
-            output_dir=output_dir,
-            progress=progress,
+        successes, errors = await infer_act(
+            inference_runner, batches, output_dir=output_dir, progress=progress
         )
-        inference_res = [p.relative_to(workdir) async for p in inference_res]
-        return inference_res
+        inference_res = [p.relative_to(workdir) for p in successes]
+        errors_path = output_dir / "errors.jsonl"
+        errors_path.write_text("\n".join(e.model_dump_json() for e in errors))
+        return inference_res, errors_path
 
-    @activity_defn(name=POSTPROCESS_ACTIVITY)
+    @activity_defn(name=Activity.POSTPROCESS)
     def postprocess(
         self,
         inference_results: list[Path],
-        audio_batch: Path,
-        config: PostprocessorConfig,
+        audio_routes: Path,
         args: ASRArgs,
         *,
         progress: Annotated[  # noqa: ARG002
             SyncProgressRateHandler | None, Weight(value=_BASE_WEIGHT)
         ] = None,
-    ) -> list[DocRoute]:
+    ) -> tuple[Path, Path]:
         # Import caul.tasks to populate the Postprocessor‹ registry
         import caul.tasks  # noqa: F401, PLC0415
 
         worker_config = lifespan_worker_config()
         workdir = worker_config.paths.workdir
-        audio_batch = workdir / audio_batch
         artifacts_root = worker_config.paths.artifacts
+        n_batches = len(inference_results)
         inference_results = (
             ASRResult.model_validate_json((workdir / p).read_text())
             for p in inference_results
         )
-
-        docs = list(read_jsonl_as(audio_batch, Document))
+        audio_routes = json.loads(audio_routes.read_text())
         if progress is not None:
-            progress = to_raw_sync_progress(progress, max_progress=len(docs))
+            progress = to_raw_sync_progress(progress, max_progress=n_batches)
+        config = args.config.postprocessing
         postprocessor_factory = enter_cm(partial(Postprocessor.from_config, config))
         postprocessor_key = config_cache_key(config)
         cache = lifespan_postprocessor_cache()
         postprocessor = cache.get_or_cache_resource(
             postprocessor_key, postprocessor_factory
         )
-        return postprocess_act(
+        success, errors = postprocess_act(
             inference_results,
-            docs,
+            audio_routes,
             postprocessor,
             args,
             artifacts_root=artifacts_root,
             event_loop=self._event_loop,
             progress=progress,
         )
+        output_dir = activity_workdir(workdir, args.project)
+        output_dir.mkdir(parents=True, exist_ok=True)
+        successes_path = output_dir / "routes.jsonl"
+        successes_path.write_text(json.dumps(success))
+        errors_path = output_dir / "errors.jsonl"
+        errors_path.write_text("\n".join(e.model_dump_json() for e in errors))
+        return successes_path, errors_path
 
-    @activity_defn(name=INDEX_TRANSCRIPTION_ACTIVITY)
+    @activity_defn(name=Activity.INDEX_TRANSCRIPTIONS)
     async def index_transcriptions(
         self,
-        routes: list[DocRoute],
+        routes: Path,
         project: str,
         indexing_config: ASRIndexingConfig,
         *,
@@ -265,12 +254,13 @@ class ASRActivities(ActivityWithProgress):
         worker_config = lifespan_worker_config()
         es_client = lifespan_es_client()
         target_bulk_char_size = worker_config.indexing.target_bulk_char_size
+        routes = json.loads(routes.read_text())
         logger.info(
             "indexing %s transcriptions by bulk of about %s characters !",
             len(routes),
             target_bulk_char_size,
         )
-        n_docs = await index_transcriptions_act(
+        n_indexed = await index_transcriptions_act(
             routes,
             project,
             es_client,
@@ -279,333 +269,32 @@ class ASRActivities(ActivityWithProgress):
             target_bulk_char_size=target_bulk_char_size,
             progress=progress,
         )
-        return n_docs
+        return n_indexed
+
+    @activity_defn(name=Activity.AGGREGATE_RESULTS)
+    async def aggregate_results(
+        self,
+        batches: list[Path],
+        errors: list[Path],
+        project: str,
+        *,
+        progress: Annotated[  # noqa: ARG002
+            AsyncProgressRateHandler | None, Weight(value=_AGGREGATE_RESULT_WEIGHT)
+        ] = None,
+    ) -> ASRResponse:
+        worker_config = cast(ASRWorkerConfig, lifespan_worker_config())
+        roots = worker_config.paths
+        logger.info("aggregating result!")
+        report = await aggregate_results_act(batches, errors, project, roots)
+        return report
 
 
-async def search_audios_act(
-    project: str,
-    es_client: ESClient,
-    query: dict[str, Any],
-    *,
-    output_dir: Path,
-    batch_size: int,
-) -> AsyncIterable[Path]:
-    # TODO: supported content types should be args
-    docs = _search_audio_paths(
-        es_client, project, query, supported_content_types=SUPPORTED_CONTENT_TYPES
-    )
-    async for p in write_audio_batches(docs, output_dir, batch_size):
-        yield p
-
-
-def preprocess_act(
-    preprocessor: Preprocessor,
-    audio_batch: Path,
-    *,
-    worker_config: ASRWorkerConfig,
-    output_dir: Path,
-) -> list[Path]:
-    logger.debug("locating files...")
-    audios = read_jsonl_as(audio_batch, Document)
-    audios = (a.to_processed_file() for a in audios)
-    audios = (
-        symlink_embedded_document_to_workdir(a, worker_config.paths).locate(
-            worker_config.paths
-        )
-        for a in audios
-    )
-    # TODO: implement a caching strategy here, we could avoid processing files
-    #  which have already been preprocessed
-    logger.debug("starting preprocessing...")
-    return list(_preprocess(preprocessor, audios, output_dir))
-
-
-async def infer_act(
-    inference_runner: InferenceRunner,
-    preprocessed_inputs: list[Path],
-    output_dir: Path,
-    event_loop: AbstractEventLoop | None = None,
-    progress: RawAsyncProgressHandler | None = None,
-) -> AsyncIterable[Path]:
-    # Audios paths in the input are relative to the batch file directory
-    inputs = (
-        tuple(
-            _relative_input(i, f.parent) for i in read_jsonl_as(f, FSProcessedSegment)
-        )
-        for f in preprocessed_inputs
-    )
-    audio_paths, inputs = tee(inputs)
-    audio_paths = (i.path for b in audio_paths for i in b)
-    # TODO: implement caching
-    inference_results = await asyncio.to_thread(
-        _transcribe_as_list, inference_runner, list(inputs)
-    )
-    for res_i, (path, asr_res) in enumerate(
-        zip(audio_paths, inference_results, strict=True)
-    ):
-        filename = f"{debuggable_name(path.name)}-transcript.json"
-        transcript_path = output_dir / safe_dir(filename) / filename
-        transcript_path.parent.mkdir(parents=True, exist_ok=True)
-        logger.debug(
-            "run inference for %s, writing result to %s", path, transcript_path
-        )
-        transcript_path.write_text(asr_res.model_dump_json())
-        yield transcript_path
-        if progress is not None and event_loop is not None:
-            await progress(res_i)
-
-
-def _transcribe_as_list(
-    inference_runner: InferenceRunner,
-    inputs: Iterable[tuple[ProcessedAudioSegment, ...]],
-) -> list[ASRResult]:
-    return list(inference_runner.process(inputs))
-
-
-def postprocess_act(
-    inference_results: Iterable[ASRResult],
-    docs: list[Document],
-    postprocessor: Postprocessor,
-    args: ASRArgs,
-    *,
-    artifacts_root: Path,
-    event_loop: AbstractEventLoop | None = None,
-    progress: SyncProgressRateHandler | None = None,
-) -> list[DocRoute]:
-    transcriptions = postprocessor.process(inference_results)
-    # Strict is important here !
-    for i, (doc, asr_result) in enumerate(zip(docs, transcriptions, strict=True)):
-        manifest_entry = TranscriptionManifestEntry.complete(
-            args, confidence=asr_result.score
-        )
-        artifact_factory = partial(
-            TranscriptionArtifact,
-            project=args.project,
-            doc_id=doc.id,
-            manifest_entry=manifest_entry,
-        )
-        t_path = write_transcription(asr_result, artifact_factory, artifacts_root)
-        logger.debug("wrote transcription for %s", t_path)
-        if progress is not None and event_loop is not None:
-            progress(i, event_loop)
-    routes = [d.to_route() for d in docs]
-    return routes
-
-
-# TODO: try to reduce the number of args here
-async def index_transcriptions_act(  # noqa: PLR0917
-    routes: Iterable[DocRoute],
-    project: str,
-    es_client: ESClient,
-    artifact_root: Path,
-    target_bulk_char_size: int = 100_000,
-    es_concurrency: int = 5,
-    indexing_config: ASRIndexingConfig = None,
-    progress: AsyncProgressRateHandler | None = None,
-) -> int:
-    if indexing_config is None:
-        indexing_config = ASRIndexingConfig()
-    es_queue = asyncio.Queue(maxsize=es_concurrency)
-    publisher = _read_transcriptions_and_queue(
-        list(routes),
-        es_queue,
-        project,
-        target_bulk_char_size,
-        artifact_root=artifact_root,
-        indexing_config=indexing_config,
-        progress=progress,
-    )
-    publisher = asyncio.create_task(publisher)
-    publisher_callback = lambda: es_queue.put_nowait(None)  # noqa: E731
-    consumer = asyncio.create_task(
-        _write_transcriptions_to_es(es_client, queue=es_queue, project=project)
-    )
-    n_docs, _ = await publish_and_consume(
-        publisher, publisher_callback, consumer=consumer
-    )
-    return n_docs
-
-
-def _preprocess(
-    preprocessor: Preprocessor, audios: Iterable[Path], output_dir: Path
-) -> Iterable[Path]:
-    audios = (str(a) for a in audios)
-    for batch_i, batch in enumerate(
-        preprocessor.process(audios, output_dir=output_dir)
-    ):
-        if isinstance(batch, Error):
-            logger.error(
-                "segment '%s' was not properly decoded with error '%s'. Skipping.",
-                batch.metadata,
-                batch.detail,
-            )
-            continue
-        # TODO: we might to create safe subdirs to avoid creating too many
-        #  files in the same dir
-        batch_file = output_dir / f"{batch_i}.jsonl"
-        logger.debug("writing batch to %s", batch_file)
-        with batch_file.open("w") as f:
-            for processed in batch:
-                f.write(processed.model_dump_json() + "\n")
-        yield batch_file
-
-
-def write_transcription(
-    asr_result: ASRResult, artifact_factory: ArtifactFactory, artifacts_root: Path
-) -> Path:
-    result = Transcription.from_asr_handler_result(asr_result)
-    artifact_bytes = result.model_dump_json().encode()
-    artifact = artifact_factory(artifact=artifact_bytes)
-    # TODO: if transcriptions are too large we could also serialize them
-    #  as jsonl
-    rel_path = write_artifact(artifacts_root, artifact)
-    return rel_path
-
-
-def _relative_input(
-    processed_segment: FSProcessedSegment, root: Path
+def _relative_to_workdir(
+    seg: FSProcessedSegment, output_dir: Path, paths: WorkerPaths
 ) -> FSProcessedSegment:
-    path = root / processed_segment.path
-    return safe_copy(processed_segment, update={"path": path})
-
-
-_EXCLUDED_FROM_BATCH_SERIALIZATION = {"type", "tags"}
-
-
-async def write_audio_batches(
-    docs: AsyncIterable[Document], root: Path, batch_size: int
-) -> AsyncIterable[Path]:
-    batch_id = 0
-    async for batch in async_batches(docs, batch_size):
-        batch_path = root / f"{batch_id}.txt"
-        with batch_path.open("w") as f:
-            for doc in batch:
-                as_jsonl = doc.model_dump_json(
-                    exclude_none=True, exclude=_EXCLUDED_FROM_BATCH_SERIALIZATION
-                )
-                f.write(f"{as_jsonl}\n")
-        yield batch_path
-        batch_id += 1
-
-
-_DOC_TYPE_QUERY = has_type(type_field="type", type_value=ES_DOCUMENT_TYPE)
-_DOC_CONTENT_SOURCES = [
-    DOC_PATH,
-    DOC_ROOT_ID,
-    DOC_LANGUAGE,
-    DOC_METADATA,
-    DOC_ROOT_ID,
-    DOC_EXTRACTION_LEVEL,
-]
-
-
-async def _search_audio_paths(
-    es_client: ESClient,
-    project: str,
-    query: dict[str, Any],
-    supported_content_types: set[str],
-) -> AsyncGenerator[Document, None]:
-    body = _with_audio_content(query, supported_content_types)
-    async for page in es_client.poll_search_pages(
-        index=project, body=body, sort="_doc:asc", _source_includes=_DOC_CONTENT_SOURCES
-    ):
-        for hit in page[HITS][HITS]:
-            yield Document.from_es(hit)
-
-
-def _content_type_query(supported_content_types: set[str]) -> dict[str, Any]:
-    content_type_query = {"terms": {DOC_CONTENT_TYPE: sorted(supported_content_types)}}
-    doc_type = has_type(type_field="type", type_value=ES_DOCUMENT_TYPE)
-    return and_query(content_type_query, doc_type)
-
-
-def _with_audio_content(
-    query: dict[str, Any], supported_content_types: set[str]
-) -> dict[str, Any]:
-    type_query = _content_type_query(supported_content_types)
-    if not query:
-        return type_query
-    return and_query(query, type_query[QUERY])
-
-
-async def _read_transcriptions_and_queue(
-    docs: list[DocRoute],
-    queue: asyncio.Queue,
-    project: str,
-    target_bulk_char_size: int,
-    indexing_config: ASRIndexingConfig,
-    *,
-    artifact_root: Path,
-    progress: AsyncProgressRateHandler | None = None,
-) -> int:
-    n_docs = len(docs)
-    if not n_docs:
-        return n_docs
-    if progress is not None:
-        progress = to_raw_async_progress(progress, max_progress=n_docs)
-    bulk = []
-    bulk_char_size = 0
-    n_docs = len(docs)
-    for doc_i, route in enumerate(docs):
-        routing, doc_id = route
-        transcription_path = artifact_path(
-            doc_id,
-            TranscriptionArtifact,
-            project=project,
-            root=artifact_root,
-        )
-        async with async_open(transcription_path) as f:
-            transcription = Transcription.model_validate_json(await f.read())
-        indexed = transcription.as_text(
-            indexing_config.transcript_sep, speaker_sep=indexing_config.speaker_sep
-        )
-        if bulk_char_size + len(indexed) >= target_bulk_char_size and bulk:
-            await queue.put(bulk)
-            bulk = []
-            logger.debug("queued %s / %s transcription for indexation !", doc_i, n_docs)
-        bulk.append((route, indexed))
-        if progress is not None and doc_i % 10 == 0:
-            await progress(doc_i)
-    # Empty the buffer
-    if bulk:
-        await queue.put(bulk)
-    if progress is not None:
-        await progress(n_docs)
-    queue.put_nowait(None)
-    return n_docs
-
-
-async def _write_transcriptions_to_es(
-    es_client: ESClient, queue: asyncio.Queue, project: str
-) -> None:
-    while True:
-        transcriptions = await queue.get()
-        if transcriptions is None:
-            logger.debug("popped poison pill from the queue, exiting !")
-            queue.task_done()
-            return
-        logger.debug("writing translations to the index..")
-        await _update_docs_content(es_client, transcriptions, project=project)
-        logger.debug("translation written !")
-        queue.task_done()
-
-
-async def _update_docs_content(
-    es_client: ESClient,
-    transcribed_docs: Iterable[tuple[DocRoute, str]],
-    project: str,
-) -> None:
-    actions = (
-        {
-            "_op_type": "update",
-            "_index": project,
-            "_routing": routing,
-            ID_: doc_id,
-            "doc": {DOC_CONTENT: transcription},
-        }
-        for (routing, doc_id), transcription in transcribed_docs
-    )
-    await async_bulk(es_client, actions, raise_on_error=True, refresh="wait_for")
+    abs_path = output_dir / seg.path
+    rel_path = abs_path.relative_to(paths.workdir)
+    return safe_copy(seg, update={"path": rel_path})
 
 
 REGISTRY = [
@@ -614,4 +303,5 @@ REGISTRY = [
     ASRActivities.infer,
     ASRActivities.postprocess,
     ASRActivities.index_transcriptions,
+    ASRActivities.aggregate_results,
 ]

@@ -238,12 +238,12 @@ class PassportDetectionActivities(ActivityWithProgress):
         worker_config = cast(PassportWorkerConfig, lifespan_worker_config())
         batch_size = worker_config.inference.batch_size
         batches_per_task = worker_config.inference.batches_per_task
-        worker_paths = worker_config.paths
-        output_root = activity_workdir(worker_paths.workdir, project)
+        paths = worker_config.paths
+        output_root = activity_workdir(paths.workdir, project)
         output_root.mkdir(parents=True, exist_ok=True)
         return await create_inference_batches_act(
             batches,
-            worker_paths,
+            paths,
             output_root,
             target_batches_per_task=batches_per_task,
             inference_batch_size=batch_size,

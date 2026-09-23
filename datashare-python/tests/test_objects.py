@@ -11,16 +11,17 @@ from datashare_python.constants import TIKA_METADATA_RESOURCENAME
 from datashare_python.objects import (
     BaseModel,
     ByteRangesPagination,
+    DatashareFile,
     DatashareLanguage,
     Document,
-    DocumentLocation,
+    FileLocation,
     FilesystemPagination,
     ManifestEntry,
     Pages,
-    ProcessedFile,
     Task,
     TaskArgs,
     TaskState,
+    WorkerFilePath,
 )
 from pydantic import TypeAdapter, ValidationError
 from temporalio import activity
@@ -109,22 +110,16 @@ def test_is_root_document(doc: Document, *, is_root: bool) -> None:
     assert doc.is_root_document == is_root
 
 
-def test_filesystem_document_should_raise_on_absolute_path() -> None:
+def test_worker_file_path_should_raise_on_absolute_path() -> None:
     # Given
     path = Path("/some/absolute/path")
     # When/Then
-    expected = re.escape("FilesystemDocument path should always be relative")
+    expected = re.escape("WorkerFilePath path should always be relative")
     with pytest.raises(ValidationError, match=expected):
-        ProcessedFile(
-            id="some_id",
-            path=path,
-            project="id",
-            location=DocumentLocation.FILESYSTEM,
-            resource_name="aa",
-        )
+        _ = WorkerFilePath(path=path, location=FileLocation.WORKDIR)
 
 
-def test_document_to_filesystem_document_use_relative_path() -> None:
+def test_datashare_file_from_parent_use_relative_path() -> None:
     # Given
     path = Path("/some/absolute/path/resource.file")
     assert path.is_absolute()
@@ -137,9 +132,9 @@ def test_document_to_filesystem_document_use_relative_path() -> None:
         metadata=meta,
     )
     # When
-    fs_doc = doc.to_processed_file()
+    fs_doc = DatashareFile.from_parent(doc)
     relative_path = Path("some/absolute/path/resource.file")
-    assert fs_doc.path == relative_path
+    assert fs_doc.value.path == relative_path
 
 
 def test_datashare_language() -> None:

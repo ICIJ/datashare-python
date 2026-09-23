@@ -5,26 +5,25 @@ from collections.abc import AsyncGenerator
 from pathlib import Path
 
 import pytest
+from asr_worker.activities import Activity
 from asr_worker.config import ASRWorkerConfig
-from asr_worker.constants import (
-    INDEX_TRANSCRIPTION_ACTIVITY,
-    POSTPROCESS_ACTIVITY,
-    PREPROCESS_ACTIVITY,
-    RUN_INFERENCE_ACTIVITY,
-    SEARCH_AUDIOS_ACTIVITY,
-)
 from asr_worker.objects import (
     ASRArgs,
     ASRPipelineConfig,
+    ASRResponse,
     Timestamp,
     Transcript,
     Transcription,
     TranscriptionManifestEntry,
 )
-from asr_worker.workflows import ASRWorkflow, TaskQueues
+from asr_worker.workflows import ASRWorkflow, TaskQueue
 from caul_core import ASRResult
 from datashare_python.conftest import TEST_PROJECT, dev_worker_context
-from datashare_python.objects import ManifestEntryStatus, ProcessedFile
+from datashare_python.objects import (
+    ManifestEntryStatus,
+    ProcessedFile,
+    ProcessingReport,
+)
 from datashare_python.types_ import TemporalClient
 from pydantic import TypeAdapter
 from temporalio.worker import Worker
@@ -52,7 +51,7 @@ async def workflows_worker(
 ) -> AsyncGenerator[None, None]:
     client = test_temporal_client_session
     worker_id = f"worker-{uuid.uuid4()}"
-    task_queue = TaskQueues.WORKFLOWS
+    task_queue = TaskQueue.WORKFLOWS
     worker_ctx = dev_worker_context(
         worker_id,
         is_async=True,
@@ -72,9 +71,13 @@ async def io_bound_worker(
 ) -> AsyncGenerator[None, None]:
     client = test_temporal_client_session
     worker_id = f"worker-{uuid.uuid4()}"
-    task_queue = TaskQueues.IO
+    task_queue = TaskQueue.IO
     dependencies = "asr.io"
-    activities = [SEARCH_AUDIOS_ACTIVITY, INDEX_TRANSCRIPTION_ACTIVITY]
+    activities = [
+        Activity.SEARCH_AUDIOS,
+        Activity.INDEX_TRANSCRIPTIONS,
+        Activity.AGGREGATE_RESULTS,
+    ]
     worker_ctx = dev_worker_context(
         worker_id,
         is_async=True,
@@ -95,7 +98,7 @@ async def cpu_bound_worker(
 ) -> AsyncGenerator[None, None]:
     client = test_temporal_client_session
     worker_id = f"worker-{uuid.uuid4()}"
-    task_queue = TaskQueues.CPU
+    task_queue = TaskQueue.CPU
     dependencies = "asr.cpu"
     worker_ctx = dev_worker_context(
         worker_id,
@@ -103,7 +106,7 @@ async def cpu_bound_worker(
         worker_config=test_worker_config,
         client=client,
         task_queue=task_queue,
-        activities=[PREPROCESS_ACTIVITY, POSTPROCESS_ACTIVITY],
+        activities=[Activity.PREPROCESS, Activity.POSTPROCESS],
         dependencies=dependencies,
     )
     async with worker_ctx:
@@ -117,7 +120,7 @@ async def gpu_inference_worker(
 ) -> AsyncGenerator[None, None]:
     client = test_temporal_client_session
     worker_id = f"worker-{uuid.uuid4()}"
-    task_queue = TaskQueues.INFERENCE_GPU
+    task_queue = TaskQueue.INFERENCE_GPU
     dependencies = "asr.inference"
     worker_ctx = dev_worker_context(
         worker_id,
@@ -125,7 +128,7 @@ async def gpu_inference_worker(
         worker_config=test_worker_config,
         client=client,
         task_queue=task_queue,
-        activities=[RUN_INFERENCE_ACTIVITY],
+        activities=[Activity.INFER],
         dependencies=dependencies,
     )
     async with worker_ctx:
@@ -179,11 +182,15 @@ async def test_asr_workflow_e2e(  # noqa: PLR0917
 
     # When
     response = await client.execute_workflow(
-        ASRWorkflow.run, args, id=workflow_id, task_queue=TaskQueues.WORKFLOWS
+        ASRWorkflow.run, args, id=workflow_id, task_queue=TaskQueue.WORKFLOWS
     )
 
     # Then
-    assert response.n_transcribed == n_audios
+    expected_response = ASRResponse(
+        processed=ProcessingReport(n_docs=n_audios),
+        successes=ProcessingReport(n_docs=n_audios),
+    )
+    assert response == expected_response
     expected_artifact_dirs = [
         artifacts_root / project / "do" / "c-" / "doc-0",
         artifacts_root / project / "do" / "c-" / "doc-2",

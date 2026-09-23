@@ -45,7 +45,9 @@ class ExtractMarkdownContentWorkflow(WorkflowWithProgress):
         # Distribute batches docs with (more or less) constant number of page per batch,
         # across workers
         extract_args = [(b, args) for b in extract_batches]
-        task_queue = worker_config.device.md_extract_queue(args.config.pipeline)
+        task_queue = worker_config.markdown.inference.device.md_extract_queue(
+            args.config.pipeline
+        )
         extract_acts = (
             execute_activity(
                 MarkdownExtract.extract_markdown_content,
@@ -58,8 +60,7 @@ class ExtractMarkdownContentWorkflow(WorkflowWithProgress):
             for args in extract_args
         )
         responses = await asyncio.gather(*extract_acts)
-        response = MarkdownExtractResponse.from_responses(*responses)
-        return response
+        return sum(responses, start=MarkdownExtractResponse())
 
 
 WORKFLOWS = [ExtractMarkdownContentWorkflow]
