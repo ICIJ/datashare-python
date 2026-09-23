@@ -24,7 +24,7 @@ from datashare_python.conftest import (  # noqa: F401
     test_temporal_client_session,
     test_worker_config,
 )
-from datashare_python.objects import DatashareLanguage, Document, WorkerPaths
+from datashare_python.objects import DatashareLanguage, Document, WorkerRoots
 from datashare_python.types_ import TemporalClient
 from icij_common.es import ESClient
 from translation_worker.activities import Activity
@@ -42,7 +42,7 @@ def test_worker_config(tmp_path_factory: TempPathFactory) -> TranslationWorkerCo
     artifacts.mkdir()
     workdir = tmp_path / "workdir"
     workdir.mkdir()
-    worker_paths = WorkerPaths(
+    worker_roots = WorkerRoots(
         filesystem=filesystem, workdir=workdir, artifacts=artifacts
     )
     logging_config = LoggingConfig(
@@ -56,7 +56,7 @@ def test_worker_config(tmp_path_factory: TempPathFactory) -> TranslationWorkerCo
         logging=logging_config,
         datashare=DatashareClientConfig(url="http://localhost:8080"),
         temporal=TemporalClientConfig(host="localhost:7233"),
-        paths=worker_paths,
+        roots=worker_roots,
     )
 
 

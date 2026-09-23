@@ -13,7 +13,6 @@ from datashare_python.objects import (
     ByteRangesPagination,
     DatashareLanguage,
     Document,
-    DocumentLocation,
     FilesystemPagination,
     ManifestEntry,
     Pages,
@@ -21,6 +20,7 @@ from datashare_python.objects import (
     Task,
     TaskArgs,
     TaskState,
+    WorkerFileLocation,
 )
 from pydantic import TypeAdapter, ValidationError
 from temporalio import activity
@@ -119,7 +119,7 @@ def test_filesystem_document_should_raise_on_absolute_path() -> None:
             id="some_id",
             path=path,
             project="id",
-            location=DocumentLocation.FILESYSTEM,
+            location=WorkerFileLocation.FILESYSTEM,
             resource_name="aa",
         )
 

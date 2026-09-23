@@ -5,16 +5,26 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+from constants import TIKA_METADATA_RESOURCENAME
 from datashare_python.conftest import TEST_PROJECT
 from datashare_python.objects import (
+    PROCESSED_FILE_TA,
     ArtifactType,
-    DocumentLocation,
+    DatashareFile,
+    DatashareLanguage,
+    DocProcessingErrors,
+    Document,
+    Error,
+    ErrorReportWithPages,
     ManifestEntryStatus,
     ProcessedFile,
+    ProcessingReportWithPages,
+    WorkerFile,
 )
 from datashare_python.utils import read_jsonl_as
 from extract_core import InputDoc, OutputFormat, Pipeline, Result, Status
-from extract_core.objects import ConversionOutput, Error, Pages, SupportedExt
+from extract_core.objects import ConversionOutput, Pages, SupportedExt
+from extract_core.objects import Error as ExtractCoreError
 from extract_worker.activities import (
     _build_doc_query,
     create_markdown_extract_batches_act,
@@ -25,10 +35,8 @@ from extract_worker.config import ExtractWorkerConfig
 from extract_worker.objects import (
     DocId,
     DocumentSearchQuery,
-    ErrorReport,
     MarkdownExtractArgs,
     MarkdownExtractResponse,
-    ProcessingReport,
     StructureManifestEntry,
 )
 from icij_common.es import ESClient, ids_query, match_all
@@ -64,21 +72,29 @@ class MockPipeline(Pipeline):
     def _from_config(cls, config: RegistrableConfig, **extras) -> FromConfig: ...
 
 
-PROCESSED_DOC_0 = ProcessedFile(
+DOC_0 = Document(
     id="doc-0",
-    path=Path(TEST_PROJECT, "symlinks", "do", "c-", "doc-0", "doc-0.pdf"),
-    project=TEST_PROJECT,
-    location=DocumentLocation.WORKDIR,
-    resource_name="doc-0.pdf",
-    n_pages=2,
+    root_document="root-0",
+    path=Path("root-0.eml"),
+    language=DatashareLanguage("ENGLISH"),
+    index=TEST_PROJECT,
+    metadata={
+        TIKA_METADATA_RESOURCENAME: "doc-0.pdf",
+        "tika_metadata_xmptpg_npages": 2,
+    },
+    extraction_level=1,
 )
-PROCESSED_DOC_2 = ProcessedFile(
+
+DOC_2 = Document(
     id="doc-2",
+    root_document="doc-2",
     path=Path("doc-2.docx"),
-    project=TEST_PROJECT,
-    location=DocumentLocation.FILESYSTEM,
-    resource_name="doc-2.docx",
-    n_pages=1,
+    language=DatashareLanguage("ENGLISH"),
+    index=TEST_PROJECT,
+    metadata={
+        TIKA_METADATA_RESOURCENAME: "doc-2.docx",
+        "tika_metadata_xmptpg_npages": 1,
+    },
 )
 
 
@@ -86,25 +102,25 @@ PROCESSED_DOC_2 = ProcessedFile(
     ("docs", "expected_batches"),
     [
         # Supports empty query
-        ({}, [[PROCESSED_DOC_0], [PROCESSED_DOC_2]]),
+        ({}, [[(WorkerFile, "doc-0")], [(DatashareFile, "doc-2")]]),
         # Return all supported docs
-        (match_all(), [[PROCESSED_DOC_0], [PROCESSED_DOC_2]]),
-        (ids_query(["doc-0"]), [[PROCESSED_DOC_0]]),
+        (match_all(), [[(WorkerFile, "doc-0")], [(DatashareFile, "doc-2")]]),
+        (ids_query(["doc-0"]), [[(WorkerFile, "doc-0")]]),
         # Should filter non supported content type
         (ids_query(["doc-1"]), []),
     ],
 )
-async def test_create_markdown_extraction_batches_act(
+async def test_create_markdown_extraction_batches_act(  # noqa: PLR0917
     docs_with_cached_artifacts: list[ProcessedFile],  # noqa: ARG001
+    test_worker_config: ExtractWorkerConfig,
     test_es_client: ESClient,
     docs: list[DocId] | DocumentSearchQuery | None,
-    expected_batches: list[tuple[DocId, Path]],
+    expected_batches: list[list[tuple[type, DocId]]],
     tmpdir: Path,
 ) -> None:
     # Given
+    roots = test_worker_config.roots
     tmpdir = Path(tmpdir)
-    artifacts_root = tmpdir / "artifacts"
-    workdir = tmpdir / "workdir"
     target_n_pages_per_batch = 1
     client = test_es_client
     supported_exts = {SupportedExt.PDF, SupportedExt.DOCX}
@@ -115,8 +131,7 @@ async def test_create_markdown_extraction_batches_act(
             docs,
             TEST_PROJECT,
             supported_exts,
-            artifacts_root=artifacts_root,
-            workdir=workdir,
+            roots,
             output_dir=tmpdir,
             target_n_pages_per_task=target_n_pages_per_batch,
             es_client=client,
@@ -125,8 +140,13 @@ async def test_create_markdown_extraction_batches_act(
     # Then
     results = []
     for b in batch_paths:
-        results.append(list(read_jsonl_as(b, ProcessedFile)))
-    assert results == expected_batches
+        results.append(list(read_jsonl_as(b, PROCESSED_FILE_TA)))
+    types = [[type(i) for i in batch] for batch in results]
+    expected_types = [[t for t, _ in batch] for batch in expected_batches]
+    assert types == expected_types
+    expected_ids = [[i for _, i in batch] for batch in expected_batches]
+    ids = [[i.doc_id for i in batch] for batch in results]
+    assert ids == expected_ids
 
 
 _RES_0 = ConversionOutput(
@@ -134,19 +154,26 @@ _RES_0 = ConversionOutput(
     pages=Pages(total=2, byte_ranges=[(0, 1), (1, 2)]),
     confidence=None,
 )
-
-_RES_2 = [Error(id="error-id", title="error-title", detail="error-detail")]
+_RES_2 = [ExtractCoreError(id="error-id", title="error-title", detail="error-detail")]
 
 
 async def test_extract_markdown_content_act(
     test_worker_config: ExtractWorkerConfig,
 ) -> None:
     # Given
+    roots = test_worker_config.roots
     args = MarkdownExtractArgs(project=TEST_PROJECT, docs=[])
-    batch = [PROCESSED_DOC_0, PROCESSED_DOC_2]
+    symlink_path = roots.workdir.joinpath(
+        TEST_PROJECT, "symlinks", "do", "-c", "doc-0", "doc-0.pdf"
+    )
+    symlinked_doc_0 = WorkerFile.from_parent(
+        DatashareFile.from_parent(DOC_0), symlink_path, roots
+    )
+    doc_2 = DatashareFile.from_parent(DOC_2)
+    batch = [symlinked_doc_0, doc_2]
     extract_results = [_RES_0, _RES_2]
     pipeline = MockPipeline(extract_results)
-    workdir = test_worker_config.paths.workdir
+    workdir = roots.workdir
     output_dir = workdir / "output_dir"
     output_dir.mkdir()
 
@@ -164,14 +191,26 @@ async def test_extract_markdown_content_act(
         output_dir=output_dir,
     )
     # Then
-    errors = ErrorReport(doc=PROCESSED_DOC_2, status=Status.FAILURE, errors=_RES_2)
+    expected_errors = Error(title=_RES_2[0].title, detail=None)
+    errors = ErrorReportWithPages(
+        n_docs=1,
+        n_pages=1,
+        errors=[
+            DocProcessingErrors(
+                doc_id=doc_2.doc_id,
+                project=doc_2.project,
+                root_document=doc_2.root_document,
+                errors=[expected_errors],
+            )
+        ],
+    )
     expected_res = MarkdownExtractResponse(
-        processed=ProcessingReport(n_docs=2, n_pages=3),
-        successes=ProcessingReport(n_docs=1, n_pages=2),
-        errors=[errors],
+        processed=ProcessingReportWithPages(n_docs=2, n_pages=3),
+        successes=ProcessingReportWithPages(n_docs=1, n_pages=2),
+        errors=errors,
     )
     assert res == expected_res
-    artifacts_root = test_worker_config.paths.artifacts
+    artifacts_root = test_worker_config.roots.artifacts
     d = artifacts_root / TEST_PROJECT / "do" / "c-" / "doc-0"
     assert d.exists()
     assert d.is_dir()
@@ -277,7 +316,6 @@ def test_ext_to_mime_type(ext: SupportedExt, expected_mime_types: set[str]) -> N
 
 def test_all_supported_ext_should_have_mime_type() -> None:
     # Given
-    ext_to_mime_types(SupportedExt.POTX)
     for ext in SupportedExt:
         # When
         mtypes = ext_to_mime_types(ext)

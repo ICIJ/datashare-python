@@ -27,7 +27,7 @@ from datashare_python.conftest import (  # noqa: F401
     test_worker_config,
     typer_asyncio_patch,
 )
-from datashare_python.objects import DatashareLanguage, Document, WorkerPaths
+from datashare_python.objects import DatashareLanguage, Document, WorkerRoots
 from datashare_python.utils import artifacts_dir
 from icij_common.es import ESClient
 
@@ -49,12 +49,12 @@ def test_worker_config(tmp_path_factory: TempPathFactory) -> ASRWorkerConfig:  #
         loggers={datashare_python.__name__: "INFO", asr_worker.__name__: "INFO"},
         format=LogFormat.DEFAULT,
     )
-    paths = WorkerPaths(filesystem=filesystem, artifacts=artifacts, workdir=workdir)
+    roots = WorkerRoots(filesystem=filesystem, artifacts=artifacts, workdir=workdir)
     return ASRWorkerConfig(
         logging=logging_config,
         datashare=DatashareClientConfig(url="http://localhost:8080"),
         temporal=TemporalClientConfig(host="localhost:7233"),
-        paths=paths,
+        roots=roots,
     )
 
 
@@ -124,11 +124,11 @@ def with_audio_docs(
     audio_path = AUDIOS_PATH / "asr_test.wav"
     for doc in docs:
         if doc.is_root_document:
-            config.paths.filesystem.mkdir(parents=True, exist_ok=True)
-            shutil.copy(audio_path, config.paths.filesystem / doc.path)
+            config.roots.filesystem.mkdir(parents=True, exist_ok=True)
+            shutil.copy(audio_path, config.roots.filesystem / doc.path)
         else:
             artifact_path = (
-                config.paths.artifacts
+                config.roots.artifacts
                 / artifacts_dir(doc.id, project=doc.index)
                 / "raw"
             )

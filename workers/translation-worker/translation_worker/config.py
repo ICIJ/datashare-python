@@ -1,7 +1,7 @@
 from typing import TYPE_CHECKING, ClassVar
 
 from datashare_python.config import ResourceCacheConfig, WorkerConfig
-from datashare_python.objects import BaseModel, DatashareModel, WorkerPaths
+from datashare_python.objects import BaseModel, DatashareModel, WorkerRoots
 from icij_common.pydantic_utils import make_enum_discriminator, tagged_union
 from icij_common.registrable import RegistrableConfig
 from pydantic import Discriminator, Field
@@ -50,7 +50,7 @@ class TranslationWorkerConfig(WorkerConfig):
 
     c2_translate: C2TranslateConfig = Field(default_factory=C2TranslateConfig)
 
-    paths: WorkerPaths
+    roots: WorkerRoots
 
 
 class SentenceSplitterConfig(_BaseProcessorConfig):

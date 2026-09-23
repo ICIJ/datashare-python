@@ -3,23 +3,23 @@ from collections.abc import AsyncIterable
 from pathlib import Path
 from typing import TypeVar
 
-from datashare_python.objects import WorkerPaths
+from datashare_python.objects import WorkerRoots
 from datashare_python.utils import async_read_jsonl_as
 
 from passport_worker.objects import (
-    FileProcessingError,
     PartialDetectionResult,
     PassportDetectionResponse,
+    PassportProcessingError,
 )
 
 
 async def aggregate_results_act(
-    error_paths: list[Path], *, result_paths: list[Path], paths: WorkerPaths
+    error_paths: list[Path], *, result_paths: list[Path], roots: WorkerRoots
 ) -> PassportDetectionResponse:
-    workdir = paths.workdir
+    workdir = roots.workdir
     preprocessing_errors = await asyncio.gather(
         *(
-            _as_list(async_read_jsonl_as(workdir / p, FileProcessingError))
+            _as_list(async_read_jsonl_as(workdir / p, PassportProcessingError))
             for p in error_paths
         )
     )

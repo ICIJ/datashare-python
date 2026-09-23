@@ -31,7 +31,7 @@ from uuid import uuid4
 import temporalio
 from aiofile import async_open
 from lru import LRU
-from pydantic import ValidationError
+from pydantic import TypeAdapter, ValidationError
 from pydantic.alias_generators import to_snake
 from temporalio import activity, workflow
 from temporalio.api.common.v1 import Payload
@@ -56,10 +56,12 @@ from .constants import MANIFEST_JSON, METADATA_JSON
 from .mimetypes_ import types_map
 from .objects import (
     BaseModel,
+    DatashareFile,
     DocArtifact,
-    DocumentLocation,
+    Document,
     ProcessedFile,
-    WorkerPaths,
+    WorkerFile,
+    WorkerRoots,
 )
 from .types_ import RawAsyncProgressHandler
 
@@ -388,8 +390,7 @@ def to_scaled_async_progress(
 def safe_dir(doc_id: str) -> Path:
     if len(doc_id) < 4:
         raise ValueError(f"expected doc_id to be at least 4, found {doc_id}")
-    parts = (p for p in (doc_id[:2], doc_id[2:4]) if p)
-    return Path(*parts)
+    return Path(doc_id[:2], doc_id[2:4])
 
 
 def artifacts_dir(doc_id: str, *, project: str) -> Path:
@@ -607,31 +608,18 @@ def activity_workdir(
 
 
 def symlink_embedded_document_to_workdir(
-    doc: ProcessedFile, paths: WorkerPaths
+    doc: Document, roots: WorkerRoots
 ) -> ProcessedFile:
-    match doc.location:
-        case DocumentLocation.ARTIFACTS:
-            symlinks_dir = paths.workdir / doc.project / "symlinks"
-            symlinks_dir.mkdir(parents=True, exist_ok=True)
-            symlink_path = Path(*doc.path.parts[1:-1], doc.resource_name)
-            symlink_path = symlinks_dir / symlink_path
-            # Replace the "raw" with the resource name
-            symlink_path.parent.mkdir(parents=True, exist_ok=True)
-            artifact_path = paths.artifacts / doc.path
-            with contextlib.suppress(FileExistsError):
-                os.symlink(artifact_path, symlink_path)
-            return ProcessedFile(
-                path=symlink_path.relative_to(paths.workdir),
-                id=doc.id,
-                location=DocumentLocation.WORKDIR,
-                project=doc.project,
-                resource_name=doc.resource_name,
-                n_pages=doc.n_pages,
-            )
-        case DocumentLocation.FILESYSTEM:
-            return doc
-        case _:
-            raise ValueError(f"unsupported location {doc.location}")
+    ds_file = DatashareFile.from_parent(doc)
+    if doc.is_root_document:
+        return ds_file
+    symlinks_dir = roots.workdir / doc.project / "symlinks"
+    symlink_path = symlinks_dir / safe_dir(doc.id) / doc.id / doc.resource_name
+    symlink_path.parent.mkdir(parents=True, exist_ok=True)
+    raw_path = ds_file.locate(roots)
+    with contextlib.suppress(FileExistsError):
+        os.symlink(raw_path, symlink_path)
+    return WorkerFile.from_parent(ds_file, symlink_path, roots)
 
 
 def artifact_path(
@@ -644,7 +632,7 @@ def artifact_path(
     return root / artifacts_dir(doc_id, project=project) / artifact_type.filename
 
 
-def _read_jsonl(path: Path) -> Iterable[dict]:
+def read_jsonl(path: Path) -> Iterable[dict]:
     with path.open() as f:
         for line in f:
             line = line.strip()  # noqa: PLW2901
@@ -655,18 +643,82 @@ def _read_jsonl(path: Path) -> Iterable[dict]:
 M = TypeVar("M", bound=BaseModel)
 
 
-def read_jsonl_as[M](path: Path, cls: type[M]) -> Iterable[M]:
-    return (cls.model_validate(d) for d in _read_jsonl(path))
+def read_jsonl_as[M](
+    path: Path, processed_file_cls: type[M] | TypeAdapter[M]
+) -> Iterable[M]:
+    if isinstance(processed_file_cls, TypeAdapter):
+        deser_fn = processed_file_cls.validate_python
+    else:
+        deser_fn = processed_file_cls.model_validate
+    return (deser_fn(d) for d in read_jsonl(path))
 
 
 async def async_read_jsonl_as[M](
-    path: Path, processed_file_cls: type[M]
+    path: Path, processed_file_cls: type[M] | TypeAdapter[M]
 ) -> AsyncIterable[M]:
+    if isinstance(processed_file_cls, TypeAdapter):
+        deser_fn = processed_file_cls.validate_json
+    else:
+        deser_fn = processed_file_cls.model_validate_json
     async with async_open(path, "r") as f:
         async for line in f:
             line = line.strip()  # noqa: PLW2901
             if line:
-                yield processed_file_cls.model_validate_json(line)
+                yield deser_fn(line)
+
+
+async def write_batches(
+    batches: AsyncIterable[list[ProcessedFile]] | Iterable[list[ProcessedFile]],
+    root: Path,
+    batch_offset: int = 0,
+    prefix: str = "batch_",
+) -> AsyncIterable[Path]:
+    if hasattr(batches, "__aiter__"):
+        async for b in _async_write_batches(batches, root, batch_offset, prefix):
+            yield b
+        return
+    async for b in _write_batches(batches, root, batch_offset, prefix):
+        yield b
+
+
+async def _async_write_batches(
+    batches: AsyncIterable[list[ProcessedFile]],
+    root: Path,
+    batch_offset: int,
+    prefix: str,
+) -> AsyncIterable[Path]:
+    batch_id = batch_offset
+    async for batch in batches:
+        batch_path = root / f"{batch_id // 1000}" / f"{prefix}{batch_id}.jsonl"
+        batch_path.parent.mkdir(parents=True, exist_ok=True)
+        async with async_open(batch_path, "w") as f:
+            for fs_doc in batch:
+                serialized = fs_doc.model_dump_json(
+                    exclude_none=True, polymorphic_serialization=True
+                )
+                await f.write(f"{serialized}\n")
+        yield batch_path
+        batch_id += 1
+
+
+async def _write_batches(
+    batches: Iterable[list[ProcessedFile]],
+    root: Path,
+    batch_offset: int,
+    prefix: str,
+) -> AsyncIterable[Path]:
+    batch_id = batch_offset
+    for batch in batches:
+        batch_path = root / f"{batch_id // 1000}" / f"{prefix}{batch_id}.jsonl"
+        batch_path.parent.mkdir(parents=True, exist_ok=True)
+        async with async_open(batch_path, "w") as f:
+            for fs_doc in batch:
+                serialized = fs_doc.model_dump_json(
+                    exclude_none=True, polymorphic_serialization=True
+                )
+                await f.write(f"{serialized}\n")
+        yield batch_path
+        batch_id += 1
 
 
 @cache
@@ -689,6 +741,8 @@ def ext_to_mime_types(ext: str) -> set[str]:
             return ext_to_mime_types(".xml")
         case ".dclg.xml":
             return ext_to_mime_types(".xml")
+        case ".msg":
+            return ext_to_mime_types(".eml")
     try:
         return types_map()[ext]
     except KeyError as e:

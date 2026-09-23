@@ -1,7 +1,7 @@
 from copy import deepcopy
 
 from datashare_python.config import LoggingConfig, WorkerConfig
-from datashare_python.objects import BaseModel, WorkerPaths
+from datashare_python.objects import BaseModel, WorkerRoots
 from docling.datamodel.base_models import InputFormat
 from extract_core import (
     BasePipelineConfig,
@@ -108,7 +108,7 @@ class ExtractWorkerConfig(WorkerConfig):
         default_factory=MarkdownExtractWorkerConfig
     )
 
-    paths: WorkerPaths
+    roots: WorkerRoots
 
 
 WORKER_CONFIG_CLS = ExtractWorkerConfig

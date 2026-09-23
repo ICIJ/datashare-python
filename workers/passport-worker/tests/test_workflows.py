@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 from datashare_python.conftest import TEST_PROJECT
-from datashare_python.objects import ProcessedFile
+from datashare_python.objects import DatashareFile, ProcessingReportWithPages
 from datashare_python.utils import safe_dir
 from icij_common.pydantic_utils import safe_copy
 from passport_worker.config import PassportWorkerConfig
@@ -16,7 +16,6 @@ from passport_worker.objects import (
     PassportInferenceConfig,
     PassportManifestEntry,
     Passports,
-    ProcessingReport,
     YOLOPassportDetectorConfig,
 )
 from passport_worker.workflows import PassportDetectionWorkflow, TaskQueue
@@ -35,17 +34,17 @@ async def test_passport_detection_workflow(  # noqa: PLR0917
     test_worker_config: PassportWorkerConfig,
     test_temporal_client: TemporalClient,
     test_model_path: Path,
-    e2e_docs: list[ProcessedFile],
+    e2e_docs: list[DatashareFile],
 ) -> None:
     # Given
     # We do this inplace rather than in a fixture because the e2e_docs fixture clears
     # dirs
-    model_path = test_worker_config.paths.workdir / test_model_path.name
+    model_path = test_worker_config.roots.workdir / test_model_path.name
     os.symlink(test_model_path, model_path)
-    worker_model_path = model_path.relative_to(test_worker_config.paths.workdir)
+    worker_model_path = model_path.relative_to(test_worker_config.roots.workdir)
     temporal_client = test_temporal_client
-    worker_paths = test_worker_config.paths
-    docs = [d.id for d in e2e_docs]
+    worker_paths = test_worker_config.roots
+    docs = [d.doc_id for d in e2e_docs]
     passport_detector_config = YOLOPassportDetectorConfig(model_path=worker_model_path)
     args = PassportDetectionArgs(
         project=TEST_PROJECT,
@@ -68,8 +67,8 @@ async def test_passport_detection_workflow(  # noqa: PLR0917
 
     # Then
     expected_response = PassportDetectionResponse(
-        processed=ProcessingReport(n_docs=6, n_pages=6),
-        successes=ProcessingReport(n_docs=6, n_pages=6),
+        processed=ProcessingReportWithPages(n_docs=6, n_pages=6),
+        successes=ProcessingReportWithPages(n_docs=6, n_pages=6),
     )
     assert response.model_dump() == expected_response.model_dump()
     expected = []

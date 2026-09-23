@@ -83,7 +83,7 @@ class PassportDetectionActivities(ActivityWithProgress):
     ) -> PreprocessingBatches:
         es_client = lifespan_es_client()
         worker_config = cast(PassportWorkerConfig, lifespan_worker_config())
-        workdir = worker_config.paths.workdir
+        workdir = worker_config.roots.workdir
         output_root = activity_workdir(workdir, project, act_context=True)
         output_root.mkdir(parents=True, exist_ok=True)
         target_n_pages_per_batch = worker_config.preprocessing.target_n_pages_per_batch
@@ -91,7 +91,7 @@ class PassportDetectionActivities(ActivityWithProgress):
             docs,
             project,
             es_client,
-            worker_config.paths,
+            worker_config.roots,
             target_n_pages_per_batch,
             output_root=output_root,
         )
@@ -108,7 +108,7 @@ class PassportDetectionActivities(ActivityWithProgress):
         ] = None,
     ) -> tuple[Path, Path]:
         worker_config = cast(PassportWorkerConfig, lifespan_worker_config())
-        workdir = worker_config.paths.workdir
+        workdir = worker_config.roots.workdir
         logger.info("loading image preprocessor...")
         cache = lifespan_image_preprocessor_cache()
         cache_key = config_cache_key(config)
@@ -128,7 +128,7 @@ class PassportDetectionActivities(ActivityWithProgress):
         force_reprocessing = not config.use_caching
         success, errors = preprocess_images_act(
             batch,
-            worker_config.paths,
+            worker_config.roots,
             force_reprocessing=force_reprocessing,
             output_root=pages_root,
             image_preprocessor=image_preprocessor,
@@ -166,7 +166,7 @@ class PassportDetectionActivities(ActivityWithProgress):
         pdf_converter = await cache.async_get_or_cache_resource(
             cache_key, pdf_converter_factory
         )
-        workdir = worker_config.paths.workdir
+        workdir = worker_config.roots.workdir
         # We cache processing at the config level, we ignore package updates,
         # to discard the cache we just need to disable it in the args to overwrite
         pdfs_root = activity_workdir(workdir, project, caching_key=cache_key)
@@ -174,7 +174,7 @@ class PassportDetectionActivities(ActivityWithProgress):
         successes, errors = await convert_to_pdfs_act(
             batch,
             pdf_converter,
-            worker_config.paths,
+            worker_config.roots,
             config.max_concurrency,
             output_root=pdfs_root,
             force_reprocessing=force_reprocessing,
@@ -202,14 +202,14 @@ class PassportDetectionActivities(ActivityWithProgress):
         ] = None,
     ) -> tuple[Path, Path]:
         worker_config = cast(PassportWorkerConfig, lifespan_worker_config())
-        workdir = worker_config.paths.workdir
+        workdir = worker_config.roots.workdir
         # We cache processing at the config level, we ignore package updates,
         # to discard the cache we just need to disable it in the args to overwrite
         output_root = activity_workdir(workdir, project, caching_key="pdf-preprocessor")
         output_root.mkdir(parents=True, exist_ok=True)
         successes, errors = await preprocess_pdfs_act(
             batch,
-            worker_config.paths,
+            worker_config.roots,
             output_root=output_root,
             force_reprocessing=force_reprocessing,
             progress=progress,
@@ -238,12 +238,12 @@ class PassportDetectionActivities(ActivityWithProgress):
         worker_config = cast(PassportWorkerConfig, lifespan_worker_config())
         batch_size = worker_config.inference.batch_size
         batches_per_task = worker_config.inference.batches_per_task
-        worker_paths = worker_config.paths
-        output_root = activity_workdir(worker_paths.workdir, project)
+        roots = worker_config.roots
+        output_root = activity_workdir(roots.workdir, project)
         output_root.mkdir(parents=True, exist_ok=True)
         return await create_inference_batches_act(
             batches,
-            worker_paths,
+            roots,
             output_root,
             target_batches_per_task=batches_per_task,
             inference_batch_size=batch_size,
@@ -265,7 +265,7 @@ class PassportDetectionActivities(ActivityWithProgress):
         batch_size = worker_config.inference.batch_size
         cache = lifespan_passport_detector_cache()
         passport_detector_config = args.config.inference.passport_detector
-        passport_detector_config = passport_detector_config.resolve(worker_config.paths)
+        passport_detector_config = passport_detector_config.resolve(worker_config.roots)
         passport_detector_key = config_cache_key(passport_detector_config)
         passport_detector_factory = enter_cm(
             partial(PassportDetector.from_config, passport_detector_config)
@@ -274,13 +274,13 @@ class PassportDetectionActivities(ActivityWithProgress):
             passport_detector_key, passport_detector_factory
         )
         logger.info("passport detector loaded !")
-        workdir = worker_config.paths.workdir
+        workdir = worker_config.roots.workdir
         res_root = activity_workdir(workdir, args.project, act_context=True)
         res_root.mkdir(parents=True, exist_ok=True)
         res = await detect_passports_act(
             batch,
             passport_detector,
-            worker_config.paths,
+            worker_config.roots,
             args,
             batch_size=batch_size,
             progress=progress,
@@ -303,7 +303,7 @@ class PassportDetectionActivities(ActivityWithProgress):
     ) -> PassportDetectionResponse:
         worker_config = cast(PassportWorkerConfig, lifespan_worker_config())
         res = await aggregate_results_act(
-            error_paths, result_paths=result_paths, paths=worker_config.paths
+            error_paths, result_paths=result_paths, roots=worker_config.roots
         )
         return res
 

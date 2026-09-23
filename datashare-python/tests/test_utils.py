@@ -343,7 +343,7 @@ def test_artifact_lock_file(tmp_path: Path) -> None:
     # Then
     expected = "failed to acquire lock"
     with pytest.raises(TimeoutError, match=expected):
-        f.result()
+        f.value()
 
 
 def test_artifact_lock_file_is_freed(tmp_path: Path) -> None:

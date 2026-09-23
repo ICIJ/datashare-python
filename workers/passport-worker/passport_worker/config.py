@@ -9,7 +9,7 @@ from datashare_python.config import (
     ResourceCacheConfig,
     WorkerConfig,
 )
-from datashare_python.objects import DatashareModel, WorkerPaths
+from datashare_python.objects import DatashareModel, WorkerRoots
 from icij_common.registrable import RegistrableConfig
 from pydantic import Field
 
@@ -97,7 +97,7 @@ class PassportWorkerCacheConfig(DatashareModel):
 
 class PassportWorkerConfig(WorkerConfig):
     logging: LoggingConfig = _DEFAULT_LOGGING_CONFIG
-    paths: WorkerPaths
+    roots: WorkerRoots
 
     cache: PassportWorkerCacheConfig = Field(default_factory=PassportWorkerCacheConfig)
 

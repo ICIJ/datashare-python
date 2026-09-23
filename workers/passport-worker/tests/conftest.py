@@ -26,14 +26,16 @@ from datashare_python.conftest import (  # noqa: F401
 )
 from datashare_python.constants import TIKA_METADATA_RESOURCENAME
 from datashare_python.objects import (
+    DatashareFile,
     DatashareLanguage,
     Document,
-    DocumentLocation,
-    ProcessedFile,
-    WorkerPaths,
+    FileLocation,
+    WorkerFile,
+    WorkerPath,
+    WorkerRoots,
 )
 from datashare_python.types_ import TemporalClient
-from datashare_python.utils import artifacts_dir, ext_to_mime_types, safe_dir
+from datashare_python.utils import artifacts_dir, ext_to_mime_types
 from icij_common.es import ESClient
 from icij_common.pydantic_utils import safe_copy
 from passport_worker.activities import Activity
@@ -56,7 +58,7 @@ def test_worker_config(tmp_path_factory: TempPathFactory) -> PassportWorkerConfi
     artifacts.mkdir()
     workdir = tmp_path / "workdir"
     workdir.mkdir()
-    worker_paths = WorkerPaths(
+    worker_roots = WorkerRoots(
         filesystem=filesystem, artifacts=artifacts, workdir=workdir
     )
     loggers = {
@@ -71,52 +73,99 @@ def test_worker_config(tmp_path_factory: TempPathFactory) -> PassportWorkerConfi
         logging=logging_config,
         datashare=DatashareClientConfig(url="http://localhost:8080"),
         temporal=TemporalClientConfig(host="localhost:7233"),
-        paths=worker_paths,
+        roots=worker_roots,
         preprocessing=PreprocessingWorkerConfig(
             images=ImagePreprocessingWorkerConfig(n_processes=1)
         ),
     )
 
 
+DOC_0 = Document(
+    index=TEST_PROJECT,
+    id="doc-0",
+    root_document="root-0",
+    extraction_level=1,
+    language=DatashareLanguage("ENGLISH"),
+    path=Path("not_a_passport.jpg"),
+    metadata={TIKA_METADATA_RESOURCENAME: "not_a_passport.jpg"},
+    content_type="image/jpeg",
+)
+
+
+DS_FILE_0 = DatashareFile(
+    doc_id=DOC_0.doc_id,
+    project=DOC_0.project,
+    parent=safe_copy(DOC_0, update={"content_type": None}),
+    value=WorkerPath(
+        path=Path(TEST_PROJECT, "do", "c-", "doc-0", "raw"),
+        location=FileLocation.ARTIFACTS,
+    ),
+    n_pages=1,
+)
+
+SYMLINKED_DS_FILE_0 = WorkerFile(
+    doc_id=DOC_0.doc_id,
+    project=DOC_0.project,
+    parent=DS_FILE_0,
+    value=WorkerPath(
+        path=Path(TEST_PROJECT, "symlinks", "do", "c-", "doc-0", "not_a_passport.jpg"),
+        location=FileLocation.WORKDIR,
+    ),
+    n_pages=1,
+)
+
+
 @pytest.fixture(scope="session")
 def doc_0() -> Document:
-    return Document(
-        id="doc-0",
-        root_document="root-0",
-        extraction_level=1,
-        index=TEST_PROJECT,
-        language=DatashareLanguage("ENGLISH"),
-        path=Path("not_a_passport.jpg"),
-        metadata={TIKA_METADATA_RESOURCENAME: "not_a_passport.jpg"},
-        content_type="image/jpeg",
-    )
+    return DOC_0
+
+
+DOC_1 = Document(
+    id="doc-1",
+    index=TEST_PROJECT,
+    language=DatashareLanguage("ENGLISH"),
+    path=Path("not_a_passport.pdf"),
+    metadata={
+        TIKA_METADATA_RESOURCENAME: "not_a_passport.pdf",
+        "tika_metadata_xmptpg_npages": 2,
+    },
+    content_type="application/pdf",
+)
+# When searching from ES, we drop content type and
+DS_FILE_1 = DatashareFile(
+    doc_id=DOC_1.doc_id,
+    project=DOC_1.project,
+    parent=safe_copy(DOC_1, update={"content_type": None}),
+    value=WorkerPath(path=Path("not_a_passport.pdf"), location=FileLocation.FILESYSTEM),
+    n_pages=2,
+)
 
 
 @pytest.fixture(scope="session")
 def doc_1() -> Document:
-    return Document(
-        id="doc-1",
-        index=TEST_PROJECT,
-        language=DatashareLanguage("ENGLISH"),
-        path=Path("not_a_passport.pdf"),
-        metadata={
-            TIKA_METADATA_RESOURCENAME: "not_a_passport.pdf",
-            "tika_metadata_xmptpg_npages": 2,
-        },
-        content_type="application/pdf",
-    )
+    return DOC_1
+
+
+DOC_2 = Document(
+    id="doc-2",
+    index=TEST_PROJECT,
+    language=DatashareLanguage("ENGLISH"),
+    path=Path("passport.docx"),
+    metadata={TIKA_METADATA_RESOURCENAME: "passport.docx"},
+    content_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+)
+DS_FILE_2 = DatashareFile(
+    doc_id=DOC_2.doc_id,
+    project=DOC_2.project,
+    parent=safe_copy(DOC_2, update={"content_type": None}),
+    value=WorkerPath(path=Path("passport.docx"), location=FileLocation.FILESYSTEM),
+    n_pages=1,
+)
 
 
 @pytest.fixture(scope="session")
 def doc_2() -> Document:
-    return Document(
-        id="doc-2",
-        index=TEST_PROJECT,
-        language=DatashareLanguage("ENGLISH"),
-        path=Path("passport.docx"),
-        metadata={TIKA_METADATA_RESOURCENAME: "passport.docx"},
-        content_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-    )
+    return DOC_2
 
 
 @pytest.fixture(scope="session")
@@ -143,16 +192,27 @@ def doc_4() -> Document:
     )
 
 
+DOC_5 = Document(
+    id="doc-5",
+    index=TEST_PROJECT,
+    language=DatashareLanguage("ENGLISH"),
+    path=Path("passport.pdf"),
+    metadata={TIKA_METADATA_RESOURCENAME: "passport.pdf"},
+    content_type="application/pdf",
+)
+
+DS_FILE_5 = DatashareFile(
+    doc_id=DOC_5.doc_id,
+    project=DOC_5.project,
+    parent=safe_copy(DOC_5, update={"content_type": None}),
+    value=WorkerPath(path=Path("passport.pdf"), location=FileLocation.FILESYSTEM),
+    n_pages=1,
+)
+
+
 @pytest.fixture(scope="session")
 def doc_5() -> Document:
-    return Document(
-        id="doc-5",
-        index=TEST_PROJECT,
-        language=DatashareLanguage("ENGLISH"),
-        path=Path("passport.pdf"),
-        metadata={TIKA_METADATA_RESOURCENAME: "passport.pdf"},
-        content_type="application/pdf",
-    )
+    return DOC_5
 
 
 @pytest.fixture(scope="session")
@@ -184,26 +244,27 @@ async def indexed_docs(  # noqa: PLR0917
 def docs_with_cached_artifacts(
     populate_es: list[Document],  # noqa: F811
     test_worker_config: PassportWorkerConfig,
-) -> list[ProcessedFile]:
+) -> list[DatashareFile]:
     config = test_worker_config
     clear_dirs(test_worker_config)
     paths = []
-    worker_paths = config.paths
+    worker_paths = config.roots
     for doc in populate_es:
         doc_path = DOCS_PATH / doc.path
         if doc.is_root_document:
             worker_paths.filesystem.mkdir(parents=True, exist_ok=True)
-            shutil.copy(doc_path, worker_paths.filesystem / doc.path)
+            fs_path = worker_paths.filesystem / doc.path
+            fs_path.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy(doc_path, fs_path)
         else:
             artifact_path = (
                 worker_paths.artifacts
-                / artifacts_dir(doc.id, project=doc.index)
+                / artifacts_dir(doc.id, project=doc.project)
                 / "raw"
             )
             artifact_path.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy(doc_path, artifact_path)
-        fs_doc = doc.to_processed_file()
-        paths.append(fs_doc)
+        paths.append(DatashareFile.from_parent(doc))
     return paths
 
 
@@ -241,11 +302,11 @@ async def populate_es_with_e2e_docs(
 @pytest.fixture
 def e2e_docs(
     populate_es_with_e2e_docs: list[Document], test_worker_config: PassportWorkerConfig
-) -> list[ProcessedFile]:
+) -> list[DatashareFile]:
     config = test_worker_config
     clear_dirs(test_worker_config)
     paths = []
-    worker_paths = config.paths
+    worker_paths = config.roots
     for doc in populate_es_with_e2e_docs:
         doc_path = DOCS_PATH / doc.path
         if doc.is_root_document:
@@ -254,61 +315,14 @@ def e2e_docs(
         else:
             artifact_path = (
                 worker_paths.artifacts
-                / artifacts_dir(doc.id, project=doc.index)
+                / artifacts_dir(doc.id, project=doc.project)
                 / "raw"
             )
             artifact_path.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy(doc_path, artifact_path)
-        fs_doc = doc.to_processed_file()
-        paths.append(fs_doc)
+        ds_doc = DatashareFile.from_parent(doc)
+        paths.append(ds_doc)
     return paths
-
-
-PROCESSED_DOC_0 = ProcessedFile(
-    id="doc-0",
-    path=Path(TEST_PROJECT, "do", "c-", "doc-0", "raw"),
-    project=TEST_PROJECT,
-    location=DocumentLocation.ARTIFACTS,
-    resource_name="not_a_passport.jpg",
-    n_pages=1,
-)
-PROCESSED_DOC_1 = ProcessedFile(
-    id="doc-1",
-    path=Path("not_a_passport.pdf"),
-    project=TEST_PROJECT,
-    location=DocumentLocation.FILESYSTEM,
-    resource_name="not_a_passport.pdf",
-    n_pages=2,
-)
-PROCESSED_DOC_2 = ProcessedFile(
-    id="doc-2",
-    path=Path("passport.docx"),
-    project=TEST_PROJECT,
-    location=DocumentLocation.FILESYSTEM,
-    resource_name="passport.docx",
-    n_pages=1,
-)
-PROCESSED_DOC_5 = ProcessedFile(
-    id="doc-5",
-    path=Path("passport.pdf"),
-    project=TEST_PROJECT,
-    location=DocumentLocation.FILESYSTEM,
-    resource_name="passport.pdf",
-    n_pages=1,
-)
-SYMLINKED_PROCESSED_DOC_0 = safe_copy(
-    PROCESSED_DOC_0,
-    update={
-        "location": DocumentLocation.WORKDIR,
-        "path": Path(
-            TEST_PROJECT,
-            "symlinks",
-            safe_dir(PROCESSED_DOC_0.id),
-            PROCESSED_DOC_0.id,
-            PROCESSED_DOC_0.resource_name,
-        ),
-    },
-)
 
 
 @pytest.fixture(scope="session")

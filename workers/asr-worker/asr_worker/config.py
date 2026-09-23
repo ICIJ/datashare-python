@@ -6,7 +6,7 @@ from datashare_python.config import (
     ResourceCacheConfig,
     WorkerConfig,
 )
-from datashare_python.objects import BaseModel, WorkerPaths
+from datashare_python.objects import BaseModel, WorkerRoots
 from pydantic import Field
 
 _DEFAULT_LOGGERS = {datashare_python.__name__: "INFO", __name__: "INFO"}
@@ -38,7 +38,7 @@ class ASRWorkerDevices(BaseModel):
 class ASRWorkerConfig(WorkerConfig):
     logging: LoggingConfig = _DEFAULT_LOGGING_CONFIG
 
-    paths: WorkerPaths
+    roots: WorkerRoots
 
     indexing: IndexingWorkerConfig = Field(default_factory=IndexingWorkerConfig)
 

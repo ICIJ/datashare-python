@@ -2,14 +2,15 @@ import hashlib
 import json
 import logging
 import os
-from abc import ABC
-from collections.abc import Awaitable, Callable
+import traceback
+from abc import ABC, abstractmethod
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from enum import StrEnum, unique
 from io import BytesIO
 from pathlib import Path
-from typing import Annotated, Any, ClassVar, Literal, Self, TypeVar, cast
+from typing import Annotated, Any, ClassVar, Literal, Self, TypeVar, cast, final
 
 import langcodes
 from icij_common.registrable import Registrable
@@ -50,6 +51,7 @@ from pydantic import (
     Discriminator,
     Field,
     GetCoreSchemaHandler,
+    Tag,
     TypeAdapter,
     model_validator,
 )
@@ -59,8 +61,9 @@ from pydantic.main import IncEx
 logger = logging.getLogger(__name__)
 
 
-T = TypeVar("T")
-Predicate = Callable[[T], bool] | Callable[[T], Awaitable[bool]]
+Routing = str
+DocID = str
+DocRoute = tuple[DocID, Routing]
 
 
 class BaseModel(_BaseModel):
@@ -118,68 +121,34 @@ class DatashareLanguage(str):
         return self.as_language_name.alpha3
 
 
-class WorkerPaths(BaseModel):
-    filesystem: Path
-    artifacts: Path
-    workdir: Path
-
-
 @unique
-class DocumentLocation(StrEnum):
+class FileLocation(StrEnum):
     FILESYSTEM = "filesystem"
     ARTIFACTS = "artifacts"
     WORKDIR = "workdir"
 
 
-def _is_relative(value: Path) -> Path:
-    if value.is_absolute():
-        raise ValueError(
-            f"FilesystemDocument path should always be relative, found {value}"
-        )
-    return value
+class WorkerRoots(BaseModel):
+    filesystem: Path
+    artifacts: Path
+    workdir: Path
 
-
-class ProcessedFile(BaseModel):
-    id: str
-    path: Annotated[Path, AfterValidator(_is_relative)]
-    project: str
-    location: DocumentLocation
-    resource_name: str
-    n_pages: int
-    parent: "ProcessedFile | None" = None
-
-    @classmethod
-    def from_doc(cls, doc: "Document") -> Self:
-        return doc.to_processed_file()
-
-    def child(self, path: Path, paths: WorkerPaths) -> Self:
-        return ProcessedFile(
-            id=self.id,
-            path=path.relative_to(paths.workdir),
-            project=self.project,
-            location=DocumentLocation.WORKDIR,
-            resource_name=path.name,
-            n_pages=self.n_pages,
-            parent=self,
-        )
-
-    def locate(self, paths: WorkerPaths) -> Path:
-        from datashare_python.utils import artifacts_dir  # noqa: PLC0415
-
-        match self.location:
-            case DocumentLocation.FILESYSTEM:
-                return paths.filesystem / self.path
-            case DocumentLocation.ARTIFACTS:
-                project = self.project
-                return paths.artifacts / artifacts_dir(self.id, project=project) / "raw"
-            case DocumentLocation.WORKDIR:
-                return paths.workdir / self.path
+    def locate(self, path: Path, location: FileLocation) -> Path:
+        match location:
+            case FileLocation.FILESYSTEM:
+                return self.filesystem / path
+            case FileLocation.ARTIFACTS:
+                return self.artifacts / path
+            case FileLocation.WORKDIR:
+                return self.workdir / path
             case _:
-                raise ValueError(f"invalid location: {self.path}")
+                raise ValueError(f"invalid location: {path}")
 
 
-class ProcessedPage(ProcessedFile):
-    page_number: int
+class FromParent[P](ABC):
+    @classmethod
+    @abstractmethod
+    def from_parent(cls, parent: P, *args, **kwargs) -> Self: ...
 
 
 class IETFLanguage(str):
@@ -213,12 +182,9 @@ class Translation(BaseModel):  # No camelcase here we don't know why
     content: Annotated[str, BeforeValidator(_from_sentences)]
 
 
-Routing = str
-DocID = str
-DocRoute = tuple[DocID, Routing]
-
-
 class Document(DatashareModel):
+    """ES datashare document"""
+
     id: str
     language: DatashareLanguage
     index: str | None = None
@@ -285,7 +251,7 @@ class Document(DatashareModel):
             id=es_doc[ID_],
             index=es_doc.get(INDEX_),
             content=sources.get(DOC_CONTENT),
-            content_translated=sources.get(DOC_CONTENT_TRANSLATED, []),
+            content_translated=sources.get(DOC_CONTENT_TRANSLATED),
             content_text_length=sources.get("content_text_length"),
             language=DatashareLanguage(sources[DOC_LANGUAGE]),
             root_document=sources.get(DOC_ROOT_ID),
@@ -295,58 +261,51 @@ class Document(DatashareModel):
             metadata=sources.get(DOC_METADATA),
         )
 
-    def to_processed_file(self) -> ProcessedFile:
-        from .utils import artifacts_dir  # noqa: PLC0415
+    @property
+    def project(self) -> str:
+        if self.index is None:
+            raise ValueError("missing index")
+        return self.index
 
+    @property
+    def doc_id(self) -> str:
+        return self.id
+
+    @property
+    def route(self) -> DocRoute:
+        if self.root_document:
+            return self.id, self.id
+        return self.id, self.root_document
+
+    @property
+    def resource_name(self) -> str:
         if self.metadata is None:
-            raise ValueError(
-                "can't compute filesystem path for document withtout metadata"
-            )
+            raise ValueError("missing metadata")
         resource_name = self.metadata.get(TIKA_METADATA_RESOURCENAME)
         if resource_name is None:
-            # Backward compat for project before resourcename was mandatory
-            if self.is_root_document:
-                resource_name = self.path.name
-            else:
-                msg = (
-                    f"doc {self} can't turn ES document into a"
-                    f" {ProcessedFile.__name__} without tika metadata resources name"
-                    f" in metadata: {self.metadata}"
-                )
-                raise ValueError(msg)
-        resource_name = cast(str, resource_name)
-        if self.is_root_document:
-            path = self.path
-            location = DocumentLocation.FILESYSTEM
-        else:
-            if self.index is None:
-                msg = (
-                    f"can't compute filesystem path for embedded doc {self.id} without"
-                    f" index"
-                )
-                raise ValueError(msg)
-            path = artifacts_dir(doc_id=self.id, project=self.index) / "raw"
-            location = DocumentLocation.ARTIFACTS
-        # The filesystem dod is alway relative to the base location, let's make sure
-        # we store a relative path otherwise joining with the location will fail
-        if path.parts and path.parts[0] == os.path.sep:
-            path = Path(*path.parts[1:])
-        n_pages = 1
-        if self.metadata:
-            n_pages = self.metadata.get("tika_metadata_xmptpg_npages", n_pages)
-        return ProcessedFile(
-            id=self.id,
-            path=path,
-            project=self.index,
-            location=location,
-            resource_name=resource_name,
-            n_pages=n_pages,
-        )
+            msg = f"missing {TIKA_METADATA_RESOURCENAME} in metadata"
+            raise KeyError(msg)
+        cast(str, resource_name)
+        return resource_name
 
-    def to_route(self) -> DocRoute:
-        if self.root_document is not None:
-            return self.root_document, self.id
-        return self.id, self.id
+
+def _is_relative(value: Path) -> Path:
+    if value.is_absolute():
+        raise ValueError(f"WorkerPath path should always be relative, found {value}")
+    return value
+
+
+class WorkerPath(BaseModel):
+    path: Annotated[Path, AfterValidator(_is_relative)]
+    location: FileLocation
+
+    def locate(self, roots: WorkerRoots) -> Path:
+        return roots.locate(self.path, self.location)
+
+    @classmethod
+    def relative_to_workdir(cls, path: Path, roots: WorkerRoots) -> Self:
+        path = path.relative_to(roots.workdir)
+        return cls(path=path, location=FileLocation.WORKDIR)
 
 
 def _is_absolute_path(v: bytes | BytesIO | Path) -> Any:
@@ -617,3 +576,277 @@ class TaskGroup:
     @classmethod
     def python(cls) -> Self:
         return cls(name="PYTHON")
+
+
+class Error(BaseModel):
+    title: str
+    detail: str | None
+
+    @classmethod
+    def from_exception(cls, exception: BaseException) -> "Error":
+        title = exception.__class__.__name__
+        trace_lines = traceback.format_exception(
+            None, value=exception, tb=exception.__traceback__
+        )
+        detail = f"{exception}\n{''.join(trace_lines)}"
+        error = Error(title=title, detail=detail)
+        return error
+
+    def without_detail(self) -> "Error":
+        return Error(title=self.title, detail=None)
+
+
+class FromException[S: ErrorSource](BaseModel, ABC):
+    @classmethod
+    @abstractmethod
+    def from_exception(cls, source: S, exception: BaseException) -> Self: ...
+
+
+class ErrorSource(BaseModel, ABC):
+    doc_id: str
+    project: str
+
+
+class ErrorSourceWithPages(ErrorSource, ABC):
+    n_pages: int
+
+
+class ProcessingError[S: ErrorSource](FromException[S]):
+    source: S
+    error: Error
+
+    @final
+    @classmethod
+    def from_exception(cls, source: S, exception: BaseException) -> Self:
+        return cls(source=source, error=Error.from_exception(exception))
+
+
+class ProcessingReport(DatashareModel):
+    n_docs: int = 0
+
+    def __add__(self, other: Self) -> Self:
+        return ProcessingReport(n_docs=other.n_docs + self.n_docs)
+
+
+class ProcessingReportWithPages(ProcessingReport):
+    n_pages: int = 0
+
+    def __add__(self, other: Self) -> Self:
+        return ProcessingReportWithPages(
+            n_docs=other.n_docs + self.n_docs, n_pages=other.n_pages + self.n_pages
+        )
+
+
+def _without_detail(errors: list[Error]) -> list[Error]:
+    if any(e.detail is not None for e in errors):
+        msg = "expected errors without details"
+        raise ValueError(msg)
+    return errors
+
+
+class DocProcessingErrors(BaseModel):
+    """All errors of related to a DS document grouped at a single place.
+    If a source doc has many children (typically a document split into pages
+    processed separately), all children errors are merged under the older parent.
+    """
+
+    doc_id: str
+    root_document: str
+    project: str
+    errors: Annotated[
+        list[Error], AfterValidator(_without_detail), Field(default_factory=list)
+    ]
+
+
+class ErrorReport(ProcessingReport):
+    errors: list[DocProcessingErrors] = Field(default_factory=list)
+
+    def __add__(self, other: Self) -> Self:
+        return ErrorReportWithPages(
+            n_docs=other.n_docs + self.n_docs, errors=self.errors + other.errors
+        )
+
+    @classmethod
+    def from_errors(cls, *errors: ProcessingError) -> Self:
+        """Aggregate errors by root source documents"""
+        roots = dict()
+        for error in errors:
+            root = error.source
+            while (parent := getattr(root, "parent", None)) is not None:
+                root = parent
+            root_errors = roots.get(root.doc_id)
+            if root_errors is not None:
+                _, root_errors = root_errors
+            else:
+                root_errors = []
+            root_errors.append(error)
+            roots[root.doc_id] = (root, root_errors)
+        errors = []
+        for _, (root, root_errors) in sorted(roots.items()):
+            # We keep details for errors stored as intermediate steps to allow
+            # debugging, we don't output them in the response to keep everything
+            # lightweight and more secure
+            root_errors = [err.error.without_detail() for err in root_errors]  # noqa: PLW2901
+            doc_errors = DocProcessingErrors(
+                doc_id=root.doc_id,
+                project=root.project,
+                root_document=root.root_document,
+                errors=root_errors,
+            )
+            errors.append(doc_errors)
+        return cls(n_docs=len(errors), errors=errors)
+
+
+class ErrorReportWithPages(ProcessingReportWithPages, ABC):
+    errors: list[DocProcessingErrors] = Field(default_factory=list)
+
+    def __add__(self, other: Self) -> Self:
+        return ErrorReportWithPages(
+            n_docs=other.n_docs + self.n_docs,
+            n_pages=other.n_pages + self.n_pages,
+            errors=self.errors + other.errors,
+        )
+
+    @classmethod
+    def from_errors(cls, *errors: ProcessingError) -> Self:
+        """Aggregate errors by root source documents"""
+        roots = dict()
+        n_pages = 0
+        for error in errors:
+            root = error.source
+            while (parent := getattr(root, "parent", None)) is not None:
+                root = parent
+            root_errors = roots.get(root.doc_id)
+            if root_errors is not None:
+                _, root_errors = root_errors
+            else:
+                root_errors = []
+            n_pages += error.source.n_pages
+            root_errors.append(error)
+            roots[root.doc_id] = (root, root_errors)
+        errors = []
+        for _, (root, root_errors) in sorted(roots.items()):
+            # We keep details for errors stored as intermediate steps to allow
+            # debugging, we don't output them in the response to keep everything
+            # lightweight and more secure
+            root_errors = [err.error.without_detail() for err in root_errors]  # noqa: PLW2901
+            doc_errors = DocProcessingErrors(
+                doc_id=root.doc_id,
+                project=root.project,
+                root_document=root.root_document,
+                errors=root_errors,
+            )
+            errors.append(doc_errors)
+        return cls(n_docs=len(errors), n_pages=n_pages, errors=errors)
+
+
+class ProcessingResult[V](BaseModel):
+    value: V
+
+
+class WithParent[P](FromParent[P]):
+    parent: P
+
+    @property
+    def doc_id(self) -> str:
+        return self.parent.doc_id
+
+    @property
+    def root_document(self) -> str:
+        return self.parent.root_document
+
+    @property
+    def project(self) -> str:
+        return self.parent.project
+
+    @property
+    def route(self) -> DocRoute:
+        return self.parent.route
+
+
+class DatashareFile(
+    WithParent[Document], ProcessingResult[WorkerPath], ErrorSourceWithPages
+):
+    """A datashare document file located somewhere"""
+
+    parent: Document
+
+    def locate(self, roots: WorkerRoots) -> Path:
+        return self.value.locate(roots)
+
+    @classmethod
+    def from_parent(cls, parent: Document) -> Self:
+        from .utils import artifacts_dir  # noqa: PLC0415
+
+        if parent.metadata is None:
+            raise ValueError(
+                "can't compute filesystem path for document withtout metadata"
+            )
+        if parent.is_root_document:
+            path = parent.path
+            if path is None:
+                msg = (
+                    "can't create a Datashare file from ES document without path, "
+                    "path is needed to locate the file, retrieve it from ES"
+                )
+                raise ValueError(msg)
+            location = FileLocation.FILESYSTEM
+        else:
+            path = artifacts_dir(doc_id=parent.id, project=parent.project) / "raw"
+            location = FileLocation.ARTIFACTS
+        # The filesystem dod is alway relative to the base location, let's make sure
+        # we store a relative path otherwise joining with the location will fail
+        if path.parts and path.parts[0] == os.path.sep:
+            path = Path(*path.parts[1:])
+        n_pages = 1
+        if parent.metadata:
+            n_pages = parent.metadata.get("tika_metadata_xmptpg_npages", n_pages)
+        path = WorkerPath(path=path, location=location)
+        return cls(
+            doc_id=parent.id,
+            parent=parent,
+            value=path,
+            n_pages=n_pages,
+            project=parent.project,
+        )
+
+
+class WorkerFile(
+    WithParent["ProcessedFile"], ProcessingResult[WorkerPath], ErrorSourceWithPages
+):
+    parent: "ProcessedFile"
+
+    def locate(self, roots: WorkerRoots) -> Path:
+        return self.value.locate(roots)
+
+    @classmethod
+    def from_parent(
+        cls, parent: "ProcessedFile", path: Path, roots: WorkerRoots
+    ) -> Self:
+        path = WorkerPath.relative_to_workdir(path, roots)
+        return cls(
+            doc_id=parent.doc_id,
+            project=parent.project,
+            parent=parent,
+            value=path,
+            n_pages=parent.n_pages,
+        )
+
+
+def _file_discriminator(v: Any) -> str:
+    parent = v.get("parent") if isinstance(v, dict) else getattr(v, "parent", None)
+    if parent is None:
+        raise ValueError(f"{v} has no parent")
+    if isinstance(parent, dict):
+        is_document = parent.get("type") == "Document"
+    else:
+        is_document = isinstance(parent, Document)
+    return "datashare" if is_document else "worker"
+
+
+ProcessedFile = Annotated[
+    Annotated[DatashareFile, Tag("datashare")] | Annotated[WorkerFile, Tag("worker")],
+    Discriminator(_file_discriminator),
+]
+WorkerFile.model_rebuild()
+PROCESSED_FILE_TA = TypeAdapter(ProcessedFile, config=BaseModel.model_config)

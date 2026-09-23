@@ -3,10 +3,11 @@ from itertools import chain
 from pathlib import Path
 from typing import Any
 
-from datashare_python.objects import Document, WorkerPaths
+from datashare_python.objects import Document, ProcessedFile, WorkerRoots
 from datashare_python.utils import (
     ext_to_mime_types,
     symlink_embedded_document_to_workdir,
+    write_batches,
 )
 from icij_common.es import (
     DOC_CONTENT_TYPE,
@@ -27,15 +28,14 @@ from icij_common.es import (
 from passport_service.constants import GOTENBERG_SUPPORTED_EXTS, PDF_EXT
 
 from .constants import pil_supported_extensions
-from .objects import DocId, DocumentSearchQuery, PreprocessingBatches, ProcessedFile
-from .utils import write_batches
+from .objects import DocId, DocumentSearchQuery, PreprocessingBatches
 
 
 async def create_preprocessing_batches_act(  # noqa: PLR0917
     docs: list[DocId] | DocumentSearchQuery | None,
     project: str,
     es_client: ESClient,
-    paths: WorkerPaths,
+    roots: WorkerRoots,
     target_n_pages_per_batch: int,
     output_root: Path,
     *,
@@ -54,7 +54,7 @@ async def create_preprocessing_batches_act(  # noqa: PLR0917
         b
         async for b in _write_preprocessing_batches(
             pdf_docs,
-            paths,
+            roots,
             target_n_pages_per_batch,
             output_root,
             batch_offset=0,
@@ -66,7 +66,7 @@ async def create_preprocessing_batches_act(  # noqa: PLR0917
         b
         async for b in _write_preprocessing_batches(
             im_docs,
-            paths,
+            roots,
             target_n_pages_per_batch,
             output_root,
             batch_offset=len(pdf_batches),
@@ -80,7 +80,7 @@ async def create_preprocessing_batches_act(  # noqa: PLR0917
         b
         async for b in _write_preprocessing_batches(
             to_pdf_docs,
-            paths,
+            roots,
             target_n_pages_per_batch,
             output_root,
             batch_offset=len(pdf_batches) + len(im_batches),
@@ -93,12 +93,12 @@ async def create_preprocessing_batches_act(  # noqa: PLR0917
 
 async def _write_preprocessing_batches(
     docs: AsyncIterable[Document],
-    paths: WorkerPaths,
+    roots: WorkerRoots,
     target_n_pages_per_batch: int,
     output_dir: Path,
     batch_offset: int,
 ) -> AsyncIterable[Path]:
-    docs = (symlink_embedded_document_to_workdir(d, paths) async for d in docs)
+    docs = (symlink_embedded_document_to_workdir(d, roots) async for d in docs)
     batches = _batch_by_n_pages(docs, target_n_pages_per_batch=target_n_pages_per_batch)
     async for p in write_batches(
         batches, output_dir, batch_offset, prefix="preprocessing_batch_"
@@ -133,26 +133,17 @@ def _with_supported_exts_query(supported_exts: set[str]) -> dict[str, Any]:
 
 
 _DOC_SORT = [f"{DOC_CONTENT_TYPE}:asc", "_doc:asc"]
-_DOC_CONTENT_SOURCES = [
-    DOC_PATH,
-    DOC_ROOT_ID,
-    DOC_LANGUAGE,
-    DOC_METADATA,
-    DOC_EXTRACTION_LEVEL,
-]
+DOC_SOURCES = [DOC_PATH, DOC_ROOT_ID, DOC_LANGUAGE, DOC_METADATA, DOC_EXTRACTION_LEVEL]
 
 
 async def _search_docs(
     query: dict[str, Any], es_client: ESClient, project: str, sort: ESSort = None
-) -> AsyncIterable[ProcessedFile]:
+) -> AsyncIterable[Document]:
     async for page in es_client.poll_search_pages(
-        index=project,
-        body=query,
-        sort=sort,
-        _source_includes=_DOC_CONTENT_SOURCES,
+        index=project, body=query, sort=sort, _source_includes=DOC_SOURCES
     ):
         for hit in page[HITS][HITS]:
-            yield ProcessedFile.from_doc(Document.from_es(hit))
+            yield Document.from_es(hit)
 
 
 async def _batch_by_n_pages(

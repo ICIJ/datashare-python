@@ -9,7 +9,7 @@ from temporalio.runtime import PrometheusConfig, Runtime, TelemetryConfig
 
 import datashare_python
 
-from .objects import BaseModel, WorkerPaths
+from .objects import BaseModel, WorkerRoots
 from .task_client import DatashareTaskClient
 from .types_ import TemporalClient
 from .utils import PYDANTIC_DATA_CONVERTER, SharedResources, close_cm_callback
@@ -124,7 +124,7 @@ class WorkerConfig(ICIJSettings, BaseModel):
     max_concurrent_activities: int = 5
     min_progress_interval_s: float = 30.0
 
-    paths: WorkerPaths | None = None
+    roots: WorkerRoots | None = None
 
     def to_es_client(self) -> ESClient:
         return self.elasticsearch.to_es_client(self.datashare.api_key)

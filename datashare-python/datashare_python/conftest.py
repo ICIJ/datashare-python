@@ -314,12 +314,12 @@ def typer_asyncio_patch() -> None:
 
 
 def clear_dirs(config: WorkerConfig) -> None:
-    shutil.rmtree(str(config.paths.filesystem))
-    config.paths.filesystem.mkdir(parents=True, exist_ok=True)
-    shutil.rmtree(str(config.paths.artifacts))
-    config.paths.artifacts.mkdir(parents=True, exist_ok=True)
-    shutil.rmtree(str(config.paths.workdir))
-    config.paths.workdir.mkdir(parents=True, exist_ok=True)
+    shutil.rmtree(str(config.roots.filesystem))
+    config.roots.filesystem.mkdir(parents=True, exist_ok=True)
+    shutil.rmtree(str(config.roots.artifacts))
+    config.roots.artifacts.mkdir(parents=True, exist_ok=True)
+    shutil.rmtree(str(config.roots.workdir))
+    config.roots.workdir.mkdir(parents=True, exist_ok=True)
 
 
 def dev_worker_context(

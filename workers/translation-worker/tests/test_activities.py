@@ -1,11 +1,10 @@
-# ruff: noqa: ARG001, ANN001, ANN202, FBT001, FBT002, ARG005
-
 from collections.abc import AsyncGenerator, Iterable
 from functools import partial
 from typing import Any, Self, TypeVar
 from unittest.mock import patch
 
 import pytest
+from _pytest.monkeypatch import MonkeyPatch
 from datashare_python.objects import DatashareLanguage, Document, Language, Translation
 from icij_common.es import (
     DOC_CONTENT,
@@ -316,7 +315,7 @@ async def test__create_translation_batches__splits_batch_if_max_text_len_exceede
 
 
 async def test_translate_docs_act__returns_zero_for_empty_batch(
-    monkeypatch, test_worker_config: TranslationWorkerConfig
+    test_worker_config: TranslationWorkerConfig,
 ) -> None:
     # Given
     worker_config = test_worker_config
@@ -340,24 +339,24 @@ async def test_translate_docs_act__returns_zero_for_empty_batch(
 
 
 async def _do_nothing_es_update(
-    es_client: ESClient,
-    translated_docs: Iterable[tuple[Document, Translation]],
-    project: str,
-):
+    es_client: ESClient,  # noqa: ARG001
+    translated_docs: Iterable[tuple[Document, Translation]],  # noqa: ARG001
+    project: str,  # noqa: ARG001
+) -> None:
     pass
 
 
 async def _capturing_es_update(
-    es_client: ESClient,
+    es_client: ESClient,  # noqa: ARG001
     translated_docs: Iterable[tuple[Document, Translation]],
-    project: str,
+    project: str,  # noqa: ARG001
     captured: list[tuple[Document, Translation]],
-):
+) -> None:
     captured.extend(translated_docs)
 
 
 async def test_translate_docs_act__returns_count_of_unique_docs_translated(
-    monkeypatch, test_worker_config: TranslationWorkerConfig
+    monkeypatch: MonkeyPatch, test_worker_config: TranslationWorkerConfig
 ) -> None:
     # Given
     worker_config = test_worker_config
@@ -385,7 +384,7 @@ async def test_translate_docs_act__returns_count_of_unique_docs_translated(
 
 
 async def test_translate_docs_act__sentences_from_same_doc_count_as_one(
-    monkeypatch, test_worker_config: TranslationWorkerConfig
+    monkeypatch: MonkeyPatch, test_worker_config: TranslationWorkerConfig
 ) -> None:
     # Given
     worker_config = test_worker_config
@@ -413,7 +412,7 @@ async def test_translate_docs_act__sentences_from_same_doc_count_as_one(
 
 
 async def test_translate_docs_act__es_update(
-    monkeypatch, test_worker_config: TranslationWorkerConfig
+    monkeypatch: MonkeyPatch, test_worker_config: TranslationWorkerConfig
 ) -> None:
     # Given
     worker_config = test_worker_config

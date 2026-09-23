@@ -1,8 +1,8 @@
 import csv
-import traceback
+import operator
 from concurrent.futures import ProcessPoolExecutor
 from enum import StrEnum
-from functools import cache
+from functools import cache, reduce
 from pathlib import Path
 from typing import Any, ClassVar, Self
 
@@ -11,12 +11,15 @@ from datashare_python.objects import (
     BaseModel,
     DatashareModel,
     DocArtifact,
-    DocumentLocation,
+    ErrorReport,
     ManifestEntry,
     ProcessedFile,
-    ProcessedPage,
+    ProcessingError,
+    ProcessingReport,
+    ProcessingReportWithPages,
     TaskArgs,
-    WorkerPaths,
+    WorkerFile,
+    WorkerRoots,
 )
 from icij_common.pydantic_utils import safe_copy
 from icij_common.registrable import RegistrableConfig
@@ -94,8 +97,8 @@ class YOLOPassportDetectorConfig(PassportDetectorConfigBase):
     nms_eta: float = DEFAULT_NMS_ETA
     image_size: int = 640
 
-    def resolve(self, paths: WorkerPaths) -> "YOLOPassportDetectorConfig":
-        update = {"model_path": paths.workdir / self.model_path}
+    def resolve(self, roots: WorkerRoots) -> "YOLOPassportDetectorConfig":
+        update = {"model_path": roots.workdir / self.model_path}
         return safe_copy(self, update=update)
 
 
@@ -142,14 +145,27 @@ class PassportArtifact(DocArtifact):
     type: ClassVar[ArtifactType] = ArtifactType.PASSPORTS
 
 
-class ProcessingReport(DatashareModel):
-    n_docs: int = 0
-    n_pages: int = 0
+class ProcessedPage(WorkerFile):
+    page: int
 
-    def __add__(self, other: Self) -> Self:
-        return ProcessingReport(
-            n_docs=other.n_docs + self.n_docs, n_pages=other.n_pages + self.n_pages
+    @classmethod
+    def from_parent(
+        cls,
+        parent: ProcessedFile,
+        path: Path,
+        roots: WorkerRoots,
+        page: int,
+    ) -> "ProcessedPage":
+        return cls(
+            page=page, **WorkerFile.from_parent(parent, path, roots).model_dump()
         )
+
+    @property
+    def n_pages(self) -> int:
+        return 1
+
+
+class PassportProcessingError(ProcessingError[ProcessedPage | ProcessedFile]): ...
 
 
 class PagePassports(DatashareModel):
@@ -158,107 +174,17 @@ class PagePassports(DatashareModel):
 
 
 class Passports(DatashareModel):
-    pages: list[PagePassports] = []
-
-
-class Error(BaseModel):
-    title: str
-    detail: str
-
-    @classmethod
-    def from_exception(cls, exception: BaseException) -> Self:
-        title = exception.__class__.__name__
-        trace_lines = traceback.format_exception(
-            None, value=exception, tb=exception.__traceback__
-        )
-        detail = f"{exception}\n{''.join(trace_lines)}"
-        error = Error(title=title, detail=detail)
-        return error
-
-
-class FileProcessingError(BaseModel):
-    file: ProcessedFile
-    error: Error
-
-    @classmethod
-    def from_exception(cls, file: ProcessedFile, exception: BaseException) -> Self:
-        return cls(file=file, error=Error.from_exception(exception))
-
-
-class ProcessingError(DatashareModel):
-    location: DocumentLocation
-    path: Path
-    page: int | None = None
-    error: Error
-
-    @classmethod
-    def from_file_processing_error(cls, fp_error: FileProcessingError) -> Self:
-        page = None
-        if isinstance(fp_error.file, ProcessedPage):
-            page = fp_error.file.page_number
-        return cls(
-            location=fp_error.file.location,
-            path=fp_error.file.path,
-            page=page,
-            error=fp_error.error,
-        )
-
-
-# TODO: should it be in datashare-python ?
-class DocumentErrors(DatashareModel):
-    doc_id: str
-    project: str
-    location: DocumentLocation
-    path: Path
-    errors: list[ProcessingError]
-
-
-class ErrorReport(ProcessingReport):
-    errors: list[DocumentErrors] = []
-
-    @classmethod
-    def from_exception(cls, file: ProcessedFile, exception: BaseException) -> Self:
-        return cls.from_file_processing_errors(
-            FileProcessingError.from_exception(file, exception)
-        )
-
-    @classmethod
-    def from_file_processing_errors(
-        cls,
-        *file_processing_errors: FileProcessingError,
-    ) -> Self:
-        roots = dict()
-        n_pages = 0
-        for error in file_processing_errors:
-            root = error.file
-            while (parent := root.parent) is not None:
-                root = parent
-            root_errors = roots.get(root.id)
-            if root_errors is not None:
-                _, root_errors = root_errors
-            else:
-                root_errors = []
-            if isinstance(error.file, ProcessedPage):
-                n_pages += 1
-            root_errors.append(ProcessingError.from_file_processing_error(error))
-            roots[root.id] = (root, root_errors)
-        errors = []
-        for _, (root, root_errors) in sorted(roots.items()):
-            doc_errors = DocumentErrors(
-                doc_id=root.id,
-                project=root.project,
-                location=root.location,
-                path=root.path,
-                errors=root_errors,
-            )
-            errors.append(doc_errors)
-        return cls(n_docs=len(errors), n_pages=n_pages, errors=errors)
+    pages: list[PagePassports] = Field(default_factory=list)
 
 
 class PartialDetectionResult(BaseModel):
-    processed: ProcessingReport = Field(default_factory=ProcessingReport)
-    successes: ProcessingReport = Field(default_factory=ProcessingReport)
-    errors: list[FileProcessingError]
+    processed: ProcessingReportWithPages = Field(
+        default_factory=ProcessingReportWithPages
+    )
+    successes: ProcessingReportWithPages = Field(
+        default_factory=ProcessingReportWithPages
+    )
+    errors: list[PassportProcessingError]
 
 
 class PassportDetectionResponse(DatashareModel):
@@ -269,12 +195,12 @@ class PassportDetectionResponse(DatashareModel):
     @classmethod
     def aggregate(
         cls,
-        preprocessing_errors: list[FileProcessingError],
+        errors: list[PassportProcessingError],
         *,
         inference_results: list[PartialDetectionResult],
     ) -> Self:
-        errors = preprocessing_errors + sum((r.errors for r in inference_results), [])
-        errors = ErrorReport.from_file_processing_errors(*errors)
+        errors += reduce(operator.iadd, (r.errors for r in inference_results), [])
+        errors = ErrorReport.from_errors(*errors)
         processed = sum(
             (r.processed for r in inference_results), start=ProcessingReport()
         )
