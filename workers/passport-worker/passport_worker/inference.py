@@ -10,9 +10,9 @@ from typing import TYPE_CHECKING, Self
 
 from aiofile import async_open
 from datashare_python.objects import (
+    DatashareFile,
     ManifestEntryStatus,
-    ProcessedFile,
-    ProcessedPage,
+    ProcessingReportWithPages,
     WorkerPaths,
 )
 from datashare_python.types_ import AsyncProgressRateHandler, RawAsyncProgressHandler
@@ -22,6 +22,7 @@ from datashare_python.utils import (
     to_incremental_async_progress,
     to_raw_async_progress,
     write_artifact,
+    write_batches,
 )
 from icij_common.iter_utils import async_batches
 from icij_common.registrable import (
@@ -33,18 +34,17 @@ from passport_service.objects import ObjectDetection, Passport
 
 from passport_worker.exceptions import InferenceRuntimeError
 from passport_worker.objects import (
-    FileProcessingError,
     PagePassports,
     PartialDetectionResult,
     PassportArtifact,
     PassportDetectionArgs,
     PassportDetectorType,
     PassportManifestEntry,
+    PassportProcessingError,
     Passports,
-    ProcessingReport,
+    ProcessedPage,
     YOLOPassportDetectorConfig,
 )
-from passport_worker.utils import write_batches
 
 if TYPE_CHECKING:
     import numpy as np
@@ -111,12 +111,12 @@ async def _inference_batches(
     batch = []
     current_doc = None
     async for page in pages:
-        if page.id != current_doc:
+        if page.doc_id != current_doc:
             # We prefer larger batches than smaller onces in order to saturate
             if len(batch) >= target_size:
                 yield batch
                 batch = []
-            current_doc = page.id
+            current_doc = page.doc_id
         batch.append(page)
     if batch:
         yield batch
@@ -146,13 +146,13 @@ async def detect_passports_act(  # noqa: PLR0917
         )
         async for b in im_batches
     ]
-    incomplete = {e.file.id for e in errors}
+    incomplete = {e.source.doc_id for e in errors}
     detection_outs = sum(detection_outs, start=[])
     successes = []
     for res in detection_outs:
-        if isinstance(res, FileProcessingError):
+        if isinstance(res, PassportProcessingError):
             errors.append(res)
-            incomplete.add(res.file.id)
+            incomplete.add(res.source.doc_id)
         else:
             successes.append(res)
     del detection_outs
@@ -172,8 +172,8 @@ async def detect_passports_act(  # noqa: PLR0917
     if progress is not None:
         await progress(n_errors)
     n_docs = len(with_artifacts.union(incomplete))
-    processed = ProcessingReport(n_docs=n_docs, n_pages=n_pages)
-    successes = ProcessingReport(n_docs=n_success, n_pages=n_success_pages)
+    processed = ProcessingReportWithPages(n_docs=n_docs, n_pages=n_pages)
+    successes = ProcessingReportWithPages(n_docs=n_success, n_pages=n_success_pages)
     return PartialDetectionResult(
         processed=processed, successes=successes, errors=errors
     )
@@ -190,7 +190,7 @@ async def _count_pages(batch: Path) -> int:
 
 async def _read_images(
     batch: Path, passport_detector: PassportDetector, paths: WorkerPaths, errors: list
-) -> AsyncIterable[tuple[ProcessedFile, "np.ndarray", "DetectionInputs"]]:
+) -> AsyncIterable[tuple[DatashareFile, "np.ndarray", "DetectionInputs"]]:
     import cv2  # noqa: PLC0415
 
     for page in read_jsonl_as(paths.workdir / batch, ProcessedPage):
@@ -203,19 +203,19 @@ async def _read_images(
                 raise InvalidImage(page_path)
         except (InvalidImage, FileNotFoundError) as e:
             logger.error("couldn't read page %s of doc %s!", page_path, page)
-            errors.append(FileProcessingError.from_exception(page, e))
+            errors.append(PassportProcessingError.from_exception(page, e))
             continue
         im, *detection_in = passport_detector.scale_image(im)
         yield page, im, detection_in
 
 
 async def _detect_passport_pages(
-    batch: Iterable[tuple[ProcessedFile, "np.ndarray", "DetectionInputs"]],
+    batch: Iterable[tuple[DatashareFile, "np.ndarray", "DetectionInputs"]],
     passport_detector: PassportDetector,
     *,
     read_mrz: bool,
     progress: RawAsyncProgressHandler | None = None,
-) -> list[tuple[ProcessedFile, list[Passport]] | FileProcessingError]:
+) -> list[tuple[DatashareFile, list[Passport]] | PassportProcessingError]:
     doc_pages, doc_page_ims, detection_ins = zip(*batch, strict=True)
     try:
         passport_pages = await asyncio.to_thread(
@@ -224,7 +224,7 @@ async def _detect_passport_pages(
     except InferenceRuntimeError as e:
         doc_pages = list(doc_pages)
         logger.exception("error while running inference on batch: %s", doc_pages)
-        return [FileProcessingError.from_exception(d, e) for d in doc_pages]
+        return [PassportProcessingError.from_exception(d, e) for d in doc_pages]
     if read_mrz:
         passports = [
             [
@@ -260,8 +260,8 @@ def _aggregate_doc_passports(
     for page, page_passports in detection_outs:
         if current_doc is None:
             current_doc = page
-        if current_doc.id != page.id:
-            is_complete = current_doc.id not in incomplete
+        if current_doc.doc_id != page.doc_id:
+            is_complete = current_doc.doc_id not in incomplete
             n_pages = len(doc_pages_passports)
             artifact = _passport_artifact_from_passports(
                 current_doc, doc_pages_passports, args, is_complete=is_complete
@@ -269,9 +269,9 @@ def _aggregate_doc_passports(
             yield (artifact, n_pages)
             doc_pages_passports = []
             current_doc = page
-        doc_pages_passports.append((page.page_number, page_passports))
+        doc_pages_passports.append((page.page, page_passports))
     if current_doc:
-        is_complete = current_doc.id not in incomplete
+        is_complete = current_doc.doc_id not in incomplete
         n_pages = len(doc_pages_passports)
         artifact = _passport_artifact_from_passports(
             current_doc, doc_pages_passports, args, is_complete=is_complete
@@ -299,7 +299,7 @@ def _passport_artifact_from_passports(
     )
     artifact = PassportArtifact(
         project=doc.project,
-        doc_id=doc.id,
+        doc_id=doc.doc_id,
         artifact=passports.model_dump_json(polymorphic_serialization=True).encode(),
         manifest_entry=manifest_entry,
     )

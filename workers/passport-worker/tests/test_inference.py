@@ -8,16 +8,20 @@ import numpy as np
 import pytest
 from cv2.typing import MatLike
 from datashare_python.conftest import TEST_PROJECT
+from datashare_python.constants import TIKA_METADATA_RESOURCENAME
 from datashare_python.objects import (
-    DocumentLocation,
-    ProcessedFile,
-    ProcessedPage,
+    DatashareFile,
+    DatashareLanguage,
+    Document,
+    FileLocation,
+    ProcessingReportWithPages,
     WorkerPaths,
 )
-from datashare_python.utils import async_read_jsonl_as, safe_dir
+from datashare_python.utils import async_read_jsonl_as, safe_dir, write_batches
 from icij_common.pydantic_utils import safe_copy
 from icij_common.registrable import FromConfig, RegistrableConfig
 from passport_service.objects import MRZ, ObjectDetection, Passport
+from passport_worker.activities import Activity
 from passport_worker.config import PassportWorkerConfig
 from passport_worker.exceptions import InferenceRuntimeError
 from passport_worker.inference import (
@@ -33,14 +37,13 @@ from passport_worker.objects import (
     PassportInferenceConfig,
     PassportManifestEntry,
     Passports,
-    ProcessingReport,
+    ProcessedPage,
     YOLOPassportDetectorConfig,
 )
 from passport_worker.preprocessing import PDFPreprocessor
-from passport_worker.utils import write_batches
 
 from tests import DOCS_PATH
-from tests.conftest import PROCESSED_DOC_0
+from tests.conftest import DS_FILE_0
 
 
 class MockPassportDetector(PassportDetector):
@@ -105,68 +108,123 @@ class MockPDFPreprocessor(PDFPreprocessor):
 
 
 @pytest.fixture
-def symlinked_doc_0() -> ProcessedFile:
+def symlinked_doc_0() -> DatashareFile:
     # Let's test with a symlinked file
     symlink_path = Path(TEST_PROJECT, "symlinks", "do", "c-", "not_a_passport.jpg")
-    symlinked_doc = safe_copy(PROCESSED_DOC_0, {"path": symlink_path})
+    location = FileLocation(
+        path=symlink_path,
+        resource_name=symlink_path.name,
+        location=FileLocation.ARTIFACTS,
+    )
+    symlinked_doc = safe_copy(DS_FILE_0, {"value": location})
     return symlinked_doc
 
 
 @pytest.fixture
 def symlinked_doc_0_pages(
-    test_worker_config: PassportWorkerConfig, symlinked_doc_0: ProcessedFile
+    test_worker_config: PassportWorkerConfig, symlinked_doc_0: DatashareFile
 ) -> list[Path]:
     worker_paths = test_worker_config.paths
     workdir = worker_paths.workdir
-    output_root = workdir.joinpath("workflow_id")
+    output_root = workdir.joinpath(TEST_PROJECT, "workflow_id")
     output_root.mkdir(parents=True)
-    doc_0_page_dir = output_root / safe_dir(symlinked_doc_0.id) / symlinked_doc_0.id
+    doc_0_page_dir = (
+        output_root / safe_dir(symlinked_doc_0.doc_id) / symlinked_doc_0.doc_id
+    )
     doc_0_pages = [doc_0_page_dir / "page_0.png", doc_0_page_dir / "page_1.png"]
     return doc_0_pages
 
 
-_DOC_0_PAGE_0 = ProcessedPage(
-    page_number=0,
-    **safe_copy(
-        PROCESSED_DOC_0,
-        {
-            "path": Path("do", "c-", "doc-0", "page_0.png"),
-            "location": DocumentLocation.WORKDIR,
-        },
-    ).model_dump(),
-)
-_DOC_0_PAGE_1 = ProcessedPage(
-    page_number=1,
-    **safe_copy(
-        PROCESSED_DOC_0,
-        {
-            "path": Path("do", "c-", "doc-0", "page_1.png"),
-            "location": DocumentLocation.WORKDIR,
-        },
-    ).model_dump(),
-)
-_DOC_6_PAGE_0 = ProcessedPage(
-    project=TEST_PROJECT,
-    id="doc-6",
-    path=Path("do", "c-", "doc-6", "page_0.png"),
-    location=DocumentLocation.WORKDIR,
-    page_number=0,
-    resource_name="page_0.png",
-    n_pages=1,
-)
-_DOC_7_PAGE_0 = ProcessedPage(
-    project=TEST_PROJECT,
-    id="doc-7",
-    path=Path("do", "c-", "doc-7", "page_0.png"),
-    location=DocumentLocation.WORKDIR,
-    page_number=0,
-    resource_name="page_0.png",
-    n_pages=1,
-)
+@pytest.fixture
+def doc_0_page_0(test_worker_config: PassportWorkerConfig) -> ProcessedPage:
+    paths = test_worker_config.paths
+    page_path = paths.workdir.joinpath(
+        TEST_PROJECT,
+        Activity.PREPROCESS_IMAGES,
+        "activity-id",
+        "doc-",
+        "doc-0",
+        "page_0.png",
+    )
+    page = ProcessedPage.from_parent(DS_FILE_0, page_path, paths, page=0)
+    return page
+
+
+@pytest.fixture
+def doc_0_page_1(test_worker_config: PassportWorkerConfig) -> ProcessedPage:
+    paths = test_worker_config.paths
+    page_path = paths.workdir.joinpath(
+        TEST_PROJECT,
+        Activity.PREPROCESS_IMAGES,
+        "activity-id",
+        "doc-",
+        "doc-0",
+        "page_1.png",
+    )
+    page = ProcessedPage.from_parent(DS_FILE_0, page_path, paths, page=0)
+    return page
+
+
+@pytest.fixture
+def doc_6_page_0(test_worker_config: PassportWorkerConfig) -> ProcessedPage:
+    paths = test_worker_config.paths
+    parent = DatashareFile.from_parent(
+        Document(
+            index=TEST_PROJECT,
+            id="doc-6",
+            root_document="doc-6",
+            path="doc-6.png",
+            metadata={TIKA_METADATA_RESOURCENAME: "doc-6.png"},
+            language=DatashareLanguage("ENGLISH"),
+            extraction_level=0,
+            content_type="image/png",
+        )
+    )
+    page_path = paths.workdir.joinpath(
+        TEST_PROJECT,
+        Activity.PREPROCESS_IMAGES,
+        "activity-id",
+        "doc-",
+        "doc-6",
+        "page_0.png",
+    )
+    page = ProcessedPage.from_parent(parent, page_path, paths, page=0)
+    return page
+
+
+@pytest.fixture
+def doc_7_page_0(test_worker_config: PassportWorkerConfig) -> ProcessedPage:
+    paths = test_worker_config.paths
+    parent = DatashareFile.from_parent(
+        Document(
+            index=TEST_PROJECT,
+            id="doc-7",
+            root_document="doc-7",
+            path="doc-7.png",
+            metadata={TIKA_METADATA_RESOURCENAME: "doc-7.png"},
+            language=DatashareLanguage("ENGLISH"),
+            extraction_level=0,
+            content_type="image/png",
+        )
+    )
+    page_path = paths.workdir.joinpath(
+        TEST_PROJECT,
+        Activity.PREPROCESS_IMAGES,
+        "activity-id",
+        "doc-",
+        "doc-7",
+        "page_0.png",
+    )
+    page = ProcessedPage.from_parent(parent, page_path, paths, page=0)
+    return page
 
 
 async def test_create_inference_batches_act(
     test_worker_config: PassportWorkerConfig,
+    doc_0_page_0: ProcessedPage,
+    doc_0_page_1: ProcessedPage,
+    doc_6_page_0: ProcessedPage,
+    doc_7_page_0: ProcessedPage,
 ) -> None:
     # Given
     target_batches_per_task = 1
@@ -174,10 +232,10 @@ async def test_create_inference_batches_act(
     config = test_worker_config
     worker_paths = config.paths
     workdir = worker_paths.workdir
-    output_root = workdir.joinpath("workflow_id")
+    output_root = workdir.joinpath(TEST_PROJECT, "workflow_id")
     output_root.mkdir(parents=True, exist_ok=True)
 
-    pages = [[_DOC_6_PAGE_0], [_DOC_0_PAGE_0, _DOC_0_PAGE_1, _DOC_7_PAGE_0]]
+    pages = [[doc_6_page_0], [doc_0_page_0, doc_0_page_1, doc_7_page_0]]
     batch_paths = []
     for batch_i, batch in enumerate(pages):
         batch_path = output_root / f"activity_{batch_i}.jsonl"
@@ -199,9 +257,9 @@ async def test_create_inference_batches_act(
         for p in batches
     ]  # noqa: F821
     expected_batches = [
-        [_DOC_6_PAGE_0],
-        [_DOC_0_PAGE_0, _DOC_0_PAGE_1],
-        [_DOC_7_PAGE_0],
+        [doc_6_page_0],
+        [doc_0_page_0, doc_0_page_1],
+        [doc_7_page_0],
     ]
     assert batches == expected_batches
 
@@ -226,25 +284,30 @@ _EXPECTED_PASSPORTS_7 = Passports(
 
 def _mock_pages(
     batch: list[ProcessedPage],
-    worker_paths: WorkerPaths,
+    paths: WorkerPaths,
     *,
     errors: list[ProcessedPage],
 ) -> None:
     for p in batch:
-        page_path = worker_paths.workdir / p.path
+        page_path = p.locate(paths)
         page_path.parent.mkdir(parents=True, exist_ok=True)
         if not page_path.exists():
             os.symlink(DOCS_PATH / "passport.png", page_path)
     for error in errors:
         # Generate an error
-        invalid_im_path = worker_paths.workdir / error.path
+        invalid_im_path = error.locate(paths)
         if invalid_im_path.exists():
             os.remove(invalid_im_path)
         os.symlink(DOCS_PATH / "passport.pdf", invalid_im_path)
 
 
-async def test_detect_passports_act(
-    test_worker_config: PassportWorkerConfig, test_model_path: Path
+async def test_detect_passports_act(  # noqa: PLR0917
+    test_worker_config: PassportWorkerConfig,
+    test_model_path: Path,
+    doc_0_page_0: ProcessedPage,
+    doc_0_page_1: ProcessedPage,
+    doc_6_page_0: ProcessedPage,
+    doc_7_page_0: ProcessedPage,
 ) -> None:
     # Given
     config = test_worker_config
@@ -259,8 +322,8 @@ async def test_detect_passports_act(
             )
         ),
     )
-    batch = [_DOC_6_PAGE_0, _DOC_0_PAGE_0, _DOC_0_PAGE_1, _DOC_7_PAGE_0]
-    _mock_pages(batch, worker_paths, errors=[_DOC_0_PAGE_1])
+    batch = [doc_6_page_0, doc_0_page_0, doc_0_page_1, doc_7_page_0]
+    _mock_pages(batch, worker_paths, errors=[doc_0_page_1])
     batches = [b async for b in write_batches([batch], worker_paths.workdir)]
     batch = batches[0]
     detections = [[[]], [[_DOC_0_PAGE_0_DETECTION]], [[_DOC_7_PAGE_0_DETECTION]]]
@@ -269,18 +332,14 @@ async def test_detect_passports_act(
     )
     # When
     res = await detect_passports_act(
-        batch,
-        passport_detector,
-        worker_paths,
-        args,
-        batch_size=1,
+        batch, passport_detector, worker_paths, args, batch_size=1
     )
     # Then
-    assert res.processed == ProcessingReport(n_docs=3, n_pages=4)
-    assert res.successes == ProcessingReport(n_docs=2, n_pages=3)
+    assert res.processed == ProcessingReportWithPages(n_docs=3, n_pages=4)
+    assert res.successes == ProcessingReportWithPages(n_docs=2, n_pages=3)
     assert len(res.errors) == 1
     error = res.errors[0]
-    assert error.file == _DOC_0_PAGE_1
+    assert error.source == doc_0_page_1
     assert error.error.title == "InvalidImage"
     expected = [
         ("doc-6", (PassportManifestEntry.complete(args), Passports())),
@@ -310,7 +369,9 @@ async def test_detect_passports_act(
 
 
 async def test_detect_passports_act_should_report_inference_failure(
-    test_worker_config: PassportWorkerConfig, test_model_path: Path
+    test_worker_config: PassportWorkerConfig,
+    test_model_path: Path,
+    doc_6_page_0: ProcessedPage,
 ) -> None:
     # Given
     config = test_worker_config
@@ -325,25 +386,21 @@ async def test_detect_passports_act_should_report_inference_failure(
             )
         ),
     )
-    batch = [_DOC_6_PAGE_0]
+    batch = [doc_6_page_0]
     _mock_pages(batch, worker_paths, errors=[])
     batches = [b async for b in write_batches([batch], worker_paths.workdir)]
     batch = batches[0]
     passport_detector = FailingPassportDetector()
     # When
     res = await detect_passports_act(
-        batch,
-        passport_detector,
-        worker_paths,
-        args,
-        batch_size=1,
+        batch, passport_detector, worker_paths, args, batch_size=1
     )
     # Then
-    assert res.processed == ProcessingReport(n_docs=1, n_pages=1)
-    assert res.successes == ProcessingReport(n_docs=0, n_pages=0)
+    assert res.processed == ProcessingReportWithPages(n_docs=1, n_pages=1)
+    assert res.successes == ProcessingReportWithPages(n_docs=0, n_pages=0)
     assert len(res.errors) == 1
     error = res.errors[0]
-    assert error.file == _DOC_6_PAGE_0
+    assert error.source == doc_6_page_0
     assert error.error.title == "InferenceRuntimeError"
 
 

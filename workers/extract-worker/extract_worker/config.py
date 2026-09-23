@@ -1,7 +1,9 @@
+import os
 from copy import deepcopy
 
 from datashare_python.config import LoggingConfig, WorkerConfig
 from datashare_python.objects import BaseModel, WorkerPaths
+from docling.datamodel.accelerator_options import AcceleratorOptions
 from docling.datamodel.base_models import InputFormat
 from extract_core import (
     BasePipelineConfig,
@@ -25,19 +27,25 @@ _DOCLING_MAX_PAGE_BATCHES = _DOCLING_CONVERT_ALL_N_PAGES // _DOCLING_PAGE_BATCH_
 
 
 def _default_docling_settings() -> DoclingSettings:
+    # We need to expliclity set these so that they are properly merge hence the default
+    # values vs. just leaving the default args
     batch_concurrency = BatchConcurrencySettings(
-        page_batch_size=_DOCLING_MAX_PAGE_BATCHES,
+        page_batch_size=_DOCLING_PAGE_BATCH_SIZE,
         max_page_batches=_DOCLING_MAX_PAGE_BATCHES,
     )
-    return DoclingSettings(perf=batch_concurrency)
+    inference = InferenceSettings(document_timeout=None)
+    return DoclingSettings(perf=batch_concurrency, inference=inference)
 
 
 class DoclingWorkerConfig(BaseModel):
     settings: DoclingSettings = Field(default_factory=_default_docling_settings)
+    format_options: dict[InputFormat, DoclingFormatOption] = Field(default_factory=dict)
 
 
 class MarkdownInferenceWorkerConfig(BaseModel):
     default_target_n_pages_per_task: int = 100
+
+    device: TorchDevice = Field(default=TorchDevice.CPU)
 
     docling: DoclingWorkerConfig = Field(default_factory=DoclingWorkerConfig)
 
@@ -72,11 +80,16 @@ class MarkdownInferenceWorkerConfig(BaseModel):
     def _resolve_docling_settings(
         self, pipeline_config: DoclingPipelineConfig
     ) -> BaseModel:
+        # ⚠️ we have to be careful when model_dumping to merge only fields specified by
+        # the worker, we use a combination of explicit setting + exclude unset
+        # override too much (excluded unset)
         resolved_perf = pipeline_config.settings.perf.model_dump()
-        resolved_perf.update(self.docling.settings.perf.model_dump())
+        resolved_perf.update(self.docling.settings.perf.model_dump(exclude_unset=True))
         resolved_perf = BatchConcurrencySettings.model_validate(resolved_perf)
         resolved_inference = pipeline_config.settings.inference.model_dump()
-        resolved_inference.update(self.docling.settings.inference.model_dump())
+        resolved_inference.update(
+            self.docling.settings.inference.model_dump(exclude_unset=True)
+        )
         resolved_inference = InferenceSettings.model_validate(resolved_inference)
         update = {"perf": resolved_perf, "inference": resolved_inference}
         resolved_settings = safe_copy(pipeline_config.settings, update=update)
@@ -87,10 +100,27 @@ class MarkdownInferenceWorkerConfig(BaseModel):
     ) -> dict[InputFormat, DoclingFormatOption]:
         resolved = dict()
         doc_timeout = self.docling.settings.inference.document_timeout
-        for fmt, opts in pipeline_config.format_options.items():
+        page_batch_size = self.docling.settings.perf.page_batch_size
+        accelerator_opts = AcceleratorOptions(
+            num_threads=os.cpu_count(), device=self.device.value
+        ).model_dump(exclude_unset=True)
+        for fmt, opts in DoclingPipelineConfig().format_options.items():
+            if fmt not in pipeline_config.format_options:
+                resolved[fmt] = opts
+                continue
             pipeline_opts = deepcopy(opts.pipeline_options)
-            pipeline_opts.update({"document_timeout": doc_timeout})
-            resolved[fmt] = safe_copy(opts, update={"pipeline_options": pipeline_opts})
+            if pipeline_opts is None:
+                pipeline_opts = dict()
+            pipeline_opts["document_timeout"] = doc_timeout
+            if fmt is InputFormat.PDF:
+                pipeline_opts["ocr_batch_size"] = page_batch_size
+                pipeline_opts["layout_batch_size"] = page_batch_size
+                pipeline_opts["table_batch_size"] = page_batch_size
+            update = {"pipeline_options": pipeline_opts}
+            if "accelerator_options" not in pipeline_opts:
+                pipeline_opts["accelerator_options"] = dict()
+            pipeline_opts["accelerator_options"].update(accelerator_opts)
+            resolved[fmt] = safe_copy(opts, update=update)
         return resolved
 
 
@@ -101,7 +131,6 @@ class MarkdownExtractWorkerConfig(BaseModel):
 
 
 class ExtractWorkerConfig(WorkerConfig):
-    device: TorchDevice = Field(default=TorchDevice.CPU, frozen=True)
     logging: LoggingConfig = _DEFAULT_LOGGING_CONFIG
 
     markdown: MarkdownExtractWorkerConfig = Field(

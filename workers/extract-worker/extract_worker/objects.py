@@ -1,21 +1,18 @@
-from typing import Any, ClassVar, Self
+from typing import Any, ClassVar
 
 from datashare_python.objects import (
     ArtifactType,
     DatashareModel,
     DocArtifact,
+    ErrorReportWithPages,
     ManifestEntry,
     Pages,
     ProcessedFile,
+    ProcessingError,
+    ProcessingReportWithPages,
     TaskArgs,
 )
-from extract_core import (
-    DoclingPipelineConfig,
-    Error,
-    PipelineConfig,
-    PipelineType,
-    Status,
-)
+from extract_core import DoclingPipelineConfig, PipelineConfig, PipelineType, Status
 
 # Import the config class from extract python otherwise the
 # ExtractPipelineConfig.__subclasses__ list might be incomplete
@@ -50,30 +47,22 @@ class StructureManifestEntry(ManifestEntry):
     pages: Pages
 
 
-class ProcessingReport(DatashareModel):
-    n_docs: int = 0
-    n_pages: int = 0
-
-    def __add__(self, other: Self) -> Self:
-        return ProcessingReport(
-            n_docs=other.n_docs + self.n_docs, n_pages=other.n_pages + self.n_pages
-        )
-
-
-class ErrorReport(DatashareModel):
-    doc: ProcessedFile
+class ExtractError(ProcessingError[ProcessedFile]):
     status: Status
-    errors: list[Error] = []
 
 
 class MarkdownExtractResponse(DatashareModel):
-    processed: ProcessingReport = Field(default_factory=ProcessingReport)
-    successes: ProcessingReport = Field(default_factory=ProcessingReport)
-    errors: list[ErrorReport] = Field(default_factory=list)
+    processed: ProcessingReportWithPages = Field(
+        default_factory=ProcessingReportWithPages
+    )
+    successes: ProcessingReportWithPages = Field(
+        default_factory=ProcessingReportWithPages
+    )
+    errors: ErrorReportWithPages = Field(default_factory=ErrorReportWithPages)
 
-    @classmethod
-    def from_responses(cls, *responses: Self) -> Self:
-        processed = sum((r.processed for r in responses), start=ProcessingReport())
-        successes = sum((r.successes for r in responses), start=ProcessingReport())
-        errors = sum((r.errors for r in responses), start=[])
-        return cls(processed=processed, successes=successes, errors=errors)
+    def __add__(self, other: "MarkdownExtractResponse") -> "MarkdownExtractResponse":
+        return MarkdownExtractResponse(
+            processed=self.processed + other.processed,
+            successes=self.successes + other.successes,
+            errors=self.errors + self.errors,
+        )
