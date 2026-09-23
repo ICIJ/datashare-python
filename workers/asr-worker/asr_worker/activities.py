@@ -127,9 +127,9 @@ class ASRActivities(ActivityWithProgress):
             preprocessor_key, preprocessor_factory
         ) as preprocessor:
             audios = list(read_jsonl_as(audio_batch, PROCESSED_FILE_TA))
-            batches, errors, audio_routes = preprocess_act(
-                preprocessor, audios, worker_config, output_dir=output_dir
-            )
+        batches, errors, audio_routes = preprocess_act(
+            preprocessor, audios, worker_config, output_dir=output_dir
+        )
         res_root = activity_workdir(workdir, project)
         res_root.mkdir(parents=True, exist_ok=True)
         batch_files = []
@@ -186,7 +186,7 @@ class ASRActivities(ActivityWithProgress):
                 n_batches,
             )
             successes, errors = await infer_act(
-                inference_runner, batches, output_dir=output_dir, progress=progress
+            inference_runner, batches, output_dir=output_dir, progress=progress
             )
             inference_res = [p.relative_to(workdir) for p in successes]
         errors_path = output_dir / "errors.jsonl"
@@ -228,12 +228,12 @@ class ASRActivities(ActivityWithProgress):
             success, errors = postprocess_act(
                 inference_results,
                 audio_routes,
-                postprocessor,
-                args,
-                artifacts_root=artifacts_root,
-                event_loop=self._event_loop,
-                progress=progress,
-            )
+            postprocessor,
+            args,
+            artifacts_root=artifacts_root,
+            event_loop=self._event_loop,
+            progress=progress,
+        )
         output_dir = activity_workdir(workdir, args.project)
         output_dir.mkdir(parents=True, exist_ok=True)
         successes_path = output_dir / "routes.jsonl"
