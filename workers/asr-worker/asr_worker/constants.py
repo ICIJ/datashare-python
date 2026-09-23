@@ -11,12 +11,6 @@ RESPONSE_SUCCESS = "success"
 RESPONSE_ERROR = "error"
 
 ASR_WORKFLOW = "asr.transcription"
-GET_CONFIG_ACTIVITY = "asr.transcription.config"
-PREPROCESS_ACTIVITY = "asr.transcription.preprocess"
-SEARCH_AUDIOS_ACTIVITY = "asr.transcription.search-audios"
-RUN_INFERENCE_ACTIVITY = "asr.transcription.infer"
-POSTPROCESS_ACTIVITY = "asr.transcription.postprocess"
-INDEX_TRANSCRIPTION_ACTIVITY = "asr.transcription.index"
 
 SUPPORTED_CONTENT_TYPES = {
     "audio/aac",

@@ -2,15 +2,18 @@ from pathlib import Path
 
 import pytest
 from datashare_python.conftest import TEST_PROJECT
-from datashare_python.objects import BaseModel
+from datashare_python.objects import (
+    PROCESSED_FILE_TA,
+    BaseModel,
+    DatashareFile,
+    WorkerFile,
+)
 from datashare_python.utils import ext_to_mime_types, read_jsonl_as
 from icij_common.es import ESClient, ids_query, match_all
 from passport_service.constants import GOTENBERG_SUPPORTED_EXTS
-from passport_service.core.preprocessing import (
-    PIL_SUPPORTED_EXTENSIONS,
-)
+from passport_service.core.preprocessing import PIL_SUPPORTED_EXTENSIONS
 from passport_worker.config import PassportWorkerConfig
-from passport_worker.objects import DocId, DocumentSearchQuery, ProcessedFile
+from passport_worker.objects import DocId, DocumentSearchQuery
 from passport_worker.search import (
     create_preprocessing_batches_act,
     restrict_image_formats,
@@ -18,18 +21,13 @@ from passport_worker.search import (
 )
 from pydantic import Field
 
-from tests.conftest import (
-    PROCESSED_DOC_1,
-    PROCESSED_DOC_2,
-    PROCESSED_DOC_5,
-    SYMLINKED_PROCESSED_DOC_0,
-)
+from tests.conftest import DS_FILE_1, DS_FILE_2, DS_FILE_5, SYMLINKED_DS_FILE_0
 
 
 class _PreprocessingBatches(BaseModel):
-    to_pdf: list[list[ProcessedFile]] = Field(default_factory=list)
-    images: list[list[ProcessedFile]] = Field(default_factory=list)
-    pdfs: list[list[ProcessedFile]] = Field(default_factory=list)
+    to_pdf: list[list[DatashareFile | WorkerFile]] = Field(default_factory=list)
+    images: list[list[DatashareFile | WorkerFile]] = Field(default_factory=list)
+    pdfs: list[list[DatashareFile | WorkerFile]] = Field(default_factory=list)
 
 
 @pytest.mark.parametrize(
@@ -39,23 +37,23 @@ class _PreprocessingBatches(BaseModel):
         (
             {},
             _PreprocessingBatches(
-                to_pdf=[[PROCESSED_DOC_2]],
-                images=[[SYMLINKED_PROCESSED_DOC_0]],
-                pdfs=[[PROCESSED_DOC_1], [PROCESSED_DOC_5]],
+                to_pdf=[[DS_FILE_2]],
+                images=[[SYMLINKED_DS_FILE_0]],
+                pdfs=[[DS_FILE_1], [DS_FILE_5]],
             ),
         ),
         # Return all supported docs
         (
             match_all(),
             _PreprocessingBatches(
-                to_pdf=[[PROCESSED_DOC_2]],
-                images=[[SYMLINKED_PROCESSED_DOC_0]],
-                pdfs=[[PROCESSED_DOC_1], [PROCESSED_DOC_5]],
+                to_pdf=[[DS_FILE_2]],
+                images=[[SYMLINKED_DS_FILE_0]],
+                pdfs=[[DS_FILE_1], [DS_FILE_5]],
             ),
         ),
         (
             ids_query(["doc-0"]),
-            _PreprocessingBatches(images=[[SYMLINKED_PROCESSED_DOC_0]]),
+            _PreprocessingBatches(images=[[SYMLINKED_DS_FILE_0]]),
         ),
         # Should filter non supported content type
         (ids_query(["doc-6"]), _PreprocessingBatches()),
@@ -63,7 +61,7 @@ class _PreprocessingBatches(BaseModel):
 )
 async def test_create_preprocessing_batches(  # noqa: PLR0917
     test_worker_config: PassportWorkerConfig,
-    docs_with_cached_artifacts: list[ProcessedFile],  # noqa: ARG001
+    docs_with_cached_artifacts: list[DatashareFile],  # noqa: ARG001
     test_es_client: ESClient,
     docs: list[DocId] | DocumentSearchQuery | None,
     expected_batches: list[tuple[DocId, Path]],
@@ -91,13 +89,13 @@ async def test_create_preprocessing_batches(  # noqa: PLR0917
     # Then
     to_pdf = []
     for p in batches.to_pdf:
-        to_pdf.append(list(read_jsonl_as(p, ProcessedFile)))
+        to_pdf.append(list(read_jsonl_as(p, PROCESSED_FILE_TA)))
     images = []
     for p in batches.images:
-        images.append(list(read_jsonl_as(p, ProcessedFile)))
+        images.append(list(read_jsonl_as(p, PROCESSED_FILE_TA)))
     pdfs = []
     for p in batches.pdfs:
-        pdfs.append(list(read_jsonl_as(p, ProcessedFile)))
+        pdfs.append(list(read_jsonl_as(p, PROCESSED_FILE_TA)))
     batches = _PreprocessingBatches(to_pdf=to_pdf, images=images, pdfs=pdfs)
     assert batches.model_dump() == expected_batches.model_dump()
 
