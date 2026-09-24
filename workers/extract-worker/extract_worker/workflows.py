@@ -6,6 +6,7 @@ from enum import StrEnum
 from temporalio import workflow
 
 with workflow.unsafe.imports_passed_through():
+    from datashare_python.config import ActivityTimeouts
     from datashare_python.utils import WorkflowWithProgress, execute_activity
 
     from .activities import MarkdownExtract
@@ -29,7 +30,7 @@ class ExtractMarkdownContentWorkflow(WorkflowWithProgress):
         worker_config = await execute_activity(
             MarkdownExtract.extract_worker_config,
             task_queue=TaskQueues.IO,
-            start_to_close_timeout=timedelta(hours=1),
+            timeouts=ActivityTimeouts(start_to_close=timedelta(minutes=10)),
         )
         # Create batches almost of constant number of pages
         batch_args = [args.project, args.docs, args.config]
@@ -38,7 +39,7 @@ class ExtractMarkdownContentWorkflow(WorkflowWithProgress):
             MarkdownExtract.create_markdown_extract_batches,
             args=batch_args,
             task_queue=TaskQueues.IO,
-            start_to_close_timeout=timedelta(hours=6),
+            timeouts=worker_config.timeouts.create_batches,
         )
 
         # Extract Markdown content
@@ -53,9 +54,7 @@ class ExtractMarkdownContentWorkflow(WorkflowWithProgress):
                 MarkdownExtract.extract_markdown_content,
                 args=args,
                 task_queue=task_queue,
-                start_to_close_timeout=timedelta(hours=12),
-                # We expect processing threads to block no more than 5mins
-                heartbeat_timeout=timedelta(minutes=5),
+                timeouts=worker_config.timeouts.extract_content,
             )
             for args in extract_args
         )

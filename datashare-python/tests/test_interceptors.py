@@ -21,7 +21,7 @@ from temporalio import exceptions as temporalio_exceptions
 from temporalio.common import RetryPolicy
 
 with temporalio.workflow.unsafe.imports_passed_through():
-    from datashare_python.config import WorkerConfig
+    from datashare_python.config import ActivityTimeouts, WorkerConfig
     from datashare_python.interceptors import (
         HeartbeatInterceptor,
         ProgressInterceptor,
@@ -81,7 +81,7 @@ class _MockTraceContextHeaderInterceptor(Interceptor):
         return super().intercept_client(_MockOutboundInterceptor(next))
 
 
-_TIMEOUT = timedelta(seconds=180)
+_TIMEOUTS = ActivityTimeouts(start_to_close=timedelta(seconds=180))
 
 
 @workflow.defn
@@ -90,17 +90,11 @@ class _TestTraceContentWorkflow:
     async def run(self) -> list[TraceContext]:
         current_ctx = get_trace_context()
         ctx_log = [current_ctx]
-        ctx_log = await workflow.execute_activity(
-            ctx_test_act,
-            ctx_log,
-            task_queue=TestTaskQueue.TRACE,
-            start_to_close_timeout=_TIMEOUT,
+        ctx_log = await execute_activity(
+            ctx_test_act, TestTaskQueue.TRACE, ctx_log, timeouts=_TIMEOUTS
         )
-        ctx_log = await workflow.execute_activity(
-            ctx_test_act,
-            ctx_log,
-            task_queue=TestTaskQueue.TRACE,
-            start_to_close_timeout=_TIMEOUT,
+        ctx_log = await execute_activity(
+            ctx_test_act, TestTaskQueue.TRACE, ctx_log, timeouts=_TIMEOUTS
         )
         return ctx_log
 
@@ -163,13 +157,13 @@ class _TestProgressWorkflow(WorkflowWithProgress):
             _ProgressAct.hello_sync_act,
             args=[args],
             task_queue=TestTaskQueue.PROGRESS_SYNC,
-            start_to_close_timeout=_TIMEOUT,
+            timeouts=_TIMEOUTS,
         )
         await execute_activity(
             _ProgressAct.hello_async_act,
             args=[args],
             task_queue=TestTaskQueue.PROGRESS_ASYNC,
-            start_to_close_timeout=_TIMEOUT,
+            timeouts=_TIMEOUTS,
         )
 
 
@@ -181,8 +175,10 @@ class _TestHeartbeatWorkflow(WorkflowWithProgress):
             sleep_for_act,
             arg=1,
             task_queue=TestTaskQueue.HEARTBEAT,
-            start_to_close_timeout=_TIMEOUT,
-            heartbeat_timeout=timedelta(milliseconds=500),
+            timeouts=ActivityTimeouts(
+                start_to_close=timedelta(seconds=180),
+                heartbeat=timedelta(milliseconds=500),
+            ),
             retry_policy=RetryPolicy(maximum_attempts=1),
         )
 
@@ -195,8 +191,10 @@ class _TestNoHeartbeatWorkflow(WorkflowWithProgress):
             sleep_for_act,
             arg=1,
             task_queue=TestTaskQueue.NO_HEARTBEAT,
-            start_to_close_timeout=_TIMEOUT,
-            heartbeat_timeout=timedelta(milliseconds=500),
+            timeouts=ActivityTimeouts(
+                start_to_close=timedelta(seconds=180),
+                heartbeat=timedelta(milliseconds=500),
+            ),
             retry_policy=RetryPolicy(maximum_attempts=1),
         )
 

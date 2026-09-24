@@ -1,6 +1,9 @@
+from datetime import timedelta
+
 import datashare_python
 from caul_core import TorchDevice
 from datashare_python.config import (
+    ActivityTimeouts,
     LogFormat,
     LoggingConfig,
     ResourceCacheConfig,
@@ -35,6 +38,23 @@ class ASRWorkerDevices(BaseModel):
     inference: TorchDevice = TorchDevice.CPU
 
 
+class ASRTimeouts(BaseModel):
+    search: ActivityTimeouts = ActivityTimeouts(start_to_close=timedelta(minutes=10))
+    preprocessing: ActivityTimeouts = ActivityTimeouts(
+        start_to_close=timedelta(minutes=30)
+    )
+    inference: ActivityTimeouts = ActivityTimeouts(
+        start_to_close=timedelta(hours=1), heartbeat=timedelta(minutes=3)
+    )
+    postprocessing: ActivityTimeouts = ActivityTimeouts(
+        start_to_close=timedelta(minutes=10)
+    )
+    indexing: ActivityTimeouts = ActivityTimeouts(start_to_close=timedelta(minutes=15))
+    aggregation: ActivityTimeouts = ActivityTimeouts(
+        start_to_close=timedelta(minutes=5)
+    )
+
+
 class ASRWorkerConfig(WorkerConfig):
     logging: LoggingConfig = _DEFAULT_LOGGING_CONFIG
 
@@ -49,6 +69,8 @@ class ASRWorkerConfig(WorkerConfig):
     cache: ASRCache = Field(default_factory=ASRCache)
 
     devices: ASRWorkerDevices = Field(default_factory=ASRWorkerDevices)
+
+    timeouts: ASRTimeouts = Field(default_factory=ASRTimeouts)
 
 
 WORKER_CONFIG_CLS = ASRWorkerConfig
