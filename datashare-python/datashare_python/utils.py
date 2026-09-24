@@ -766,20 +766,78 @@ class SharedResources:
         eviction_callback: Callable[[Any, Any], None] | None = None,
     ) -> None:
         self._eviction_callback = eviction_callback
-        self._cache = LRU(cache_size, self._eviction_callback)
+        self._cache = LRU(cache_size, self._on_evict)
         self._sentinel = object()
+        # Leased resources are tracked by id, evicting a leased resource defers the
+        # eviction callback until its last lease is released
+        self._lock = threading.Lock()
+        self._n_leases: dict[int, int] = dict()
+        self._pending_evictions: dict[int, tuple[Any, Any]] = dict()
 
     def __enter__(self) -> Self:
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb) -> None:  # noqa: ANN001
+        for k, v in self._cache.items():
+            self._on_evict(k, v)
+
+    @contextlib.contextmanager
+    def lease_resource(
+        self, key: str, default_factory: Callable[[], Any]
+    ) -> Generator[Any, None, None]:
+        """Get or cache a resource, guaranteeing it won't be evicted while in use.
+
+        Unlike get_or_cache_resource, the eviction callback of a resource evicted
+        while leased only runs once all its leases have been released.
+        """
+        with self._lock:
+            value = self._cache.get(key, self._sentinel)
+            if value is not self._sentinel:
+                self._acquire(value)
+        if value is self._sentinel:
+            # Same as get_or_cache_resource, the factory is called without locking
+            value = default_factory()
+            with self._lock:
+                self._acquire(value)
+            # Can evict other resources, must be called without holding the lock
+            self._cache[key] = value
+        try:
+            yield value
+        finally:
+            self._release(value)
+
+    def _acquire(self, value: Any) -> None:
+        value_id = id(value)
+        self._n_leases[value_id] = self._n_leases.get(value_id, 0) + 1
+
+    def _release(self, value: Any) -> None:
+        value_id = id(value)
+        with self._lock:
+            self._n_leases[value_id] -= 1
+            if self._n_leases[value_id]:
+                return
+            del self._n_leases[value_id]
+            pending = self._pending_evictions.pop(value_id, None)
+        if pending is not None:
+            self._evict(*pending)
+
+    def _on_evict(self, key: Any, value: Any) -> None:
+        with self._lock:
+            if id(value) in self._n_leases:
+                self._pending_evictions[id(value)] = (key, value)
+                return
+        self._evict(key, value)
+
+    def _evict(self, key: Any, value: Any) -> None:
         if self._eviction_callback is not None:
-            for k, v in self._cache.items():
-                self._eviction_callback(k, v)
+            self._eviction_callback(key, value)
 
     def get_or_cache_resource(
         self, key: str, default_factory: Callable[[], Any]
     ) -> Any:
+        # The returned resource can be evicted and closed by the eviction callback
+        # while still in use. lease_resource is preferred when used concurrently or
+        # from another thread
         value = self._cache.get(key, self._sentinel)
         if value is not self._sentinel:
             return value

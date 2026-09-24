@@ -1,7 +1,8 @@
 import asyncio
 import logging
 from asyncio import AbstractEventLoop
-from collections.abc import AsyncGenerator, AsyncIterable, Iterable
+from collections.abc import AsyncGenerator, AsyncIterable, Callable, Iterable
+from contextlib import AbstractContextManager
 from functools import partial
 from itertools import tee
 from pathlib import Path
@@ -188,19 +189,21 @@ class ASRActivities(ActivityWithProgress):
                 progress, max_progress=len(preprocessed_inputs)
             )
         device = worker_config.devices.inference
-        logger.info("loading model %s on %s device", config.model, device)
         runner_factory = enter_cm(
             partial(InferenceRunner.from_config, config, device=device)
         )
         runner_key = config_cache_key(config)
         cache = lifespan_inference_runner_cache()
-        inference_runner = cache.get_or_cache_resource(runner_key, runner_factory)
+        # Lease the runner so that it can't be evicted while still in use
+        lease_runner = partial(cache.lease_resource, runner_key, runner_factory)
         logger.info(
-            "model loaded, starting inference on %s audio chunks !",
+            "starting inference with %s on %s device on %s audio chunks !",
+            config.model,
+            device,
             len(preprocessed_inputs),
         )
         inference_res = infer_act(
-            inference_runner,
+            lease_runner,
             preprocessed_inputs,
             output_dir=output_dir,
             progress=progress,
@@ -321,7 +324,7 @@ def preprocess_act(
 
 
 async def infer_act(
-    inference_runner: InferenceRunner,
+    lease_runner: Callable[[], AbstractContextManager[InferenceRunner]],
     preprocessed_inputs: list[Path],
     output_dir: Path,
     event_loop: AbstractEventLoop | None = None,
@@ -337,8 +340,10 @@ async def infer_act(
     audio_paths, inputs = tee(inputs)
     audio_paths = (i.path for b in audio_paths for i in b)
     # TODO: implement caching
+    # The runner is leased from the inference thread. If the activity is cancelled,
+    # the thread keeps running and must keep the runner alive until it completes
     inference_results = await asyncio.to_thread(
-        _transcribe_as_list, inference_runner, list(inputs)
+        _transcribe_as_list, lease_runner, list(inputs)
     )
     for res_i, (path, asr_res) in enumerate(
         zip(audio_paths, inference_results, strict=True)
@@ -356,10 +361,11 @@ async def infer_act(
 
 
 def _transcribe_as_list(
-    inference_runner: InferenceRunner,
+    lease_runner: Callable[[], AbstractContextManager[InferenceRunner]],
     inputs: Iterable[tuple[ProcessedAudioSegment, ...]],
 ) -> list[ASRResult]:
-    return list(inference_runner.process(inputs))
+    with lease_runner() as inference_runner:
+        return list(inference_runner.process(inputs))
 
 
 def postprocess_act(
