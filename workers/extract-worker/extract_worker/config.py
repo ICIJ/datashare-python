@@ -1,7 +1,8 @@
 import os
 from copy import deepcopy
+from datetime import timedelta
 
-from datashare_python.config import LoggingConfig, WorkerConfig
+from datashare_python.config import ActivityTimeouts, LoggingConfig, WorkerConfig
 from datashare_python.objects import BaseModel, WorkerPaths
 from docling.datamodel.accelerator_options import AcceleratorOptions
 from docling.datamodel.base_models import InputFormat
@@ -130,12 +131,22 @@ class MarkdownExtractWorkerConfig(BaseModel):
     )
 
 
+class ExtractTimeouts(BaseModel):
+    create_batches: ActivityTimeouts = ActivityTimeouts(
+        start_to_close=timedelta(minutes=10)
+    )
+    extract_content: ActivityTimeouts = ActivityTimeouts(
+        start_to_close=timedelta(hours=2), heartbeat=timedelta(minutes=5)
+    )
+
+
 class ExtractWorkerConfig(WorkerConfig):
     logging: LoggingConfig = _DEFAULT_LOGGING_CONFIG
 
     markdown: MarkdownExtractWorkerConfig = Field(
         default_factory=MarkdownExtractWorkerConfig
     )
+    timeouts: ExtractTimeouts = Field(default_factory=ExtractTimeouts)
 
     paths: WorkerPaths
 

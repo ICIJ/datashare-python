@@ -5,12 +5,16 @@ from dataclasses import dataclass
 from datetime import timedelta
 from enum import StrEnum
 from pathlib import Path
+from typing import cast
 
-from datashare_python.utils import WorkflowWithProgress, execute_activity
 from temporalio import workflow
 
 with workflow.unsafe.imports_passed_through():
+    from datashare_python.config import ActivityTimeouts
+    from datashare_python.utils import WorkflowWithProgress, execute_activity
+
     from .activities import PassportDetectionActivities
+    from .config import PassportWorkerConfig
     from .objects import (
         Batches,
         PassportDetectionArgs,
@@ -29,14 +33,6 @@ class TaskQueue(StrEnum):
     INFERENCE = "passport-detection.inference"
 
 
-_CREATE_BATCHES_TIMEOUT = timedelta(minutes=30)
-_PREPROCESS_IMAGES_TIMEOUT = timedelta(hours=1)
-_CONVERT_TO_PDF_TIMEOUT = timedelta(hours=1)
-_PREPROCESS_PDF_TIMEOUT = timedelta(minutes=10)
-_INFERENCE_TIMEOUT = timedelta(minutes=10)
-_RESULT_AGGREGATION_TIMEOUT = timedelta(minutes=5)
-
-
 @dataclass(frozen=True)
 class PreprocessingOutput:
     pages: list[Path]
@@ -49,22 +45,32 @@ class PassportDetectionWorkflow(WorkflowWithProgress):
     async def run(self, args: PassportDetectionArgs) -> PassportDetectionResponse:
         logger.info("creating preprocessing batches...")
         batch_args = [args.docs, args.project]
+        # Fetch worker config
+        worker_config = await execute_activity(
+            PassportDetectionActivities.worker_config,
+            args=batch_args,
+            task_queue=TaskQueue.IO,
+            timeouts=ActivityTimeouts(start_to_close=timedelta(minutes=5)),
+        )
+        worker_config = cast(PassportWorkerConfig, worker_config)
         # Create preprocessing batches
         preprocessing_batches = await execute_activity(
             PassportDetectionActivities.create_preprocessing_batches,
             args=batch_args,
             task_queue=TaskQueue.IO,
-            start_to_close_timeout=_CREATE_BATCHES_TIMEOUT,
+            timeouts=worker_config.timeouts.preprocessing_batching,
         )
         logger.info("created preprocessing batches!")
         # Preprocess
-        preprocessing_output = await preprocess(args, preprocessing_batches)
+        preprocessing_output = await preprocess(
+            args, preprocessing_batches, worker_config
+        )
         # Create inference batches
         inference_batches = await execute_activity(
             PassportDetectionActivities.create_inference_batches,
             args=[preprocessing_output.pages, args.project],
             task_queue=TaskQueue.IO,
-            start_to_close_timeout=_CREATE_BATCHES_TIMEOUT,
+            timeouts=worker_config.timeouts.inference_batching,
         )
         # Perform inference
         logger.info("running inference...")
@@ -74,7 +80,7 @@ class PassportDetectionWorkflow(WorkflowWithProgress):
                 PassportDetectionActivities.detect_passports,
                 args=(b, args),
                 task_queue=TaskQueue.INFERENCE,
-                start_to_close_timeout=_INFERENCE_TIMEOUT,
+                timeouts=worker_config.timeouts.inference,
             )
             inference_tasks.append(t)
         inference_res = await asyncio.gather(*inference_tasks)
@@ -86,22 +92,28 @@ class PassportDetectionWorkflow(WorkflowWithProgress):
             PassportDetectionActivities.aggregate_results,
             args=aggregation_args,
             task_queue=TaskQueue.IO,
-            start_to_close_timeout=_RESULT_AGGREGATION_TIMEOUT,
+            timeouts=worker_config.timeouts.result_aggregation,
         )
         return response
 
 
 async def preprocess(
-    args: PassportDetectionArgs, preprocessing_batches: PreprocessingBatches
+    args: PassportDetectionArgs,
+    preprocessing_batches: PreprocessingBatches,
+    worker_config: PassportWorkerConfig,
 ) -> PreprocessingOutput:
     im_preprocessing_tasks = _im_processing_tasks(
-        preprocessing_batches.images, args.project, args.config.preprocessing
+        preprocessing_batches.images,
+        args.project,
+        args.config.preprocessing,
+        worker_config,
     )
     force_reprocessing = not args.config.preprocessing.use_caching
     convert_to_pdf_tasks = _convert_to_pdfs_tasks(
         preprocessing_batches.to_pdf,
         args.project,
         force_reprocessing=force_reprocessing,
+        worker_config=worker_config,
     )
     im_preprocessing_tasks = asyncio.gather(*im_preprocessing_tasks)
     convert_to_pdf_tasks = asyncio.gather(*convert_to_pdf_tasks)
@@ -129,7 +141,10 @@ async def preprocess(
     logger.info("converting PDF pages to PNG...")
     pdf_batches = preprocessing_batches.pdfs + pdf_paths
     preprocess_pdfs_tasks = _process_pdfs_tasks(
-        pdf_batches, args.project, force_reprocessing=force_reprocessing
+        pdf_batches,
+        args.project,
+        force_reprocessing=force_reprocessing,
+        worker_config=worker_config,
     )
     pdf_pages_res = await asyncio.gather(*preprocess_pdfs_tasks)
     if pdf_pages_res:
@@ -146,7 +161,10 @@ async def preprocess(
 
 
 def _im_processing_tasks(
-    batches: Batches, project: str, config: PreprocessingConfig
+    batches: Batches,
+    project: str,
+    config: PreprocessingConfig,
+    worker_config: PassportWorkerConfig,
 ) -> list:
     im_preprocessing_tasks = []
     for b in batches:
@@ -155,15 +173,18 @@ def _im_processing_tasks(
                 PassportDetectionActivities.preprocess_images,
                 args=(b, project, config),
                 task_queue=TaskQueue.PREPROCESSING,
-                start_to_close_timeout=_PREPROCESS_IMAGES_TIMEOUT,
-                heartbeat_timeout=timedelta(minutes=3),
+                timeouts=worker_config.timeouts.image_preprocessing,
             )
         )
     return im_preprocessing_tasks
 
 
 def _convert_to_pdfs_tasks(
-    batches: Batches, project: str, *, force_reprocessing: bool
+    batches: Batches,
+    project: str,
+    *,
+    force_reprocessing: bool,
+    worker_config: PassportWorkerConfig,
 ) -> list[Coroutine]:
     all_tasks = []
     for b in batches:
@@ -172,15 +193,18 @@ def _convert_to_pdfs_tasks(
                 PassportDetectionActivities.convert_to_pdfs,
                 args=(b, project, force_reprocessing),
                 task_queue=TaskQueue.IO,
-                start_to_close_timeout=_CONVERT_TO_PDF_TIMEOUT,
-                heartbeat_timeout=timedelta(minutes=2),
+                timeouts=worker_config.timeouts.pdf_conversion,
             )
         )
     return all_tasks
 
 
 def _process_pdfs_tasks(
-    batches: Batches, project: str, *, force_reprocessing: bool
+    batches: Batches,
+    project: str,
+    *,
+    force_reprocessing: bool,
+    worker_config: PassportWorkerConfig,
 ) -> list[Coroutine]:
     all_tasks = []
     for b in batches:
@@ -189,7 +213,7 @@ def _process_pdfs_tasks(
                 PassportDetectionActivities.preprocess_pdfs,
                 args=(b, project, force_reprocessing),
                 task_queue=TaskQueue.IO,
-                start_to_close_timeout=_CONVERT_TO_PDF_TIMEOUT,
+                timeouts=worker_config.timeouts.pdf_preprocessing,
             )
         )
     return all_tasks

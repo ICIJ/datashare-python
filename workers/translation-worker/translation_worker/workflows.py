@@ -5,6 +5,7 @@ from icij_common.iter_utils import batches
 from temporalio import workflow
 
 with workflow.unsafe.imports_passed_through():
+    from datashare_python.config import ActivityTimeouts
     from datashare_python.utils import WorkflowWithProgress, execute_activity
 
     from .activities import TranslationActivities
@@ -23,7 +24,7 @@ class TranslationWorkflow(WorkflowWithProgress):
         worker_config: TranslationWorkerConfig = await execute_activity(
             TranslationActivities.translation_worker_config,
             task_queue=TaskQueue.IO,
-            start_to_close_timeout=timedelta(minutes=1),
+            timeouts=ActivityTimeouts(start_to_close=timedelta(minutes=5)),
         )
         batches_per_worker = worker_config.batches_per_worker
         # Create translation batches
@@ -34,18 +35,12 @@ class TranslationWorkflow(WorkflowWithProgress):
             TranslationActivities.create_translation_batches,
             args=translation_batch_args,
             task_queue=TaskQueue.IO,
-            start_to_close_timeout=timedelta(hours=1),
+            timeouts=worker_config.timeouts.batching,
         )
 
         # Translate
         translation_args = [
-            (
-                b,
-                source,
-                target,
-                args.config,
-                args.project,
-            )
+            (b, source, target, args.config, args.project)
             for source, languages_batches in per_language_batches
             for b in batches(languages_batches, batch_size=batches_per_worker)
         ]
@@ -55,7 +50,7 @@ class TranslationWorkflow(WorkflowWithProgress):
                 TranslationActivities.translate_docs,
                 args=args,
                 task_queue=inference_queue,
-                start_to_close_timeout=timedelta(hours=1),
+                timeouts=worker_config.timeouts.inference,
             )
             for args in translation_args
         )

@@ -4,8 +4,8 @@ from typing import TYPE_CHECKING, Self
 
 from datashare_python.objects import Language
 
-from ..config import HunyuanMtTranslatorConfig, TranslationWorkerConfig
-from ..objects import TranslationModel
+from ..config import TranslationWorkerConfig
+from ..objects import HunyuanMtTranslatorConfig, TranslationModel
 from ..processors import Translator
 
 if TYPE_CHECKING:

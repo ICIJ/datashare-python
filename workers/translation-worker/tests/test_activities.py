@@ -27,12 +27,12 @@ from translation_worker.activities import (
     create_translation_batches_act,
     translate_docs_act,
 )
-from translation_worker.config import (
+from translation_worker.config import TranslationWorkerConfig
+from translation_worker.objects import (
     ArgosTranslatorConfig,
     TranslationModel,
-    TranslationWorkerConfig,
+    untranslated_query,
 )
-from translation_worker.objects import untranslated_query
 from translation_worker.processors import SentenceSplitter, Translator
 
 from tests.conftest import (

@@ -52,6 +52,7 @@ from .search import create_preprocessing_batches_act
 logger = logging.getLogger(__name__)
 
 _BASE_WEIGHT = 1.0
+_WORKER_CONFIG_WEIGHT = _BASE_WEIGHT * 1
 _CREATE_PREPROCESSING_BATCHES_WEIGHT = _BASE_WEIGHT * 1
 _PREPROCESS_IMAGES_WEIGHT = _BASE_WEIGHT * 5
 _CONVERT_TO_PDF_WEIGHT = _BASE_WEIGHT * 7
@@ -60,6 +61,7 @@ _CREATE_INFERENCE_BATCH_WEIGHT = _CREATE_PREPROCESSING_BATCHES_WEIGHT * 1
 
 
 class Activity(StrEnum):
+    LOAD_WORKER_CONFIG = "passport-detection.load-config"
     CREATE_PREPROCESSING_BATCHES = "passport-detection.create-preprocessing-batches"
     PREPROCESS_IMAGES = "passport-detection.preprocess.images"
     CONVERT_TO_PDFS = "passport-detection.convert-to-pdf"
@@ -70,6 +72,17 @@ class Activity(StrEnum):
 
 
 class PassportDetectionActivities(ActivityWithProgress):
+    @activity_defn(name=Activity.LOAD_WORKER_CONFIG)
+    async def worker_config(
+        self,
+        *,
+        progress: Annotated[  # noqa: ARG002
+            AsyncProgressRateHandler | None, Weight(value=_WORKER_CONFIG_WEIGHT)
+        ] = None,
+    ) -> PassportWorkerConfig:
+        worker_config = cast(PassportWorkerConfig, lifespan_worker_config())
+        return worker_config
+
     @activity_defn(name=Activity.CREATE_PREPROCESSING_BATCHES)
     async def create_preprocessing_batches(
         self,
@@ -309,6 +322,7 @@ class PassportDetectionActivities(ActivityWithProgress):
 
 
 ACTIVITIES = [
+    PassportDetectionActivities.worker_config,
     PassportDetectionActivities.create_preprocessing_batches,
     PassportDetectionActivities.preprocess_images,
     PassportDetectionActivities.convert_to_pdfs,

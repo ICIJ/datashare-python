@@ -74,6 +74,7 @@ async def io_bound_worker(
     task_queue = TaskQueue.IO
     dependencies = "asr.io"
     activities = [
+        Activity.LOAD_WORKER_CONFIG,
         Activity.SEARCH_AUDIOS,
         Activity.INDEX_TRANSCRIPTIONS,
         Activity.AGGREGATE_RESULTS,

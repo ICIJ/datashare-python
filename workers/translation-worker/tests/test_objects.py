@@ -2,16 +2,14 @@ from typing import Any
 
 import pytest
 from datashare_python.conftest import TEST_PROJECT
-from translation_worker.config import (
-    ArgosSentenceSplitterConfig,
-    ArgosTranslatorConfig,
-    TranslationConfig,
-)
 from translation_worker.objects import (
+    ArgosSentenceSplitterConfig,
     ArgosSentencizer,
+    ArgosTranslatorConfig,
     DocId,
     DocumentSearchQuery,
     TranslationArgs,
+    TranslationConfig,
 )
 
 from .conftest import DS_ENGLISH
