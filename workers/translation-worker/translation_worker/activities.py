@@ -35,13 +35,9 @@ from icij_common.es import (
 )
 from icij_common.iter_utils import async_batches, before_and_after, once
 
-from .config import (
-    SentenceSplitterConfig,
-    TranslationConfig,
-    TranslationWorkerConfig,
-    TranslatorConfig,
-)
+from .config import TranslationWorkerConfig
 from .dependencies import lifespan_sentence_splitter_cache, lifespan_translator_cache
+from .objects import SentenceSplitterConfig, TranslationConfig, TranslatorConfig
 from .processors import SentenceSplitter, Translator
 
 logger = logging.getLogger(__name__)
@@ -54,13 +50,13 @@ _DOC_CONTENT_TEXT_LENGTH = "contentTextLength"
 
 
 class Activity(StrEnum):
-    WORKER_CONFIG = "translation.worker-config"
+    LOAD_WORKER_CONFIG = "translation.worker-config"
     CREATE_TRANSLATION_BATCHES = "translation.create-translation-batches"
     TRANSLATE_DOCS = "translation.translate-docs"
 
 
 class TranslationActivities(ActivityWithProgress):
-    @activity_defn(name=Activity.WORKER_CONFIG)
+    @activity_defn(name=Activity.LOAD_WORKER_CONFIG)
     async def translation_worker_config(self) -> TranslationWorkerConfig:
         logger.info("loading worker configuration...")
         worker_config = cast(TranslationWorkerConfig, lifespan_worker_config())

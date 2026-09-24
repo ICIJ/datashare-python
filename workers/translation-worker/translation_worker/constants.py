@@ -1,8 +1,7 @@
 from enum import StrEnum
 from typing import Self
 
-from .config import TranslationConfig
-from .objects import TranslationModel
+from .objects import TranslationConfig, TranslationModel
 
 
 class TaskQueue(StrEnum):

@@ -20,7 +20,6 @@ from collections.abc import (
 )
 from copy import deepcopy
 from dataclasses import dataclass
-from datetime import timedelta
 from functools import cache, wraps
 from hashlib import sha256
 from io import BytesIO
@@ -46,6 +45,7 @@ from temporalio.converter import (
 )
 from temporalio.exceptions import ApplicationError
 
+from datashare_python.config import ActivityTimeouts
 from datashare_python.types_ import (
     AsyncProgressRateHandler,
     RawSyncProgressHandler,
@@ -165,10 +165,11 @@ async def execute_activity(
     arg: Any = temporalio.common._arg_unset,
     *,
     args: list | None = None,
-    start_to_close_timeout: timedelta | None = None,
-    heartbeat_timeout: timedelta = timedelta(minutes=1),
+    timeouts: ActivityTimeouts | None = None,
     retry_policy: temporalio.common.RetryPolicy | None = None,
 ) -> Any:
+    if timeouts is None:
+        timeouts = ActivityTimeouts()
     if args is None:
         args = []
     retry_policy = _retry_policy_with_default(retry_policy)
@@ -176,10 +177,10 @@ async def execute_activity(
         activity,
         arg=arg,
         args=args,
-        start_to_close_timeout=start_to_close_timeout,
         task_queue=task_queue,
         retry_policy=retry_policy,
-        heartbeat_timeout=heartbeat_timeout,
+        start_to_close_timeout=timeouts.start_to_close,
+        heartbeat_timeout=timeouts.heartbeat,
     )
 
 

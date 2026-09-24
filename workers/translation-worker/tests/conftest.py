@@ -161,7 +161,10 @@ async def io_worker(
 ) -> AsyncGenerator[None, None]:
     client = test_temporal_client_session
     worker_id = f"test-translation-io-worker-{uuid.uuid4()}"
-    batching_activities = [Activity.WORKER_CONFIG, Activity.CREATE_TRANSLATION_BATCHES]
+    batching_activities = [
+        Activity.LOAD_WORKER_CONFIG,
+        Activity.CREATE_TRANSLATION_BATCHES,
+    ]
     task_queue = TaskQueue.IO
     dependencies = "translation.io"
     worker_ctx = dev_worker_context(

@@ -52,6 +52,7 @@ from .preprocessing import preprocess_act
 logger = logging.getLogger(__name__)
 
 _BASE_WEIGHT = 1.0
+_WORKER_CONFIG_WEIGHT = _BASE_WEIGHT
 _SEARCH_AUDIOS_WEIGHT = _BASE_WEIGHT * 2
 _INDEX_AUDIOS_WEIGHT = _BASE_WEIGHT * 3
 _PREPROCESS_WEIGHT = 5 * _BASE_WEIGHT
@@ -71,6 +72,17 @@ class Activity(StrEnum):
 
 
 class ASRActivities(ActivityWithProgress):
+    @activity_defn(name=Activity.LOAD_WORKER_CONFIG)
+    async def worker_config(
+        self,
+        *,
+        progress: Annotated[  # noqa: ARG002
+            AsyncProgressRateHandler | None, Weight(value=_WORKER_CONFIG_WEIGHT)
+        ] = None,
+    ) -> ASRWorkerConfig:
+        worker_config = cast(ASRWorkerConfig, lifespan_worker_config())
+        return worker_config
+
     @activity_defn(name=Activity.SEARCH_AUDIOS)
     async def search_audio_paths(
         self,
@@ -298,6 +310,7 @@ def _relative_to_workdir(
 
 
 REGISTRY = [
+    ASRActivities.worker_config,
     ASRActivities.search_audio_paths,
     ASRActivities.preprocess,
     ASRActivities.infer,

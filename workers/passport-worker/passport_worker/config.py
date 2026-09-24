@@ -1,15 +1,17 @@
 from concurrent.futures import ProcessPoolExecutor
+from datetime import timedelta
 from enum import StrEnum
 from typing import ClassVar
 
 import datashare_python
 from datashare_python.config import (
+    ActivityTimeouts,
     LogFormat,
     LoggingConfig,
     ResourceCacheConfig,
     WorkerConfig,
 )
-from datashare_python.objects import DatashareModel, WorkerPaths
+from datashare_python.objects import BaseModel, DatashareModel, WorkerPaths
 from icij_common.registrable import RegistrableConfig
 from pydantic import Field
 
@@ -95,10 +97,33 @@ class PassportWorkerCacheConfig(DatashareModel):
     inference: ResourceCacheConfig = Field(default_factory=ResourceCacheConfig)
 
 
+class PassportTimeouts(BaseModel):
+    preprocessing_batching: ActivityTimeouts = ActivityTimeouts(
+        start_to_close=timedelta(minutes=30)
+    )
+    image_preprocessing: ActivityTimeouts = ActivityTimeouts(
+        start_to_close=timedelta(hours=1)
+    )
+    pdf_conversion: ActivityTimeouts = ActivityTimeouts(
+        start_to_close=timedelta(hours=1)
+    )
+    pdf_preprocessing: ActivityTimeouts = ActivityTimeouts(
+        start_to_close=timedelta(minutes=10)
+    )
+    inference_batching: ActivityTimeouts = ActivityTimeouts(
+        start_to_close=timedelta(minutes=30)
+    )
+    inference: ActivityTimeouts = ActivityTimeouts(start_to_close=timedelta(minutes=10))
+    result_aggregation: ActivityTimeouts = ActivityTimeouts(
+        start_to_close=timedelta(minutes=5)
+    )
+
+
 class PassportWorkerConfig(WorkerConfig):
     logging: LoggingConfig = _DEFAULT_LOGGING_CONFIG
     paths: WorkerPaths
 
+    timeouts: PassportTimeouts = Field(default_factory=PassportTimeouts)
     cache: PassportWorkerCacheConfig = Field(default_factory=PassportWorkerCacheConfig)
 
     preprocessing: PreprocessingWorkerConfig = Field(

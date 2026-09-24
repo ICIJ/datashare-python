@@ -353,6 +353,7 @@ async def io_worker(
 ) -> AsyncGenerator[None, None]:
     client = test_temporal_client_session
     acts = [
+        Activity.LOAD_WORKER_CONFIG,
         Activity.CREATE_PREPROCESSING_BATCHES,
         Activity.CONVERT_TO_PDFS,
         Activity.PREPROCESS_PDFS,
