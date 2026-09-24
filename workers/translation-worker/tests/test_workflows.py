@@ -6,9 +6,8 @@ from datashare_python.objects import DatashareLanguage, Document
 from icij_common.es import HITS, ESClient, has_type
 from temporalio.client import Client as TemporalClient
 from temporalio.worker import Worker
-from translation_worker.config import TranslationConfig
 from translation_worker.constants import TaskQueue
-from translation_worker.objects import TranslationArgs
+from translation_worker.objects import TranslationArgs, TranslationConfig
 from translation_worker.workflows import TranslationWorkflow
 
 from .conftest import DS_ENGLISH

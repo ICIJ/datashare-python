@@ -2,7 +2,7 @@
 import sys
 from unittest.mock import MagicMock, patch
 
-from translation_worker.config import DEFAULT_HUNYUAN_MODEL_REF
+from translation_worker.objects import DEFAULT_HUNYUAN_MODEL_REF
 from translation_worker.translators.hunyuan import HunyuanMtTranslator
 
 from tests.conftest import DS_CHINESE, DS_ENGLISH

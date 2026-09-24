@@ -6,6 +6,7 @@ from enum import StrEnum
 from temporalio import workflow
 
 with workflow.unsafe.imports_passed_through():
+    from datashare_python.config import ActivityTimeouts
     from datashare_python.utils import WorkflowWithProgress, execute_activity
 
     from .activities import (
@@ -44,8 +45,9 @@ class TranslateAndClassifyWorkflow(WorkflowWithProgress):
             CreateTranslationBatches.create_translation_batches,
             args=translation_batch_args,
             task_queue=TaskQueues.IO,
-            start_to_close_timeout=timedelta(hours=1),
-            heartbeat_timeout=heartbeat_timeout,
+            timeouts=ActivityTimeouts(
+                start_to_close=timedelta(hours=1), heartbeat=heartbeat_timeout
+            ),
         )
         # Translate
         logger.info("translating...")
@@ -58,8 +60,9 @@ class TranslateAndClassifyWorkflow(WorkflowWithProgress):
                 TranslateDocs.translate_docs,
                 args=args,
                 task_queue=TaskQueues.TRANSLATE_GPU,
-                start_to_close_timeout=timedelta(hours=1),
-                heartbeat_timeout=heartbeat_timeout,
+                timeouts=ActivityTimeouts(
+                    start_to_close=timedelta(hours=1), heartbeat=heartbeat_timeout
+                ),
             )
             for args in translation_args
         ]
@@ -76,8 +79,9 @@ class TranslateAndClassifyWorkflow(WorkflowWithProgress):
             CreateClassificationBatches.create_classification_batches,
             args=clf_batch_args,
             task_queue=TaskQueues.IO,
-            start_to_close_timeout=timedelta(days=1),
-            heartbeat_timeout=heartbeat_timeout,
+            timeouts=ActivityTimeouts(
+                start_to_close=timedelta(days=1), heartbeat=heartbeat_timeout
+            ),
         )
         # Classify
         logger.info("classifying...")
@@ -90,8 +94,9 @@ class TranslateAndClassifyWorkflow(WorkflowWithProgress):
                 ClassifyDocs.classify_docs,
                 args=args,
                 task_queue=TaskQueues.CLASSIFY_GPU,
-                start_to_close_timeout=timedelta(days=1),
-                heartbeat_timeout=heartbeat_timeout,
+                timeouts=ActivityTimeouts(
+                    start_to_close=timedelta(days=1), heartbeat=heartbeat_timeout
+                ),
             )
             for args in clf_args
         ]
@@ -111,13 +116,13 @@ class PingWorkflow(WorkflowWithProgress):
         s = await execute_activity(
             Pong.pong_sync,
             task_queue=TaskQueues.CPU,
-            start_to_close_timeout=timedelta(hours=1),
+            timeouts=ActivityTimeouts(start_to_close=timedelta(hours=1)),
         )
         logger.info("pinging the async way!")
         s += " " + await execute_activity(
             Pong.pong_async,
             task_queue=TaskQueues.IO,
-            start_to_close_timeout=timedelta(hours=1),
+            timeouts=ActivityTimeouts(start_to_close=timedelta(hours=1)),
         )
         logger.info("done pinging !")
         return s

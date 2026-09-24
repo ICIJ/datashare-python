@@ -1,5 +1,6 @@
+from datetime import timedelta
 from enum import StrEnum
-from typing import Literal
+from typing import TYPE_CHECKING, Literal
 
 from icij_common.es import ESClient
 from icij_common.pydantic_utils import ICIJSettings
@@ -12,7 +13,9 @@ import datashare_python
 from .objects import BaseModel, WorkerPaths
 from .task_client import DatashareTaskClient
 from .types_ import TemporalClient
-from .utils import PYDANTIC_DATA_CONVERTER, SharedResources, close_cm_callback
+
+if TYPE_CHECKING:
+    from .utils import SharedResources
 
 _ALL_LOGGERS = [datashare_python.__name__]
 
@@ -63,6 +66,8 @@ class TemporalClientConfig(BaseModel):
     _client: TemporalClient | None = PrivateAttr(default=None)
 
     async def to_client(self) -> TemporalClient:
+        from .utils import PYDANTIC_DATA_CONVERTER  # noqa: PLC0415
+
         if self._client is None:
             runtime = None
             if self.prometheus_host is not None:
@@ -70,6 +75,7 @@ class TemporalClientConfig(BaseModel):
                     metrics=PrometheusConfig(bind_address="0.0.0.0:9000")
                 )
                 runtime = Runtime(telemetry=telemetry_config)
+
             self._client = await TemporalClient.connect(
                 target_host=self.host,
                 namespace=self.namespace,
@@ -97,7 +103,9 @@ class ResourceCacheConfig(BaseModel):
     size: int = 1
     exit_context_managers: bool = True
 
-    def to_resource_cache(self) -> SharedResources:
+    def to_resource_cache(self) -> "SharedResources":
+        from .utils import SharedResources, close_cm_callback  # noqa: PLC0415
+
         eviction_callback = None
         if self.exit_context_managers:
             eviction_callback = close_cm_callback
@@ -134,3 +142,8 @@ class WorkerConfig(ICIJSettings, BaseModel):
 
     async def to_temporal_client(self) -> TemporalClient:
         return await self.temporal.to_client()
+
+
+class ActivityTimeouts(BaseModel):
+    start_to_close: timedelta | None = None
+    heartbeat: timedelta = timedelta(minutes=1)

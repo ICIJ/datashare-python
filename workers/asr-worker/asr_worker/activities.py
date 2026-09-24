@@ -52,6 +52,7 @@ from .preprocessing import preprocess_act
 logger = logging.getLogger(__name__)
 
 _BASE_WEIGHT = 1.0
+_WORKER_CONFIG_WEIGHT = _BASE_WEIGHT
 _SEARCH_AUDIOS_WEIGHT = _BASE_WEIGHT * 2
 _INDEX_AUDIOS_WEIGHT = _BASE_WEIGHT * 3
 _PREPROCESS_WEIGHT = 5 * _BASE_WEIGHT
@@ -71,6 +72,17 @@ class Activity(StrEnum):
 
 
 class ASRActivities(ActivityWithProgress):
+    @activity_defn(name=Activity.LOAD_WORKER_CONFIG)
+    async def worker_config(
+        self,
+        *,
+        progress: Annotated[  # noqa: ARG002
+            AsyncProgressRateHandler | None, Weight(value=_WORKER_CONFIG_WEIGHT)
+        ] = None,
+    ) -> ASRWorkerConfig:
+        worker_config = cast(ASRWorkerConfig, lifespan_worker_config())
+        return worker_config
+
     @activity_defn(name=Activity.SEARCH_AUDIOS)
     async def search_audio_paths(
         self,
@@ -186,7 +198,7 @@ class ASRActivities(ActivityWithProgress):
                 n_batches,
             )
             successes, errors = await infer_act(
-            inference_runner, batches, output_dir=output_dir, progress=progress
+                inference_runner, batches, output_dir=output_dir, progress=progress
             )
             inference_res = [p.relative_to(workdir) for p in successes]
         errors_path = output_dir / "errors.jsonl"
@@ -228,12 +240,12 @@ class ASRActivities(ActivityWithProgress):
             success, errors = postprocess_act(
                 inference_results,
                 audio_routes,
-            postprocessor,
-            args,
-            artifacts_root=artifacts_root,
-            event_loop=self._event_loop,
-            progress=progress,
-        )
+                postprocessor,
+                args,
+                artifacts_root=artifacts_root,
+                event_loop=self._event_loop,
+                progress=progress,
+            )
         output_dir = activity_workdir(workdir, args.project)
         output_dir.mkdir(parents=True, exist_ok=True)
         successes_path = output_dir / "routes.jsonl"
@@ -300,6 +312,7 @@ def _relative_to_workdir(
 
 
 REGISTRY = [
+    ASRActivities.worker_config,
     ASRActivities.search_audio_paths,
     ASRActivities.preprocess,
     ASRActivities.infer,

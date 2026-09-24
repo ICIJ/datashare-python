@@ -8,26 +8,23 @@ from pathlib import Path
 from typing import Any
 
 from caul_core import ASRPipelineConfig
-from datashare_python.utils import WorkflowWithProgress, execute_activity
-from icij_common.es import has_id
 from pydantic import TypeAdapter
 from temporalio import workflow
 
-from .constants import ASR_WORKFLOW
-from .objects import ASRArgs, ASRResponse
-
 with workflow.unsafe.imports_passed_through():
+    from datashare_python.config import ActivityTimeouts
+    from datashare_python.utils import WorkflowWithProgress, execute_activity
+    from icij_common.es import has_id
+
     from .activities import ASRActivities
+    from .config import ASRWorkerConfig
+    from .constants import ASR_WORKFLOW
+    from .objects import ASRArgs, ASRResponse
+
 
 _ASR_INPUTS_TYPE_ADAPTER = TypeAdapter(ASRArgs)
 
 logger = logging.getLogger(__name__)
-
-_AUDIO_SEARCH_TIMEOUT = timedelta(minutes=10)
-_INFERENCE_TIMEOUT = timedelta(minutes=30)
-_INDEXATION_TIMEOUT = timedelta(hours=1)
-_POSTPROCESSING_TIMEOUT = timedelta(minutes=10)
-_RESULT_AGGREGATION_TIMEOUT = timedelta(minutes=5)
 
 
 class TaskQueue(StrEnum):
@@ -43,24 +40,39 @@ class ASRWorkflow(WorkflowWithProgress):
     @workflow.run
     async def run(self, args: ASRArgs) -> ASRResponse:
         config = args.config
-        batches = await _create_preprocessing_batches(args)
+        worker_config = await _fetch_worker_config()
+        batches = await _create_preprocessing_batches(args, worker_config)
         batches, preprocessing_errs, audio_routes = await _preprocess(
-            args, batches, config
+            args, batches, config, worker_config
         )
-        asr_res, inference_errs = await _run_inference(batches, args)
+        asr_res, inference_errs = await _run_inference(batches, args, worker_config)
         doc_routes, postprocessing_errs = await _postprocess(
-            asr_res, audio_routes, args
+            asr_res, audio_routes, args, worker_config
         )
-        _ = await _index_transcriptions(doc_routes, args)
+        _ = await _index_transcriptions(doc_routes, args, worker_config)
         flattened_batches = [f for b in batches for f in b]
         all_errors = preprocessing_errs + inference_errs + postprocessing_errs
         response = await _aggregate_results(
-            flattened_batches, errors=all_errors, project=args.project
+            flattened_batches,
+            errors=all_errors,
+            project=args.project,
+            worker_config=worker_config,
         )
         return response
 
 
-async def _create_preprocessing_batches(args: ASRArgs) -> list[Path]:
+async def _fetch_worker_config() -> ASRWorkerConfig:
+    worker_config = await execute_activity(
+        ASRActivities.worker_config,
+        timeouts=ActivityTimeouts(start_to_close=timedelta(minutes=2)),
+        task_queue=TaskQueue.IO,
+    )
+    return worker_config
+
+
+async def _create_preprocessing_batches(
+    args: ASRArgs, worker_config: ASRWorkerConfig
+) -> list[Path]:
     batch_size = args.batch_size
     doc_query = has_id(args.docs) if isinstance(args.docs, list) else args.docs
     search_args = [args.project, doc_query, batch_size]
@@ -68,14 +80,17 @@ async def _create_preprocessing_batches(args: ASRArgs) -> list[Path]:
     batch_paths = await execute_activity(
         ASRActivities.search_audio_paths,
         args=search_args,
-        start_to_close_timeout=_AUDIO_SEARCH_TIMEOUT,
         task_queue=TaskQueue.IO,
+        timeouts=worker_config.timeouts.preprocessing,
     )
     return batch_paths
 
 
 async def _preprocess(
-    args: ASRArgs, batches: list[Any], config: ASRPipelineConfig
+    args: ASRArgs,
+    batches: list[Any],
+    config: ASRPipelineConfig,
+    worker_config: ASRWorkerConfig,
 ) -> tuple[list[list[Path]], list[Path], list[Path]]:
     preprocess_args = zip(
         batches, repeat(args.project), repeat(config.preprocessing), strict=False
@@ -84,7 +99,7 @@ async def _preprocess(
         execute_activity(
             ASRActivities.preprocess,
             args=a,
-            start_to_close_timeout=timedelta(minutes=10),
+            timeouts=worker_config.timeouts.preprocessing,
             task_queue=TaskQueue.CPU,
         )
         for a in preprocess_args
@@ -100,7 +115,7 @@ async def _preprocess(
 
 
 async def _run_inference(
-    batches: Iterable[list[Path]], args: ASRArgs
+    batches: Iterable[list[Path]], args: ASRArgs, worker_config: ASRWorkerConfig
 ) -> tuple[list[list[Path]], list[Path]]:
     inference_args = zip(
         batches, repeat(args.project), repeat(args.config.inference), strict=False
@@ -110,9 +125,7 @@ async def _run_inference(
             ASRActivities.infer,
             task_queue=TaskQueue.INFERENCE_GPU,
             args=b,
-            # TODO: in practice we should parse the config to find out
-            start_to_close_timeout=_INFERENCE_TIMEOUT,
-            heartbeat_timeout=timedelta(minutes=3),
+            timeouts=worker_config.timeouts.inference,
         )
         for b in inference_args
     ]
@@ -126,7 +139,10 @@ async def _run_inference(
 
 
 async def _postprocess(
-    inference_results: list[list[Path]], audio_routes: list[Path], args: ASRArgs
+    inference_results: list[list[Path]],
+    audio_routes: list[Path],
+    args: ASRArgs,
+    worker_config: ASRWorkerConfig,
 ) -> tuple[list[Path], list[Path]]:
     # strict zip make sure we're aligned
     inputs = zip(inference_results, audio_routes, strict=True)
@@ -135,7 +151,7 @@ async def _postprocess(
         execute_activity(
             ASRActivities.postprocess,
             args=i,
-            start_to_close_timeout=_POSTPROCESSING_TIMEOUT,
+            timeouts=worker_config.timeouts.postprocessing,
             task_queue=TaskQueue.CPU,
         )
         for i in postprocessing_args
@@ -149,7 +165,9 @@ async def _postprocess(
     return routes, postprocessing_errors
 
 
-async def _index_transcriptions(doc_routes: list[Path], args: ASRArgs) -> int:
+async def _index_transcriptions(
+    doc_routes: list[Path], args: ASRArgs, worker_config: ASRWorkerConfig
+) -> int:
     indexing_args = list(
         zip(doc_routes, repeat(args.project), repeat(args.indexing), strict=False)
     )
@@ -157,7 +175,7 @@ async def _index_transcriptions(doc_routes: list[Path], args: ASRArgs) -> int:
         execute_activity(
             ASRActivities.index_transcriptions,
             args=a,
-            start_to_close_timeout=_INDEXATION_TIMEOUT,
+            timeouts=worker_config.timeouts.inference,
             task_queue=TaskQueue.IO,
         )
         for a in indexing_args
@@ -170,14 +188,18 @@ async def _index_transcriptions(doc_routes: list[Path], args: ASRArgs) -> int:
 
 
 async def _aggregate_results(
-    batches: list[Path], *, errors: list[Path], project: str
+    batches: list[Path],
+    *,
+    errors: list[Path],
+    project: str,
+    worker_config: ASRWorkerConfig,
 ) -> Any:
     aggregation_args = [batches, errors, project]
     response = await execute_activity(
         ASRActivities.aggregate_results,
         args=aggregation_args,
         task_queue=TaskQueue.IO,
-        start_to_close_timeout=_RESULT_AGGREGATION_TIMEOUT,
+        timeouts=worker_config.timeouts.aggregation,
     )
     return response
 

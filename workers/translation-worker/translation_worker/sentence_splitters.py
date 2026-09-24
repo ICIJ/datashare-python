@@ -4,8 +4,12 @@ from typing import Self
 from datashare_python.objects import DatashareLanguage
 from pydantic_extra_types.language_code import LanguageAlpha2
 
-from .config import ArgosSentenceSplitterConfig, DefaultSentenceSplitterConfig
-from .objects import Language, SentenceSplitterModel
+from .objects import (
+    ArgosSentenceSplitterConfig,
+    DefaultSentenceSplitterConfig,
+    Language,
+    SentenceSplitterModel,
+)
 from .processors import SentenceSplitter
 
 
