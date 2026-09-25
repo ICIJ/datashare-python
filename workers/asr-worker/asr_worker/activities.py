@@ -1,8 +1,7 @@
 import asyncio
 import logging
 from asyncio import AbstractEventLoop
-from collections.abc import AsyncGenerator, AsyncIterable, Callable, Iterable
-from contextlib import AbstractContextManager
+from collections.abc import AsyncGenerator, AsyncIterable, Iterable
 from functools import partial
 from itertools import tee
 from pathlib import Path
@@ -153,16 +152,16 @@ class ASRActivities(ActivityWithProgress):
         preprocessor_factory = enter_cm(partial(Preprocessor.from_config, config))
         preprocessor_key = config_cache_key(config)
         cache = lifespan_preprocessor_cache()
-        preprocessor = cache.get_or_cache_resource(
+        with cache.get_or_cache_resource(
             preprocessor_key, preprocessor_factory
-        )
-        batch_paths = preprocess_act(
-            preprocessor,
-            audio_batch,
-            worker_config=worker_config,
-            output_dir=output_dir,
-        )
-        batches = [p.relative_to(workdir) for p in batch_paths]
+        ) as preprocessor:
+            batch_paths = preprocess_act(
+                preprocessor,
+                audio_batch,
+                worker_config=worker_config,
+                output_dir=output_dir,
+            )
+            batches = [p.relative_to(workdir) for p in batch_paths]
         return batches
 
     @activity_defn(name=RUN_INFERENCE_ACTIVITY)
@@ -189,26 +188,26 @@ class ASRActivities(ActivityWithProgress):
                 progress, max_progress=len(preprocessed_inputs)
             )
         device = worker_config.devices.inference
+        logger.info("loading model %s on %s device", config.model, device)
         runner_factory = enter_cm(
             partial(InferenceRunner.from_config, config, device=device)
         )
         runner_key = config_cache_key(config)
         cache = lifespan_inference_runner_cache()
-        # Lease the runner so that it can't be evicted while still in use
-        lease_runner = partial(cache.lease_resource, runner_key, runner_factory)
-        logger.info(
-            "starting inference with %s on %s device on %s audio chunks !",
-            config.model,
-            device,
-            len(preprocessed_inputs),
-        )
-        inference_res = infer_act(
-            lease_runner,
-            preprocessed_inputs,
-            output_dir=output_dir,
-            progress=progress,
-        )
-        inference_res = [p.relative_to(workdir) async for p in inference_res]
+        with cache.get_or_cache_resource(
+            runner_key, runner_factory
+        ) as inference_runner:
+            logger.info(
+                "model loaded, starting inference on %s audio chunks !",
+                len(preprocessed_inputs),
+            )
+            inference_res = infer_act(
+                inference_runner,
+                preprocessed_inputs,
+                output_dir=output_dir,
+                progress=progress,
+            )
+            inference_res = [p.relative_to(workdir) async for p in inference_res]
         return inference_res
 
     @activity_defn(name=POSTPROCESS_ACTIVITY)
@@ -241,18 +240,18 @@ class ASRActivities(ActivityWithProgress):
         postprocessor_factory = enter_cm(partial(Postprocessor.from_config, config))
         postprocessor_key = config_cache_key(config)
         cache = lifespan_postprocessor_cache()
-        postprocessor = cache.get_or_cache_resource(
+        with cache.get_or_cache_resource(
             postprocessor_key, postprocessor_factory
-        )
-        return postprocess_act(
-            inference_results,
-            docs,
-            postprocessor,
-            args,
-            artifacts_root=artifacts_root,
-            event_loop=self._event_loop,
-            progress=progress,
-        )
+        ) as postprocessor:
+            return postprocess_act(
+                inference_results,
+                docs,
+                postprocessor,
+                args,
+                artifacts_root=artifacts_root,
+                event_loop=self._event_loop,
+                progress=progress,
+            )
 
     @activity_defn(name=INDEX_TRANSCRIPTION_ACTIVITY)
     async def index_transcriptions(
@@ -324,7 +323,7 @@ def preprocess_act(
 
 
 async def infer_act(
-    lease_runner: Callable[[], AbstractContextManager[InferenceRunner]],
+    inference_runner: InferenceRunner,
     preprocessed_inputs: list[Path],
     output_dir: Path,
     event_loop: AbstractEventLoop | None = None,
@@ -340,10 +339,8 @@ async def infer_act(
     audio_paths, inputs = tee(inputs)
     audio_paths = (i.path for b in audio_paths for i in b)
     # TODO: implement caching
-    # The runner is leased from the inference thread. If the activity is cancelled,
-    # the thread keeps running and must keep the runner alive until it completes
     inference_results = await asyncio.to_thread(
-        _transcribe_as_list, lease_runner, list(inputs)
+        _transcribe_as_list, inference_runner, list(inputs)
     )
     for res_i, (path, asr_res) in enumerate(
         zip(audio_paths, inference_results, strict=True)
@@ -361,11 +358,10 @@ async def infer_act(
 
 
 def _transcribe_as_list(
-    lease_runner: Callable[[], AbstractContextManager[InferenceRunner]],
+    inference_runner: InferenceRunner,
     inputs: Iterable[tuple[ProcessedAudioSegment, ...]],
 ) -> list[ASRResult]:
-    with lease_runner() as inference_runner:
-        return list(inference_runner.process(inputs))
+    return list(inference_runner.process(inputs))
 
 
 def postprocess_act(

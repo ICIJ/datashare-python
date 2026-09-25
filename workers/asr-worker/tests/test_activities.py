@@ -1,6 +1,5 @@
 import json
 from collections.abc import AsyncGenerator, Iterable
-from contextlib import nullcontext
 from functools import partial
 from itertools import cycle
 from pathlib import Path
@@ -351,9 +350,7 @@ async def test_infer_act(tmpdir: Path) -> None:
         paths.append(input_path)
     # When
     asr_result_paths = infer_act(
-        partial(nullcontext, inference_runner),
-        preprocessed_inputs=paths,
-        output_dir=output_dir,
+        inference_runner, preprocessed_inputs=paths, output_dir=output_dir
     )
     # Then
     asr_results = [

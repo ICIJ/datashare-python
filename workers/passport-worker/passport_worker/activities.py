@@ -115,10 +115,6 @@ class PassportDetectionActivities(ActivityWithProgress):
         image_preprocessor_factory = enter_cm(
             partial(ImagePreprocessor.from_config, config.images)
         )
-        image_preprocessor = cache.get_or_cache_resource(
-            cache_key, image_preprocessor_factory
-        )
-        logger.info("loaded image preprocessor !")
         # We cache processing at the config level, we ignore package updates,
         # to discard the cache we just need to disable it in the args to overwrite
         pages_root = activity_workdir(workdir, project, caching_key=cache_key)
@@ -126,17 +122,21 @@ class PassportDetectionActivities(ActivityWithProgress):
         executor = worker_config.to_image_preprocessing_executor()
         chunk_size = worker_config.preprocessing.images.chunk_size
         force_reprocessing = not config.use_caching
-        success, errors = preprocess_images_act(
-            batch,
-            worker_config.paths,
-            force_reprocessing=force_reprocessing,
-            output_root=pages_root,
-            image_preprocessor=image_preprocessor,
-            executor=executor,
-            chunk_size=chunk_size,
-            event_loop=self._event_loop,
-            progress=progress,
-        )
+        with cache.get_or_cache_resource(
+            cache_key, image_preprocessor_factory
+        ) as image_preprocessor:
+            logger.info("loaded image preprocessor !")
+            success, errors = preprocess_images_act(
+                batch,
+                worker_config.paths,
+                force_reprocessing=force_reprocessing,
+                output_root=pages_root,
+                image_preprocessor=image_preprocessor,
+                executor=executor,
+                chunk_size=chunk_size,
+                event_loop=self._event_loop,
+                progress=progress,
+            )
         res_root = activity_workdir(workdir, project)
         res_root.mkdir(parents=True, exist_ok=True)
         successes_path = res_root / "pages.jsonl"
@@ -163,23 +163,23 @@ class PassportDetectionActivities(ActivityWithProgress):
         pdf_converter_factory = async_enter_cm(
             partial(PDFConverter.from_config, config.pdf_converter)
         )
-        pdf_converter = await cache.async_get_or_cache_resource(
-            cache_key, pdf_converter_factory
-        )
         workdir = worker_config.paths.workdir
         # We cache processing at the config level, we ignore package updates,
         # to discard the cache we just need to disable it in the args to overwrite
         pdfs_root = activity_workdir(workdir, project, caching_key=cache_key)
         pdfs_root.mkdir(parents=True, exist_ok=True)
-        successes, errors = await convert_to_pdfs_act(
-            batch,
-            pdf_converter,
-            worker_config.paths,
-            config.max_concurrency,
-            output_root=pdfs_root,
-            force_reprocessing=force_reprocessing,
-            progress=progress,
-        )
+        async with cache.async_get_or_cache_resource(
+            cache_key, pdf_converter_factory
+        ) as pdf_converter:
+            successes, errors = await convert_to_pdfs_act(
+                batch,
+                pdf_converter,
+                worker_config.paths,
+                config.max_concurrency,
+                output_root=pdfs_root,
+                force_reprocessing=force_reprocessing,
+                progress=progress,
+            )
         res_root = activity_workdir(workdir, project, act_context=True)
         res_root.mkdir(parents=True, exist_ok=True)
         pdf_paths = res_root / "pdfs.jsonl"
@@ -270,21 +270,21 @@ class PassportDetectionActivities(ActivityWithProgress):
         passport_detector_factory = enter_cm(
             partial(PassportDetector.from_config, passport_detector_config)
         )
-        passport_detector = cache.get_or_cache_resource(
-            passport_detector_key, passport_detector_factory
-        )
-        logger.info("passport detector loaded !")
         workdir = worker_config.paths.workdir
         res_root = activity_workdir(workdir, args.project, act_context=True)
         res_root.mkdir(parents=True, exist_ok=True)
-        res = await detect_passports_act(
-            batch,
-            passport_detector,
-            worker_config.paths,
-            args,
-            batch_size=batch_size,
-            progress=progress,
-        )
+        with cache.get_or_cache_resource(
+            passport_detector_key, passport_detector_factory
+        ) as passport_detector:
+            logger.info("passport detector loaded !")
+            res = await detect_passports_act(
+                batch,
+                passport_detector,
+                worker_config.paths,
+                args,
+                batch_size=batch_size,
+                progress=progress,
+            )
         result_path = res_root / "inference_results.json"
         async with async_open(result_path, "w") as f:
             await f.write(res.model_dump_json())

@@ -10,6 +10,7 @@ import sys
 import threading
 import time
 from collections.abc import (
+    AsyncGenerator,
     AsyncIterable,
     Awaitable,
     Callable,
@@ -782,29 +783,65 @@ class SharedResources:
             self._on_evict(k, v)
 
     @contextlib.contextmanager
-    def lease_resource(
+    def get_or_cache_resource(
         self, key: str, default_factory: Callable[[], Any]
     ) -> Generator[Any, None, None]:
-        """Get or cache a resource, guaranteeing it won't be evicted while in use.
+        """Get or cache a resource, leasing it for the duration of the context.
 
-        Unlike get_or_cache_resource, the eviction callback of a resource evicted
-        while leased only runs once all its leases have been released.
+        A resource evicted while leased stays usable, its eviction callback only runs
+        once all its leases have been released.
+
+        :param key: resource cache key
+        :param default_factory: resource factory, called on cache miss
+        :return: the cached resource
         """
-        with self._lock:
-            value = self._cache.get(key, self._sentinel)
-            if value is not self._sentinel:
-                self._acquire(value)
+        value = self._get_and_acquire(key)
         if value is self._sentinel:
-            # Same as get_or_cache_resource, the factory is called without locking
             value = default_factory()
-            with self._lock:
-                self._acquire(value)
-            # Can evict other resources, must be called without holding the lock
-            self._cache[key] = value
+            self._cache_and_acquire(key, value)
         try:
             yield value
         finally:
             self._release(value)
+
+    @contextlib.asynccontextmanager
+    async def async_get_or_cache_resource(
+        self, key: str, default_factory: Callable[[], Awaitable[Any]]
+    ) -> AsyncGenerator[Any, None]:
+        """Async version of get_or_cache_resource.
+
+        :param key: resource cache key
+        :param default_factory: async resource factory, awaited on cache miss
+        :return: the cached resource
+        """
+        value = self._get_and_acquire(key)
+        if value is self._sentinel:
+            value = await default_factory()
+            self._cache_and_acquire(key, value)
+        try:
+            yield value
+        finally:
+            self._release(value)
+
+    def _get_and_acquire(self, key: str) -> Any:
+        with self._lock:
+            value = self._cache.get(key, self._sentinel)
+            if value is not self._sentinel:
+                self._acquire(value)
+        return value
+
+    def _cache_and_acquire(self, key: str, value: Any) -> None:
+        # The factory can be long to complete (that's one of the reason we want to
+        # cache its results). Because we don't lock the factory call, together with
+        # the cache update, in case of concurrent access, quicker factories will
+        # complete first and will stay longer in the cache. This is fine, the
+        # alternative is to lock factory + cache update to avoid concurrent access but
+        # this will mean waiting for the first factory call to complete, this can
+        # potentially imply longer waits than no getting the value from the cache
+        with self._lock:
+            self._acquire(value)
+        # Can evict other resources, must be called without holding the lock
+        self._cache[key] = value
 
     def _acquire(self, value: Any) -> None:
         value_id = id(value)
@@ -831,51 +868,6 @@ class SharedResources:
     def _evict(self, key: Any, value: Any) -> None:
         if self._eviction_callback is not None:
             self._eviction_callback(key, value)
-
-    def get_or_cache_resource(
-        self, key: str, default_factory: Callable[[], Any]
-    ) -> Any:
-        # The returned resource can be evicted and closed by the eviction callback
-        # while still in use. lease_resource is preferred when used concurrently or
-        # from another thread
-        value = self._cache.get(key, self._sentinel)
-        if value is not self._sentinel:
-            return value
-        # Get the value first to be sure to return the right one in case of concurrent
-        # access.
-        #
-        # Additionally, the factory can be long to complete (that's one of the reason
-        # we want to cache its results). Because we don't lock the factory call,
-        # together with the cache update, in case of concurrent access,
-        # quicker factories will complete first and will stay longer in the cache.
-        # This is fine, the alternative is to lock factory + cache update to avoid
-        # concurrent access but this will mean waiting for the first factory call to
-        # complete, this can potentially imply longer waits than no getting the value
-        # from the cache
-        value = default_factory()
-        self._cache[key] = value
-        return value
-
-    async def async_get_or_cache_resource(
-        self, key: str, default_factory: Callable[[], Awaitable[Any]]
-    ) -> Any:
-        value = self._cache.get(key, self._sentinel)
-        if value is not self._sentinel:
-            return value
-        # Get the value first to be sure to return the right one in case of concurrent
-        # access.
-        #
-        # Additionally, the factory can be long to complete (that's one of the reason
-        # we want to cache its results). Because we don't lock the factory call,
-        # together with the cache update, in case of concurrent access,
-        # quicker factories will complete first and will stay longer in the cache.
-        # This is fine, the alternative is to lock factory + cache update to avoid
-        # concurrent access but this will mean waiting for the first factory call to
-        # complete, this can potentially imply longer waits than no getting the value
-        # from the cache
-        value = await default_factory()
-        self._cache[key] = value
-        return value
 
 
 def close_cm_callback(key: str, value: Any) -> None:  # noqa: ARG001
