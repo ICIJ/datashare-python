@@ -565,7 +565,7 @@ dev = [
 
 [[package]]
 name = "datashare-python"
-version = "0.11.3"
+version = "0.11.4"
 source = { editable = "../../datashare-python" }
 dependencies = [
     { name = "aiofile" },
