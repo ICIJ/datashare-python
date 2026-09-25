@@ -152,16 +152,16 @@ class ASRActivities(ActivityWithProgress):
         preprocessor_factory = enter_cm(partial(Preprocessor.from_config, config))
         preprocessor_key = config_cache_key(config)
         cache = lifespan_preprocessor_cache()
-        preprocessor = cache.get_or_cache_resource(
+        with cache.get_or_cache_resource(
             preprocessor_key, preprocessor_factory
-        )
-        batch_paths = preprocess_act(
-            preprocessor,
-            audio_batch,
-            worker_config=worker_config,
-            output_dir=output_dir,
-        )
-        batches = [p.relative_to(workdir) for p in batch_paths]
+        ) as preprocessor:
+            batch_paths = preprocess_act(
+                preprocessor,
+                audio_batch,
+                worker_config=worker_config,
+                output_dir=output_dir,
+            )
+            batches = [p.relative_to(workdir) for p in batch_paths]
         return batches
 
     @activity_defn(name=RUN_INFERENCE_ACTIVITY)
@@ -194,18 +194,20 @@ class ASRActivities(ActivityWithProgress):
         )
         runner_key = config_cache_key(config)
         cache = lifespan_inference_runner_cache()
-        inference_runner = cache.get_or_cache_resource(runner_key, runner_factory)
-        logger.info(
-            "model loaded, starting inference on %s audio chunks !",
-            len(preprocessed_inputs),
-        )
-        inference_res = infer_act(
-            inference_runner,
-            preprocessed_inputs,
-            output_dir=output_dir,
-            progress=progress,
-        )
-        inference_res = [p.relative_to(workdir) async for p in inference_res]
+        with cache.get_or_cache_resource(
+            runner_key, runner_factory
+        ) as inference_runner:
+            logger.info(
+                "model loaded, starting inference on %s audio chunks !",
+                len(preprocessed_inputs),
+            )
+            inference_res = infer_act(
+                inference_runner,
+                preprocessed_inputs,
+                output_dir=output_dir,
+                progress=progress,
+            )
+            inference_res = [p.relative_to(workdir) async for p in inference_res]
         return inference_res
 
     @activity_defn(name=POSTPROCESS_ACTIVITY)
@@ -238,18 +240,18 @@ class ASRActivities(ActivityWithProgress):
         postprocessor_factory = enter_cm(partial(Postprocessor.from_config, config))
         postprocessor_key = config_cache_key(config)
         cache = lifespan_postprocessor_cache()
-        postprocessor = cache.get_or_cache_resource(
+        with cache.get_or_cache_resource(
             postprocessor_key, postprocessor_factory
-        )
-        return postprocess_act(
-            inference_results,
-            docs,
-            postprocessor,
-            args,
-            artifacts_root=artifacts_root,
-            event_loop=self._event_loop,
-            progress=progress,
-        )
+        ) as postprocessor:
+            return postprocess_act(
+                inference_results,
+                docs,
+                postprocessor,
+                args,
+                artifacts_root=artifacts_root,
+                event_loop=self._event_loop,
+                progress=progress,
+            )
 
     @activity_defn(name=INDEX_TRANSCRIPTION_ACTIVITY)
     async def index_transcriptions(

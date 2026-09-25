@@ -2,6 +2,7 @@ import asyncio
 import fcntl
 import json
 import os
+import threading
 import uuid
 from concurrent.futures import ProcessPoolExecutor
 from datetime import timedelta
@@ -385,9 +386,9 @@ def test_get_or_cache_resource_new_key() -> None:
         return "cached"
 
     # When
-    from_cache = shared.get_or_cache_resource(new_key, factory)
-    # Then
-    assert from_cache == "cached"
+    with shared.get_or_cache_resource(new_key, factory) as from_cache:
+        # Then
+        assert from_cache == "cached"
 
 
 def test_get_or_cache_resource_existing_key() -> None:
@@ -399,10 +400,29 @@ def test_get_or_cache_resource_existing_key() -> None:
         return uuid.uuid4().hex
 
     # When
-    first = shared.get_or_cache_resource(existing_key, factory)
-    second = shared.get_or_cache_resource(existing_key, factory)
+    with shared.get_or_cache_resource(existing_key, factory) as first:
+        pass
+    with shared.get_or_cache_resource(existing_key, factory) as second:
+        pass
     # Then
     assert second == first
+
+
+def test_get_or_cache_resource_released_resource_stays_cached() -> None:
+    # Given
+    mock = MagicMock()
+    eviction_callback = mock.evict
+    factory = MagicMock(side_effect=object)
+    shared = SharedResources(cache_size=1, eviction_callback=eviction_callback)
+    # When
+    with shared.get_or_cache_resource("k", factory) as first:
+        pass
+    with shared.get_or_cache_resource("k", factory) as second:
+        pass
+    # Then
+    assert second is first
+    factory.assert_called_once()
+    eviction_callback.assert_not_called()
 
 
 def test_get_or_cache_eviction_callback_is_called_on_exit() -> None:
@@ -413,10 +433,129 @@ def test_get_or_cache_eviction_callback_is_called_on_exit() -> None:
     factory = lambda: "value"  # noqa: E731
     shared = SharedResources(eviction_callback=eviction_callback)
     # When
-    with shared:
-        shared.get_or_cache_resource(key, factory)
+    with shared, shared.get_or_cache_resource(key, factory):
+        pass
     # Then
     eviction_callback.assert_called_once_with(key, "value")
+
+
+def test_get_or_cache_resource_evicted_while_leased_defers_eviction_callback() -> None:
+    # Given
+    mock = MagicMock()
+    eviction_callback = mock.evict
+    shared = SharedResources(cache_size=1, eviction_callback=eviction_callback)
+    # When
+    with shared.get_or_cache_resource("k0", lambda: "leased"):
+        with shared.get_or_cache_resource("k1", lambda: "other"):
+            pass
+        # Then
+        eviction_callback.assert_not_called()
+    eviction_callback.assert_called_once_with("k0", "leased")
+
+
+def test_get_or_cache_resource_eviction_callback_waits_for_last_lease() -> None:
+    # Given
+    mock = MagicMock()
+    eviction_callback = mock.evict
+    shared = SharedResources(cache_size=1, eviction_callback=eviction_callback)
+    # When
+    with shared.get_or_cache_resource("k0", lambda: "leased") as first:
+        with (
+            shared.get_or_cache_resource("k0", lambda: "not_called") as second,
+            shared.get_or_cache_resource("k1", lambda: "other"),
+        ):
+            pass
+        # Then
+        eviction_callback.assert_not_called()
+    assert first == second == "leased"
+    eviction_callback.assert_called_once_with("k0", "leased")
+
+
+def test_get_or_cache_resource_released_resource_is_evicted_immediately() -> None:
+    # Given
+    mock = MagicMock()
+    eviction_callback = mock.evict
+    shared = SharedResources(cache_size=1, eviction_callback=eviction_callback)
+    # When
+    with shared.get_or_cache_resource("k0", lambda: "leased"):
+        pass
+    with shared.get_or_cache_resource("k1", lambda: "other"):
+        pass
+    # Then
+    eviction_callback.assert_called_once_with("k0", "leased")
+
+
+def test_get_or_cache_resource_exit_defers_eviction_callback_of_leased_resource() -> (
+    None
+):
+    # Given
+    mock = MagicMock()
+    eviction_callback = mock.evict
+    shared = SharedResources(cache_size=1, eviction_callback=eviction_callback)
+    lease = shared.get_or_cache_resource("k0", lambda: "leased")
+    # When
+    with shared:
+        lease.__enter__()
+    # Then
+    eviction_callback.assert_not_called()
+    lease.__exit__(None, None, None)
+    eviction_callback.assert_called_once_with("k0", "leased")
+
+
+def test_get_or_cache_resource_is_not_closed_by_concurrent_eviction() -> None:
+    # Given
+    class Resource:
+        def __init__(self) -> None:
+            self.closed = False
+
+    shared = SharedResources(
+        cache_size=1, eviction_callback=lambda _, r: setattr(r, "closed", True)
+    )
+    leased, evicted = threading.Event(), threading.Event()
+    closed_while_leased = []
+
+    def use_resource() -> None:
+        with shared.get_or_cache_resource("k0", Resource) as resource:
+            leased.set()
+            evicted.wait(5)
+            closed_while_leased.append(resource.closed)
+
+    # When
+    thread = threading.Thread(target=use_resource)
+    thread.start()
+    leased.wait(5)
+    with shared.get_or_cache_resource("k1", Resource):
+        pass
+    evicted.set()
+    thread.join()
+    # Then
+    assert closed_while_leased == [False]
+
+
+async def test_async_get_or_cache_resource_evicted_while_leased_defers_eviction() -> (
+    None
+):
+    # Given
+    mock = MagicMock()
+    eviction_callback = mock.evict
+    shared = SharedResources(cache_size=1, eviction_callback=eviction_callback)
+
+    async def factory() -> str:
+        return "leased"
+
+    async def other_factory() -> str:
+        return "other"
+
+    # When
+    async with shared.async_get_or_cache_resource("k0", factory) as first:
+        async with shared.async_get_or_cache_resource("k0", other_factory) as second:
+            pass
+        async with shared.async_get_or_cache_resource("k1", other_factory):
+            pass
+        # Then
+        eviction_callback.assert_not_called()
+    assert first == second == "leased"
+    eviction_callback.assert_called_once_with("k0", "leased")
 
 
 @pytest.mark.parametrize(

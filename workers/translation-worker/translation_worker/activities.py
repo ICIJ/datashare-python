@@ -110,29 +110,29 @@ class TranslationActivities(ActivityWithProgress):
         )
         translator_key = config_cache_key(config.translator)
         translator_cache = lifespan_translator_cache()
-        translator = translator_cache.get_or_cache_resource(
-            translator_key, translator_factory
-        )
         # SBD, then load the splitter
-        logger.debug("loading %s sentence splitter...", source)
         splitter_factory = partial(
             _load_splitter_from_config, config=config.sentence_splitter, language=source
         )
         splitter_key = config_cache_key(config.sentence_splitter)
         splitter_cache = lifespan_sentence_splitter_cache()
-        sentence_splitter = splitter_cache.get_or_cache_resource(
-            splitter_key, splitter_factory
-        )
-        logger.info("translating %s batches...", len(batches))
-        n_translated = await translate_docs_act(
-            batches,
-            project=project,
-            es_client=es_client,
-            progress=progress,
-            worker_config=worker_config,
-            translator=translator,
-            sentence_splitter=sentence_splitter,
-        )
+        with translator_cache.get_or_cache_resource(
+            translator_key, translator_factory
+        ) as translator:
+            logger.debug("loading %s sentence splitter...", source)
+            with splitter_cache.get_or_cache_resource(
+                splitter_key, splitter_factory
+            ) as sentence_splitter:
+                logger.info("translating %s batches...", len(batches))
+                n_translated = await translate_docs_act(
+                    batches,
+                    project=project,
+                    es_client=es_client,
+                    progress=progress,
+                    worker_config=worker_config,
+                    translator=translator,
+                    sentence_splitter=sentence_splitter,
+                )
         logger.info("done translating !")
         return n_translated
 

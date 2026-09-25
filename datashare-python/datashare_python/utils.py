@@ -10,6 +10,7 @@ import sys
 import threading
 import time
 from collections.abc import (
+    AsyncGenerator,
     AsyncIterable,
     Awaitable,
     Callable,
@@ -766,58 +767,107 @@ class SharedResources:
         eviction_callback: Callable[[Any, Any], None] | None = None,
     ) -> None:
         self._eviction_callback = eviction_callback
-        self._cache = LRU(cache_size, self._eviction_callback)
+        self._cache = LRU(cache_size, self._on_evict)
         self._sentinel = object()
+        # Leased resources are tracked by id, evicting a leased resource defers the
+        # eviction callback until its last lease is released
+        self._lock = threading.Lock()
+        self._n_leases: dict[int, int] = dict()
+        self._pending_evictions: dict[int, tuple[Any, Any]] = dict()
 
     def __enter__(self) -> Self:
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb) -> None:  # noqa: ANN001
-        if self._eviction_callback is not None:
-            for k, v in self._cache.items():
-                self._eviction_callback(k, v)
+        for k, v in self._cache.items():
+            self._on_evict(k, v)
 
+    @contextlib.contextmanager
     def get_or_cache_resource(
         self, key: str, default_factory: Callable[[], Any]
-    ) -> Any:
-        value = self._cache.get(key, self._sentinel)
-        if value is not self._sentinel:
-            return value
-        # Get the value first to be sure to return the right one in case of concurrent
-        # access.
-        #
-        # Additionally, the factory can be long to complete (that's one of the reason
-        # we want to cache its results). Because we don't lock the factory call,
-        # together with the cache update, in case of concurrent access,
-        # quicker factories will complete first and will stay longer in the cache.
-        # This is fine, the alternative is to lock factory + cache update to avoid
-        # concurrent access but this will mean waiting for the first factory call to
-        # complete, this can potentially imply longer waits than no getting the value
-        # from the cache
-        value = default_factory()
-        self._cache[key] = value
-        return value
+    ) -> Generator[Any, None, None]:
+        """Get or cache a resource, leasing it for the duration of the context.
 
+        A resource evicted while leased stays usable, its eviction callback only runs
+        once all its leases have been released.
+
+        :param key: resource cache key
+        :param default_factory: resource factory, called on cache miss
+        :return: the cached resource
+        """
+        value = self._get_and_acquire(key)
+        if value is self._sentinel:
+            value = default_factory()
+            self._cache_and_acquire(key, value)
+        try:
+            yield value
+        finally:
+            self._release(value)
+
+    @contextlib.asynccontextmanager
     async def async_get_or_cache_resource(
         self, key: str, default_factory: Callable[[], Awaitable[Any]]
-    ) -> Any:
-        value = self._cache.get(key, self._sentinel)
-        if value is not self._sentinel:
-            return value
-        # Get the value first to be sure to return the right one in case of concurrent
-        # access.
-        #
-        # Additionally, the factory can be long to complete (that's one of the reason
-        # we want to cache its results). Because we don't lock the factory call,
-        # together with the cache update, in case of concurrent access,
-        # quicker factories will complete first and will stay longer in the cache.
-        # This is fine, the alternative is to lock factory + cache update to avoid
-        # concurrent access but this will mean waiting for the first factory call to
-        # complete, this can potentially imply longer waits than no getting the value
-        # from the cache
-        value = await default_factory()
-        self._cache[key] = value
+    ) -> AsyncGenerator[Any, None]:
+        """Async version of get_or_cache_resource.
+
+        :param key: resource cache key
+        :param default_factory: async resource factory, awaited on cache miss
+        :return: the cached resource
+        """
+        value = self._get_and_acquire(key)
+        if value is self._sentinel:
+            value = await default_factory()
+            self._cache_and_acquire(key, value)
+        try:
+            yield value
+        finally:
+            self._release(value)
+
+    def _get_and_acquire(self, key: str) -> Any:
+        with self._lock:
+            value = self._cache.get(key, self._sentinel)
+            if value is not self._sentinel:
+                self._acquire(value)
         return value
+
+    def _cache_and_acquire(self, key: str, value: Any) -> None:
+        # The factory can be long to complete (that's one of the reason we want to
+        # cache its results). Because we don't lock the factory call, together with
+        # the cache update, in case of concurrent access, quicker factories will
+        # complete first and will stay longer in the cache. This is fine, the
+        # alternative is to lock factory + cache update to avoid concurrent access but
+        # this will mean waiting for the first factory call to complete, this can
+        # potentially imply longer waits than no getting the value from the cache
+        with self._lock:
+            self._acquire(value)
+        # Can evict other resources, must be called without holding the lock
+        self._cache[key] = value
+
+    def _acquire(self, value: Any) -> None:
+        value_id = id(value)
+        self._n_leases[value_id] = self._n_leases.get(value_id, 0) + 1
+
+    def _release(self, value: Any) -> None:
+        value_id = id(value)
+        with self._lock:
+            self._n_leases[value_id] -= 1
+            if self._n_leases[value_id]:
+                return
+            del self._n_leases[value_id]
+            pending = self._pending_evictions.pop(value_id, None)
+        if pending is not None:
+            self._evict(*pending)
+
+    def _on_evict(self, key: Any, value: Any) -> None:
+        with self._lock:
+            if id(value) in self._n_leases:
+                self._pending_evictions[id(value)] = (key, value)
+                return
+        self._evict(key, value)
+
+    def _evict(self, key: Any, value: Any) -> None:
+        if self._eviction_callback is not None:
+            self._eviction_callback(key, value)
 
 
 def close_cm_callback(key: str, value: Any) -> None:  # noqa: ARG001
