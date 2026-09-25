@@ -33,10 +33,51 @@ jobs:
           version: "0.10.8"
       - name: Install Python 3.11
         run: uv python install 3.11
+      - name: Set version from tag
+        run: |
+          if [ "$GITHUB_REF_TYPE" != "tag" ]; then
+            echo "must be run from a datashare-python-* tag, got $GITHUB_REF_TYPE $GITHUB_REF_NAME" >&2
+            exit 1
+          fi
+          cd datashare-python
+          uv version --frozen "${GITHUB_REF_NAME#datashare-python-}"
       - name: Build
         run: cd datashare-python && uv build
       - name: Publish
         run: cd datashare-python && uv publish
+
+  sync-datashare-python-version:
+    permissions:
+      contents: write
+    needs:
+      - publish-datashare-python-to-pypi
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          # main, not the tag: the tag may point at a commit whose
+          # pyproject.toml doesn't have this version yet
+          ref: main
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: "0.10.8"
+      - name: Sync pyproject.toml version with tag
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          version="${GITHUB_REF_NAME#datashare-python-}"
+          cd datashare-python
+          uv version --frozen "$version"
+          git add pyproject.toml
+          if git diff --cached --quiet; then
+            echo "pyproject.toml already at $version, nothing to sync"
+          else
+            git commit -m "release(datashare-python): \`datashare-python==$version\`"
+            git pull --rebase
+            git push
+          fi
 
   trigger-workflows-worker-publication:
     permissions:
