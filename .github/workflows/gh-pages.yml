@@ -36,7 +36,7 @@ jobs:
             mkdocs-material-
       - run: |
           uv venv
-          uv pip install -r requirements_doc.txt
+          uv pip install -r docs/requirements_doc.txt
       - run: uv run mkdocs gh-deploy --force
 
 # Allow only one concurrent deployment, skipping runs queued between the run in-progress and latest queued.
