@@ -380,16 +380,16 @@ wheels = [
 
 [[package]]
 name = "datashare-passport-worker"
-version = "0.3.0"
+version = "0.4.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "datashare-python" },
     { name = "icij-common", extra = ["elasticsearch"] },
     { name = "icij-passport-core" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/0e/73/1ec50ccfa7a7ae2c4833396a1ea79c7d8b0a5f743c951e8e4f8b954cce65/datashare_passport_worker-0.3.0.tar.gz", hash = "sha256:8f34e2a48150baabc6b4e47033dc6a198e0a3063feaf1df8fab36fe2536e3807", size = 15272, upload-time = "2026-09-03T09:40:06.111Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/f1/de/078eb787006ddc9aa12edd2c6de37dc25db678d342689db39713d21a4f21/datashare_passport_worker-0.4.0.tar.gz", hash = "sha256:87de3fe62d55b988987ac20f7279807d0eaece50f67edd01305bb85fbb41e926", size = 14360, upload-time = "2026-09-29T09:14:51.869Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/21/fc/78b973030b09fde8451041b0276768dc3456f3ad13facc417a4cde37009f/datashare_passport_worker-0.3.0-py3-none-any.whl", hash = "sha256:4fbead63df10db922494124b4cea86cdf05ac55efbf7f680f5348bf3c5fd84be", size = 20967, upload-time = "2026-09-03T09:40:06.924Z" },
+    { url = "https://files.pythonhosted.org/packages/fd/95/44c87d305edea66405f68a9462b0854fd2db1810a950d529e2754ffdbd76/datashare_passport_worker-0.4.0-py3-none-any.whl", hash = "sha256:4f206b90736376db426dee65c26e81def4b3fb5bb4a9e572417082042beef5b3", size = 19644, upload-time = "2026-09-29T09:14:51.047Z" },
 ]
 
 [[package]]
@@ -446,7 +446,7 @@ dependencies = [
 requires-dist = [
     { name = "datashare-asr-worker", specifier = "==0.11.25" },
     { name = "datashare-extract-worker", specifier = "==0.4.8" },
-    { name = "datashare-passport-worker", specifier = "==0.3.0" },
+    { name = "datashare-passport-worker", specifier = "==0.4.0" },
     { name = "datashare-python", specifier = "~=0.11.4" },
     { name = "datashare-translation-worker", specifier = "==0.8.0" },
 ]

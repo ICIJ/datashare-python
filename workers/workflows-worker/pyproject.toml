@@ -12,7 +12,7 @@ dependencies = [
   "datashare-asr-worker==0.11.25",
   "datashare-extract-worker==0.4.8",
   "datashare-python~=0.11.4",
-  "datashare-passport-worker==0.3.0",
+  "datashare-passport-worker==0.4.0",
   "datashare-translation-worker==0.8.0",
 ]
 
