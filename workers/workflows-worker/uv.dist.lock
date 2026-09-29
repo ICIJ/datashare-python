@@ -354,15 +354,15 @@ wheels = [
 
 [[package]]
 name = "datashare-asr-worker"
-version = "0.12.2"
+version = "0.12.3"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "caul-core" },
     { name = "datashare-python" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/90/0b/ce06603fc792b124a58e3b3adcbd34013be7e71415d481a145e0bbb33d96/datashare_asr_worker-0.12.2.tar.gz", hash = "sha256:f3abc40e13711ef6b9b77f3eada13eddfc5aba212e9549f1586e390c066ee025", size = 12941, upload-time = "2026-09-29T12:40:10.956Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/ef/7c/7da956df14d8fe8585f5f2634b977de42e67f6a310b73fb6f4856ae52430/datashare_asr_worker-0.12.3.tar.gz", hash = "sha256:788ad60f67a61605bd466caaf6a89cfd294b156d6fd894fdba64fb3bf20b6ac3", size = 12939, upload-time = "2026-09-29T12:43:30.394Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/10/c7/07d51c5ae16c4c24ad482eb955d709bdd948b55f8efd210fc8a9da30fa11/datashare_asr_worker-0.12.2-py3-none-any.whl", hash = "sha256:ab31fd1c291a37005c328d520e2ab80d19ee04f2189e0f73153a87f2dc08f686", size = 18187, upload-time = "2026-09-29T12:40:11.761Z" },
+    { url = "https://files.pythonhosted.org/packages/85/87/9f59ba676ffced7230a438c2c3ac0923bda386e6a00ae06d579e90081114/datashare_asr_worker-0.12.3-py3-none-any.whl", hash = "sha256:ec6137202371b3b0d4c84dd4ce1cb6f12e46d5f571ce10839751ccbba97f9400", size = 18187, upload-time = "2026-09-29T12:43:29.346Z" },
 ]
 
 [[package]]
@@ -444,7 +444,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "datashare-asr-worker", specifier = "==0.12.2" },
+    { name = "datashare-asr-worker", specifier = "==0.12.3" },
     { name = "datashare-extract-worker", specifier = "==0.5.1" },
     { name = "datashare-passport-worker", specifier = "==0.4.3" },
     { name = "datashare-python", specifier = "~=0.12.1" },
