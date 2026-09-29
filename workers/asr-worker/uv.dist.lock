@@ -542,7 +542,7 @@ requires-dist = [
     { name = "caul", extras = ["fireredasr2", "nemo", "parakeet-trt"], marker = "extra == 'inference'", specifier = "==0.13.8" },
     { name = "caul-core", specifier = "==0.6.4" },
     { name = "cuda-bindings", marker = "sys_platform == 'linux' and extra == 'gpu'", specifier = "==12.9.4" },
-    { name = "datashare-python", specifier = "~=0.11.4" },
+    { name = "datashare-python", specifier = "~=0.12.0" },
     { name = "fireredasr2s", marker = "extra == 'inference'" },
     { name = "torch", marker = "sys_platform == 'linux' and extra == 'gpu'", specifier = "==2.10.0+cu129", index = "https://download.pytorch.org/whl/cu129", conflict = { package = "datashare-asr-worker", extra = "gpu" } },
     { name = "torch", marker = "extra == 'cpu'", specifier = "==2.10.0", index = "https://download.pytorch.org/whl/cpu", conflict = { package = "datashare-asr-worker", extra = "cpu" } },
@@ -570,7 +570,7 @@ dev = [
 
 [[package]]
 name = "datashare-python"
-version = "0.11.4"
+version = "0.12.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiofile", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu') or sys_platform == 'darwin' or (sys_platform != 'linux' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu')" },
@@ -587,9 +587,9 @@ dependencies = [
     { name = "tomlkit", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu') or sys_platform == 'darwin' or (sys_platform != 'linux' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu')" },
     { name = "typer", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu') or sys_platform == 'darwin' or (sys_platform != 'linux' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu')" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/47/9a/be295aaa1a78688ba5829840fcd45fb772c78add09f9e90d0afdf05e489f/datashare_python-0.11.4.tar.gz", hash = "sha256:6f8cf1b186c86cb0f50c2a52835f82162a8fd88b0500d3877e4717007f988b13", size = 284716, upload-time = "2026-09-25T09:07:59.365Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/93/af/2ea98ec6bb3c74aaa88a0d603f0857e79878f7444f0cc3b1a9e6a4011d8d/datashare_python-0.12.0.tar.gz", hash = "sha256:d1c4e406bd29087bc12bea73568cc135299b2f1f4fd01fed683222c61468e58e", size = 286680, upload-time = "2026-09-29T08:51:01.829Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/1b/0f/ac5c668ce0bbb41490523452814594ee87bc71146dfb79e374c302bd34b1/datashare_python-0.11.4-py3-none-any.whl", hash = "sha256:b9ee75e36558205077131f1b7266ba912d429a4fafb1334018b1a94a5b36f037", size = 290657, upload-time = "2026-09-25T09:07:57.064Z" },
+    { url = "https://files.pythonhosted.org/packages/c8/a4/7a1936c19f2b5617286ceafa784e7ec449672d3c7cb80d3c10fbe8e8713b/datashare_python-0.12.0-py3-none-any.whl", hash = "sha256:03f746e1c1b7df4a0ffb486b055f9ec741612cf4c1aa29dc8ceba569c5829c35", size = 292824, upload-time = "2026-09-29T08:51:00.568Z" },
 ]
 
 [[package]]
