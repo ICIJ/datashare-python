@@ -271,7 +271,7 @@ wheels = [
 
 [[package]]
 name = "caul"
-version = "0.13.9"
+version = "0.13.10"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "caul-core" },
@@ -284,9 +284,9 @@ dependencies = [
     { name = "tiktoken" },
     { name = "typer" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/ce/ec/70f0a84541858cc68afae0f53a8853115cf8b464d4c11a27c35daa9f1936/caul-0.13.9.tar.gz", hash = "sha256:afa929b8f62f71c209b0986f337bf1b9ba5bcc868b3d8c4fb175e25a765851da", size = 242931, upload-time = "2026-09-29T12:27:25.41Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/b4/7a/9c7e8d2950f40bbf9e7253090f27e5ec7bd543fd59c9762e910a142be4ca/caul-0.13.10.tar.gz", hash = "sha256:c973c16c647b2f1a782ea7bc83b6efaf7dcbd2ad4c34b440e05ee562fc12b381", size = 243080, upload-time = "2026-09-30T12:25:29.265Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/e9/02/5be86ff4e2b9419699624ebfeca2290aaf4f0211eaee08826f4c534ab3e1/caul-0.13.9-py3-none-any.whl", hash = "sha256:9c649477f209706ea8c07520b88566a5165f2eb3013bfee924e29837b415b103", size = 39537, upload-time = "2026-09-29T12:27:24.345Z" },
+    { url = "https://files.pythonhosted.org/packages/11/f8/50184281f7b0e42eb63540f7fb05d41a5f677973c506f062a5a623a83170/caul-0.13.10-py3-none-any.whl", hash = "sha256:ecc8d67af9078801ac1bd2d660fda07a7f89fbeb6ae4a8342d4820e3e5f3c46f", size = 39727, upload-time = "2026-09-30T12:25:28.289Z" },
 ]
 
 [package.optional-dependencies]
@@ -524,8 +524,8 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "caul", marker = "extra == 'preprocessing'", specifier = "==0.13.9" },
-    { name = "caul", extras = ["fireredasr2", "nemo", "parakeet-trt"], marker = "extra == 'inference'", specifier = "==0.13.9" },
+    { name = "caul", marker = "extra == 'preprocessing'", specifier = "==0.13.10" },
+    { name = "caul", extras = ["fireredasr2", "nemo", "parakeet-trt"], marker = "extra == 'inference'", specifier = "==0.13.10" },
     { name = "caul-core", specifier = "==0.6.4" },
     { name = "cuda-bindings", marker = "sys_platform == 'linux' and extra == 'gpu'", specifier = "==12.9.4" },
     { name = "datashare-python", editable = "../../datashare-python" },
