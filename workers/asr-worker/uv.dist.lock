@@ -271,7 +271,7 @@ wheels = [
 
 [[package]]
 name = "caul"
-version = "0.13.10"
+version = "0.13.12"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "caul-core" },
@@ -284,9 +284,9 @@ dependencies = [
     { name = "tiktoken" },
     { name = "typer" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/b4/7a/9c7e8d2950f40bbf9e7253090f27e5ec7bd543fd59c9762e910a142be4ca/caul-0.13.10.tar.gz", hash = "sha256:c973c16c647b2f1a782ea7bc83b6efaf7dcbd2ad4c34b440e05ee562fc12b381", size = 243080, upload-time = "2026-09-30T12:25:29.265Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/6f/61/78907a75ebfb138eff5511538405fbfa95aeb94d324a545195e85eb52e03/caul-0.13.12.tar.gz", hash = "sha256:f5821f08c29ddbecf937a506b6d7360f18dc9c84cba0ee3e125ec20c313fc6c2", size = 243063, upload-time = "2026-09-30T16:28:06.04Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/11/f8/50184281f7b0e42eb63540f7fb05d41a5f677973c506f062a5a623a83170/caul-0.13.10-py3-none-any.whl", hash = "sha256:ecc8d67af9078801ac1bd2d660fda07a7f89fbeb6ae4a8342d4820e3e5f3c46f", size = 39727, upload-time = "2026-09-30T12:25:28.289Z" },
+    { url = "https://files.pythonhosted.org/packages/57/61/fe2e7710583c975bfe5fb734ad6f05c5243b05b24b2e0e8c0b1cafbf724f/caul-0.13.12-py3-none-any.whl", hash = "sha256:4a37c175a874ba1ab6af4ec2e6206ff9b8952124e926d070b33529593fd3d01b", size = 39723, upload-time = "2026-09-30T16:28:04.875Z" },
 ]
 
 [package.optional-dependencies]
@@ -311,16 +311,16 @@ parakeet-trt = [
 
 [[package]]
 name = "caul-core"
-version = "0.6.4"
+version = "0.6.5"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "icij-common" },
     { name = "overrides" },
     { name = "pydantic-extra-types", extra = ["pycountry"] },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/b2/22/783227b83432dd3e4caffaf3996011e614b36590642f658e691b62045d57/caul_core-0.6.4.tar.gz", hash = "sha256:3c423ea87b0b5dfacc013a750aab551f289c8aed1593f376179f7007c0e030d7", size = 23136, upload-time = "2026-09-22T09:15:41.309Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/13/75/4a0c9458f3ef7cc372f4c7977a9000a0f100c0a79cfa496aa7c11182127a/caul_core-0.6.5.tar.gz", hash = "sha256:db19a6e27ca3cb0194ea0e055a2e34fe6a21eb41aa7a0b6dc7b17eb4f6fb4469", size = 23198, upload-time = "2026-09-30T16:26:26.487Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/89/61/63fa4c5c5b3388a6e0a5faad1046f570932506f9f69b27883de17304d7d1/caul_core-0.6.4-py3-none-any.whl", hash = "sha256:eb114c60e053a8d435e45f8cb3c04569b41270cc0f55a92eb8b7fbc7c6c251ba", size = 13831, upload-time = "2026-09-22T09:15:40.326Z" },
+    { url = "https://files.pythonhosted.org/packages/d3/14/bab248b482c104f23b852431a52b0f5b95b89e02f3f631a3bd757d503e16/caul_core-0.6.5-py3-none-any.whl", hash = "sha256:56f5ba70a4e6747abd8ad2564f5d66dd10ff737ef1d58e6cbf2afccf0a43bc1e", size = 13873, upload-time = "2026-09-30T16:26:25.471Z" },
 ]
 
 [[package]]
@@ -524,9 +524,9 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "caul", marker = "extra == 'preprocessing'", specifier = "==0.13.10" },
-    { name = "caul", extras = ["fireredasr2", "nemo", "parakeet-trt"], marker = "extra == 'inference'", specifier = "==0.13.10" },
-    { name = "caul-core", specifier = "==0.6.4" },
+    { name = "caul", marker = "extra == 'preprocessing'", specifier = "==0.13.12" },
+    { name = "caul", extras = ["fireredasr2", "nemo", "parakeet-trt"], marker = "extra == 'inference'", specifier = "==0.13.12" },
+    { name = "caul-core", specifier = "==0.6.5" },
     { name = "cuda-bindings", marker = "sys_platform == 'linux' and extra == 'gpu'", specifier = "==12.9.4" },
     { name = "datashare-python", specifier = "~=0.12.1" },
     { name = "fireredasr2s", marker = "extra == 'inference'" },
