@@ -7,8 +7,12 @@ from datashare_python.objects import (
     ProcessedFile,
     ProcessingReportWithPages,
 )
-from extract_core import DoclingPipelineConfig
-from extract_worker.objects import MarkdownExtractArgs, MarkdownExtractResponse
+from extract_core import PipelineSize, PipelineType
+from extract_worker.objects import (
+    MarkdownExtractArgs,
+    MarkdownExtractResponse,
+    PipelineBySize,
+)
 from extract_worker.workflows import ExtractMarkdownContentWorkflow, TaskQueues
 from temporalio.client import Client as TemporalClient
 from temporalio.worker import Worker
@@ -27,7 +31,9 @@ async def test_extract_markdown_workflow_e2e(
     wf_id = f"extract-markdown-{uuid.uuid4()}"
     doc_ids = [d.doc_id for d in docs_with_cached_artifacts]
     args = MarkdownExtractArgs(
-        project=TEST_PROJECT, docs=doc_ids, config=DoclingPipelineConfig()
+        project=TEST_PROJECT,
+        docs=doc_ids,
+        config=PipelineBySize(pipeline=PipelineType.DOCLING, size=PipelineSize.SMALL),
     )
 
     # When

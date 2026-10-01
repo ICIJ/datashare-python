@@ -67,6 +67,7 @@ from .objects import (
     ExtractError,
     MarkdownExtractArgs,
     MarkdownExtractResponse,
+    PipelineBySize,
     StructureArtifact,
     StructureManifestEntry,
 )
@@ -96,6 +97,8 @@ class MarkdownExtract(ActivityWithProgress):
         docs: list[DocId] | DocumentSearchQuery | None,
         config: PipelineConfig,
     ) -> list[Path]:
+        if isinstance(config, PipelineBySize):
+            config = config.to_config()
         es_client = lifespan_es_client()
         w_config = cast(ExtractWorkerConfig, lifespan_worker_config())
         workdir = w_config.paths.workdir
@@ -140,7 +143,12 @@ class MarkdownExtract(ActivityWithProgress):
 
         w_config = cast(ExtractWorkerConfig, lifespan_worker_config())
         w_inference_config = w_config.markdown.inference
-        config = w_inference_config.resolve_pipeline_config(args.config)
+        config = args.config
+        if isinstance(config, PipelineBySize):
+            # We don't specify device here, we'll resolve the device from the worker
+            # config
+            config = config.to_config()
+        config = w_inference_config.resolve_pipeline_config(config)
         logger.debug("loading pipeline with %s as effective config...", config)
         pipeline = Pipeline.from_config(config)
         logger.debug("pipeline loaded !")

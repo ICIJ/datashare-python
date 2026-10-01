@@ -12,24 +12,20 @@ from datashare_python.objects import (
     ProcessingReportWithPages,
     TaskArgs,
 )
-from extract_core import DoclingPipelineConfig, PipelineConfig, PipelineType, Status
+from extract_core import PipelineBySize, PipelineConfig, Status
 
 # Import the config class from extract python otherwise the
 # ExtractPipelineConfig.__subclasses__ list might be incomplete
-from icij_common.pydantic_utils import make_enum_discriminator
 from pydantic import Field
 
 DocumentSearchQuery = dict[str, Any]
 DocId = str
 
 
-pipeline_discriminator = make_enum_discriminator("pipeline", PipelineType)
-
-
 class MarkdownExtractArgs(TaskArgs):
     project: str
     docs: list[DocId] | DocumentSearchQuery | None
-    config: PipelineConfig = Field(default_factory=DoclingPipelineConfig)
+    config: PipelineConfig = Field(default_factory=PipelineBySize)
 
     def as_manifest_task_input(self) -> dict[str, Any]:
         as_entry = super().as_manifest_task_input()
