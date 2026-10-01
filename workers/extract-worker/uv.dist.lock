@@ -691,7 +691,7 @@ dev = [
 requires-dist = [
     { name = "cuda-bindings", marker = "sys_platform == 'linux' and extra == 'gpu'", specifier = "==12.9.4" },
     { name = "datashare-python", specifier = "~=0.12.1" },
-    { name = "extract-core", specifier = "==0.10.3" },
+    { name = "extract-core", specifier = "==0.10.4" },
     { name = "extract-python", extras = ["docling", "marker"], marker = "extra == 'base'", specifier = "==0.10.0" },
     { name = "extract-python", extras = ["mineru"], marker = "extra == 'mineru'", specifier = "==0.10.0" },
     { name = "flash-attn", marker = "extra == 'flash-attn'", specifier = "==2.8.3.post1" },
@@ -1048,7 +1048,7 @@ wheels = [
 
 [[package]]
 name = "extract-core"
-version = "0.10.3"
+version = "0.10.4"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "docling-slim", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-24-datashare-extract-worker-base' and extra == 'extra-24-datashare-extract-worker-mineru') or (platform_machine != 'x86_64' and extra == 'extra-24-datashare-extract-worker-cpu' and extra == 'extra-24-datashare-extract-worker-gpu') or sys_platform == 'darwin' or (sys_platform != 'linux' and extra == 'extra-24-datashare-extract-worker-base' and extra == 'extra-24-datashare-extract-worker-mineru') or (sys_platform != 'linux' and extra == 'extra-24-datashare-extract-worker-cpu' and extra == 'extra-24-datashare-extract-worker-gpu')" },
@@ -1056,9 +1056,9 @@ dependencies = [
     { name = "pydantic", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-24-datashare-extract-worker-base' and extra == 'extra-24-datashare-extract-worker-mineru') or (platform_machine != 'x86_64' and extra == 'extra-24-datashare-extract-worker-cpu' and extra == 'extra-24-datashare-extract-worker-gpu') or sys_platform == 'darwin' or (sys_platform != 'linux' and extra == 'extra-24-datashare-extract-worker-base' and extra == 'extra-24-datashare-extract-worker-mineru') or (sys_platform != 'linux' and extra == 'extra-24-datashare-extract-worker-cpu' and extra == 'extra-24-datashare-extract-worker-gpu')" },
     { name = "pydantic-extra-types", extra = ["pycountry"], marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-24-datashare-extract-worker-base' and extra == 'extra-24-datashare-extract-worker-mineru') or (platform_machine != 'x86_64' and extra == 'extra-24-datashare-extract-worker-cpu' and extra == 'extra-24-datashare-extract-worker-gpu') or sys_platform == 'darwin' or (sys_platform != 'linux' and extra == 'extra-24-datashare-extract-worker-base' and extra == 'extra-24-datashare-extract-worker-mineru') or (sys_platform != 'linux' and extra == 'extra-24-datashare-extract-worker-cpu' and extra == 'extra-24-datashare-extract-worker-gpu')" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/01/51/46f3f4e4a32aa93af6ddbc11697e240f9a39f4e546c71d0646162dc6de2f/extract_core-0.10.3.tar.gz", hash = "sha256:077f544eef7faad8340dedb5656693d461699f0bca753b6be6887399bd005396", size = 35641, upload-time = "2026-10-01T12:38:15.863Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/07/2c/9102136bc5ec1550c92658664db4709514822937e53b85e238906e1f3e96/extract_core-0.10.4.tar.gz", hash = "sha256:2dc098c7b03ac08380eccaf4e0fa4aba50b743bc1d7ffb25fa1936a717c7d15c", size = 35656, upload-time = "2026-10-01T12:51:43.212Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/7c/45/b2fef8ad4fa9f6463f882ea716cdabb650f8f2ca137570f08c75d020c57b/extract_core-0.10.3-py3-none-any.whl", hash = "sha256:495242b170556fd03ad44557c7c65999d7b598a1f86410816f2af7971e38648c", size = 44995, upload-time = "2026-10-01T12:38:14.836Z" },
+    { url = "https://files.pythonhosted.org/packages/d7/75/937b49e20a6e8915e7f40027a073282dcf6a99ec5fbe28637f65b96ba541/extract_core-0.10.4-py3-none-any.whl", hash = "sha256:f42df0447ae0441605e8ebcc702e4646ef059965ebbccab15d8a94649cd3e176", size = 45021, upload-time = "2026-10-01T12:51:42.09Z" },
 ]
 
 [[package]]
