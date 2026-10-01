@@ -145,5 +145,5 @@ class WorkerConfig(ICIJSettings, BaseModel):
 
 
 class ActivityTimeouts(BaseModel):
-    start_to_close: timedelta | None = None
+    start_to_close: timedelta = timedelta(minutes=10)
     heartbeat: timedelta = timedelta(minutes=1)
