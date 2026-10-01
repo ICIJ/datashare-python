@@ -103,7 +103,7 @@ class MarkdownInferenceWorkerConfig(BaseModel):
         doc_timeout = self.docling.settings.inference.document_timeout
         page_batch_size = self.docling.settings.perf.page_batch_size
         accelerator_opts = AcceleratorOptions(
-            num_threads=os.cpu_count(), device=self.device.value
+            num_threads=os.cpu_count(), device=self.device.to_extract()
         ).model_dump(exclude_unset=True)
         for fmt, opts in DoclingPipelineConfig().format_options.items():
             if fmt not in pipeline_config.format_options:
