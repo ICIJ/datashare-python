@@ -418,6 +418,7 @@ def types_map() -> dict[str, set[str]]:
         ".karbon": {"application/vnd.kde.karbon"},
         ".kfo": {"application/vnd.kde.kformula"},
         ".kia": {"application/vnd.kidspiration"},
+        ".key": {"application/x-iwork-keynote-sffkey"},
         ".kml": {"application/vnd.google-earth.kml+xml"},
         ".kmz": {"application/vnd.google-earth.kmz"},
         ".kne": {"application/vnd.kinar"},
