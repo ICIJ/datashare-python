@@ -1,6 +1,6 @@
 from enum import StrEnum
 
-from extract_core import PipelineType
+from extract_core import Device, PipelineType
 
 MARKDOWN_METADATA_KEY = "extract.markdown"
 MARKDOWN_DIRNAME = "markdown"
@@ -32,3 +32,12 @@ class TorchDevice(StrEnum):
                 return TaskQueue.EXTRACT_CPU
             case _:
                 raise ValueError(f"unsupported TorchDevice {self}")
+
+    def to_extract(self) -> Device:
+        match self:
+            case TorchDevice.CPU:
+                return Device.CPU
+            case TorchDevice.GPU:
+                return Device.CUDA
+            case _:
+                raise TypeError(f"unsupported TorchDevice {self}")
