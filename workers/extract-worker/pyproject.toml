@@ -15,7 +15,7 @@ dependencies = [
 
 [project.optional-dependencies]
 base = [
-  "extract-python[docling,marker]==0.10.2",
+  "extract-python[docling,marker]==0.10.3",
   "opencv-python-headless==4.11.0.86"
 ]
 cpu = [
@@ -26,12 +26,13 @@ gpu = [
   "cuda-bindings==12.9.4; sys_platform == 'linux'",
   "torch==2.11.0+cu129; sys_platform == 'linux'",
   "torchvision==0.26.0+cu129; sys_platform == 'linux'",
+  "extract-python[docling-gpu]==0.10.3",
 ]
 flash-attn = [
   "flash-attn==2.8.3.post1",
 ]
 mineru = [
-  "extract-python[mineru]==0.10.2",
+  "extract-python[mineru]==0.10.3",
   "opencv-python-headless==4.11.0.86"
 ]
 
@@ -49,7 +50,7 @@ worker_config_cls = "extract_worker.config:WORKER_CONFIG_CLS"
 
 [dependency-groups]
 dev = [
-  "extract-python[docling]==0.10.2",
+  "extract-python[docling]==0.10.3",
   "black>=26.1.0",
   "nest-asyncio>=1.6.0",
   "pre-commit>=4.5.1",
@@ -93,9 +94,10 @@ package = true
 exclude-dependencies = [
   # only one of opencv-python-headless and opencv-python can be installed otherwise thise triggers conflict
   "opencv-python",
+  "mlx-vlm",
 ]
 override-dependencies = [
-  "pillow==11.3.0"
+  "pillow==11.3.0",
 ]
 environments = [
   "sys_platform == 'darwin'",
