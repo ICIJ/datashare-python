@@ -40,7 +40,7 @@ def test_resolve_pipeline_config_should_set_device() -> None:
             InputFormat.PDF: DoclingFormatOption(
                 backend=_PDF_FORMAT_OPTS_WITH_TIMEOUT.backend,
                 pipeline_cls=_PDF_FORMAT_OPTS_WITH_TIMEOUT.pipeline_cls,
-                pipeline_options={"accelerator_options": "cpu"},
+                pipeline_options={"accelerator_options": {"device": "cpu"}},
             )
         },
     )

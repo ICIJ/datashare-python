@@ -105,22 +105,23 @@ class MarkdownInferenceWorkerConfig(BaseModel):
         accelerator_opts = AcceleratorOptions(
             num_threads=os.cpu_count(), device=self.device.to_extract()
         ).model_dump(exclude_unset=True)
-        for fmt, opts in DoclingPipelineConfig().format_options.items():
-            if fmt not in pipeline_config.format_options:
-                resolved[fmt] = opts
+        for fmt, default_opts in DoclingPipelineConfig().format_options.items():
+            opts = pipeline_config.format_options.get(fmt)
+            if opts is None:
+                resolved[fmt] = default_opts
                 continue
             pipeline_opts = deepcopy(opts.pipeline_options)
             if pipeline_opts is None:
                 pipeline_opts = dict()
             pipeline_opts["document_timeout"] = doc_timeout
-            if fmt is InputFormat.PDF:
+            if fmt in {InputFormat.PDF, InputFormat.IMAGE}:
                 pipeline_opts["ocr_batch_size"] = page_batch_size
                 pipeline_opts["layout_batch_size"] = page_batch_size
                 pipeline_opts["table_batch_size"] = page_batch_size
-            update = {"pipeline_options": pipeline_opts}
             if "accelerator_options" not in pipeline_opts:
                 pipeline_opts["accelerator_options"] = dict()
             pipeline_opts["accelerator_options"].update(accelerator_opts)
+            update = {"pipeline_options": pipeline_opts}
             resolved[fmt] = safe_copy(opts, update=update)
         return resolved
 
