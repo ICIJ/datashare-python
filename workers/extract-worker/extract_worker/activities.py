@@ -327,7 +327,7 @@ async def _write_batches(
 ) -> AsyncIterable[Path]:
     batch_id = 0
     async for batch in batches:
-        batch = sorted(batch, key=lambda d: d.n_pages)
+        batch = sorted(batch, key=lambda d: d.n_pages)  # noqa: PLW2901
         batch_path = root / f"{batch_id}.jsonl"
         with batch_path.open("w") as f:
             for fs_doc in batch:
