@@ -2,10 +2,16 @@
 import sys
 from unittest.mock import MagicMock, patch
 
-from translation_worker.objects import DEFAULT_HUNYUAN_MODEL_REF
-from translation_worker.translators.hunyuan import HunyuanMtTranslator
+import pytest
+from translation_worker.objects import (
+    DEFAULT_HUNYUAN_MODEL_REF,
+)
+from translation_worker.translators.hunyuan import (
+    HunyuanMtTranslator,
+    _message_template,
+)
 
-from tests.conftest import DS_CHINESE, DS_ENGLISH
+from tests.conftest import DS_CHINESE, DS_ENGLISH, DS_FRENCH
 
 TEXT_TO_TRANSLATE = "text to translate"
 MORE_TEXT_TO_TRANSLATE = "more text to translate"
@@ -47,16 +53,16 @@ def test__translate__wraps_each_text_in_prompt() -> None:
             [
                 {
                     "role": "user",
-                    "content": f"Translate into English, "
-                    f"without additional explanation: "
+                    "content": "将以下文本翻译为英语，"
+                    "注意只需要输出翻译后的结果，不要额外解释：\n\n"
                     f"{TEXT_TO_TRANSLATE}",
                 }
             ],
             [
                 {
                     "role": "user",
-                    "content": f"Translate into English, "
-                    f"without additional explanation: "
+                    "content": "将以下文本翻译为英语，"
+                    "注意只需要输出翻译后的结果，不要额外解释：\n\n"
                     f"{MORE_TEXT_TO_TRANSLATE}",
                 }
             ],
@@ -65,37 +71,45 @@ def test__translate__wraps_each_text_in_prompt() -> None:
         add_generation_prompt=False,
         return_tensors="pt",
         padding=True,
+        return_dict=True,
     )
 
 
-def test__translate__moves_tokenized_input_to_device_before_generation() -> None:
+def test__translate__moves_tokenized_input_and_mask_to_device_before_generation() -> (
+    None
+):
     translator = _translator(device="cpu")
     mock_tokenizer = MagicMock()
     mock_model = MagicMock()
     translator._tokenizer = mock_tokenizer
     translator._translator = mock_model
-    tokenized = MagicMock()
+    tokenized = {"input_ids": MagicMock(), "attention_mask": MagicMock()}
     mock_tokenizer.apply_chat_template.return_value = tokenized
     translator.translate([TEXT_TO_TRANSLATE])
     input_ids = tokenized["input_ids"]
+    attention_mask = tokenized["attention_mask"]
     input_ids.to.assert_called_once_with("cpu")
-    mock_model.generate.assert_called_once_with(
-        input_ids.to.return_value, max_new_tokens=2048
-    )
+    attention_mask.to.assert_called_once_with("cpu")
+    _, kwargs = mock_model.generate.call_args
+    assert mock_model.generate.call_args.args == (input_ids.to.return_value,)
+    assert kwargs["attention_mask"] is attention_mask.to.return_value
 
 
-def test__translate__decodes_first_element_of_generate_output() -> None:
+def test__translate__decodes_only_generated_tokens() -> None:
     translator = _translator()
     mock_tokenizer = MagicMock()
     mock_model = MagicMock()
     translator._tokenizer = mock_tokenizer
     translator._translator = mock_model
-    first_output = MagicMock()
-    mock_model.generate.return_value = [first_output]
+    prompt_length = 3
+    input_ids = mock_tokenizer.apply_chat_template.return_value["input_ids"]
+    input_ids.to.return_value.shape = (1, prompt_length)
+    prompt_and_completion = list(range(prompt_length + 2))
+    mock_model.generate.return_value = [prompt_and_completion]
     mock_tokenizer.decode.return_value = TRANSLATED_TEXT
     result = translator.translate([TEXT_TO_TRANSLATE])
     mock_tokenizer.decode.assert_called_once_with(
-        first_output, skip_special_tokens=True
+        prompt_and_completion[prompt_length:], skip_special_tokens=True
     )
     assert result == [TRANSLATED_TEXT]
 
@@ -114,7 +128,7 @@ def test__load__initialises_tokenizer_and_model_from_config_model_ref_with_devic
         translator.load(MagicMock(), target=MagicMock(), worker_config=MagicMock())
 
     dummy_tf.AutoTokenizer.from_pretrained.assert_called_once_with(
-        DEFAULT_HUNYUAN_MODEL_REF
+        DEFAULT_HUNYUAN_MODEL_REF, padding_side="left"
     )
 
     dummy_tf.AutoModelForCausalLM.from_pretrained.assert_called_once_with(
@@ -122,3 +136,31 @@ def test__load__initialises_tokenizer_and_model_from_config_model_ref_with_devic
         device_map="cuda:0",
         torch_dtype="bfloat16",
     )
+
+
+_ZH_PROMPT = "将以下文本翻译为{}，注意只需要输出翻译后的结果，不要额外解释：\n\n{}"
+_XX_PROMPT = (
+    "Translate the following segment into {}, without additional explanation.\n\n{}"  # noqa: E501
+)
+
+
+@pytest.mark.parametrize(
+    ("source", "target", "expected"),
+    [
+        (DS_CHINESE, DS_ENGLISH, _ZH_PROMPT.format("英语", TEXT_TO_TRANSLATE)),
+        (DS_ENGLISH, DS_CHINESE, _ZH_PROMPT.format("中文", TEXT_TO_TRANSLATE)),
+        ("zh-Hant", "en", _ZH_PROMPT.format("英语", TEXT_TO_TRANSLATE)),
+        ("yue", "en", _ZH_PROMPT.format("英语", TEXT_TO_TRANSLATE)),
+        (DS_FRENCH, DS_ENGLISH, _XX_PROMPT.format("English", TEXT_TO_TRANSLATE)),
+        (
+            "fr",
+            "en-US",
+            _XX_PROMPT.format("English (United States)", TEXT_TO_TRANSLATE),
+        ),
+    ],
+)
+def test__message_template__picks_prompt_from_language_pair(
+    source: str, target: str, expected: str
+) -> None:
+    message = _message_template(TEXT_TO_TRANSLATE, source, target)
+    assert message == {"role": "user", "content": expected}

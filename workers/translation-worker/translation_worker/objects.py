@@ -112,7 +112,7 @@ class ArgosTranslatorConfig(BaseTranslatorConfig):
     length_penalty: float = 0.2
 
 
-DEFAULT_HUNYUAN_MODEL_REF = "tencent/Hunyuan-MT-Chimera-7B"
+DEFAULT_HUNYUAN_MODEL_REF = "tencent/HY-MT1.5-1.8B"
 
 
 class HunyuanMtTranslatorConfig(BaseTranslatorConfig):
@@ -122,8 +122,9 @@ class HunyuanMtTranslatorConfig(BaseTranslatorConfig):
 
     model_ref: str = DEFAULT_HUNYUAN_MODEL_REF
     max_new_tokens: int = 2048
+    do_sample: bool = True
     top_k: int = 20
-    top_p: float = 0.6
+    top_p: float = 0.8
     repetition_penalty: float = 1.05
     temperature: float = 0.7
     torch_dtype: str = "float32"

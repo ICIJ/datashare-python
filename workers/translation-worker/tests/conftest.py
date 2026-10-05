@@ -201,3 +201,26 @@ async def translation_inference_worker(
     )
     async with worker_ctx:
         yield
+
+
+@pytest.fixture(scope="session")
+async def torch_translation_inference_worker(
+    test_worker_config: TranslationWorkerConfig,  # noqa: F811
+    test_temporal_client_session: TemporalClient,  # noqa: F811
+) -> AsyncGenerator[None, None]:
+    client = test_temporal_client_session
+    worker_id = f"test-translation-torch-worker-{uuid.uuid4()}"
+    translation_activities = [Activity.TRANSLATE_DOCS]
+    task_queue = TaskQueue.TORCH_INFERENCE
+    dependencies = "translation.inference"
+    worker_ctx = dev_worker_context(
+        worker_id,
+        is_async=True,
+        activities=translation_activities,
+        worker_config=test_worker_config,
+        client=client,
+        task_queue=task_queue,
+        dependencies=dependencies,
+    )
+    async with worker_ctx:
+        yield
