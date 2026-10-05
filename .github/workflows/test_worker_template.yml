@@ -3,6 +3,9 @@ name: Test worker-template
 on:
   push:
     branches: [ 'main' ]
+    paths:
+      - 'datashare-python/**'
+      - 'worker-template/**'
   pull_request:
     paths:
       - 'datashare-python/**'

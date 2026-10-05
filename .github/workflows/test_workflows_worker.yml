@@ -3,6 +3,8 @@ name: Test workflows-worker
 on:
   push:
     branches: [ 'main' ]
+    paths:
+      - 'workers/workflows-worker/**'
   pull_request:
     paths:
       - 'workers/workflows-worker/**'

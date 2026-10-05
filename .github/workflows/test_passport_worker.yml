@@ -3,6 +3,9 @@ name: Test passport-worker
 on:
   push:
     branches: [ 'main' ]
+    paths:
+      - 'datashare-python/**'
+      - 'workers/passport-worker/**'
   pull_request:
     paths:
       - 'datashare-python/**'

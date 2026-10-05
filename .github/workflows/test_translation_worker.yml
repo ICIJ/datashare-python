@@ -3,6 +3,9 @@ name: Test translation-worker
 on:
   push:
     branches: [ 'main' ]
+    paths:
+      - 'datashare-python/**'
+      - 'workers/translation-worker/**'
   pull_request:
     paths:
       - 'datashare-python/**'

@@ -3,6 +3,9 @@ name: Test extract-worker
 on:
   push:
     branches: [ 'main' ]
+    paths:
+      - 'datashare-python/**'
+      - 'workers/extract-worker/**'
   pull_request:
     paths:
       - 'datashare-python/**'
