@@ -2,7 +2,8 @@ import gc
 from collections.abc import Iterable
 from typing import TYPE_CHECKING, Self
 
-from datashare_python.objects import Language
+import langcodes
+from datashare_python.objects import DatashareLanguage, Language
 
 from ..config import TranslationWorkerConfig
 from ..objects import HunyuanMtTranslatorConfig, TranslationModel
@@ -12,8 +13,34 @@ if TYPE_CHECKING:
     import torch
 
 
-def _message_template(text: str, target_lang: str) -> dict[str, str]:
-    context = f"Translate into {target_lang}, without additional explanation: {text}"
+_CHINESE_LANGUAGES = {"zh", "yue"}
+
+
+def _language_tag(language: Language) -> langcodes.Language:
+    if isinstance(language, DatashareLanguage):
+        return langcodes.get(language.alpha3)
+    # IETF tags
+    return langcodes.get(language)
+
+
+def _message_template(text: str, source: Language, target: Language) -> dict[str, str]:
+    source_tag, target_tag = _language_tag(source), _language_tag(target)
+    is_chinese_pair = bool(
+        {source_tag.language, target_tag.language} & _CHINESE_LANGUAGES
+    )
+    # tencent recommends using a chinese prompt when translating from chinese
+    if is_chinese_pair:
+        target_lang = target_tag.display_name("zh")
+        context = (
+            f"将以下文本翻译为{target_lang}，注意只需要输出翻译后的结果，不要额外解释："
+            f"\n\n{text}"
+        )
+    else:
+        target_lang = target_tag.display_name("en")
+        context = (
+            f"Translate the following segment into {target_lang}, without additional "
+            f"explanation.\n\n{text}"
+        )
     return {"role": "user", "content": context}
 
 
@@ -53,25 +80,41 @@ class HunyuanMtTranslator(Translator):
             torch_dtype=self._config.torch_dtype,
         )
         self._translator = translator
-        self._tokenizer = AutoTokenizer.from_pretrained(self._config.model_ref)
+        self._tokenizer = AutoTokenizer.from_pretrained(
+            self._config.model_ref, padding_side="left"
+        )
         self._device = next(self._translator.parameters()).device
 
     def translate(self, texts: Iterable[str]) -> list[str]:
-        target_lang = self._target.title()
-        conversations = [[_message_template(text, target_lang)] for text in texts]
+        conversations = [
+            [_message_template(text, self._source, self._target)] for text in texts
+        ]
         tokenized = self._tokenizer.apply_chat_template(
             conversations,
             tokenize=True,
             add_generation_prompt=False,
             return_tensors="pt",
             padding=True,
+            return_dict=True,
         )
-        input_ids = tokenized["input_ids"] if hasattr(tokenized, "keys") else tokenized
+        input_ids = tokenized["input_ids"].to(self._device)
+        attention_mask = tokenized["attention_mask"].to(self._device)
         outputs = self._translator.generate(
-            input_ids.to(self._device), max_new_tokens=self._config.max_new_tokens
+            input_ids,
+            attention_mask=attention_mask,
+            max_new_tokens=self._config.max_new_tokens,
+            do_sample=self._config.do_sample,
+            top_k=self._config.top_k,
+            top_p=self._config.top_p,
+            temperature=self._config.temperature,
+            repetition_penalty=self._config.repetition_penalty,
         )
+        # generate returns the prompt followed by the completion, only decode the
+        # completion
+        prompt_length = input_ids.shape[-1]
         return [
-            self._tokenizer.decode(out, skip_special_tokens=True) for out in outputs
+            self._tokenizer.decode(out[prompt_length:], skip_special_tokens=True)
+            for out in outputs
         ]
 
     def __exit__(self, exc_type, exc_val, exc_tb):  # noqa: ANN001
