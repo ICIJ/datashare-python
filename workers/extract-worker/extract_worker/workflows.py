@@ -52,11 +52,11 @@ class ExtractMarkdownContentWorkflow(WorkflowWithProgress):
         extract_acts = (
             execute_activity(
                 MarkdownExtract.extract_markdown_content,
-                args=args,
+                args=a,
                 task_queue=task_queue,
                 timeouts=worker_config.timeouts.extract_content,
             )
-            for args in extract_args
+            for a in extract_args
         )
         responses = await asyncio.gather(*extract_acts)
         return sum(responses, start=MarkdownExtractResponse())
