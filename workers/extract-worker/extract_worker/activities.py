@@ -170,7 +170,12 @@ class MarkdownExtract(ActivityWithProgress):
 
 
 # Sort documents aiming for consistent processing type in a batch
-_DOC_SORT = [f"{DOC_CONTENT_TYPE}:asc", f"{DOC_LANGUAGE}:asc", "_doc:asc"]
+_DOC_SORT = [
+    f"{DOC_CONTENT_TYPE}:asc",
+    f"{DOC_LANGUAGE}:asc",
+    f"{DOC_METADATA}.tika_metadata_xmptpg_npages:desc",
+    "_doc:asc",
+]
 _DOC_CONTENT_SOURCES = [
     DOC_PATH,
     DOC_ROOT_ID,
