@@ -108,8 +108,7 @@ class MarkdownInferenceWorkerConfig(BaseModel):
         for fmt, default_opts in DoclingPipelineConfig().format_options.items():
             opts = pipeline_config.format_options.get(fmt)
             if opts is None:
-                resolved[fmt] = default_opts
-                continue
+                opts = default_opts
             pipeline_opts = deepcopy(opts.pipeline_options)
             if pipeline_opts is None:
                 pipeline_opts = dict()

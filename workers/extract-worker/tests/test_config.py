@@ -1,3 +1,5 @@
+from typing import cast
+
 from docling.datamodel.base_models import InputFormat
 from docling.datamodel.settings import DebugSettings
 from extract_core import (
@@ -63,12 +65,15 @@ def test_default_resolve_pipeline_config_should_override_document_timeout() -> N
     )
     pipeline_config = DoclingPipelineConfig()
     # When
-    resolved = worker_config.resolve_pipeline_config(pipeline_config)
+    resolved = cast(
+        DoclingPipelineConfig, worker_config.resolve_pipeline_config(pipeline_config)
+    )
     # Then
     expected_settings = DoclingSettings(
         inference=InferenceSettings(document_timeout=120.0)
     )
     assert resolved.settings == expected_settings
-    pipeline_opts = resolved.format_options[InputFormat.PDF].pipeline_options
-    accelerator_opts = pipeline_opts["document_timeout"]
-    assert accelerator_opts == 120.0
+    for fmt_opts in resolved.format_options.values():
+        pipeline_opts = fmt_opts.pipeline_options
+        accelerator_opts = pipeline_opts["document_timeout"]
+        assert accelerator_opts == 120.0
