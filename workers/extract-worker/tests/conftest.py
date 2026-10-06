@@ -34,7 +34,11 @@ from datashare_python.types_ import TemporalClient
 from datashare_python.utils import artifacts_dir
 from extract_core.objects import SupportedExt
 from extract_worker.activities import Activity
-from extract_worker.config import ExtractWorkerConfig
+from extract_worker.config import (
+    ExtractWorkerConfig,
+    MarkdownExtractWorkerConfig,
+    MarkdownInferenceWorkerConfig,
+)
 from extract_worker.constants import TaskQueue
 from icij_common.es import ESClient
 
@@ -61,6 +65,9 @@ def test_worker_config(tmp_path_factory: TempPathFactory) -> ExtractWorkerConfig
     )
     return ExtractWorkerConfig(
         logging=logging_config,
+        markdown=MarkdownExtractWorkerConfig(
+            inference=MarkdownInferenceWorkerConfig(default_target_n_pages_per_task=1)
+        ),
         datashare=DatashareClientConfig(url="http://localhost:8080"),
         temporal=TemporalClientConfig(host="localhost:7233"),
         paths=worker_paths,
