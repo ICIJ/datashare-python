@@ -45,13 +45,13 @@ RUN --mount=type=cache,target=~/.cache/uv \
 ADD uv.dist.lock ./uv.lock
 ADD pyproject.toml README.md ./
 ADD translation_worker ./translation_worker/
-ADD entrypoints/inference_worker.sh ./entrypoints/inference_worker.sh
+ADD entrypoints/c2translate_inference_worker.sh ./entrypoints/c2translate_inference_worker.sh
 
 # Then install service
 RUN --mount=type=cache,target=~/.cache/uv uv sync -v --frozen --no-editable --extra c2translate
 RUN rm -rf ~/.cache/pip
 
-ENTRYPOINT ["entrypoints/inference_worker.sh"]
+ENTRYPOINT ["entrypoints/c2translate_inference_worker.sh"]
 
 
 FROM translation-worker-builder AS inference-torch-worker
@@ -65,10 +65,10 @@ RUN --mount=type=cache,target=~/.cache/uv \
 ADD uv.dist.lock ./uv.lock
 ADD pyproject.toml README.md ./
 ADD translation_worker ./translation_worker/
-ADD entrypoints/inference_worker.sh ./entrypoints/inference_worker.sh
+ADD entrypoints/torch_inference_worker.sh ./entrypoints/torch_inference_worker.sh
 
 # Then install service
 RUN --mount=type=cache,target=~/.cache/uv uv sync -v --frozen --no-editable --extra torch
 RUN rm -rf ~/.cache/pip
 
-ENTRYPOINT ["entrypoints/inference_worker.sh"]
+ENTRYPOINT ["entrypoints/torch_inference_worker.sh"]

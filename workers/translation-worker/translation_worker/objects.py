@@ -163,6 +163,7 @@ class TranslationArgs(TaskArgs):
     docs: list[DocId] | DocumentSearchQuery | None = None
     config: "TranslationConfig"
     target_language: Language
+    max_docs: int | None = Field(default=None, gt=0)
 
     def as_query(self) -> dict[str, Any]:
         match self.docs:
