@@ -149,6 +149,11 @@ class MarkdownExtract(ActivityWithProgress):
             # config
             device = w_config.markdown.inference.device.to_extract()
             config = config.to_config(device)
+        logger.debug(
+            "resolving extract pipeline config %s with worker config %s",
+            config,
+            w_inference_config,
+        )
         config = w_inference_config.resolve_pipeline_config(config)
         logger.debug("loading pipeline with %s as effective config...", config)
         pipeline = Pipeline.from_config(config)
