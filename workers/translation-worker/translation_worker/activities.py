@@ -64,7 +64,7 @@ class TranslationActivities(ActivityWithProgress):
 
     @activity_defn(name=Activity.CREATE_TRANSLATION_BATCHES)
     async def create_translation_batches(
-        self, project: str, query: dict[str, Any]
+        self, project: str, query: dict[str, Any], max_docs: int | None = None
     ) -> list[tuple[Language, list[Batch]]]:
         es_client = lifespan_es_client()
         worker_config = cast(TranslationWorkerConfig, lifespan_worker_config())
@@ -76,6 +76,7 @@ class TranslationActivities(ActivityWithProgress):
                 project,
                 query,
                 batch_text_length=batch_text_length,
+                max_docs=max_docs,
                 es_client=es_client,
             )
         ]
@@ -165,6 +166,7 @@ async def create_translation_batches_act(
     project: str,
     query: dict[str, Any],
     batch_text_length: int = 1000000,
+    max_docs: int | None = None,
     es_client: ESClient | None = None,
 ) -> AsyncGenerator[tuple[DatashareLanguage, list[Batch]], None]:
     # Retrieve unprocessed docs.
@@ -172,6 +174,7 @@ async def create_translation_batches_act(
     es_docs = _get_es_docs_by_language(
         es_client, project, query, source_includes=_BATCHING_DOC_SOURCES
     )
+    n_docs = 0
     async for language_docs in es_docs:
         language_batches: list[Batch] = []
         current_batch = []
@@ -179,6 +182,9 @@ async def create_translation_batches_act(
         current_language = None
 
         async for doc in language_docs:
+            if max_docs is not None and n_docs >= max_docs:
+                break
+            n_docs += 1
             doc_id: str = doc[ID_]
             doc_length = doc[SOURCE][_DOC_CONTENT_TEXT_LENGTH]
             if current_language is None:
@@ -198,6 +204,8 @@ async def create_translation_batches_act(
         if current_language is None:
             continue
         yield current_language, language_batches
+        if max_docs is not None and n_docs >= max_docs:
+            return
 
 
 async def translate_docs_act(

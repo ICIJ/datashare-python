@@ -84,7 +84,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v6
         with:
-          images: icij/datashare-translation-inference-worker
+          images: icij/datashare-translation-inference-c2translate-worker
           tags: |
             type=match,pattern=translation-worker-(.*),group=1
 
@@ -116,7 +116,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v6
         with:
-          images: icij/datashare-translation-inference-worker
+          images: icij/datashare-translation-inference-torch-worker
           tags: |
             type=match,pattern=translation-worker-(.*),group=1
 

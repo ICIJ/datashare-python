@@ -281,6 +281,38 @@ async def test__create_translation_batches__multiple_langs_yield_separate_entrie
     assert DS_SPANISH in langs
 
 
+@pytest.mark.parametrize(
+    ("max_docs", "expected"),
+    [
+        (None, [(DS_FRENCH, [["fr_0", "fr_1"]]), (DS_SPANISH, [["es_0", "es_1"]])]),
+        (1, [(DS_FRENCH, [["fr_0"]])]),
+        (2, [(DS_FRENCH, [["fr_0", "fr_1"]])]),
+        (3, [(DS_FRENCH, [["fr_0", "fr_1"]]), (DS_SPANISH, [["es_0"]])]),
+    ],
+)
+async def test__create_translation_batches__stops_after_max_docs(
+    max_docs: int | None, expected: list
+) -> None:
+    # Given
+    query = untranslated_query(DS_ENGLISH)
+    docs = [
+        _make_batching_doc("fr_0", DS_FRENCH),
+        _make_batching_doc("fr_1", DS_FRENCH),
+        _make_batching_doc("es_0", DS_SPANISH),
+        _make_batching_doc("es_1", DS_SPANISH),
+    ]
+    client = MockESClient(docs)
+    # When
+    result = [
+        b
+        async for b in create_translation_batches_act(
+            project=TEST_PROJECT, query=query, max_docs=max_docs, es_client=client
+        )
+    ]
+    # Then
+    assert result == expected
+
+
 async def test__create_translation_batches__splits_batch_if_max_text_len_exceeded() -> (
     None
 ):
