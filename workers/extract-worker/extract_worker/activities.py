@@ -232,6 +232,7 @@ async def extract_markdown_content_act(
     n_pages, n_successes, n_successes_pages = 0, 0, 0
     errors = []
     manifest_entry_factory = partial(StructureManifestEntry.complete, args=args)
+    n_processed = 0
     async for extract_res in results:
         # Heartbeat explicitly to avoid heartbeat timeout
         with contextlib.suppress(RuntimeError):
@@ -262,7 +263,8 @@ async def extract_markdown_content_act(
             )
             write_artifact(artifacts_root, artifact)
         if progress is not None:
-            await progress(n_docs)
+            await progress(n_processed)
+        n_processed += 1
     processed = ProcessingReportWithPages(n_docs=n_docs, n_pages=n_pages)
     successes = ProcessingReportWithPages(n_docs=n_successes, n_pages=n_successes_pages)
     errors = ErrorReportWithPages.from_errors(*errors)
