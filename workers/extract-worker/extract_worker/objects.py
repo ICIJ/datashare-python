@@ -60,5 +60,5 @@ class MarkdownExtractResponse(DatashareModel):
         return MarkdownExtractResponse(
             processed=self.processed + other.processed,
             successes=self.successes + other.successes,
-            errors=self.errors + self.errors,
+            errors=self.errors + other.errors,
         )

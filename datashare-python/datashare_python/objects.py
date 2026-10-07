@@ -718,7 +718,7 @@ class ErrorReportWithPages(ProcessingReportWithPages, ABC):
         return ErrorReportWithPages(
             n_docs=other.n_docs + self.n_docs,
             n_pages=other.n_pages + self.n_pages,
-            errors=self.errors + other.errors,
+            errors=other.errors + self.errors,
         )
 
     @classmethod
