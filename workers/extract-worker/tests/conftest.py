@@ -29,12 +29,21 @@ from datashare_python.conftest import (  # noqa: F401
     text_0,
     text_1,
 )
-from datashare_python.objects import DatashareFile, Document, ProcessedFile, WorkerPaths
+from datashare_python.objects import (
+    DatashareFile,
+    DatashareLanguage,
+    Document,
+    ProcessedFile,
+    WorkerPaths,
+)
 from datashare_python.types_ import TemporalClient
 from datashare_python.utils import artifacts_dir
+from extract_core import BatchConcurrencySettings, DoclingSettings
+from extract_core.docling_ import InferenceSettings
 from extract_core.objects import SupportedExt
 from extract_worker.activities import Activity
 from extract_worker.config import (
+    DoclingWorkerConfig,
     ExtractWorkerConfig,
     MarkdownExtractWorkerConfig,
     MarkdownInferenceWorkerConfig,
@@ -63,10 +72,21 @@ def test_worker_config(tmp_path_factory: TempPathFactory) -> ExtractWorkerConfig
         loggers={datashare_python.__name__: "INFO", __name__: "DEBUG"},
         format=LogFormat.DEFAULT,
     )
+
     return ExtractWorkerConfig(
         logging=logging_config,
         markdown=MarkdownExtractWorkerConfig(
-            inference=MarkdownInferenceWorkerConfig(default_target_n_pages_per_task=1)
+            inference=MarkdownInferenceWorkerConfig(
+                default_target_n_pages_per_task=1,
+                docling=DoclingWorkerConfig(
+                    settings=DoclingSettings(
+                        perf=BatchConcurrencySettings(
+                            max_page_batches=1, page_batch_size=1
+                        ),
+                        inference=InferenceSettings(document_timeout=120),
+                    ),
+                ),
+            )
         ),
         datashare=DatashareClientConfig(url="http://localhost:8080"),
         temporal=TemporalClientConfig(host="localhost:7233"),
@@ -81,7 +101,7 @@ def doc_0() -> Document:
         root_document="root-0",
         extraction_level=1,
         index=TEST_PROJECT,
-        language="ENGLISH",
+        language=DatashareLanguage("ENGLISH"),
         content_type="application/pdf",
         path=Path("doc-0.pdf"),
         metadata={
@@ -98,7 +118,7 @@ def doc_1() -> Document:
         root_document="root-1",
         extraction_level=1,
         index=TEST_PROJECT,
-        language="ENGLISH",
+        language=DatashareLanguage("ENGLISH"),
         content_type="audio/wav",
         path=Path("doc-1.wav"),
         metadata={"tika_metadata_resourcename": "doc-1.wav"},
@@ -110,7 +130,7 @@ def doc_2() -> Document:
     return Document(
         id="doc-2",
         index=TEST_PROJECT,
-        language="FRENCH",
+        language=DatashareLanguage("FRENCH"),
         content_type=mimetypes.guess_type("doc-2.docx")[0],
         path=Path("doc-2.docx"),
         metadata={"tika_metadata_resourcename": "doc-2.docx"},

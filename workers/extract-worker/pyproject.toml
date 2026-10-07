@@ -10,7 +10,7 @@ readme = "README.md"
 requires-python = ">=3.13,<3.15"
 dependencies = [
   "datashare-python~=0.12.2",
-  "extract-core==0.10.5",
+  "extract-core==0.10.6",
 ]
 
 [project.optional-dependencies]
