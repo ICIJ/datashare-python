@@ -52,8 +52,8 @@ jobs:
         uses: astral-sh/setup-uv@v7
         with:
           version: "0.10.8"
-      - name: Install Python 3.11
-        run: uv python install 3.11
+      - name: Install Python 3.12
+        run: uv python install 3.12
       - name: Build
         run: cd workers/asr-worker && uv build
       - name: Publish

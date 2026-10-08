@@ -1,0 +1,86 @@
+name: Publish caul-core
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'caul-core-*'
+
+jobs:
+  create-release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+      - name: Create GH release
+        run: gh release create "$tag" --generate-notes
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          tag: ${{ github.ref_name }}
+
+  publish-caul-core-to-pypi:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    environment:
+      name: pypi
+      url: https://pypi.org/p/caul-core
+    steps:
+      - uses: actions/checkout@v6
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: "0.10.8"
+      - name: Install Python 3.12
+        run: uv python install 3.12
+      - name: Set version from tag
+        run: |
+          if [ "$GITHUB_REF_TYPE" != "tag" ]; then
+            echo "must be run from a caul-core-* tag, got $GITHUB_REF_TYPE $GITHUB_REF_NAME" >&2
+            exit 1
+          fi
+          cd caul-core
+          uv version --frozen "${GITHUB_REF_NAME#caul-core-}"
+      - name: Build
+        run: cd caul-core && uv build
+      - name: Publish
+        run: cd caul-core && uv publish
+
+  sync-caul-core-version:
+    permissions:
+      contents: write
+    needs:
+      - publish-caul-core-to-pypi
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          # main, not the tag: the tag may point at a commit whose
+          # pyproject.toml doesn't have this version yet
+          ref: main
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: "0.10.8"
+      - name: Sync pyproject.toml version with tag
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          version="${GITHUB_REF_NAME#caul-core-}"
+          cd caul-core
+          uv version --frozen "$version"
+          git add pyproject.toml
+          if git diff --cached --quiet; then
+            echo "pyproject.toml already at $version, nothing to sync"
+          else
+            git commit -m "release(caul-core): \`caul-core==$version\`"
+            git pull --rebase
+            git push
+          fi
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false

@@ -56,3 +56,11 @@ ignore = [
 ]
 [lint.flake8-tidy-imports]
 ban-relative-imports = "parents"
+
+[lint.per-file-ignores]
+# caul lazily imports its optional heavy dependencies (torch, nemo, tensorrt, ...) so that a base
+# install works without them
+"**/caul/caul/**" = ["PLC0415"]
+"**/caul-core/caul_core/**" = ["PLC0415"]
+# Task implementations override base class interfaces and don't use every argument
+"**/caul/caul/tasks/**" = ["ARG002", "ARG003"]

@@ -7,6 +7,8 @@ on:
     paths:
       - 'datashare-python/**'
       - 'workers/asr-worker/**'
+      - 'caul/**'
+      - 'caul-core/**'
 
 # TODO: leverage some caching here
 jobs:
