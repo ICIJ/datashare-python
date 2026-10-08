@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, Literal
 
 from icij_common.es import ESClient
 from icij_common.pydantic_utils import ICIJSettings
-from pydantic import PrivateAttr
+from pydantic import Field, PrivateAttr
 from pydantic_settings import SettingsConfigDict
 from temporalio.runtime import PrometheusConfig, Runtime, TelemetryConfig
 
@@ -61,7 +61,7 @@ class DatashareClientConfig(BaseModel):
 class TemporalClientConfig(BaseModel):
     host: str = "temporal:7233"
     namespace: str = "datashare-default"
-    prometheus_host: str | None = None
+    prometheus_address: str | None = Field(alias="prometheus_host", default=None)
 
     _client: TemporalClient | None = PrivateAttr(default=None)
 
@@ -70,9 +70,9 @@ class TemporalClientConfig(BaseModel):
 
         if self._client is None:
             runtime = None
-            if self.prometheus_host is not None:
+            if self.prometheus_address is not None:
                 telemetry_config = TelemetryConfig(
-                    metrics=PrometheusConfig(bind_address="0.0.0.0:9000")
+                    metrics=PrometheusConfig(bind_address=self.prometheus_address)
                 )
                 runtime = Runtime(telemetry=telemetry_config)
 

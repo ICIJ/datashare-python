@@ -430,7 +430,7 @@ def _run_worker_process(
         runtime = Runtime(telemetry=TelemetryConfig())
         # We don't use config.to_temporal_client since we get a problem with the
         # temporal runtime not being properly recreated, we create it explicitely
-        if temporal_config.prometheus_host is not None:
+        if temporal_config.prometheus_address is not None:
             telemetry_config = TelemetryConfig(
                 metrics=PrometheusConfig(bind_address="0.0.0.0:9000")
             )
