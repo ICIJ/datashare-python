@@ -12,6 +12,8 @@ from extract_core import (
     DoclingFormatOption,
     DoclingPipelineConfig,
     DoclingSettings,
+    MarkerPipelineConfig,
+    MinerUPipelineConfig,
 )
 from extract_core.docling_ import InferenceSettings
 from icij_common.pydantic_utils import safe_copy
@@ -67,7 +69,11 @@ class MarkdownInferenceWorkerConfig(BaseModel):
         match pipeline_config:
             case DoclingPipelineConfig():
                 return self._resolve_docling_config(pipeline_config)
-        return pipeline_config
+            case MarkerPipelineConfig():
+                return self._resolve_marker_config(pipeline_config)
+            case MinerUPipelineConfig():
+                return self._resolve_miner_config(pipeline_config)
+        raise TypeError(f"unexpected type: {pipeline_config.__class__.__name__}")
 
     def _resolve_docling_config(
         self, pipeline_config: DoclingPipelineConfig
@@ -122,6 +128,20 @@ class MarkdownInferenceWorkerConfig(BaseModel):
             pipeline_opts["accelerator_options"].update(accelerator_opts)
             update = {"pipeline_options": pipeline_opts}
             resolved[fmt] = safe_copy(opts, update=update)
+        return resolved
+
+    def _resolve_marker_config(
+        self, pipeline_config: MarkerPipelineConfig
+    ) -> DoclingPipelineConfig:
+        update = {"device": self.device.to_extract()}
+        resolved = safe_copy(pipeline_config, update=update)
+        return resolved
+
+    def _resolve_miner_config(
+        self, pipeline_config: MinerUPipelineConfig
+    ) -> DoclingPipelineConfig:
+        update = {"device": self.device.to_extract()}
+        resolved = safe_copy(pipeline_config, update=update)
         return resolved
 
 
