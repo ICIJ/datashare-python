@@ -3,12 +3,21 @@ name: Test caul
 on:
   push:
     branches: [ 'main' ]
+    paths:
+      - 'caul/**.py'
+      - 'caul/pyproject.toml'
+      - 'caul/uv.lock'
+      - 'caul-core/**.py'
+      - 'caul-core/pyproject.toml'
+      - 'caul-core/uv.lock'
   pull_request:
     paths:
-      - 'caul/**'
-      - 'caul-core/**'
-      - '.github/workflows/test_caul.yml'
-      - 'qa/ruff.toml'
+      - 'caul/**.py'
+      - 'caul/pyproject.toml'
+      - 'caul/uv.lock'
+      - 'caul-core/**.py'
+      - 'caul-core/pyproject.toml'
+      - 'caul-core/uv.lock'
 
 jobs:
   lint:
