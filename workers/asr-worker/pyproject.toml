@@ -8,7 +8,7 @@ authors = [
   { name = "Lion Summerbell", email = "lsummerbell@icij.org" }
 ]
 readme = "README.md"
-requires-python = ">=3.11.0, <3.13"
+requires-python = ">=3.12.0, <3.13"
 dependencies = [
   "datashare-python~=0.12.3",
   "caul-core==0.6.6",
@@ -93,6 +93,8 @@ torchcodec = [
   { index = "pytorch-cpu", extra = "cpu" },
 ]
 datashare-python = { path = "../../datashare-python", editable = true }
+caul = { path = "../../caul", editable = true }
+caul-core = { path = "../../caul-core", editable = true }
 
 
 [tool.uv]

@@ -1,0 +1,168 @@
+[project]
+name = "caul"
+version = "0.13.13"
+description = "Python implementation of an ASR service"
+authors = [
+    {name = "Lion Summerbell", email = "lsummerbell@icij.org"}
+]
+requires-python = ">=3.12.0, <3.13.0"
+dependencies = [
+    "icij-common~=0.8.1",
+    "kaldialign~=0.9",
+    "langcodes~=3.5",
+    "librosa>=0.10.1,<0.12",
+    "pydantic-extra-types[pycountry]~=2.11",
+    "typer~=0.24",
+    "huggingface-hub~=1.11",
+    "caul-core~=0.6.6",
+    "tiktoken~=0.13",
+]
+
+[project.scripts]
+caul = "caul.__main__:main"
+
+[project.optional-dependencies]
+preprocessing = [
+    "torchcodec>=0.10.0,<0.11",  # pulls in torch automatically so we've made it optional for a base install
+]
+nemo = [
+    "nemo-toolkit[asr]~=3.0",
+    "torch~=2.10",
+]
+pyannote = [
+    "pyannote-audio~=4.0",
+    "torchaudio~=2.10",
+]
+fireredasr2 = [
+    "fireredasr2s",
+    "kaldi-native-fbank~=1.22",
+    "torchaudio~=2.10",
+]
+faster-whisper = [
+    "faster_whisper~=1.2"
+]
+parakeet-trt = [
+    # TensorRT only builds on linux or windown
+    "tensorrt-lean==11.2.1.2; platform_system == 'Linux' or platform_system == 'Windows'",
+]
+whisper-trt = [
+    # TensorRT only builds on linux or windown
+    "tensorrt_llm~=1.2; platform_system == 'Linux' or platform_system == 'Windows'",
+]
+cpu = [
+    # Pins torch packages to the pytorch CPU index for local dev/CI, scoped to this extra so
+    # downstream path dependents (e.g. datashare-asr-worker) can pick their own torch index
+    "torch~=2.10",
+    "torchaudio~=2.10",
+    "torchcodec>=0.10.0,<0.11",
+]
+
+[tool.uv]
+package = true
+override-dependencies = [
+    # TODO: needed by tensorrt-llm which needs transformers < 5, remove when bumping to tensorrt-llm 1.3.0
+    "transformers~=5.5.4",
+]
+conflicts = [
+    [
+        { extra = "whisper-trt" },
+        { extra = "pyannote" },
+    ],
+    [
+        { extra = "whisper-trt" },
+        { extra = "nemo" },
+    ],
+    [
+        { extra = "whisper-trt" },
+        { extra = "fireredasr2" },
+    ],
+]
+# Static metadata for TensorRT packages to avoid running their stub setup.py
+# during cross-platform lockfile generation (stubs fail on macOS).
+# See: https://github.com/astral-sh/uv/issues/13942
+#
+# We provide metadata for both cu12 and cu13 variants since:
+#   - Older torch-tensorrt versions depend directly on tensorrt-cu12
+#   - Newer torch-tensorrt versions use the tensorrt metapackage which depends on cu13
+#
+# The tensorrt metapackage metadata assumes cu13 (for tensorrt >=10.13).
+
+[[tool.uv.dependency-metadata]]
+name = "tensorrt"
+requires-dist = ["tensorrt-cu13"]
+
+# CUDA 12 variant packages (for older torch-tensorrt direct dependencies)
+[[tool.uv.dependency-metadata]]
+name = "tensorrt-cu12"
+requires-dist = ["tensorrt-cu12-bindings", "tensorrt-cu12-libs"]
+
+[[tool.uv.dependency-metadata]]
+name = "tensorrt-cu12-bindings"
+
+[[tool.uv.dependency-metadata]]
+name = "tensorrt-cu12-libs"
+requires-dist = ["nvidia-cuda-runtime-cu12"]
+
+# CUDA 13 variant packages (for tensorrt >=10.13)
+[[tool.uv.dependency-metadata]]
+name = "tensorrt-cu13"
+requires-dist = ["tensorrt-cu13-bindings", "tensorrt-cu13-libs"]
+
+[[tool.uv.dependency-metadata]]
+name = "tensorrt-cu13-bindings"
+
+[[tool.uv.dependency-metadata]]
+name = "tensorrt-cu13-libs"
+requires-dist = ["nvidia-cuda-runtime-cu13"]
+
+# Common CUDA runtime dependency
+[[tool.uv.dependency-metadata]]
+name = "nvidia-cuda-runtime-cu12"
+
+[[tool.uv.dependency-metadata]]
+name = "nvidia-cuda-runtime"
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[tool.uv.sources]
+torch = [
+  { index = "pytorch-cpu", extra = "cpu" }
+]
+torchaudio = [
+  { index = "pytorch-cpu", extra = "cpu" }
+]
+torchcodec = [
+  { index = "pytorch-cpu", extra = "cpu" }
+]
+fireredasr2s = [
+    { git = "https://github.com/FireRedTeam/FireRedASR2S.git" }
+]
+caul-core = { path = "../caul-core", editable = true }
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["caul"]
+
+[dependency-groups]
+dev = [
+    "pre-commit>=4.5.1",
+    "pytest>=9.0.2",
+    "nest-asyncio>=1.6.0",
+    "pytest-asyncio>=1.3.0",
+    "ruff==0.16.1",
+]
+
+[tool.pytest.ini_options]
+markers = [
+    "e2e: end-to-end tests requiring live models and infrastructure",
+    "no_ci: test which are too slow to run in the CI",
+    "integration: integration tests that download and run real ASR models (slow)",
+]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "session"
