@@ -380,16 +380,16 @@ wheels = [
 
 [[package]]
 name = "datashare-passport-worker"
-version = "0.4.3"
+version = "0.4.4"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "datashare-python" },
     { name = "icij-common", extra = ["elasticsearch"] },
     { name = "icij-passport-core" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/d1/ca/30d70006a29607b218598860f13012ca7671a1d3b83c070c223f840b3466/datashare_passport_worker-0.4.3.tar.gz", hash = "sha256:f0f750623a8724ced77aec3f88319cce59873a666b16d399f811a62bcd95979c", size = 14358, upload-time = "2026-09-29T10:20:16.405Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/d5/21/667e56414978f19c93cf87e374c6ee102ee84022e51261464a493f57c153/datashare_passport_worker-0.4.4.tar.gz", hash = "sha256:0e262d73777611094b281c755e791499cec19efa7a8de2568dfddb7c2c7811c6", size = 14361, upload-time = "2026-10-09T14:33:27.562Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/6c/10/9d0b188413eaaf5ae02d617974f25064d483c0ba71e598d9f7b1f3c6e4af/datashare_passport_worker-0.4.3-py3-none-any.whl", hash = "sha256:e7150b0c1c510a658506302fe7fd343adc3a7bce58b325398484ab2272573db0", size = 19643, upload-time = "2026-09-29T10:20:15.568Z" },
+    { url = "https://files.pythonhosted.org/packages/e7/1a/8a918087210c8420e34cad66900c3b7387cd061bee533a1db723f7cded58/datashare_passport_worker-0.4.4-py3-none-any.whl", hash = "sha256:c8ac064e5e5f0ef5d2d32cbf12be36ae35b094830896cdf1e8f40943c8532e71", size = 19644, upload-time = "2026-10-09T14:33:26.751Z" },
 ]
 
 [[package]]
@@ -446,7 +446,7 @@ dependencies = [
 requires-dist = [
     { name = "datashare-asr-worker", specifier = "==0.12.7" },
     { name = "datashare-extract-worker", specifier = "==0.6.21" },
-    { name = "datashare-passport-worker", specifier = "==0.4.3" },
+    { name = "datashare-passport-worker", specifier = "==0.4.4" },
     { name = "datashare-python", specifier = "~=0.12.6" },
     { name = "datashare-translation-worker", specifier = "==0.11.0" },
 ]
