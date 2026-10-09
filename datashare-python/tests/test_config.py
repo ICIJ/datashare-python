@@ -32,20 +32,16 @@ async def test_worker_config_should_export_prometheus_metrics(
     assert mock_connect.await_args_list[0].kwargs["runtime"] is not None
 
 
-async def test_worker_config_should_export_prometheus_metrics_backward_compatibility(
+async def test_worker_config_should_parse_legacy_prometheus_host(
     reset_env,  # noqa: ANN001, ARG001
 ) -> None:
     # Given
     prometheus_host = "0.0.0.0:9000"
     os.environ["DS_WORKER_TEMPORAL__PROMETHEUS_HOST"] = prometheus_host
-    config = WorkerConfig()
-    assert config.temporal.prometheus_address == prometheus_host
     # When
-    mock_connect = AsyncMock()
-    with patch("datashare_python.config.TemporalClient.connect", mock_connect):
-        await config.temporal.to_client()
+    config = WorkerConfig()
     # Then
-    assert mock_connect.await_args_list[0].kwargs["runtime"] is not None
+    assert config.temporal.prometheus_address == prometheus_host
 
 
 def test_worker_config_should_raise_for_invalid_property(reset_env) -> None:  # noqa: ANN001, ARG001
