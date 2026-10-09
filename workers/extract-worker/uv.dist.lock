@@ -712,7 +712,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "cuda-bindings", marker = "sys_platform == 'linux' and extra == 'gpu'", specifier = "==12.9.4" },
-    { name = "datashare-python", specifier = "~=0.12.3" },
+    { name = "datashare-python", specifier = "~=0.12.6" },
     { name = "extract-core", specifier = "==0.11.1" },
     { name = "extract-python", extras = ["docling", "marker"], marker = "extra == 'base'", specifier = "==0.11.1" },
     { name = "extract-python", extras = ["docling-gpu"], marker = "extra == 'docling-gpu'", specifier = "==0.11.1" },
@@ -744,7 +744,7 @@ dev = [
 
 [[package]]
 name = "datashare-python"
-version = "0.12.3"
+version = "0.12.6"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiofile", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-24-datashare-extract-worker-base' and extra == 'extra-24-datashare-extract-worker-mineru') or (platform_machine != 'x86_64' and extra == 'extra-24-datashare-extract-worker-cpu' and extra == 'extra-24-datashare-extract-worker-gpu') or sys_platform == 'darwin' or (sys_platform != 'linux' and extra == 'extra-24-datashare-extract-worker-base' and extra == 'extra-24-datashare-extract-worker-mineru') or (sys_platform != 'linux' and extra == 'extra-24-datashare-extract-worker-cpu' and extra == 'extra-24-datashare-extract-worker-gpu')" },
@@ -761,9 +761,9 @@ dependencies = [
     { name = "tomlkit", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-24-datashare-extract-worker-base' and extra == 'extra-24-datashare-extract-worker-mineru') or (platform_machine != 'x86_64' and extra == 'extra-24-datashare-extract-worker-cpu' and extra == 'extra-24-datashare-extract-worker-gpu') or sys_platform == 'darwin' or (sys_platform != 'linux' and extra == 'extra-24-datashare-extract-worker-base' and extra == 'extra-24-datashare-extract-worker-mineru') or (sys_platform != 'linux' and extra == 'extra-24-datashare-extract-worker-cpu' and extra == 'extra-24-datashare-extract-worker-gpu')" },
     { name = "typer", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-24-datashare-extract-worker-base' and extra == 'extra-24-datashare-extract-worker-mineru') or (platform_machine != 'x86_64' and extra == 'extra-24-datashare-extract-worker-cpu' and extra == 'extra-24-datashare-extract-worker-gpu') or sys_platform == 'darwin' or (sys_platform != 'linux' and extra == 'extra-24-datashare-extract-worker-base' and extra == 'extra-24-datashare-extract-worker-mineru') or (sys_platform != 'linux' and extra == 'extra-24-datashare-extract-worker-cpu' and extra == 'extra-24-datashare-extract-worker-gpu')" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/0d/8d/e4048e682f855dd0b606f7a79931a87c7e2045f35d7de78099c8a0840295/datashare_python-0.12.3.tar.gz", hash = "sha256:4156aa1bb71b1ccfc89d7eb298f2f9a215b65dd4107be3cca84568ceb6416fd9", size = 332174, upload-time = "2026-10-08T16:03:45.838Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/e9/81/263100d8bd8a23b3801620ff379eb11ea2da071ccc3987633e8da7c66bef/datashare_python-0.12.6.tar.gz", hash = "sha256:c28b9bd0ae827ced0a2342fcca3d989b40019fc47709317ce2fad3b9c2d25eb7", size = 332367, upload-time = "2026-10-09T11:40:17.962Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/27/53/ea9de59086d3991e17aaa17bab0865a7ddf6a333c70c182218c6e9778d73/datashare_python-0.12.3-py3-none-any.whl", hash = "sha256:7eccb8d20706f352494f93ff213d835c13301e5d0207df2185d240800cd182a9", size = 337932, upload-time = "2026-10-08T16:03:47.301Z" },
+    { url = "https://files.pythonhosted.org/packages/7a/a9/bc32561896db6493ba660417421d1f3b92fcd8741c87c94eb086f7ff63a9/datashare_python-0.12.6-py3-none-any.whl", hash = "sha256:f7f69743d8938d9b9111cb05066dceea44de12da3da2f5f98e788c5672938f91", size = 338147, upload-time = "2026-10-09T11:40:16.523Z" },
 ]
 
 [[package]]
