@@ -10,12 +10,12 @@ readme = "README.md"
 requires-python = ">=3.13,<3.15"
 dependencies = [
   "datashare-python~=0.12.3",
-  "extract-core==0.10.6",
+  "extract-core==0.11.1",
 ]
 
 [project.optional-dependencies]
 base = [
-  "extract-python[docling,marker]==0.10.4",
+  "extract-python[docling,marker]==0.11.1",
   "opencv-python-headless==4.11.0.86"
 ]
 cpu = [
@@ -28,13 +28,13 @@ gpu = [
   "torchvision==0.26.0+cu129; sys_platform == 'linux'",
 ]
 docling-gpu = [
-  "extract-python[docling-gpu]==0.10.4",
+  "extract-python[docling-gpu]==0.11.1",
 ]
 flash-attn = [
   "flash-attn==2.8.3.post1",
 ]
 mineru = [
-  "extract-python[mineru]==0.10.4",
+  "extract-python[mineru]==0.11.1",
   "opencv-python-headless==4.11.0.86"
 ]
 
@@ -52,7 +52,7 @@ worker_config_cls = "extract_worker.config:WORKER_CONFIG_CLS"
 
 [dependency-groups]
 dev = [
-  "extract-python[docling]==0.10.4",
+  "extract-python[docling]==0.11.1",
   "black>=26.1.0",
   "nest-asyncio>=1.6.0",
   "pre-commit>=4.5.1",
