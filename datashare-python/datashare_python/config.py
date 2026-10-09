@@ -1,10 +1,10 @@
 from datetime import timedelta
 from enum import StrEnum
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, Any, Literal
 
 from icij_common.es import ESClient
 from icij_common.pydantic_utils import ICIJSettings
-from pydantic import Field, PrivateAttr
+from pydantic import PrivateAttr, model_validator
 from pydantic_settings import SettingsConfigDict
 from temporalio.runtime import PrometheusConfig, Runtime, TelemetryConfig
 
@@ -61,9 +61,22 @@ class DatashareClientConfig(BaseModel):
 class TemporalClientConfig(BaseModel):
     host: str = "temporal:7233"
     namespace: str = "datashare-default"
-    prometheus_address: str | None = Field(alias="prometheus_host", default=None)
+    prometheus_address: str | None = None
 
     _client: TemporalClient | None = PrivateAttr(default=None)
+
+    @model_validator(mode="before")
+    @classmethod
+    def _prometheus_host_backward_compatibility(cls, v: Any) -> Any:
+        # the combination of nested_model_default_partial_update=True in the
+        # WorkerConfig with extra="forbid" makes alias fail when loading from envvars.
+        # We can't use field aliases...
+        if not isinstance(v, dict):
+            return v
+        prometheus_address = v.pop("prometheus_host", v.pop("PROMETHEUS_HOST", None))
+        if prometheus_address is not None:
+            v["prometheus_address"] = prometheus_address
+        return v
 
     async def to_client(self) -> TemporalClient:
         from .utils import PYDANTIC_DATA_CONVERTER  # noqa: PLC0415

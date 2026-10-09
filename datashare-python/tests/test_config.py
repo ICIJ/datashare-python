@@ -18,7 +18,25 @@ def test_worker_config_loggers_from_env(reset_env) -> None:  # noqa: ANN001, ARG
     assert config.logging.loggers["datashare_python"] == "WARNING"
 
 
-async def test_worker_config_should_export_prometheus_metrics(reset_env) -> None:  # noqa: ANN001, ARG001
+async def test_worker_config_should_export_prometheus_metrics(
+    reset_env,
+) -> None:  # noqa: ANN001, ARG001
+    # Given
+    prometheus_address = "0.0.0.0:9000"
+    os.environ["DS_WORKER_TEMPORAL__PROMETHEUS_ADDRESS"] = prometheus_address
+    config = WorkerConfig()
+    assert config.temporal.prometheus_address == prometheus_address
+    # When
+    mock_connect = AsyncMock()
+    with patch("datashare_python.config.TemporalClient.connect", mock_connect):
+        await config.temporal.to_client()
+    # Then
+    assert mock_connect.await_args_list[0].kwargs["runtime"] is not None
+
+
+async def test_worker_config_should_export_prometheus_metrics_backward_compatibility(
+    reset_env,
+) -> None:  # noqa: ANN001, ARG001
     # Given
     prometheus_host = "0.0.0.0:9000"
     os.environ["DS_WORKER_TEMPORAL__PROMETHEUS_HOST"] = prometheus_host
