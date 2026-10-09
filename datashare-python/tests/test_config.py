@@ -2,9 +2,7 @@ import os
 from unittest.mock import AsyncMock, patch
 
 import pytest
-from datashare_python.config import (
-    WorkerConfig,
-)
+from datashare_python.config import WorkerConfig
 from pydantic import ValidationError
 
 
@@ -19,8 +17,8 @@ def test_worker_config_loggers_from_env(reset_env) -> None:  # noqa: ANN001, ARG
 
 
 async def test_worker_config_should_export_prometheus_metrics(
-    reset_env,
-) -> None:  # noqa: ANN001, ARG001
+    reset_env,  # noqa: ANN001, ARG001
+) -> None:
     # Given
     prometheus_address = "0.0.0.0:9000"
     os.environ["DS_WORKER_TEMPORAL__PROMETHEUS_ADDRESS"] = prometheus_address
@@ -35,8 +33,8 @@ async def test_worker_config_should_export_prometheus_metrics(
 
 
 async def test_worker_config_should_export_prometheus_metrics_backward_compatibility(
-    reset_env,
-) -> None:  # noqa: ANN001, ARG001
+    reset_env,  # noqa: ANN001, ARG001
+) -> None:
     # Given
     prometheus_host = "0.0.0.0:9000"
     os.environ["DS_WORKER_TEMPORAL__PROMETHEUS_HOST"] = prometheus_host
