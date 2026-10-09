@@ -1,0 +1,7 @@
+.wrap .highlight pre,
+.wrap pre,
+.wrap code,
+.wrap [data-termynal] span[data-ty] {
+  white-space: pre-wrap;
+  word-break: break-word;
+}

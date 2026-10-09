@@ -1,0 +1,4 @@
+mkdocs
+mkdocs-material
+pymdown-extensions~=10.21
+termynal~=0.13.1
