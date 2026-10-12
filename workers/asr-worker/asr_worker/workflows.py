@@ -12,6 +12,7 @@ from pydantic import TypeAdapter
 from temporalio import workflow
 
 with workflow.unsafe.imports_passed_through():
+    from caul_core import TorchDevice
     from datashare_python.config import ActivityTimeouts
     from datashare_python.utils import WorkflowWithProgress, execute_activity
     from icij_common.es import has_id
@@ -33,6 +34,13 @@ class TaskQueue(StrEnum):
     CPU = "asr.cpu"
     INFERENCE_GPU = "asr.inference.gpu"
     INFERENCE_CPU = "asr.inference.cpu"
+
+
+_DEVICE_TO_INFERENCE_QUEUE = {
+    TorchDevice.CPU: TaskQueue.INFERENCE_CPU,
+    TorchDevice.GPU: TaskQueue.INFERENCE_GPU,
+    TorchDevice.MPS: TaskQueue.INFERENCE_GPU,
+}
 
 
 @workflow.defn(name=ASR_WORKFLOW)  # noqa: F821
@@ -120,10 +128,11 @@ async def _run_inference(
     inference_args = zip(
         batches, repeat(args.project), repeat(args.config.inference), strict=False
     )
+    inference_queue = _DEVICE_TO_INFERENCE_QUEUE[worker_config.devices.inference]
     inference_acts = [
         execute_activity(
             ASRActivities.infer,
-            task_queue=TaskQueue.INFERENCE_GPU,
+            task_queue=inference_queue,
             args=b,
             timeouts=worker_config.timeouts.inference,
         )
