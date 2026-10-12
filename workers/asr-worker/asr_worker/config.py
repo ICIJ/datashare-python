@@ -37,6 +37,17 @@ class IndexingWorkerConfig(BaseModel):
 class ASRWorkerDevices(BaseModel):
     inference: TorchDevice = TorchDevice.CPU
 
+    @property
+    def inference_queue(self):  # noqa: ANN201
+        from .workflows import TaskQueue  # noqa: PLC0415
+
+        match self.inference:
+            case TorchDevice.CPU:
+                return TaskQueue.INFERENCE_CPU
+            case TorchDevice.GPU:
+                return TaskQueue.INFERENCE_GPU
+        raise ValueError(f"can't route inference activity to {self.inference}")
+
 
 class ASRTimeouts(BaseModel):
     search: ActivityTimeouts = ActivityTimeouts(start_to_close=timedelta(minutes=10))

@@ -117,13 +117,16 @@ async def _preprocess(
 async def _run_inference(
     batches: Iterable[list[Path]], args: ASRArgs, worker_config: ASRWorkerConfig
 ) -> tuple[list[list[Path]], list[Path]]:
+    # TODO: we should resolve the pipeline configuration with the worker configuration
+    #  to make sure the asr configuration is consistent with the worker queue (i.e.
+    #  make sure the args uses a device consistent with the queue).
     inference_args = zip(
         batches, repeat(args.project), repeat(args.config.inference), strict=False
     )
     inference_acts = [
         execute_activity(
             ASRActivities.infer,
-            task_queue=TaskQueue.INFERENCE_GPU,
+            task_queue=worker_config.devices.inference_queue,
             args=b,
             timeouts=worker_config.timeouts.inference,
         )

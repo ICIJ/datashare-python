@@ -115,13 +115,13 @@ async def cpu_bound_worker(
 
 
 @pytest.fixture
-async def gpu_inference_worker(
+async def cpu_inference_worker(
     test_worker_config: ASRWorkerConfig,
     test_temporal_client_session: TemporalClient,
 ) -> AsyncGenerator[None, None]:
     client = test_temporal_client_session
     worker_id = f"worker-{uuid.uuid4()}"
-    task_queue = TaskQueue.INFERENCE_GPU
+    task_queue = TaskQueue.INFERENCE_CPU
     dependencies = "asr.inference"
     worker_ctx = dev_worker_context(
         worker_id,
@@ -158,7 +158,7 @@ _EXPECTED_TRANSCRIPTION_1 = Transcription(
 async def test_asr_workflow_e2e(  # noqa: PLR0917
     test_temporal_client: TemporalClient,
     cpu_bound_worker: Worker,  # noqa: ARG001
-    gpu_inference_worker: Worker,  # noqa: ARG001
+    cpu_inference_worker: Worker,  # noqa: ARG001
     workflows_worker: Worker,  # noqa: ARG001
     io_bound_worker: Worker,  # noqa: ARG001
     test_worker_config: ASRWorkerConfig,

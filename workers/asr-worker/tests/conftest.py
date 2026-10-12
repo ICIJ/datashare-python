@@ -5,8 +5,9 @@ import asr_worker
 import datashare_python
 import pytest
 from _pytest.tmpdir import TempPathFactory
-from asr_worker.config import ASRWorkerConfig
+from asr_worker.config import ASRWorkerConfig, ASRWorkerDevices
 from asr_worker.constants import SUPPORTED_CONTENT_TYPES
+from caul_core import TorchDevice
 from datashare_python.config import (
     DatashareClientConfig,
     LogFormat,
@@ -55,6 +56,7 @@ def test_worker_config(tmp_path_factory: TempPathFactory) -> ASRWorkerConfig:  #
         datashare=DatashareClientConfig(url="http://localhost:8080"),
         temporal=TemporalClientConfig(host="localhost:7233"),
         paths=paths,
+        devices=ASRWorkerDevices(inference=TorchDevice.CPU),
     )
 
 
