@@ -108,10 +108,11 @@ class TranslationActivities(ActivityWithProgress):
         translator_key = config_cache_key(config.translator)
         translator_cache = lifespan_translator_cache()
         # SBD, then load the splitter
+        splitter_config = config.sentence_splitter_for(source)
         splitter_factory = partial(
-            _load_splitter_from_config, config=config.sentence_splitter, language=source
+            _load_splitter_from_config, config=splitter_config, language=source
         )
-        splitter_key = config_cache_key(config.sentence_splitter)
+        splitter_key = config_cache_key(splitter_config)
         splitter_cache = lifespan_sentence_splitter_cache()
         with translator_cache.get_or_cache_resource(
             translator_key, translator_factory

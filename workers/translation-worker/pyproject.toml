@@ -32,11 +32,18 @@ worker_config_cls = "translation_worker.config:WORKER_CONFIG_CLS"
 inference = ['datashare-translation-worker[c2translate]']
 c2translate = [
   "argostranslate==1.11.0",
+  "datashare-translation-worker[sat]",
 ]
 torch = [
   "torch==2.11.0",
   "transformers==5.12.1",
   "accelerate==1.14.0",
+  "datashare-translation-worker[sat]",
+]
+# Sentence splitting for languages without sentence punctuation (Thai), runs on the
+# torch installed by the c2translate (through argostranslate) or torch extras
+sat = [
+  "wtpsplit==2.2.2",
 ]
 
 [tool.uv.sources]
