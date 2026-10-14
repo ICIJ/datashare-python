@@ -30,6 +30,7 @@ from translation_worker.activities import (
 from translation_worker.config import TranslationWorkerConfig
 from translation_worker.objects import (
     ArgosTranslatorConfig,
+    DefaultSentenceSplitterConfig,
     TranslationModel,
     untranslated_query,
 )
@@ -71,11 +72,12 @@ class MockESClient(ESClient):
 
 class MockSentenceSplitter(SentenceSplitter):
     def __init__(self, splits: list[list[str]]):
+        super().__init__(DefaultSentenceSplitterConfig())
         self._splits = iter(splits)
 
     def load(self, language: Language) -> Self: ...
 
-    def split_sentences(self, text: str) -> list[str]:  # noqa: ARG002
+    def _split_sentences(self, text: str) -> list[str]:  # noqa: ARG002
         return next(self._splits)
 
     @classmethod

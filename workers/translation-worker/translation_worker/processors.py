@@ -1,4 +1,5 @@
 import logging
+import re
 import sys
 from abc import abstractmethod
 from collections.abc import Iterable
@@ -11,17 +12,69 @@ from .config import TranslationWorkerConfig
 
 if TYPE_CHECKING:
     from .config import BaseTranslatorConfig
-    from .objects import Language
+    from .objects import Language, SentenceSplitterConfig
 
 logger = logging.getLogger(__name__)
 
 
-class SentenceSplitter(RegistrableFromConfig):
-    @abstractmethod
-    def split_sentences(self, text: str) -> list[str]: ...  # noqa: F821
+_CLAUSE_BREAK = re.compile(r"[,;:，；：、]+")
+_WHITESPACE = re.compile(r"\s+")
 
+
+def cap_length(sentences: list[str], max_length: int | None) -> list[str]:
+    """Cut sentences longer than ``max_length`` characters into chunks.
+
+    Chunks end at last punctuation or whitespace. Sentences without either
+    are split at exactly ``max_length`` characters as a fallback.
+
+    :param sentences: split sentences
+    :param max_length: maximum number of characters per sentence or ``None`` for no cap
+    :return: sentences no longer than ``max_length`` characters
+    """
+    if max_length is None:
+        return sentences
+    return [chunk for s in sentences for chunk in _cap_sentence_length(s, max_length)]
+
+
+def _cap_sentence_length(sentence: str, max_length: int) -> Iterable[str]:
+    while len(sentence) > max_length:
+        cut = _break_position(sentence, max_length)
+        chunk, sentence = sentence[:cut].strip(), sentence[cut:].strip()
+        if chunk:
+            yield chunk
+    if sentence:
+        yield sentence
+
+
+def _break_position(sentence: str, max_length: int) -> int:
+    min_cut = max_length // 2
+    for pattern in (_CLAUSE_BREAK, _WHITESPACE):
+        breaks = list(pattern.finditer(sentence, min_cut, max_length))
+        if breaks:
+            return breaks[-1].end()
+    return max_length
+
+
+class SentenceSplitter(RegistrableFromConfig):
+    def __init__(self, config: "SentenceSplitterConfig"):
+        self._config = config
+
+    @final
+    def split_sentences(self, text: str) -> list[str]:
+        return cap_length(self._split_sentences(text), self._config.max_length)
+
+    @final
     def split_sentences_batch(self, batch: list[str]) -> list[list[str]]:
-        return [self.split_sentences(t) for t in batch]
+        return [
+            cap_length(sentences, self._config.max_length)
+            for sentences in self._split_sentences_batch(batch)
+        ]
+
+    @abstractmethod
+    def _split_sentences(self, text: str) -> list[str]: ...
+
+    def _split_sentences_batch(self, batch: list[str]) -> list[list[str]]:
+        return [self._split_sentences(t) for t in batch]
 
     @final
     @contextmanager

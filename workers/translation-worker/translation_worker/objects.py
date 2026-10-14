@@ -1,7 +1,14 @@
 from enum import StrEnum
-from typing import TYPE_CHECKING, Any, ClassVar
+from typing import TYPE_CHECKING, Annotated, Any, ClassVar
 
-from datashare_python.objects import DatashareModel, Language, TaskArgs
+import langcodes
+from datashare_python.objects import (
+    DatashareLanguage,
+    DatashareModel,
+    IETFLanguage,
+    Language,
+    TaskArgs,
+)
 from icij_common.es import (
     DOC_CONTENT_TRANSLATED,
     QUERY,
@@ -29,6 +36,8 @@ class TorchDevice(StrEnum):
 class SentenceSplitterModel(StrEnum):
     ARGOS = "ARGOS"
     DEFAULT = "DEFAULT"
+    RULES = "RULES"
+    SAT = "SAT"
 
 
 class TranslationModel(StrEnum):
@@ -73,9 +82,15 @@ def untranslated_query(target: Language) -> dict:
 class _BaseProcessorConfig(DatashareModel, RegistrableConfig): ...
 
 
+DEFAULT_MAX_SENTENCE_LENGTH = 1024
+
+
 class SentenceSplitterConfig(_BaseProcessorConfig):
     registry_key: ClassVar[str] = Field(frozen=True, default="model")
     model: ClassVar[SentenceSplitterModel]
+
+    # max number of characters per sentence
+    max_length: int | None = Field(default=None, gt=0)
 
 
 class DefaultSentenceSplitterConfig(SentenceSplitterConfig):
@@ -92,9 +107,32 @@ class ArgosSentenceSplitterConfig(SentenceSplitterConfig):
     sentencizer: ArgosSentencizer = ArgosSentencizer.MINI_SBD
 
 
+class RulesSentenceSplitterConfig(SentenceSplitterConfig):
+    model: ClassVar[SentenceSplitterModel] = Field(
+        frozen=True, default=SentenceSplitterModel.RULES
+    )
+
+
+DEFAULT_SAT_MODEL_REF = "sat-3l-sm"
+
+
+class SaTSentenceSplitterConfig(SentenceSplitterConfig):
+    model: ClassVar[SentenceSplitterModel] = Field(
+        frozen=True, default=SentenceSplitterModel.SAT
+    )
+
+    model_ref: str = DEFAULT_SAT_MODEL_REF
+    device: TorchDevice | None = None
+
+
 class BaseTranslatorConfig(_BaseProcessorConfig):
     registry_key: ClassVar[str] = Field(frozen=True, default="model")
     model: ClassVar[TranslationModel]
+
+    @property
+    def max_sentence_length(self) -> int:
+        """Max number of source characters per sentence"""
+        return DEFAULT_MAX_SENTENCE_LENGTH
 
 
 _SentenceSplitterConfig = tagged_union(
@@ -130,6 +168,11 @@ class HunyuanMtTranslatorConfig(BaseTranslatorConfig):
     torch_dtype: str = "float32"
     device_map: str = "auto"
 
+    @property
+    def max_sentence_length(self) -> int:
+        # keep a 2x margin so that translations aren't truncated
+        return max(1, self.max_new_tokens // 2)
+
 
 TranslatorConfig = tagged_union(
     BaseTranslatorConfig.__subclasses__(), lambda t: t.model.default
@@ -137,20 +180,62 @@ TranslatorConfig = tagged_union(
 translator_discriminator = make_enum_discriminator("model", TranslationModel)
 
 
+def language_subtag(language: Language) -> str:
+    """Normalize a Datashare or IETF language to its IETF language subtag.
+
+    :param language: Datashare language name (``THAI``) or IETF tag (``th``)
+    :return: the language subtag, e.g. ``th``
+    """
+    if isinstance(language, DatashareLanguage):
+        return langcodes.get(language.alpha3).language
+    return langcodes.get(language).language
+
+
+def _default_language_sentence_splitters() -> dict[Language, SentenceSplitterConfig]:
+    # thai doesn't mark sentence ends with punctuation, needs special splitter
+    return {IETFLanguage("th"): SaTSentenceSplitterConfig()}
+
+
 class TranslationConfig(DatashareModel):
     sentence_splitter: _SentenceSplitterConfig = Field(
         discriminator=Discriminator(splitter_discriminator),
-        default_factory=DefaultSentenceSplitterConfig,
+        default_factory=RulesSentenceSplitterConfig,
     )
+    # per-source language overrides
+    language_sentence_splitters: dict[
+        Language,
+        Annotated[_SentenceSplitterConfig, Discriminator(splitter_discriminator)],
+    ] = Field(default_factory=_default_language_sentence_splitters)
     translator: TranslatorConfig = Field(
         discriminator=Discriminator(translator_discriminator),
         default_factory=ArgosTranslatorConfig,
     )
 
-    def to_sentence_splitter(self) -> "SentenceSplitter":
+    def sentence_splitter_for(self, language: Language) -> SentenceSplitterConfig:
+        """Get the sentence splitter config of a source language.
+
+        :param language: the source language
+        :return: the language's splitter config, or else the default one, with its
+            ``max_length`` derived from the translator config when not set
+        """
+        subtag = language_subtag(language)
+        config = next(
+            (
+                config
+                for lang, config in self.language_sentence_splitters.items()
+                if language_subtag(lang) == subtag
+            ),
+            self.sentence_splitter,
+        )
+        if config.max_length is None:
+            max_length = self.translator.max_sentence_length
+            config = config.model_copy(update={"max_length": max_length})
+        return config
+
+    def to_sentence_splitter(self, language: Language) -> "SentenceSplitter":
         from .processors import SentenceSplitter  # noqa: PLC0415
 
-        return SentenceSplitter.from_config(self.sentence_splitter)
+        return SentenceSplitter.from_config(self.sentence_splitter_for(language))
 
     def to_translator(self) -> "Translator":
         from .processors import Translator  # noqa: PLC0415
