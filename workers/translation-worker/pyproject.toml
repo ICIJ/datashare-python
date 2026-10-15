@@ -12,9 +12,13 @@ requires-python = ">=3.11.0, <3.13"
 
 dependencies = [
   "datashare-python~=0.12.6",
+  "huggingface-hub>=1.0.0,<2",
   "language-data>=1.4.0",
   "pydantic-extra-types[pycountry]==2.11.1",
 ]
+
+[project.scripts]
+translation-worker = "translation_worker.cli:cli_app"
 
 [project.entry-points."datashare.workflows"]
 workflows = "translation_worker.workflows:WORKFLOWS"
