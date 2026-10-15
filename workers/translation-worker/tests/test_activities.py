@@ -23,6 +23,7 @@ from translation_worker.activities import (
     _DOC_CONTENT_TEXT_LENGTH,
     _get_es_docs_by_language,
     _split_sentences,
+    _translate_by_length,
     _update_docs_translation,
     create_translation_batches_act,
     translate_docs_act,
@@ -483,6 +484,79 @@ async def test_translate_docs_act__es_update(
     )
     expected = (Document.from_es(FR_DOC_1), expected_translation)
     assert captured == expected
+
+
+class _UpperTranslator(MockTranslator):
+    def __init__(self):
+        super().__init__([])
+        self.batches = []
+
+    def translate(self, texts: Iterable[str]) -> list[str]:
+        texts = list(texts)
+        self.batches.append(texts)
+        return [t.upper() for t in texts]
+
+
+async def test__translate_by_length__batches_by_length_and_restores_order() -> None:
+    # Given
+    doc_1, doc_2 = Document.from_es(FR_DOC_1), Document.from_es(FR_DOC_2)
+    doc_sents = [
+        (doc_1, "a long sentence"),
+        (doc_1, "short"),
+        (doc_2, "the longest sentence"),
+        (doc_2, "tiny"),
+        (doc_2, "mid sized"),
+    ]
+    translator = _UpperTranslator()
+    # When
+    translated = await _collect_async(
+        _translate_by_length(doc_sents, translator, batch_size=2)
+    )
+    # Then
+    assert translator.batches == [
+        ["tiny", "short"],
+        ["mid sized", "a long sentence"],
+        ["the longest sentence"],
+    ]
+    # Documents are yielded as soon as all their sentences are translated
+    assert translated == [
+        (doc_1, ["A LONG SENTENCE", "SHORT"]),
+        (doc_2, ["THE LONGEST SENTENCE", "TINY", "MID SIZED"]),
+    ]
+
+
+async def test_translate_docs_act__es_update_keeps_sentence_order(
+    monkeypatch: MonkeyPatch, test_worker_config: TranslationWorkerConfig
+) -> None:
+    # Given
+    worker_config = test_worker_config
+    batches = [[DOC_ID_1, DOC_ID_2]]
+    sentences = [["Une longue phrase.", "Oui."], ["Non.", "Une phrase."]]
+    translator = _UpperTranslator()
+    sentence_splitter = MockSentenceSplitter(sentences)
+    captured = []
+    update_doc = partial(_capturing_es_update, captured=captured)
+    monkeypatch.setattr(activities, "_update_docs_translation", update_doc)
+    es_client = MockESClient([FR_DOC_1, FR_DOC_2])
+    # When
+    with translator.load_cm(
+        source=DS_FRENCH, target=DS_ENGLISH, worker_config=worker_config
+    ):
+        n_translated = await translate_docs_act(
+            batches,
+            project=TEST_PROJECT,
+            es_client=es_client,
+            worker_config=worker_config,
+            translator=translator,
+            sentence_splitter=sentence_splitter,
+        )
+    # Then
+    assert n_translated == 2
+    contents = {doc.id: translation.content for doc, translation in captured}
+    assert contents == {
+        DOC_ID_1: "UNE LONGUE PHRASE. OUI.",
+        DOC_ID_2: "NON. UNE PHRASE.",
+    }
 
 
 async def test__update_docs() -> None:

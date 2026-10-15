@@ -77,7 +77,7 @@ class HunyuanMtTranslator(Translator):
         translator = AutoModelForCausalLM.from_pretrained(
             self._config.model_ref,
             device_map=self._config.device_map,
-            torch_dtype=self._config.torch_dtype,
+            dtype=self._config.torch_dtype,
         )
         self._translator = translator
         self._tokenizer = AutoTokenizer.from_pretrained(
@@ -92,7 +92,7 @@ class HunyuanMtTranslator(Translator):
         tokenized = self._tokenizer.apply_chat_template(
             conversations,
             tokenize=True,
-            add_generation_prompt=False,
+            add_generation_prompt=True,
             return_tensors="pt",
             padding=True,
             return_dict=True,
