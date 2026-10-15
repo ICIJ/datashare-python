@@ -68,7 +68,7 @@ def test__translate__wraps_each_text_in_prompt() -> None:
             ],
         ],
         tokenize=True,
-        add_generation_prompt=False,
+        add_generation_prompt=True,
         return_tensors="pt",
         padding=True,
         return_dict=True,
@@ -134,7 +134,7 @@ def test__load__initialises_tokenizer_and_model_from_config_model_ref_with_devic
     dummy_tf.AutoModelForCausalLM.from_pretrained.assert_called_once_with(
         DEFAULT_HUNYUAN_MODEL_REF,
         device_map="cuda:0",
-        torch_dtype="bfloat16",
+        dtype="bfloat16",
     )
 
 
