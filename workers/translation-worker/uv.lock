@@ -531,6 +531,7 @@ name = "datashare-translation-worker"
 source = { editable = "." }
 dependencies = [
     { name = "datashare-python" },
+    { name = "huggingface-hub" },
     { name = "language-data" },
     { name = "pydantic-extra-types", extra = ["pycountry"] },
 ]
@@ -573,6 +574,7 @@ requires-dist = [
     { name = "argostranslate", marker = "extra == 'c2translate'", specifier = "==1.11.0" },
     { name = "argostranslate", marker = "extra == 'inference'", specifier = "==1.11.0" },
     { name = "datashare-python", editable = "../../datashare-python" },
+    { name = "huggingface-hub", specifier = ">=1.0.0,<2" },
     { name = "language-data", specifier = ">=1.4.0" },
     { name = "pydantic-extra-types", extras = ["pycountry"], specifier = "==2.11.1" },
     { name = "torch", marker = "extra == 'torch'", specifier = "==2.11.0" },
