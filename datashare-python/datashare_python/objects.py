@@ -14,12 +14,11 @@ from typing import Annotated, Any, ClassVar, Literal, Self, TypeVar, cast, final
 
 import langcodes
 from icij_common.registrable import Registrable
-from pydantic_core import PydanticCustomError, ValidationError, core_schema
+from pydantic_core import PydanticCustomError, core_schema
 from pydantic_core.core_schema import PlainValidatorFunctionSchema
-from pydantic_extra_types.language_code import LanguageName
 from temporalio import activity, workflow
 
-from .constants import TIKA_METADATA_RESOURCENAME
+from .constants import TIKA_METADATA_RESOURCENAME, get_datashare_languages
 
 with workflow.unsafe.imports_passed_through():
     from icij_common.es import (
@@ -81,7 +80,7 @@ class DatashareModel(BaseModel):
 
 
 class DatashareLanguage(str):
-    _language_type_adapter: ClassVar[TypeAdapter] = TypeAdapter(LanguageName)
+    _languages: ClassVar[dict[str, tuple[str, str]]] = get_datashare_languages()
 
     @classmethod
     def _validate(cls, __input_value: str, _: core_schema.ValidationInfo) -> Self:
@@ -91,8 +90,8 @@ class DatashareLanguage(str):
             )
         try:
             # Use pydantic provided validation
-            cls._language_type_adapter.validate_python(__input_value.title())
-        except ValidationError as e:
+            cls._languages[__input_value]
+        except KeyError as e:
             raise PydanticCustomError(
                 "datashare_language", "Unknown Datashare language"
             ) from e
@@ -109,16 +108,16 @@ class DatashareLanguage(str):
         )
 
     @property
-    def as_language_name(self) -> LanguageName:
-        return LanguageName(self.title())
+    def as_language_name(self) -> str:
+        return self
 
     @property
     def alpha2(self) -> str | None:
-        return self.as_language_name.alpha2
+        return self._languages[self][0]
 
     @property
     def alpha3(self) -> str:
-        return self.as_language_name.alpha3
+        return self._languages[self][1]
 
 
 @unique

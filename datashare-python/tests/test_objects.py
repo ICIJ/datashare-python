@@ -254,3 +254,16 @@ def test_base_model_hash_is_constant() -> None:
     # When
     hashed = hash(cfg)
     assert hashed == 1821116217857887821
+
+
+_LANGUAGES = ["GREEK", "UNKNOWN", "NORWEGIANNYNORSK", "MAORI"]
+
+
+def test_datashare_languages() -> None:
+    # Given
+    ta = TypeAdapter(DatashareLanguage)
+    for language in _LANGUAGES:
+        # When
+        ds_language = ta.validate_python(language)
+        # Then
+        assert isinstance(ds_language, DatashareLanguage)
