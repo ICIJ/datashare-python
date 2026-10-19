@@ -8,7 +8,7 @@ from concurrent.futures import ProcessPoolExecutor
 from datetime import timedelta
 from pathlib import Path
 from typing import ClassVar
-from unittest.mock import MagicMock, PropertyMock
+from unittest.mock import AsyncMock, MagicMock, PropertyMock
 
 import pytest
 import temporalio
@@ -556,6 +556,69 @@ async def test_async_get_or_cache_resource_evicted_while_leased_defers_eviction(
         eviction_callback.assert_not_called()
     assert first == second == "leased"
     eviction_callback.assert_called_once_with("k0", "leased")
+
+
+async def test_eviction_callback_should_be_called_on_shared_resources_exit() -> None:
+    # Given
+    mock = MagicMock()
+    eviction_callback = mock.evict
+    shared = SharedResources(cache_size=10, eviction_callback=eviction_callback)
+
+    async def factory() -> str:
+        return "leased"
+
+    # When
+    with shared, shared.get_or_cache_resource("k0", factory):
+        pass
+    eviction_callback.assert_called_once()
+
+
+async def test_get_or_cache_resource_with_refresh_should_trigger_eviction() -> None:
+    # Given
+    mock = MagicMock()
+    eviction_callback = mock.evict
+    refresh_interval = 1
+    cache_size = refresh_interval + 1
+    shared = SharedResources(
+        cache_size=cache_size,
+        eviction_callback=eviction_callback,
+        refresh_interval=refresh_interval,
+    )
+    factory = MagicMock(side_effect=object)
+
+    # When
+    with shared.get_or_cache_resource("k0", factory):
+        eviction_callback.assert_not_called()
+        with shared.get_or_cache_resource("k0", factory):
+            eviction_callback.assert_not_called()
+    # Then
+    assert factory.call_count == 2
+    assert eviction_callback.call_count == 1
+
+
+async def test_async_get_or_cache_resource_with_refresh_should_trigger_eviction() -> (
+    None
+):
+    # Given
+    mock = MagicMock()
+    eviction_callback = mock.evict
+    refresh_interval = 1
+    cache_size = refresh_interval + 1
+    shared = SharedResources(
+        cache_size=cache_size,
+        eviction_callback=eviction_callback,
+        refresh_interval=refresh_interval,
+    )
+    factory = AsyncMock(side_effect=object)
+
+    # When
+    async with shared.async_get_or_cache_resource("k0", factory):
+        eviction_callback.assert_not_called()
+        async with shared.async_get_or_cache_resource("k0", factory):
+            eviction_callback.assert_not_called()
+    # Then
+    assert factory.call_count == 2
+    assert eviction_callback.call_count == 1
 
 
 @pytest.mark.parametrize(

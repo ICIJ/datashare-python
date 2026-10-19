@@ -822,9 +822,11 @@ class SharedResources:
         self,
         cache_size: int = 1,
         eviction_callback: Callable[[Any, Any], None] | None = None,
+        refresh_interval: int | None = None,
     ) -> None:
         self._eviction_callback = eviction_callback
         self._cache = LRU(cache_size, self._on_evict)
+        self._refresh_interval = refresh_interval
         self._sentinel = object()
         # Leased resources are tracked by id, evicting a leased resource defers the
         # eviction callback until its last lease is released
@@ -854,6 +856,14 @@ class SharedResources:
         """
         value = self._get_and_acquire(key)
         if value is self._sentinel:
+            # The factory can be long to complete (that's one of the reason we want to
+            # cache its results). Because we don't lock the factory call, together with
+            # the cache update, in case of concurrent access, quicker factories will
+            # complete first and will stay longer in the cache. This is fine, the
+            # alternative is to lock factory + cache update to avoid concurrent access
+            # but this will mean waiting for the first factory call to complete, this
+            # can potentially imply longer waits than no getting the value from the
+            # cache
             value = default_factory()
             self._cache_and_acquire(key, value)
         try:
@@ -873,6 +883,14 @@ class SharedResources:
         """
         value = self._get_and_acquire(key)
         if value is self._sentinel:
+            # The factory can be long to complete (that's one of the reason we want to
+            # cache its results). Because we don't lock the factory call, together with
+            # the cache update, in case of concurrent access, quicker factories will
+            # complete first and will stay longer in the cache. This is fine, the
+            # alternative is to lock factory + cache update to avoid concurrent access
+            # but this will mean waiting for the first factory call to complete, this
+            # can potentially imply longer waits than no getting the value from the
+            # cache
             value = await default_factory()
             self._cache_and_acquire(key, value)
         try:
@@ -884,28 +902,31 @@ class SharedResources:
         with self._lock:
             value = self._cache.get(key, self._sentinel)
             if value is not self._sentinel:
-                self._acquire(value)
+                # If refresh needs to happen, we set the value to the sentinel.
+                # The old value will be release with the last user call to _release.
+                # Returning the sentinel will trigger the call to the factory
+                if (
+                    self._refresh_interval is not None
+                    and self._n_leases[self._vkey(value)] >= self._refresh_interval
+                ):
+                    self._pending_evictions[self._vkey(value)] = (key, value)
+                    value = self._sentinel
+                else:
+                    self._acquire(value)
         return value
 
     def _cache_and_acquire(self, key: str, value: Any) -> None:
-        # The factory can be long to complete (that's one of the reason we want to
-        # cache its results). Because we don't lock the factory call, together with
-        # the cache update, in case of concurrent access, quicker factories will
-        # complete first and will stay longer in the cache. This is fine, the
-        # alternative is to lock factory + cache update to avoid concurrent access but
-        # this will mean waiting for the first factory call to complete, this can
-        # potentially imply longer waits than no getting the value from the cache
         with self._lock:
             self._acquire(value)
         # Can evict other resources, must be called without holding the lock
         self._cache[key] = value
 
     def _acquire(self, value: Any) -> None:
-        value_id = id(value)
+        value_id = self._vkey(value)
         self._n_leases[value_id] = self._n_leases.get(value_id, 0) + 1
 
     def _release(self, value: Any) -> None:
-        value_id = id(value)
+        value_id = self._vkey(value)
         with self._lock:
             self._n_leases[value_id] -= 1
             if self._n_leases[value_id]:
@@ -917,14 +938,17 @@ class SharedResources:
 
     def _on_evict(self, key: Any, value: Any) -> None:
         with self._lock:
-            if id(value) in self._n_leases:
-                self._pending_evictions[id(value)] = (key, value)
+            if self._vkey(value) in self._n_leases:
+                self._pending_evictions[self._vkey(value)] = (key, value)
                 return
         self._evict(key, value)
 
     def _evict(self, key: Any, value: Any) -> None:
         if self._eviction_callback is not None:
             self._eviction_callback(key, value)
+
+    def _vkey(self, value: Any) -> int:
+        return id(value)
 
 
 def close_cm_callback(key: str, value: Any) -> None:  # noqa: ARG001

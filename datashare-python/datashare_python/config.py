@@ -114,6 +114,7 @@ class LoggingConfig(BaseModel):
 
 class ResourceCacheConfig(BaseModel):
     size: int = 1
+    refresh_interval: int | None = None
     exit_context_managers: bool = True
 
     def to_resource_cache(self) -> "SharedResources":
@@ -123,7 +124,9 @@ class ResourceCacheConfig(BaseModel):
         if self.exit_context_managers:
             eviction_callback = close_cm_callback
         return SharedResources(
-            cache_size=self.size, eviction_callback=eviction_callback
+            cache_size=self.size,
+            eviction_callback=eviction_callback,
+            refresh_interval=self.refresh_interval,
         )
 
 
