@@ -190,7 +190,7 @@ async def _count_pages(batch: Path) -> int:
 
 async def _read_images(
     batch: Path, passport_detector: PassportDetector, paths: WorkerPaths, errors: list
-) -> AsyncIterable[tuple[DatashareFile, "np.ndarray", "DetectionInputs"]]:
+) -> AsyncIterable[tuple[ProcessedPage, "np.ndarray", "DetectionInputs"]]:
     import cv2  # noqa: PLC0415
 
     for page in read_jsonl_as(paths.workdir / batch, ProcessedPage):
@@ -210,7 +210,7 @@ async def _read_images(
 
 
 async def _detect_passport_pages(
-    batch: Iterable[tuple[DatashareFile, "np.ndarray", "DetectionInputs"]],
+    batch: Iterable[tuple[ProcessedPage, "np.ndarray", "DetectionInputs"]],
     passport_detector: PassportDetector,
     *,
     read_mrz: bool,
