@@ -905,10 +905,12 @@ class SharedResources:
                 # If refresh needs to happen, we set the value to the sentinel.
                 # The old value will be release with the last user call to _release.
                 # Returning the sentinel will trigger the call to the factory
-                if (
+                refresh = (
                     self._refresh_interval is not None
-                    and self._n_leases[self._vkey(value)] >= self._refresh_interval
-                ):
+                    and self._n_leases.get(self._vkey(value), 0)
+                    >= self._refresh_interval
+                )
+                if refresh:
                     self._pending_evictions[self._vkey(value)] = (key, value)
                     value = self._sentinel
                 else:
