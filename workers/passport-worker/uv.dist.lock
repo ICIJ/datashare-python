@@ -319,7 +319,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "datashare-python", specifier = "~=0.12.8" },
+    { name = "datashare-python", specifier = "~=0.12.9" },
     { name = "icij-common", extras = ["elasticsearch"], specifier = "~=0.8.3" },
     { name = "icij-passport-core", specifier = "==0.11.7" },
     { name = "icij-passport-core", extras = ["cpu", "inference"], marker = "extra == 'inference-cpu'", specifier = "==0.11.7" },
@@ -339,7 +339,7 @@ dev = [
 
 [[package]]
 name = "datashare-python"
-version = "0.12.8"
+version = "0.12.9"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiofile" },
@@ -356,9 +356,9 @@ dependencies = [
     { name = "tomlkit" },
     { name = "typer" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/c9/bc/35a89ac7fb91327182be73bf1e73ccf0828b813cd96104d9bbc7d0587146/datashare_python-0.12.8.tar.gz", hash = "sha256:0c22bb2675cfa5752d5823dacca790d6356e30bba29c37c872aab18552b9ccde", size = 334906, upload-time = "2026-10-19T16:20:31.035Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/cd/76/278f1bf8f712422bfedb0aeb999f8b908412b9bc86a6c300f7f7cbd44478/datashare_python-0.12.9.tar.gz", hash = "sha256:a8b9d5504494fe2b49bc1187d4cf9f128dbafde4a5c6e409c71620e7695a34de", size = 334881, upload-time = "2026-10-19T19:51:40.194Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/ae/05/88c0fda77fb6db9f572151c47bad225a3eee9260947c9fa03b9bad24cf4a/datashare_python-0.12.8-py3-none-any.whl", hash = "sha256:d3b36ed5a76672287d13162df55e27528f771f68cac9098353b29b01b622f059", size = 340417, upload-time = "2026-10-19T16:20:32.36Z" },
+    { url = "https://files.pythonhosted.org/packages/99/3e/6e7ae4297a3bf461a59cb8c9bdfdd8d73bc2c5d3c0db57c18e83a691448e/datashare_python-0.12.9-py3-none-any.whl", hash = "sha256:c61b27d05a73d8b0c17c6c37145ac92400bb283763df40eb572efd252688883a", size = 340426, upload-time = "2026-10-19T19:51:41.598Z" },
 ]
 
 [[package]]
