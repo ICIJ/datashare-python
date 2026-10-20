@@ -6,8 +6,6 @@ from functools import cache, reduce
 from pathlib import Path
 from typing import Any, ClassVar, Literal, Self
 
-OnnxProvider = Literal["CUDAExecutionProvider", "CPUExecutionProvider"]
-
 from datashare_python.objects import (
     ArtifactType,
     BaseModel,
@@ -37,6 +35,7 @@ from pydantic import Field
 DocumentSearchQuery = dict[str, Any]
 DocId = str
 Batches = list[Path]
+OnnxProvider = Literal["CUDAExecutionProvider", "CPUExecutionProvider"]
 
 
 @cache

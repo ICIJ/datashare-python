@@ -8,7 +8,7 @@ from contextlib import contextmanager
 from functools import cache
 from pathlib import Path
 from types import TracebackType
-from typing import TYPE_CHECKING, Literal, Self
+from typing import TYPE_CHECKING, Self
 
 from aiofile import async_open
 from datashare_python.objects import (
@@ -36,6 +36,7 @@ from passport_service.objects import ObjectDetection, Passport
 
 from passport_worker.exceptions import InferenceRuntimeError
 from passport_worker.objects import (
+    OnnxProvider,
     PagePassports,
     PartialDetectionResult,
     PassportArtifact,
@@ -321,7 +322,7 @@ def default_country_codes() -> list[str]:
 @PassportDetector.register(PassportDetectorType.YOLO)
 class YOLOPassportDetector(PassportDetector):
     def __init__(self, config: YOLOPassportDetectorConfig):
-        import onnxruntime as rt
+        import onnxruntime as rt  # noqa: PLC0415
 
         self._config = config
         self._path = self._config.model_path
@@ -433,9 +434,9 @@ _DEFAULT_PROVIDERS = {
 
 @contextmanager
 def inference_session(
-    path: Path, provider: Literal["CUDAExecutionProvider", "CPUExecutionProvider"]
+    path: Path, provider: OnnxProvider
 ) -> Generator["rt.InferenceSession", None, None]:
-    import onnxruntime as rt
+    import onnxruntime as rt  # noqa: PLC0415
 
     sess = None
     opts = _DEFAULT_PROVIDERS[provider]
