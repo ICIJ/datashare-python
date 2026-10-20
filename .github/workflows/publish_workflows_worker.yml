@@ -95,6 +95,10 @@ jobs:
           gh release create "$workflows_worker_version" --generate-notes
 
   publish-workflows-worker:
+    name: >-
+      Publish ${{ github.event_name == 'push'
+        && github.ref_name
+        || format('workflows-worker-{0}', needs.bump-workflows-worker.outputs.workflows_worker_tag) }}
     runs-on: ubuntu-latest
     needs: bump-workflows-worker
     # Runs in two cases:

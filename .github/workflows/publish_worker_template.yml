@@ -1,4 +1,8 @@
 name: Publish worker-template
+run-name: >-
+  ${{ github.event_name == 'push'
+      && format('Publish {0}', github.ref_name)
+      || format('Publish worker-template (manual, {0})', github.ref_name) }}
 
 on:
   workflow_dispatch:

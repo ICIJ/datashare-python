@@ -1,4 +1,8 @@
 name: Publish translation-worker
+run-name: >-
+  ${{ github.event_name == 'push'
+      && format('Publish {0}', github.ref_name)
+      || format('Publish translation-worker (manual, {0})', github.ref_name) }}
 
 on:
   workflow_dispatch:
