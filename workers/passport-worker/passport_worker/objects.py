@@ -4,7 +4,9 @@ from concurrent.futures import ProcessPoolExecutor
 from enum import StrEnum
 from functools import cache, reduce
 from pathlib import Path
-from typing import Any, ClassVar, Self
+from typing import Any, ClassVar, Literal, Self
+
+OnnxProvider = Literal["CUDAExecutionProvider", "CPUExecutionProvider"]
 
 from datashare_python.objects import (
     ArtifactType,
@@ -89,6 +91,7 @@ class YOLOPassportDetectorConfig(PassportDetectorConfigBase):
         frozen=True, default=PassportDetectorType.YOLO
     )
 
+    onnx_provider: OnnxProvider = "CUDAExecutionProvider"
     model_path: Path
     passport_label: str = "passport"
     detection_threshold: float = DEFAULT_DETECTION_THRESHOLD

@@ -8,7 +8,7 @@ from contextlib import contextmanager
 from functools import cache
 from pathlib import Path
 from types import TracebackType
-from typing import TYPE_CHECKING, Self
+from typing import TYPE_CHECKING, Literal, Self
 
 from aiofile import async_open
 from datashare_python.objects import (
@@ -325,7 +325,7 @@ class YOLOPassportDetector(PassportDetector):
 
         self._config = config
         self._path = self._config.model_path
-        self._sess_cm = inference_session(self._path)
+        self._sess_cm = inference_session(self._path, self._config.onnx_provider)
         self._classes = [self._config.passport_label]
         self._image_size = self._config.image_size
         self._detection_threshold = self._config.detection_threshold
@@ -334,9 +334,10 @@ class YOLOPassportDetector(PassportDetector):
         self._nms_eta = self._config.nms_eta
         # TODO: make this more generic
         self._runtime_opts = rt.RunOptions()
-        self._runtime_opts.add_run_config_entry(
-            "memory.enable_memory_arena_shrinkage", "gpu:0"
-        )
+        if self._config.onnx_provider == "CUDAExecutionProvider":
+            self._runtime_opts.add_run_config_entry(
+                "memory.enable_memory_arena_shrinkage", "gpu:0"
+            )
 
     def __enter__(self) -> PassportDetector:
         self._sess = self._sess_cm.__enter__()
@@ -424,24 +425,23 @@ class YOLOPassportDetector(PassportDetector):
         return cls(config)
 
 
-_DEFAULT_PROVIDERS = [
-    (
-        "CUDAExecutionProvider",
-        {"arena_extend_strategy": "kSameAsRequested"},
-    )
-]
+_DEFAULT_PROVIDERS = {
+    "CUDAExecutionProvider": {"arena_extend_strategy": "kSameAsRequested"},
+    "CPUExecutionProvider": {},
+}
 
 
 @contextmanager
-def inference_session(path: Path) -> Generator["rt.InferenceSession", None, None]:
+def inference_session(
+    path: Path, provider: Literal["CUDAExecutionProvider", "CPUExecutionProvider"]
+) -> Generator["rt.InferenceSession", None, None]:
     import onnxruntime as rt
 
     sess = None
+    opts = _DEFAULT_PROVIDERS[provider]
+    providers = [(provider, opts)]
     try:
-        sess = rt.InferenceSession(
-            path,
-            providers=_DEFAULT_PROVIDERS,
-        )
+        sess = rt.InferenceSession(path, providers=providers)
         yield sess
     finally:
         if sess is not None:

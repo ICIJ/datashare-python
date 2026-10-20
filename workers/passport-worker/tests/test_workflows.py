@@ -45,7 +45,9 @@ async def test_passport_detection_workflow(  # noqa: PLR0917
     temporal_client = test_temporal_client
     worker_paths = test_worker_config.paths
     docs = [d.doc_id for d in e2e_docs]
-    passport_detector_config = YOLOPassportDetectorConfig(model_path=worker_model_path)
+    passport_detector_config = YOLOPassportDetectorConfig(
+        model_path=worker_model_path, onnx_provider="CPUExecutionProvider"
+    )
     args = PassportDetectionArgs(
         project=TEST_PROJECT,
         docs=docs,

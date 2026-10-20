@@ -413,7 +413,9 @@ TESTED_DOCS = sorted(
 @pytest.mark.parametrize(("doc_path"), TESTED_DOCS)
 def test_yolo_passport_detector_e2e(doc_path: Path, test_model_path: Path) -> None:
     # Given
-    config = YOLOPassportDetectorConfig(model_path=test_model_path)
+    config = YOLOPassportDetectorConfig(
+        model_path=test_model_path, onnx_provider="CPUExecutionProvider"
+    )
     passport_detector = YOLOPassportDetector.from_config(config)  # noqa: F821
     im = cv2.imread(doc_path)
     # When
