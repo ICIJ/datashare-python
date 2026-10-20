@@ -40,6 +40,13 @@ class SentenceSplitterModel(StrEnum):
     SAT = "SAT"
 
 
+class SentenceBatcher(StrEnum):
+    # sort and batch sentences by length to minimize padding
+    BY_LENGTH = "BY_LENGTH"
+    # stream sentences in document order
+    IN_ORDER = "IN_ORDER"
+
+
 class TranslationModel(StrEnum):
     ARGOS = "ARGOS"
     HUNYUAN = "HUNYUAN"
@@ -206,6 +213,7 @@ class TranslationConfig(DatashareModel):
         Language,
         Annotated[_SentenceSplitterConfig, Discriminator(splitter_discriminator)],
     ] = Field(default_factory=_default_language_sentence_splitters)
+    sentence_batcher: SentenceBatcher = SentenceBatcher.BY_LENGTH
     translator: TranslatorConfig = Field(
         discriminator=Discriminator(translator_discriminator),
         default_factory=ArgosTranslatorConfig,

@@ -1,4 +1,4 @@
-from collections.abc import AsyncGenerator, Iterable
+from collections.abc import AsyncGenerator, Callable, Iterable
 from functools import partial
 from typing import Any, Self, TypeVar
 from unittest.mock import patch
@@ -24,6 +24,7 @@ from translation_worker.activities import (
     _get_es_docs_by_language,
     _split_sentences,
     _translate_by_length,
+    _translate_in_order,
     _update_docs_translation,
     create_translation_batches_act,
     translate_docs_act,
@@ -32,6 +33,7 @@ from translation_worker.config import TranslationWorkerConfig
 from translation_worker.objects import (
     ArgosTranslatorConfig,
     DefaultSentenceSplitterConfig,
+    SentenceBatcher,
     TranslationModel,
     untranslated_query,
 )
@@ -166,9 +168,10 @@ _EN_DOC_TO_SPLIT = _make_es_doc(
             [_EN_DOC_TO_SPLIT],
             [["Hello world.", "How are you?", "I'm fine."]],
             [
-                (Document.from_es(_EN_DOC_TO_SPLIT), "Hello world."),
-                (Document.from_es(_EN_DOC_TO_SPLIT), "How are you?"),
-                (Document.from_es(_EN_DOC_TO_SPLIT), "I'm fine."),
+                (
+                    Document.from_es(_EN_DOC_TO_SPLIT),
+                    ["Hello world.", "How are you?", "I'm fine."],
+                ),
             ],
         ),
         # multiple docs sentences
@@ -176,8 +179,17 @@ _EN_DOC_TO_SPLIT = _make_es_doc(
             [EN_DOC_1, EN_DOC_2],
             [[EN_DOC_1_TEXT], [EN_DOC_2_TEXT]],
             [
-                (Document.from_es(EN_DOC_1), EN_DOC_1_TEXT),
-                (Document.from_es(EN_DOC_2), EN_DOC_2_TEXT),
+                (Document.from_es(EN_DOC_1), [EN_DOC_1_TEXT]),
+                (Document.from_es(EN_DOC_2), [EN_DOC_2_TEXT]),
+            ],
+        ),
+        # docs without sentences are kept
+        (
+            [EN_DOC_1, EN_DOC_2],
+            [[], [EN_DOC_2_TEXT]],
+            [
+                (Document.from_es(EN_DOC_1), []),
+                (Document.from_es(EN_DOC_2), [EN_DOC_2_TEXT]),
             ],
         ),
         # no doc, no sentences
@@ -187,7 +199,7 @@ _EN_DOC_TO_SPLIT = _make_es_doc(
 async def test__iter_sentences__yields_sentences_with_correct_indices(
     docs: list[dict[str, Any]],
     sentences: list[list[str]],
-    expected_doc_sents: list[tuple[Document, str]],
+    expected_doc_sents: list[tuple[Document, list[str]]],
 ) -> None:
     # Given
     sentence_splitter = MockSentenceSplitter(sentences)
@@ -501,16 +513,13 @@ async def test__translate_by_length__batches_by_length_and_restores_order() -> N
     # Given
     doc_1, doc_2 = Document.from_es(FR_DOC_1), Document.from_es(FR_DOC_2)
     doc_sents = [
-        (doc_1, "a long sentence"),
-        (doc_1, "short"),
-        (doc_2, "the longest sentence"),
-        (doc_2, "tiny"),
-        (doc_2, "mid sized"),
+        (doc_1, ["a long sentence", "short"]),
+        (doc_2, ["the longest sentence", "tiny", "mid sized"]),
     ]
     translator = _UpperTranslator()
     # When
     translated = await _collect_async(
-        _translate_by_length(doc_sents, translator, batch_size=2)
+        _translate_by_length(_aiter(doc_sents), translator, batch_size=2)
     )
     # Then
     assert translator.batches == [
@@ -525,8 +534,87 @@ async def test__translate_by_length__batches_by_length_and_restores_order() -> N
     ]
 
 
+async def test__translate_in_order__batches_in_order() -> None:
+    # Given
+    doc_1, doc_2 = Document.from_es(FR_DOC_1), Document.from_es(FR_DOC_2)
+    doc_sents = [
+        (doc_1, ["a long sentence", "short", "the longest sentence"]),
+        (doc_2, ["tiny", "mid sized"]),
+    ]
+    translator = _UpperTranslator()
+    # When
+    translated = await _collect_async(
+        _translate_in_order(_aiter(doc_sents), translator, batch_size=2)
+    )
+    # Then
+    assert translator.batches == [
+        ["a long sentence", "short"],
+        ["the longest sentence", "tiny"],
+        ["mid sized"],
+    ]
+    assert translated == [
+        (doc_1, ["A LONG SENTENCE", "SHORT", "THE LONGEST SENTENCE"]),
+        (doc_2, ["TINY", "MID SIZED"]),
+    ]
+
+
+async def test__translate_in_order__streams_sentences() -> None:
+    # Given
+    doc = Document.from_es(FR_DOC_1)
+    n_read = 0
+
+    async def doc_sents() -> AsyncGenerator[tuple[Document, list[str]], None]:
+        nonlocal n_read
+        for sents in [["one", "two"], ["three", "four"], ["five", "six", "seven"]]:
+            n_read += 1
+            yield doc, sents
+
+    class _ReadTranslator(_UpperTranslator):
+        def __init__(self):
+            super().__init__()
+            self.n_read = []
+
+        def translate(self, texts: Iterable[str]) -> list[str]:
+            self.n_read.append(n_read)
+            return super().translate(texts)
+
+    translator = _ReadTranslator()
+    # When
+    await _collect_async(_translate_in_order(doc_sents(), translator, batch_size=3))
+    # Then
+    # batches are translated before the next docs are read
+    assert translator.n_read == [2, 3, 3]
+    assert translator.batches == [
+        ["one", "two", "three"],
+        ["four", "five", "six"],
+        ["seven"],
+    ]
+
+
+@pytest.mark.parametrize(
+    "translate_sentences", [_translate_by_length, _translate_in_order]
+)
+async def test__translate_sentences__yields_docs_without_sentences(
+    translate_sentences: Callable,
+) -> None:
+    # Given
+    doc_1, doc_2 = Document.from_es(FR_DOC_1), Document.from_es(FR_DOC_2)
+    doc_sents = [(doc_1, []), (doc_2, ["oui"])]
+    translator = _UpperTranslator()
+    # When
+    translated = await _collect_async(
+        translate_sentences(_aiter(doc_sents), translator, batch_size=2)
+    )
+    # Then
+    assert translator.batches == [["oui"]]
+    assert translated == [(doc_1, []), (doc_2, ["OUI"])]
+
+
+@pytest.mark.parametrize("sentence_batcher", list(SentenceBatcher))
 async def test_translate_docs_act__es_update_keeps_sentence_order(
-    monkeypatch: MonkeyPatch, test_worker_config: TranslationWorkerConfig
+    monkeypatch: MonkeyPatch,
+    test_worker_config: TranslationWorkerConfig,
+    sentence_batcher: SentenceBatcher,
 ) -> None:
     # Given
     worker_config = test_worker_config
@@ -549,6 +637,7 @@ async def test_translate_docs_act__es_update_keeps_sentence_order(
             worker_config=worker_config,
             translator=translator,
             sentence_splitter=sentence_splitter,
+            sentence_batcher=sentence_batcher,
         )
     # Then
     assert n_translated == 2
@@ -557,6 +646,48 @@ async def test_translate_docs_act__es_update_keeps_sentence_order(
         DOC_ID_1: "UNE LONGUE PHRASE. OUI.",
         DOC_ID_2: "NON. UNE PHRASE.",
     }
+
+
+@pytest.mark.parametrize("sentence_batcher", list(SentenceBatcher))
+async def test_translate_docs_act__es_update_docs_without_sentences(
+    monkeypatch: MonkeyPatch,
+    test_worker_config: TranslationWorkerConfig,
+    sentence_batcher: SentenceBatcher,
+) -> None:
+    # Given
+    worker_config = test_worker_config
+    batches = [[DOC_ID_1, DOC_ID_2]]
+    sentences = [[], ["Oui."]]
+    translator = _UpperTranslator()
+    sentence_splitter = MockSentenceSplitter(sentences)
+    captured = []
+    update_doc = partial(_capturing_es_update, captured=captured)
+    monkeypatch.setattr(activities, "_update_docs_translation", update_doc)
+    es_client = MockESClient([FR_DOC_1, FR_DOC_2])
+    progresses = []
+
+    async def progress(p: float, *, force: bool = False) -> None:  # noqa: ARG001
+        progresses.append(p)
+
+    # When
+    with translator.load_cm(
+        source=DS_FRENCH, target=DS_ENGLISH, worker_config=worker_config
+    ):
+        n_translated = await translate_docs_act(
+            batches,
+            project=TEST_PROJECT,
+            es_client=es_client,
+            worker_config=worker_config,
+            translator=translator,
+            sentence_splitter=sentence_splitter,
+            sentence_batcher=sentence_batcher,
+            progress=progress,
+        )
+    # Then
+    assert n_translated == 2
+    contents = {doc.id: translation.content for doc, translation in captured}
+    assert contents == {DOC_ID_1: "", DOC_ID_2: "OUI."}
+    assert progresses[-1] == 1.0
 
 
 async def test__update_docs() -> None:

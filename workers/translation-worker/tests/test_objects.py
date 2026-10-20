@@ -14,6 +14,7 @@ from translation_worker.objects import (
     HunyuanMtTranslatorConfig,
     RulesSentenceSplitterConfig,
     SaTSentenceSplitterConfig,
+    SentenceBatcher,
     SentenceSplitterConfig,
     TranslationArgs,
     TranslationConfig,
@@ -44,6 +45,17 @@ def test_config_deser_defaults() -> None:
     # Then
     assert deser.sentence_splitter == RulesSentenceSplitterConfig()
     assert deser.language_sentence_splitters == {"th": SaTSentenceSplitterConfig()}
+    assert deser.sentence_batcher == SentenceBatcher.BY_LENGTH
+
+
+def test_config_deser_sentence_batcher() -> None:
+    # Given
+    config = {"sentenceBatcher": "IN_ORDER"}
+    # When
+    deser = TranslationConfig.model_validate(config)
+    # Then
+    assert deser.sentence_batcher == SentenceBatcher.IN_ORDER
+    assert TranslationConfig.model_validate(deser.model_dump()) == deser
 
 
 def test_config_deser_language_sentence_splitters() -> None:

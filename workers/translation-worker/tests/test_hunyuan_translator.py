@@ -9,6 +9,7 @@ from translation_worker.objects import (
 from translation_worker.translators.hunyuan import (
     HunyuanMtTranslator,
     _message_template,
+    _strip_target_tags,
 )
 
 from tests.conftest import DS_CHINESE, DS_ENGLISH, DS_FRENCH
@@ -53,17 +54,13 @@ def test__translate__wraps_each_text_in_prompt() -> None:
             [
                 {
                     "role": "user",
-                    "content": "将以下文本翻译为英语，"
-                    "注意只需要输出翻译后的结果，不要额外解释：\n\n"
-                    f"{TEXT_TO_TRANSLATE}",
+                    "content": _ZH_PROMPT.format("英语", TEXT_TO_TRANSLATE),
                 }
             ],
             [
                 {
                     "role": "user",
-                    "content": "将以下文本翻译为英语，"
-                    "注意只需要输出翻译后的结果，不要额外解释：\n\n"
-                    f"{MORE_TEXT_TO_TRANSLATE}",
+                    "content": _ZH_PROMPT.format("英语", MORE_TEXT_TO_TRANSLATE),
                 }
             ],
         ],
@@ -114,6 +111,18 @@ def test__translate__decodes_only_generated_tokens() -> None:
     assert result == [TRANSLATED_TEXT]
 
 
+def test__translate__strips_target_tags() -> None:
+    translator = _translator()
+    translator._tokenizer = MagicMock()
+    translator._translator = MagicMock()
+    input_ids = translator._tokenizer.apply_chat_template.return_value["input_ids"]
+    input_ids.to.return_value.shape = (1, 0)
+    translator._translator.generate.return_value = [[0]]
+    translator._tokenizer.decode.return_value = f"<target>{TRANSLATED_TEXT}</target>"
+    result = translator.translate([TEXT_TO_TRANSLATE])
+    assert result == [TRANSLATED_TEXT]
+
+
 def test__load__initialises_tokenizer_and_model_from_config_model_ref_with_device_map_and_dtype() -> (  # noqa: E501
     None
 ):
@@ -138,9 +147,13 @@ def test__load__initialises_tokenizer_and_model_from_config_model_ref_with_devic
     )
 
 
-_ZH_PROMPT = "将以下文本翻译为{}，注意只需要输出翻译后的结果，不要额外解释：\n\n{}"
+_ZH_PROMPT = (
+    "将以下<source></source>之间的文本翻译为{}，注意只需要输出翻译后的结果，"
+    "不要额外解释。输出格式为：<target>str</target>\n\n<source>{}</source>"
+)
 _XX_PROMPT = (
-    "Translate the following segment into {}, without additional explanation.\n\n{}"  # noqa: E501
+    "Translate the text between <source></source> into {}, without additional "
+    "explanation. The output format is: <target>str</target>\n\n<source>{}</source>"
 )
 
 
@@ -164,3 +177,25 @@ def test__message_template__picks_prompt_from_language_pair(
 ) -> None:
     message = _message_template(TEXT_TO_TRANSLATE, source, target)
     assert message == {"role": "user", "content": expected}
+
+
+@pytest.mark.parametrize(
+    ("translation", "expected"),
+    [
+        ("translated text", "translated text"),
+        ("<target>translated text</target>", "translated text"),
+        ("translated text</target>", "translated text"),
+        ("<target>translated text", "translated text"),
+        ("  <target>translated text</target>\n", "translated text"),
+        # anything after the closing tag is dropped
+        ('translated text"</target>"', 'translated text"'),
+        # tags inside the translation might come from the source, they're kept
+        (
+            "a <target> tag and a </target> tag</target>",
+            "a <target> tag and a </target> tag",
+        ),
+        ("", ""),
+    ],
+)
+def test__strip_target_tags(translation: str, expected: str) -> None:
+    assert _strip_target_tags(translation) == expected
