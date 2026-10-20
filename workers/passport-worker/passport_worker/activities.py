@@ -24,7 +24,6 @@ from .aggregate import aggregate_results_act
 from .config import PassportWorkerConfig
 from .dependencies import (
     lifespan_image_preprocessor_cache,
-    lifespan_passport_detector_cache,
     lifespan_pdf_converter_cache,
 )
 from .inference import (
@@ -276,19 +275,22 @@ class PassportDetectionActivities(ActivityWithProgress):
         logger.info("loading passport detector...")
         worker_config = cast(PassportWorkerConfig, lifespan_worker_config())
         batch_size = worker_config.inference.batch_size
-        cache = lifespan_passport_detector_cache()
         passport_detector_config = args.config.inference.passport_detector
         passport_detector_config = passport_detector_config.resolve(worker_config.paths)
-        passport_detector_key = config_cache_key(passport_detector_config)
-        passport_detector_factory = enter_cm(
-            partial(PassportDetector.from_config, passport_detector_config)
-        )
+        detector = PassportDetector.from_config(passport_detector_config)
+        # TODO: reactivate detector caching
+        # passport_detector_key = config_cache_key(passport_detector_config)
+        # passport_detector_factory = enter_cm(
+        #     partial(PassportDetector.from_config, passport_detector_config)
+        # )
         workdir = worker_config.paths.workdir
         res_root = activity_workdir(workdir, args.project, act_context=True)
         res_root.mkdir(parents=True, exist_ok=True)
-        with cache.get_or_cache_resource(
-            passport_detector_key, passport_detector_factory
-        ) as passport_detector:
+        # cache = lifespan_passport_detector_cache()
+        # with cache.get_or_cache_resource(
+        #     passport_detector_key, passport_detector_factory
+        # ) as passport_detector:
+        with detector as passport_detector:
             logger.info("passport detector loaded !")
             res = await detect_passports_act(
                 batch,
