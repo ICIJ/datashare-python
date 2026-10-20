@@ -28,20 +28,38 @@ def _message_template(text: str, source: Language, target: Language) -> dict[str
     is_chinese_pair = bool(
         {source_tag.language, target_tag.language} & _CHINESE_LANGUAGES
     )
-    # tencent recommends using a chinese prompt when translating from chinese
+    # tencent recommends using a chinese prompt when translating from chinese.
+    # tags are taken from tencent's guidelines
     if is_chinese_pair:
         target_lang = target_tag.display_name("zh")
         context = (
-            f"将以下文本翻译为{target_lang}，注意只需要输出翻译后的结果，不要额外解释："
-            f"\n\n{text}"
+            f"将以下<source></source>之间的文本翻译为{target_lang}，"
+            "注意只需要输出翻译后的结果，不要额外解释。输出格式为：<target>str</target>"
+            f"\n\n<source>{text}</source>"
         )
     else:
         target_lang = target_tag.display_name("en")
         context = (
-            f"Translate the following segment into {target_lang}, without additional "
-            f"explanation.\n\n{text}"
+            f"Translate the text between <source></source> into {target_lang}, "
+            "without additional explanation. The output format is: "
+            f"<target>str</target>\n\n<source>{text}</source>"
         )
     return {"role": "user", "content": context}
+
+
+_TARGET_START = "<target>"
+_TARGET_END = "</target>"
+
+
+def _strip_target_tags(translation: str) -> str:
+    # strip erroneous target tags (often included by hunyuan) from translations.
+    # only strip affixed tags; tags inside content may be native.
+    translation = translation.strip()
+    translation = translation.removeprefix(_TARGET_START)
+    end = translation.rfind(_TARGET_END)
+    if end != -1:
+        translation = translation[:end]
+    return translation.strip()
 
 
 @Translator.register(TranslationModel.HUNYUAN)
@@ -109,11 +127,13 @@ class HunyuanMtTranslator(Translator):
             temperature=self._config.temperature,
             repetition_penalty=self._config.repetition_penalty,
         )
-        # generate returns the prompt followed by the completion, only decode the
+        # generate returns the prompt followed by the completion. only decode the
         # completion
         prompt_length = input_ids.shape[-1]
         return [
-            self._tokenizer.decode(out[prompt_length:], skip_special_tokens=True)
+            _strip_target_tags(
+                self._tokenizer.decode(out[prompt_length:], skip_special_tokens=True)
+            )
             for out in outputs
         ]
 

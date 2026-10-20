@@ -1,6 +1,7 @@
 import asyncio
 import logging
-from collections.abc import AsyncGenerator, AsyncIterator, Iterable
+from collections import deque
+from collections.abc import AsyncGenerator, AsyncIterable, AsyncIterator, Iterable
 from enum import StrEnum
 from functools import partial
 from typing import Any, cast
@@ -37,7 +38,12 @@ from icij_common.iter_utils import before_and_after, once
 
 from .config import TranslationWorkerConfig
 from .dependencies import lifespan_sentence_splitter_cache, lifespan_translator_cache
-from .objects import SentenceSplitterConfig, TranslationConfig, TranslatorConfig
+from .objects import (
+    SentenceBatcher,
+    SentenceSplitterConfig,
+    TranslationConfig,
+    TranslatorConfig,
+)
 from .processors import SentenceSplitter, Translator
 
 logger = logging.getLogger(__name__)
@@ -128,6 +134,7 @@ class TranslationActivities(ActivityWithProgress):
                     worker_config=worker_config,
                     translator=translator,
                     sentence_splitter=sentence_splitter,
+                    sentence_batcher=config.sentence_batcher,
                 )
         logger.info("done translating !")
         return n_translated
@@ -216,6 +223,7 @@ async def translate_docs_act(
     worker_config: TranslationWorkerConfig,
     es_client: ESClient,
     progress: AsyncProgressRateHandler | None = None,  # noqa: F821
+    sentence_batcher: SentenceBatcher = SentenceBatcher.BY_LENGTH,
 ) -> int:
     # TODO: this should not happen
     es_queue = asyncio.Queue()
@@ -228,6 +236,7 @@ async def translate_docs_act(
         worker_config,
         es_client,
         progress,
+        sentence_batcher,
     )
     publisher = asyncio.create_task(publisher)
     publisher_callback = lambda: es_queue.put_nowait(None)  # noqa: E731
@@ -251,6 +260,7 @@ async def _translate_and_queue(  # noqa: PLR0917
     worker_config: TranslationWorkerConfig,
     es_client: ESClient,
     progress: AsyncProgressRateHandler | None = None,  # noqa: F821
+    sentence_batcher: SentenceBatcher = SentenceBatcher.BY_LENGTH,
 ) -> int:
     n_docs = sum(len(b) for b in batches)
     if not n_docs:
@@ -263,6 +273,13 @@ async def _translate_and_queue(  # noqa: PLR0917
     translation_factory = partial(
         Translation, source_language=source, target_language=target, translator=model
     )
+    match sentence_batcher:
+        case SentenceBatcher.BY_LENGTH:
+            translate_sentences = _translate_by_length
+        case SentenceBatcher.IN_ORDER:
+            translate_sentences = _translate_in_order
+        case _:
+            raise ValueError(f"unsupported sentence batcher {sentence_batcher}")
     seen = 0
     buffer = []
     n_batches = len(batches)
@@ -274,8 +291,8 @@ async def _translate_and_queue(  # noqa: PLR0917
             body={QUERY: has_id(doc_ids)},
             source_includes=_TRANSLATION_DOC_SOURCES,
         )
-        doc_sents = [ds async for ds in _split_sentences(docs, sentence_splitter)]
-        translated_docs = _translate_by_length(
+        doc_sents = _split_sentences(docs, sentence_splitter)
+        translated_docs = translate_sentences(
             doc_sents, translator, batch_size=worker_config.batch_size
         )
         async for doc, translated_sents in translated_docs:
@@ -293,34 +310,76 @@ async def _translate_and_queue(  # noqa: PLR0917
 
 
 async def _translate_by_length(
-    doc_sents: list[tuple[Document, str]], translator: Translator, *, batch_size: int
+    doc_sents: AsyncIterable[tuple[Document, list[str]]],
+    translator: Translator,
+    *,
+    batch_size: int,
 ) -> AsyncGenerator[tuple[Document, list[str]], None]:
+    # all sentences are kept in memory to be sorted by length
     docs: dict[str, Document] = {}
     translations: dict[str, list[str | None]] = {}
     remaining: dict[str, int] = {}
-    positions = []
-    for doc, _ in doc_sents:
-        if doc.id not in docs:
-            docs[doc.id] = doc
-            translations[doc.id] = []
-            remaining[doc.id] = 0
-        positions.append((doc.id, len(translations[doc.id])))
-        translations[doc.id].append(None)
-        remaining[doc.id] += 1
-    by_length = sorted(range(len(doc_sents)), key=lambda i: len(doc_sents[i][1]))
-    for start in range(0, len(by_length), batch_size):
-        batch = by_length[start : start + batch_size]
-        sents = [doc_sents[i][1] for i in batch]
-        translated_sents = await asyncio.to_thread(translator.translate, sents)
+    sents: list[tuple[str, int, str]] = []
+    async for doc, doc_sentences in doc_sents:
+        if not doc_sentences:
+            yield doc, []
+            continue
+        docs[doc.id] = doc
+        translations[doc.id] = [None] * len(doc_sentences)
+        remaining[doc.id] = len(doc_sentences)
+        sents.extend((doc.id, i, sent) for i, sent in enumerate(doc_sentences))
+    sents.sort(key=lambda s: len(s[2]))
+    for start in range(0, len(sents), batch_size):
+        batch = sents[start : start + batch_size]
+        translated_sents = await asyncio.to_thread(
+            translator.translate, [sent for _, _, sent in batch]
+        )
         completed = []
-        for i, translated_sent in zip(batch, translated_sents, strict=True):
-            doc_id, position = positions[i]
-            translations[doc_id][position] = translated_sent
+        for (doc_id, i, _), translated_sent in zip(
+            batch, translated_sents, strict=True
+        ):
+            translations[doc_id][i] = translated_sent
             remaining[doc_id] -= 1
             if not remaining[doc_id]:
                 completed.append(doc_id)
         for doc_id in completed:
-            yield docs[doc_id], translations.pop(doc_id)
+            yield docs.pop(doc_id), translations.pop(doc_id)
+
+
+async def _translate_in_order(
+    doc_sents: AsyncIterable[tuple[Document, list[str]]],
+    translator: Translator,
+    *,
+    batch_size: int,
+) -> AsyncGenerator[tuple[Document, list[str]], None]:
+    # sentences are streamed, only the current doc's sentences and batch are held in
+    # memory
+    pending: deque[tuple[Document, int]] = deque()
+    to_translate: list[str] = []
+    translated: list[str] = []
+    async for doc, doc_sentences in doc_sents:
+        pending.append((doc, len(doc_sentences)))
+        to_translate.extend(doc_sentences)
+        while len(to_translate) >= batch_size:
+            batch, to_translate = to_translate[:batch_size], to_translate[batch_size:]
+            translated += await asyncio.to_thread(translator.translate, batch)
+        for translated_doc in _pop_translated_docs(pending, translated):
+            yield translated_doc
+    if to_translate:
+        translated += await asyncio.to_thread(translator.translate, to_translate)
+    for translated_doc in _pop_translated_docs(pending, translated):
+        yield translated_doc
+
+
+def _pop_translated_docs(
+    pending: deque[tuple[Document, int]], translated: list[str]
+) -> list[tuple[Document, list[str]]]:
+    docs = []
+    while pending and pending[0][1] <= len(translated):
+        doc, n_sents = pending.popleft()
+        docs.append((doc, translated[:n_sents]))
+        del translated[:n_sents]
+    return docs
 
 
 async def _write_translations_to_es(
@@ -340,14 +399,13 @@ async def _write_translations_to_es(
 
 async def _split_sentences(
     doc_iter: AsyncGenerator[dict, None], sentence_splitter: SentenceSplitter
-) -> AsyncGenerator[tuple[Document, str], None]:
+) -> AsyncGenerator[tuple[Document, list[str]], None]:
     async for doc in doc_iter:
         es_doc = Document.from_es(doc)
         sentences = await asyncio.to_thread(
             sentence_splitter.split_sentences, es_doc.content
         )
-        for sentence in sentences:
-            yield es_doc, sentence
+        yield es_doc, sentences
 
 
 async def _get_es_docs_by_language(
