@@ -1,8 +1,10 @@
 import asyncio
 import csv
+import gc
 import logging
 from abc import ABC, abstractmethod
-from collections.abc import AsyncIterable, Iterable, Sequence
+from collections.abc import AsyncIterable, Generator, Iterable, Sequence
+from contextlib import contextmanager
 from functools import cache
 from pathlib import Path
 from types import TracebackType
@@ -48,6 +50,7 @@ from passport_worker.objects import (
 
 if TYPE_CHECKING:
     import numpy as np
+    import onnxruntime as rt
     from cv2.typing import MatLike
 
 DetectionInputs = tuple["MatLike", float]
@@ -318,9 +321,7 @@ def default_country_codes() -> list[str]:
 @PassportDetector.register(PassportDetectorType.YOLO)
 class YOLOPassportDetector(PassportDetector):
     def __init__(self, config: YOLOPassportDetectorConfig):
-        from passport_service.core.object_detection import (  # noqa:PLC0415
-            inference_session,
-        )
+        import onnxruntime as rt
 
         self._config = config
         self._path = self._config.model_path
@@ -331,6 +332,11 @@ class YOLOPassportDetector(PassportDetector):
         self._nms_threshold = self._config.nms_threshold
         self._nms_score_threshold = self._config.nms_score_threshold
         self._nms_eta = self._config.nms_eta
+        # TODO: make this more generic
+        self._runtime_opts = rt.RunOptions()
+        self._runtime_opts.add_run_config_entry(
+            "memory.enable_memory_arena_shrinkage", "gpu:0"
+        )
 
     def __enter__(self) -> PassportDetector:
         self._sess = self._sess_cm.__enter__()
@@ -367,7 +373,7 @@ class YOLOPassportDetector(PassportDetector):
         try:
             outputs = (
                 self._sess.run(  # [batch_size, n_classes + dim_box, max_boxes = 8400]
-                    [label_name], model_inputs
+                    [label_name], model_inputs, run_options=self._runtime_opts
                 )[0]
             )
         except Fail as e:
@@ -416,3 +422,28 @@ class YOLOPassportDetector(PassportDetector):
     @classmethod
     def _from_config(cls, config: YOLOPassportDetectorConfig, **extras) -> Self:  # noqa:ARG003
         return cls(config)
+
+
+_DEFAULT_PROVIDERS = [
+    (
+        "CUDAExecutionProvider",
+        {"arena_extend_strategy": "kSameAsRequested"},
+    )
+]
+
+
+@contextmanager
+def inference_session(path: Path) -> Generator["rt.InferenceSession", None, None]:
+    import onnxruntime as rt
+
+    sess = None
+    try:
+        sess = rt.InferenceSession(
+            path,
+            providers=_DEFAULT_PROVIDERS,
+        )
+        yield sess
+    finally:
+        if sess is not None:
+            del sess
+            gc.collect()
