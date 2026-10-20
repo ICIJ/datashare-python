@@ -13,7 +13,7 @@ dependencies = [
   "datashare-extract-worker==0.6.24",
   "datashare-python~=0.12.8",
   "datashare-passport-worker==0.5.7",
-  "datashare-translation-worker==0.12.2",
+  "datashare-translation-worker==0.12.3",
 ]
 
 [tool.uv]
