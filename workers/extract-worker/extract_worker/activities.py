@@ -11,6 +11,7 @@ from datashare_python.dependencies import lifespan_es_client, lifespan_worker_co
 from datashare_python.objects import (
     PROCESSED_FILE_TA,
     ByteRangesPagination,
+    DatashareFile,
     Document,
     Error,
     ErrorReportWithPages,
@@ -24,10 +25,12 @@ from datashare_python.utils import (
     ActivityWithProgress,
     activity_defn,
     activity_workdir,
+    config_cache_key,
     read_jsonl_as,
     symlink_embedded_document_to_workdir,
     to_raw_async_progress,
     write_artifact,
+    write_batches,
 )
 from datashare_python.utils import ext_to_mime_types as _ext_to_mime_types
 from extract_core import (
@@ -57,13 +60,25 @@ from icij_common.es import (
     has_id,
     has_type,
 )
+from icij_common.iter_utils import async_batches
 from pydantic import TypeAdapter
 from temporalio import activity
 
-from .config import ExtractWorkerConfig
+from .config import EmbeddingWorkerConfig, ExtractWorkerConfig
+from .dependencies import lifespan_embedder_cache
+from .embeddings import (
+    HFEmbedder,
+    build_embedding_doc_query,
+    embed_documents_act,
+    index_embeddings_act,
+    make_chunker,
+    make_md_converter,
+    with_structure_artifact,
+)
 from .objects import (
     DocId,
     DocumentSearchQuery,
+    EmbedBatchResult,
     ExtractError,
     MarkdownExtractArgs,
     MarkdownExtractResponse,
@@ -81,6 +96,9 @@ class Activity(StrEnum):
     WORKER_CONFIG = "extract.worker-config"
     CREATE_MD_BATCHES = "extract.create-markdown-batches"
     EXTRACT_MD_CONTENT = "extract.extract-markdown-content"
+    CREATE_EMBEDDING_BATCHES = "extract.create-embedding-batches"
+    EMBED_DOCUMENTS = "extract.embed-documents"
+    INDEX_EMBEDDINGS = "extract.index-embeddings"
 
 
 class MarkdownExtract(ActivityWithProgress):
@@ -174,6 +192,93 @@ class MarkdownExtract(ActivityWithProgress):
         return res
 
 
+class DocumentEmbedding(ActivityWithProgress):
+    @activity_defn(name=Activity.CREATE_EMBEDDING_BATCHES)
+    async def create_embedding_batches(
+        self, project: str, docs: list[DocId] | DocumentSearchQuery | None
+    ) -> list[Path]:
+        es_client = lifespan_es_client()
+        w_config = cast(ExtractWorkerConfig, lifespan_worker_config())
+        workdir = w_config.paths.workdir
+        output_dir = activity_workdir(workdir, project)
+        output_dir.mkdir(parents=True, exist_ok=True)
+        logger.debug("creating embedding batches...")
+        batch_paths = [
+            p.relative_to(workdir)
+            async for p in create_embedding_batches_act(
+                docs,
+                project,
+                artifacts_root=w_config.paths.artifacts,
+                output_dir=output_dir,
+                target_n_docs_per_task=w_config.embedding.target_n_docs_per_task,
+                es_client=es_client,
+            )
+        ]
+        logger.debug("created embedding batches !")
+        return batch_paths
+
+    @activity_defn(name=Activity.EMBED_DOCUMENTS)
+    async def embed_documents(
+        self,
+        batch: Path,
+        project: str,
+        *,
+        progress: AsyncProgressRateHandler | None = None,
+    ) -> EmbedBatchResult:
+        w_config = cast(ExtractWorkerConfig, lifespan_worker_config())
+        embedding_config = w_config.embedding
+        workdir = w_config.paths.workdir
+        output_dir = activity_workdir(workdir, project)
+        output_dir.mkdir(parents=True, exist_ok=True)
+        batch = workdir / batch
+        output_path = output_dir / f"{batch.stem}-chunks.jsonl"
+        cache = lifespan_embedder_cache()
+        cache_key = config_cache_key(embedding_config)
+        factory = partial(_load_embedding_resources, embedding_config)
+        with cache.get_or_cache_resource(cache_key, factory) as resources:
+            chunker, md_converter, embedder = resources
+            logger.debug("embedding documents from %s...", batch)
+            response = await embed_documents_act(
+                batch,
+                chunker=chunker,
+                md_converter=md_converter,
+                embedder=embedder,
+                artifacts_root=w_config.paths.artifacts,
+                output_path=output_path,
+                progress=progress,
+            )
+        logger.debug("embedded %s chunks !", response.n_chunks)
+        return EmbedBatchResult(
+            chunks=output_path.relative_to(workdir), response=response
+        )
+
+    @activity_defn(name=Activity.INDEX_EMBEDDINGS)
+    async def index_embeddings(self, chunks: Path, project: str) -> int:
+        es_client = lifespan_es_client()
+        w_config = cast(ExtractWorkerConfig, lifespan_worker_config())
+        embedding_config = w_config.embedding
+        index = embedding_config.index_name(project)
+        logger.debug("indexing embedded chunks into %s...", index)
+        n_indexed = await index_embeddings_act(
+            w_config.paths.workdir / chunks,
+            es_client=es_client,
+            index=index,
+            dim=embedding_config.dim,
+            bulk_size=embedding_config.index_bulk_size,
+        )
+        logger.debug("indexed %s chunks !", n_indexed)
+        return n_indexed
+
+
+def _load_embedding_resources(
+    config: EmbeddingWorkerConfig,
+) -> tuple["HybridChunker", "DocumentConverter", HFEmbedder]:  # noqa: F821
+    logger.debug("loading embedding model %s...", config.model)
+    resources = make_chunker(config), make_md_converter(), HFEmbedder(config)
+    logger.debug("embedding model loaded !")
+    return resources
+
+
 # Sort documents aiming for consistent processing type in a batch
 _DOC_SORT = [f"{DOC_CONTENT_TYPE}:asc", f"{DOC_LANGUAGE}:asc", "_doc:asc"]
 _DOC_CONTENT_SOURCES = [
@@ -203,6 +308,25 @@ async def create_markdown_extract_batches_act(
     )
     batches = _batch_by_n_pages(docs, target_n_pages_per_task=target_n_pages_per_task)
     async for p in _write_batches(batches, output_dir):
+        yield p
+
+
+async def create_embedding_batches_act(
+    docs: list[DocId] | DocumentSearchQuery | None,
+    project: str,
+    *,
+    artifacts_root: Path,
+    output_dir: Path,
+    target_n_docs_per_task: int,
+    es_client: ESClient,
+) -> AsyncIterable[Path]:
+    query = build_embedding_doc_query(docs)
+    docs = with_structure_artifact(
+        _search_docs(es_client, project, query), artifacts_root
+    )
+    docs = (DatashareFile.from_parent(d) async for d in docs)
+    batches = async_batches(docs, target_n_docs_per_task)
+    async for p in write_batches(batches, output_dir, prefix="embed_"):
         yield p
 
 
@@ -358,4 +482,7 @@ ACTIVITIES = [
     MarkdownExtract.extract_worker_config,
     MarkdownExtract.create_markdown_extract_batches,
     MarkdownExtract.extract_markdown_content,
+    DocumentEmbedding.create_embedding_batches,
+    DocumentEmbedding.embed_documents,
+    DocumentEmbedding.index_embeddings,
 ]

@@ -44,6 +44,7 @@ from extract_core.objects import SupportedExt
 from extract_worker.activities import Activity
 from extract_worker.config import (
     DoclingWorkerConfig,
+    EmbeddingWorkerConfig,
     ExtractWorkerConfig,
     MarkdownExtractWorkerConfig,
     MarkdownInferenceWorkerConfig,
@@ -51,7 +52,7 @@ from extract_worker.config import (
 from extract_worker.constants import TaskQueue
 from icij_common.es import ESClient
 
-from tests import DOCS_PATH
+from tests import DOCS_PATH, PAGES, write_structure
 
 mimetypes.init()
 
@@ -88,6 +89,7 @@ def test_worker_config(tmp_path_factory: TempPathFactory) -> ExtractWorkerConfig
                 ),
             )
         ),
+        embedding=EmbeddingWorkerConfig(dim=64, max_tokens=128),
         datashare=DatashareClientConfig(url="http://localhost:8080"),
         temporal=TemporalClientConfig(host="localhost:7233"),
         paths=worker_paths,
@@ -181,6 +183,16 @@ def docs_with_cached_artifacts(
     return files
 
 
+@pytest.fixture
+def doc_with_structure(
+    doc_0: Document, test_worker_config: ExtractWorkerConfig
+) -> ProcessedFile:
+    clear_dirs(test_worker_config)
+    doc = DatashareFile.from_parent(doc_0)
+    write_structure(doc, test_worker_config.paths.artifacts, PAGES)
+    return doc
+
+
 @pytest.fixture(scope="session")
 async def workflows_worker(
     test_worker_config: ExtractWorkerConfig,  # noqa: F811
@@ -192,7 +204,7 @@ async def workflows_worker(
     worker_ctx = dev_worker_context(
         worker_id,
         is_async=True,
-        workflows=["extract.markdown"],
+        workflows=["extract.markdown", "extract.embed"],
         worker_config=test_worker_config,
         client=client,
         task_queue=task_queue,
@@ -208,7 +220,12 @@ async def io_worker(
 ) -> AsyncGenerator[None, None]:
     client = test_temporal_client_session
     worker_id = f"test-extract-io-worker-{uuid.uuid4()}"
-    acts = [Activity.WORKER_CONFIG, Activity.CREATE_MD_BATCHES]
+    acts = [
+        Activity.WORKER_CONFIG,
+        Activity.CREATE_MD_BATCHES,
+        Activity.CREATE_EMBEDDING_BATCHES,
+        Activity.INDEX_EMBEDDINGS,
+    ]
     task_queue = TaskQueue.IO
     dependencies = "extract.io"
     worker_ctx = dev_worker_context(
@@ -234,6 +251,29 @@ async def md_extract_cpu_worker(
     acts = [Activity.EXTRACT_MD_CONTENT]
     task_queue = TaskQueue.EXTRACT_CPU
     dependencies = "extract.extract"
+    worker_ctx = dev_worker_context(
+        worker_id,
+        is_async=True,
+        activities=acts,
+        worker_config=test_worker_config,
+        client=client,
+        task_queue=task_queue,
+        dependencies=dependencies,
+    )
+    async with worker_ctx:
+        yield
+
+
+@pytest.fixture(scope="session")
+async def embed_cpu_worker(
+    test_worker_config: ExtractWorkerConfig,  # noqa: F811
+    test_temporal_client_session: TemporalClient,  # noqa: F811
+) -> AsyncGenerator[None, None]:
+    client = test_temporal_client_session
+    worker_id = f"test-embed-cpu-worker-{uuid.uuid4()}"
+    acts = [Activity.EMBED_DOCUMENTS]
+    task_queue = TaskQueue.EMBED_CPU
+    dependencies = "extract.embed"
     worker_ctx = dev_worker_context(
         worker_id,
         is_async=True,
