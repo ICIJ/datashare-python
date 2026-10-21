@@ -16,7 +16,9 @@ dependencies = [
 [project.optional-dependencies]
 base = [
   "extract-python[docling,marker]==0.11.3",
-  "opencv-python-headless==4.11.0.86"
+  "opencv-python-headless==4.11.0.86",
+  # Required by jina-embeddings-v5 remote code
+  "peft>=0.18.1",
 ]
 cpu = [
   "torch==2.11.0",
@@ -53,6 +55,7 @@ worker_config_cls = "extract_worker.config:WORKER_CONFIG_CLS"
 [dependency-groups]
 dev = [
   "extract-python[docling]==0.11.3",
+  "peft>=0.18.1",
   "black>=26.1.0",
   "nest-asyncio>=1.6.0",
   "pre-commit>=4.5.1",

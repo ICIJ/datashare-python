@@ -1,3 +1,4 @@
+from pathlib import Path
 from typing import Any, ClassVar
 
 from datashare_python.objects import (
@@ -62,3 +63,58 @@ class MarkdownExtractResponse(DatashareModel):
             successes=self.successes + other.successes,
             errors=self.errors + other.errors,
         )
+
+
+class EmbeddingArgs(TaskArgs):
+    project: str
+    docs: list[DocId] | DocumentSearchQuery | None
+
+    def as_manifest_task_input(self) -> dict[str, Any]:
+        as_entry = super().as_manifest_task_input()
+        as_entry.pop("docs")
+        return as_entry
+
+
+class EmbeddedChunk(DatashareModel):
+    doc_id: str
+    root_document: str
+    project: str
+    chunk_index: int
+    page: int
+    text: str
+    headings: list[str] | None = None
+    model: str
+    embedding: list[float]
+
+    @property
+    def es_id(self) -> str:
+        return f"{self.doc_id}-{self.chunk_index}"
+
+
+class EmbeddingError(ProcessingError[ProcessedFile]):
+    pass
+
+
+class EmbeddingResponse(DatashareModel):
+    processed: ProcessingReportWithPages = Field(
+        default_factory=ProcessingReportWithPages
+    )
+    successes: ProcessingReportWithPages = Field(
+        default_factory=ProcessingReportWithPages
+    )
+    errors: ErrorReportWithPages = Field(default_factory=ErrorReportWithPages)
+    n_chunks: int = 0
+
+    def __add__(self, other: "EmbeddingResponse") -> "EmbeddingResponse":
+        return EmbeddingResponse(
+            processed=self.processed + other.processed,
+            successes=self.successes + other.successes,
+            errors=self.errors + other.errors,
+            n_chunks=self.n_chunks + other.n_chunks,
+        )
+
+
+class EmbedBatchResult(DatashareModel):
+    # Path to the embedded chunks JSONL, relative to the worker workdir
+    chunks: Path
+    response: EmbeddingResponse

@@ -112,6 +112,26 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
 
+      # Built in the same job so it reuses the extract image layers from the local
+      # builder cache
+      - name: Docker meta (embed)
+        id: meta-embed
+        uses: docker/metadata-action@v6
+        with:
+          images: icij/datashare-extract-embed-cpu-worker
+          tags: |
+            type=match,pattern=extract-worker-(.*),group=1
+
+      - name: Build and push embed image
+        uses: docker/build-push-action@v7
+        with:
+          target: embed-cpu-worker
+          context: ./workers/extract-worker
+          platforms: linux/amd64
+          push: true
+          tags: ${{ steps.meta-embed.outputs.tags }}
+          labels: ${{ steps.meta-embed.outputs.labels }}
+
   publish-extract-gpu-worker:
     runs-on: ubuntu-latest
     steps:
@@ -143,6 +163,26 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+
+      # Built in the same job so it reuses the extract image layers from the local
+      # builder cache
+      - name: Docker meta (embed)
+        id: meta-embed
+        uses: docker/metadata-action@v6
+        with:
+          images: icij/datashare-extract-embed-gpu-worker
+          tags: |
+            type=match,pattern=extract-worker-(.*),group=1
+
+      - name: Build and push embed image
+        uses: docker/build-push-action@v7
+        with:
+          target: embed-gpu-worker
+          context: ./workers/extract-worker
+          platforms: linux/amd64
+          push: true
+          tags: ${{ steps.meta-embed.outputs.tags }}
+          labels: ${{ steps.meta-embed.outputs.labels }}
 
   publish-extract-cpu-mineru-worker:
     runs-on: ubuntu-latest

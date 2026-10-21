@@ -182,3 +182,14 @@ RUN apt update && \
 COPY --from=extract-gpu-mineru-builder /app /app
 COPY --from=extract-gpu-mineru-builder /root/.local/share/uv/python /root/.local/share/uv/python
 ENTRYPOINT ["entrypoints/extract_gpu_mineru_worker.sh"]
+
+
+# Embedding workers reuse the extract images (docling + torch + transformers)
+FROM extract-cpu-worker AS embed-cpu-worker
+ADD entrypoints/embed_cpu_worker.sh ./entrypoints/embed_cpu_worker.sh
+ENTRYPOINT ["entrypoints/embed_cpu_worker.sh"]
+
+
+FROM extract-gpu-worker AS embed-gpu-worker
+ADD entrypoints/embed_gpu_worker.sh ./entrypoints/embed_gpu_worker.sh
+ENTRYPOINT ["entrypoints/embed_gpu_worker.sh"]
