@@ -2,7 +2,12 @@ import os
 from copy import deepcopy
 from datetime import timedelta
 
-from datashare_python.config import ActivityTimeouts, LoggingConfig, WorkerConfig
+from datashare_python.config import (
+    ActivityTimeouts,
+    LoggingConfig,
+    ResourceCacheConfig,
+    WorkerConfig,
+)
 from datashare_python.objects import BaseModel, WorkerPaths
 from docling.datamodel.accelerator_options import AcceleratorOptions
 from docling.datamodel.base_models import InputFormat
@@ -19,7 +24,10 @@ from extract_core.docling_ import InferenceSettings
 from icij_common.pydantic_utils import safe_copy
 from pydantic import Field
 
-from .constants import TorchDevice
+from .constants import (
+    EMBEDDINGS_INDEX_SUFFIX,
+    TorchDevice,
+)
 
 loggers = {"datashare_python": "INFO", "extract_python": "INFO", "extract_core": "INFO"}
 _DEFAULT_LOGGING_CONFIG = LoggingConfig(loggers=loggers)
@@ -151,12 +159,43 @@ class MarkdownExtractWorkerConfig(BaseModel):
     )
 
 
+class EmbeddingWorkerConfig(BaseModel):
+    device: TorchDevice = Field(default=TorchDevice.CPU)
+    task: str = "retrieval"
+    # max tokens per chunk
+    max_tokens: int = 512
+    inference_batch_size: int = 16
+
+    target_n_docs_per_task: int = 32
+    index_suffix: str = EMBEDDINGS_INDEX_SUFFIX
+    index_bulk_size: int = 500
+
+    cache: ResourceCacheConfig = ResourceCacheConfig(
+        size=1, exit_context_managers=False
+    )
+
+    def index_name(self, project: str) -> str:
+        return f"{project}{self.index_suffix}"
+
+
 class ExtractTimeouts(BaseModel):
     create_batches: ActivityTimeouts = ActivityTimeouts(
         start_to_close=timedelta(minutes=10)
     )
     extract_content: ActivityTimeouts = ActivityTimeouts(
         start_to_close=timedelta(hours=2), heartbeat=timedelta(minutes=5)
+    )
+    check_embeddings_index: ActivityTimeouts = ActivityTimeouts(
+        start_to_close=timedelta(minutes=1)
+    )
+    create_embedding_batches: ActivityTimeouts = ActivityTimeouts(
+        start_to_close=timedelta(minutes=10)
+    )
+    embed: ActivityTimeouts = ActivityTimeouts(
+        start_to_close=timedelta(hours=2), heartbeat=timedelta(minutes=5)
+    )
+    index_embeddings: ActivityTimeouts = ActivityTimeouts(
+        start_to_close=timedelta(minutes=30)
     )
 
 
@@ -166,6 +205,7 @@ class ExtractWorkerConfig(WorkerConfig):
     markdown: MarkdownExtractWorkerConfig = Field(
         default_factory=MarkdownExtractWorkerConfig
     )
+    embedding: EmbeddingWorkerConfig = Field(default_factory=EmbeddingWorkerConfig)
     timeouts: ExtractTimeouts = Field(default_factory=ExtractTimeouts)
 
     paths: WorkerPaths

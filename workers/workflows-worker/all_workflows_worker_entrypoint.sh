@@ -6,6 +6,7 @@ uv run --no-sync datashare-python worker start \
     --queue datashare.workflows \
     --workflow asr.transcription \
     --workflow extract.markdown \
+    --workflow extract.embed \
     --workflow passport-detection.detect-passports \
     --workflow passport-detection.export-passports \
     --workflow translation

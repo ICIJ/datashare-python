@@ -3,14 +3,27 @@ import uuid
 import pytest
 from datashare_python.conftest import TEST_PROJECT
 from datashare_python.objects import (
+    Document,
     ErrorReportWithPages,
     ProcessedFile,
     ProcessingReportWithPages,
 )
 from extract_core import DoclingPipelineConfig
-from extract_worker.objects import MarkdownExtractArgs, MarkdownExtractResponse
-from extract_worker.workflows import ExtractMarkdownContentWorkflow, TaskQueues
+from extract_worker.config import ExtractWorkerConfig
+from extract_worker.embeddings import embeddings_index_body
+from extract_worker.objects import (
+    EmbeddingArgs,
+    MarkdownExtractArgs,
+    MarkdownExtractResponse,
+)
+from extract_worker.workflows import (
+    EmbedDocumentsWorkflow,
+    ExtractMarkdownContentWorkflow,
+    TaskQueues,
+)
+from icij_common.es import ESClient
 from temporalio.client import Client as TemporalClient
+from temporalio.client import WorkflowFailureError
 from temporalio.worker import Worker
 
 
@@ -46,3 +59,76 @@ async def test_extract_markdown_workflow_e2e(
         errors=ErrorReportWithPages(n_docs=0, n_pages=0),
     ).model_dump()
     assert response == expected_res
+
+
+@pytest.mark.e2e
+async def test_embed_workflow_e2e(  # noqa: PLR0917
+    workflows_worker: Worker,  # noqa: ARG001
+    io_worker: Worker,  # noqa: ARG001
+    embed_cpu_worker: Worker,  # noqa: ARG001
+    populate_es: list[Document],  # noqa: ARG001
+    test_temporal_client: TemporalClient,
+    test_es_client: ESClient,
+    test_worker_config: ExtractWorkerConfig,
+    doc_with_structure: ProcessedFile,
+) -> None:
+    # Given
+    client = test_temporal_client
+    wf_id = f"extract-embed-{uuid.uuid4()}"
+    args = EmbeddingArgs(project=TEST_PROJECT, docs=None, dim=64)
+    index = test_worker_config.embedding.index_name(TEST_PROJECT)
+    index_body = embeddings_index_body(args.dim)
+    await test_es_client.indices.create(index=index, body=index_body)
+
+    # When
+    response = await client.execute_workflow(
+        EmbedDocumentsWorkflow,
+        args,
+        id=wf_id,
+        task_queue=TaskQueues.WORKFLOWS,
+    )
+
+    # Then
+    assert response.successes == ProcessingReportWithPages(n_docs=1, n_pages=2)
+    assert response.errors.n_docs == 0
+    assert response.n_chunks == 2
+    res = await test_es_client.search(index=index, body={"query": {"match_all": {}}})
+    hits = res["hits"]["hits"]
+    assert len(hits) == 2
+    for h in hits:
+        assert h["_source"]["docId"] == doc_with_structure.doc_id
+        assert len(h["_source"]["embedding"]) == 64
+
+
+@pytest.mark.e2e
+async def test_embed_workflow_should_fail_early_for_size_mismatch(  # noqa: PLR0917
+    workflows_worker: Worker,  # noqa: ARG001
+    io_worker: Worker,  # noqa: ARG001
+    embed_cpu_worker: Worker,  # noqa: ARG001
+    populate_es: list[Document],  # noqa: ARG001
+    test_temporal_client: TemporalClient,
+    test_es_client: ESClient,
+    test_worker_config: ExtractWorkerConfig,
+    doc_with_structure: ProcessedFile,  # noqa: ARG001
+) -> None:
+    # Given
+    client = test_temporal_client
+    wf_id = f"extract-embed-{uuid.uuid4()}"
+    args = EmbeddingArgs(project=TEST_PROJECT, docs=None, dim=64)
+    index = test_worker_config.embedding.index_name(TEST_PROJECT)
+    index_body = embeddings_index_body(32)
+    await test_es_client.indices.create(index=index, body=index_body)
+
+    # When
+    with pytest.raises(WorkflowFailureError) as exc:
+        await client.execute_workflow(
+            EmbedDocumentsWorkflow,
+            args,
+            id=wf_id,
+            task_queue=TaskQueues.WORKFLOWS,
+        )
+
+    # Then
+    assert "EmbeddingSizeMismatch" in str(exc.value.cause.cause)
+    workdir = test_worker_config.paths.workdir
+    assert not list(workdir.rglob("*-chunks.jsonl"))
