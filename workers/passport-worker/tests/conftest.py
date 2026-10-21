@@ -11,6 +11,7 @@ from datashare_python.config import (
     TemporalClientConfig,
 )
 from datashare_python.conftest import (  # noqa: F401
+    DS_URL,
     TEST_PROJECT,
     clear_dirs,
     dev_worker_context,
@@ -70,6 +71,7 @@ def test_worker_config(tmp_path_factory: TempPathFactory) -> PassportWorkerConfi
     logging_config = LoggingConfig(format=LogFormat.DEFAULT, loggers=loggers)
 
     return PassportWorkerConfig(
+        ds_url=DS_URL,
         logging=logging_config,
         datashare=DatashareClientConfig(url="http://localhost:8080"),
         temporal=TemporalClientConfig(host="localhost:7233"),
@@ -334,10 +336,14 @@ async def workflows_worker(
 ) -> AsyncGenerator[None, None]:
     client = test_temporal_client_session
     task_queue = TaskQueue.WORKFLOWS
+    workflows = [
+        "passport-detection.detect-passports",
+        "passport-detection.export-passports",
+    ]
     worker_ctx = dev_worker_context(
         "test-passport-worklow-worker",
         is_async=True,
-        workflows=["passport-detection.detect-passports"],
+        workflows=workflows,
         worker_config=test_worker_config,
         client=client,
         task_queue=task_queue,
@@ -359,6 +365,7 @@ async def io_worker(
         Activity.PREPROCESS_PDFS,
         Activity.CREATE_INFERENCE_BATCHES,
         Activity.AGGREGATE_RESULTS,
+        Activity.EXPORT_PASSPORTS,
     ]
     task_queue = TaskQueue.IO
     dependencies = "passport-detection.io"

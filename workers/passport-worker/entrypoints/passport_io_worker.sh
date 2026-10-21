@@ -9,4 +9,5 @@ uv run --no-sync datashare-python worker start \
     --activities passport-detection.convert-to-pdf \
     --activities passport-detection.preprocess.pdfs \
     --activities passport-detection.create-inference-batches \
-    --activities passport-detection.aggregate-results
+    --activities passport-detection.aggregate-results \
+    --activities passport-detection.export-passports

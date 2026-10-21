@@ -26,6 +26,7 @@ from .dependencies import (
     lifespan_image_preprocessor_cache,
     lifespan_pdf_converter_cache,
 )
+from .export import export_passports_act
 from .inference import (
     PassportDetector,
     create_inference_batches_act,
@@ -36,6 +37,8 @@ from .objects import (
     DocumentSearchQuery,
     PassportDetectionArgs,
     PassportDetectionResponse,
+    PassportExportArgs,
+    PassportExportResponse,
     PreprocessingBatches,
     PreprocessingConfig,
 )
@@ -68,9 +71,10 @@ class Activity(StrEnum):
     CREATE_INFERENCE_BATCHES = "passport-detection.create-inference-batches"
     DETECT_PASSPORTS = "passport-detection.detect-passports"
     AGGREGATE_RESULTS = "passport-detection.aggregate-results"
+    EXPORT_PASSPORTS = "passport-detection.export-passports"
 
 
-class PassportDetectionActivities(ActivityWithProgress):
+class SharedActivities(ActivityWithProgress):
     @activity_defn(name=Activity.LOAD_WORKER_CONFIG)
     async def worker_config(
         self,
@@ -82,6 +86,8 @@ class PassportDetectionActivities(ActivityWithProgress):
         worker_config = cast(PassportWorkerConfig, lifespan_worker_config())
         return worker_config
 
+
+class PassportDetectionActivities(ActivityWithProgress):
     @activity_defn(name=Activity.CREATE_PREPROCESSING_BATCHES)
     async def create_preprocessing_batches(
         self,
@@ -323,8 +329,38 @@ class PassportDetectionActivities(ActivityWithProgress):
         return res
 
 
+class PassportExportActivities(ActivityWithProgress):
+    @activity_defn(name=Activity.EXPORT_PASSPORTS)
+    async def export_passports(
+        self,
+        args: PassportExportArgs,
+        *,
+        progress: Annotated[  # noqa: ARG002
+            AsyncProgressRateHandler | None, Weight(value=_WORKER_CONFIG_WEIGHT)
+        ] = None,
+    ) -> PassportExportResponse:
+        worker_config = cast(PassportWorkerConfig, lifespan_worker_config())
+        paths = worker_config.paths
+        root = paths.artifacts
+        if args.root is not None:
+            root /= args.root
+        output_path = paths.workdir / args.output_path
+        es_client = lifespan_es_client()
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        await export_passports_act(
+            root,
+            args.format,
+            es_client,
+            output_path=output_path,
+            ds_base_url=worker_config.ds_url,
+        )
+        export_path = output_path.relative_to(paths.workdir)
+        res = PassportExportResponse(export_path=export_path)
+        return res
+
+
 ACTIVITIES = [
-    PassportDetectionActivities.worker_config,
+    SharedActivities.worker_config,
     PassportDetectionActivities.create_preprocessing_batches,
     PassportDetectionActivities.preprocess_images,
     PassportDetectionActivities.convert_to_pdfs,
@@ -332,4 +368,5 @@ ACTIVITIES = [
     PassportDetectionActivities.create_inference_batches,
     PassportDetectionActivities.detect_passports,
     PassportDetectionActivities.aggregate_results,
+    PassportExportActivities.export_passports,
 ]

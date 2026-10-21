@@ -48,6 +48,7 @@ _DEFAULT_BROKER_URL = (
 _DEFAULT_AUTH = aiohttp.BasicAuth(login="guest", password="guest", encoding="utf-8")
 
 TEST_PROJECT = "test-project"
+DS_URL = "https://datashare.org"
 
 _INDEX_BODY = {
     "mappings": {

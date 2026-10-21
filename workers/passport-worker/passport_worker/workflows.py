@@ -13,12 +13,18 @@ with workflow.unsafe.imports_passed_through():
     from datashare_python.config import ActivityTimeouts
     from datashare_python.utils import WorkflowWithProgress, execute_activity
 
-    from .activities import PassportDetectionActivities
+    from .activities import (
+        PassportDetectionActivities,
+        PassportExportActivities,
+        SharedActivities,
+    )
     from .config import PassportWorkerConfig
     from .objects import (
         Batches,
         PassportDetectionArgs,
         PassportDetectionResponse,
+        PassportExportArgs,
+        PassportExportResponse,
         PreprocessingBatches,
         PreprocessingConfig,
     )
@@ -44,16 +50,15 @@ class PassportDetectionWorkflow(WorkflowWithProgress):
     @workflow.run
     async def run(self, args: PassportDetectionArgs) -> PassportDetectionResponse:
         logger.info("creating preprocessing batches...")
-        batch_args = [args.docs, args.project]
         # Fetch worker config
         worker_config = await execute_activity(
-            PassportDetectionActivities.worker_config,
-            args=batch_args,
+            SharedActivities.worker_config,
             task_queue=TaskQueue.IO,
             timeouts=ActivityTimeouts(start_to_close=timedelta(minutes=5)),
         )
         worker_config = cast(PassportWorkerConfig, worker_config)
         # Create preprocessing batches
+        batch_args = [args.docs, args.project]
         preprocessing_batches = await execute_activity(
             PassportDetectionActivities.create_preprocessing_batches,
             args=batch_args,
@@ -95,6 +100,25 @@ class PassportDetectionWorkflow(WorkflowWithProgress):
             timeouts=worker_config.timeouts.result_aggregation,
         )
         return response
+
+
+@workflow.defn(name="passport-detection.export-passports")
+class ExportWorkflow(WorkflowWithProgress):
+    @workflow.run
+    async def run(self, args: PassportExportArgs) -> PassportExportResponse:
+        logger.info("creating preprocessing batches...")
+        worker_config = await execute_activity(
+            SharedActivities.worker_config,
+            task_queue=TaskQueue.IO,
+            timeouts=ActivityTimeouts(start_to_close=timedelta(minutes=5)),
+        )
+        res = await execute_activity(
+            PassportExportActivities.export_passports,
+            args=(args,),
+            task_queue=TaskQueue.IO,
+            timeouts=worker_config.timeouts.export,
+        )
+        return res
 
 
 async def preprocess(
@@ -219,4 +243,4 @@ def _process_pdfs_tasks(
     return all_tasks
 
 
-WORKFLOWS = [PassportDetectionWorkflow]
+WORKFLOWS = [PassportDetectionWorkflow, ExportWorkflow]

@@ -38,6 +38,11 @@ Batches = list[Path]
 OnnxProvider = Literal["CUDAExecutionProvider", "CPUExecutionProvider"]
 
 
+class ExportFormat(StrEnum):
+    CSV = "csv"
+    JSONL = "jsonl"
+
+
 @cache
 def default_country_codes() -> list[str]:
     import passport_service  # noqa: PLC0415
@@ -133,6 +138,13 @@ class PassportDetectionArgs(TaskArgs):
         return as_entry
 
 
+class PassportExportArgs(TaskArgs):
+    project: str
+    output_path: Path
+    format: ExportFormat = ExportFormat.CSV
+    root: Path | None = None
+
+
 class PreprocessingBatches(BaseModel):
     to_pdf: Batches
     images: Batches
@@ -210,3 +222,7 @@ class PassportDetectionResponse(DatashareModel):
             (r.successes for r in inference_results), start=ProcessingReport()
         )
         return cls(processed=processed, successes=successes, errors=errors)
+
+
+class PassportExportResponse(DatashareModel):
+    export_path: Path

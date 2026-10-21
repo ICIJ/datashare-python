@@ -1,5 +1,5 @@
 import pytest
-from objects import PassportProcessingError
+from passport_worker.objects import PassportProcessingError
 
 
 @pytest.mark.regression

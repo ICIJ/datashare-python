@@ -17,6 +17,7 @@ dependencies = [
 [project.optional-dependencies]
 preprocessing = [
   "icij-passport-core[preprocessing]==0.11.8",
+  "pandas~=3.0",
 ]
 inference-gpu = [
   "icij-passport-core[inference,gpu]==0.11.8"
