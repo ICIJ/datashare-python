@@ -75,6 +75,7 @@ asyncio_default_fixture_loop_scope = "session"
 markers = [
   "integration",
   "pull",
+  "regression",
 ]
 log_cli = 1
 log_cli_level = "DEBUG"

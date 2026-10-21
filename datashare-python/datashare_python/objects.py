@@ -858,10 +858,12 @@ class WorkerFile(
         )
 
 
-def _file_discriminator(v: Any) -> str:
+def _file_discriminator(v: Any) -> str | None:
     parent = v.get("parent") if isinstance(v, dict) else getattr(v, "parent", None)
     if parent is None:
-        raise ValueError(f"{v} has no parent")
+        # No match the parent is neither a DatashareFile of WorkerFile it could be a
+        # Document or we're just deserializing something else
+        return None
     if isinstance(parent, dict):
         is_document = parent.get("type") == "Document"
     else:
