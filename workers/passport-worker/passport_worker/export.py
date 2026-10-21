@@ -2,6 +2,7 @@ import json
 import os
 from collections import defaultdict
 from collections.abc import AsyncIterable, Iterable
+from contextlib import suppress
 from io import StringIO
 from itertools import batched
 from pathlib import Path
@@ -12,6 +13,7 @@ from aiofile import async_open
 from datashare_python.constants import MANIFEST_JSON
 from datashare_python.objects import ArtifactType, DocID
 from icij_common.es import DOC_ROOT_ID, HITS, ID_, QUERY, SOURCE, ESClient, has_id
+from temporalio import activity
 
 from .objects import ExportFormat, PassportArtifact, Passports
 
@@ -75,6 +77,7 @@ async def export_as_csv(
 
 
 async def _read_csv_passport_records(root: Path) -> AsyncIterable[dict[str, Any]]:
+    doc_i = 0
     async for (project, doc_id), passports in _walk_passports(root):
         for doc_page in passports.pages:
             page_i = doc_page.page_number
@@ -87,6 +90,10 @@ async def _read_csv_passport_records(root: Path) -> AsyncIterable[dict[str, Any]
                     for k, v in mrz.metadata.items():
                         as_record[f"mrz_{k}"] = v
                 yield as_record
+        doc_i += 1
+        if doc_i % 1000 == 0:
+            with suppress(RuntimeError):
+                activity.heartbeat()
 
 
 def _make_url(*, base_url: str, doc_id: str, root_id: str | None, project: str) -> str:
