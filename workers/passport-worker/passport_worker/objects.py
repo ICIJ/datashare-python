@@ -142,7 +142,7 @@ class PassportExportArgs(TaskArgs):
     project: str
     output_path: Path
     format: ExportFormat = ExportFormat.CSV
-    root: Path | None = None
+    docs: list[DocId] | DocumentSearchQuery | None = None
 
 
 class PreprocessingBatches(BaseModel):

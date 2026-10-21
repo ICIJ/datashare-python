@@ -54,6 +54,7 @@ from datashare_python.types_ import (
 )
 
 from .constants import MANIFEST_JSON, METADATA_JSON
+from .exceptions import ArtifactNotFound
 from .mimetypes_ import types_map
 from .objects import (
     BaseModel,
@@ -399,6 +400,37 @@ def safe_dir(doc_id: str) -> Path:
 
 def artifacts_dir(doc_id: str, *, project: str) -> Path:
     return Path(project, safe_dir(doc_id), doc_id)
+
+
+async def async_read_artifact(
+    paths: WorkerPaths, doc_id: str, artifact_type: type[DocArtifact], *, project: str
+) -> bytes:
+    # Reading the manifest can be long, we load it only if the artifact exists then
+    # we check that the entry is in the manifest
+    artifact_path = (
+        paths.artifacts
+        / artifacts_dir(doc_id, project=project)
+        / artifact_type.filename
+    )
+    if not artifact_path.exists():
+        raise ArtifactNotFound(doc_id, artifact_type)
+    m_path = paths.artifacts / _manifest_path(doc_id, project=project)
+
+    try:
+        async with async_open(m_path, "r") as f:
+            manifest_json = await f.read()
+    except OSError as e:
+        raise ArtifactNotFound(doc_id, artifact_type) from e
+
+    manifest = json.loads(manifest_json)
+    if artifact_type.type.value not in manifest:
+        raise ArtifactNotFound(doc_id, artifact_type)
+
+    try:
+        async with async_open(artifact_path, "rb") as f:
+            return await f.read()
+    except OSError as e:
+        raise ArtifactNotFound(doc_id, artifact_type) from e
 
 
 def _metadata_path(doc_id: str, *, project: str) -> Path:

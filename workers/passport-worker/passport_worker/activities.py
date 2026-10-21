@@ -49,7 +49,7 @@ from .preprocessing import (
     preprocess_images_act,
     preprocess_pdfs_act,
 )
-from .search import create_preprocessing_batches_act
+from .search import create_preprocessing_batches_act, get_docs
 
 logger = logging.getLogger(__name__)
 
@@ -341,16 +341,14 @@ class PassportExportActivities(ActivityWithProgress):
     ) -> PassportExportResponse:
         worker_config = cast(PassportWorkerConfig, lifespan_worker_config())
         paths = worker_config.paths
-        root = paths.artifacts
-        if args.root is not None:
-            root /= args.root
         output_path = paths.workdir / args.output_path
         es_client = lifespan_es_client()
         output_path.parent.mkdir(parents=True, exist_ok=True)
+        docs = (d async for d in get_docs(args.docs, args.project, es_client))
         await export_passports_act(
-            root,
+            docs,
             args.format,
-            es_client,
+            paths,
             output_path=output_path,
             ds_base_url=worker_config.ds_url,
         )

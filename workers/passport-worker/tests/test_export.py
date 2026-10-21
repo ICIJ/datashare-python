@@ -1,3 +1,4 @@
+from collections.abc import AsyncIterable, Iterable
 from pathlib import Path
 
 import pytest
@@ -25,7 +26,7 @@ def artifact_dir_with_passports(
     populate_es: list[Document],
     test_worker_config: PassportWorkerConfig,
     test_model_path: Path,
-) -> WorkerPaths:
+) -> tuple[WorkerPaths, list[Document]]:
     passport_detector_config = YOLOPassportDetectorConfig(
         model_path=test_model_path, onnx_provider="CPUExecutionProvider"
     )
@@ -54,21 +55,23 @@ def artifact_dir_with_passports(
             artifact=Passports(pages=passport_pages).model_dump_json().encode(),
         )
         write_artifact(paths.artifacts, passport_artifact)
-    return paths
+    return paths, populate_es
+
+
+async def _async_iter[R](it: Iterable[R]) -> AsyncIterable[R]:
+    for r in it:
+        yield r
 
 
 async def test_export_as_csv(
-    artifact_dir_with_passports: WorkerPaths, test_es_client: ESClient
+    artifact_dir_with_passports: tuple[WorkerPaths, list[Document]],
+    test_es_client: ESClient,
 ) -> None:
+    # Given
+    paths, docs = artifact_dir_with_passports
+    docs = (d async for d in _async_iter(docs))
     # When
-    csv = [
-        csv_l
-        async for csv_l in export_as_csv(
-            root=artifact_dir_with_passports.artifacts,
-            ds_base_url="https://my-datashare",
-            es_client=test_es_client,
-        )
-    ]
+    csv = [csv_l async for csv_l in export_as_csv(docs, "https://my-datashare", paths)]
 
     # Then
     assert csv[0] == "page,doc_id,project,confidence,root_id,url"
@@ -80,14 +83,14 @@ async def test_export_as_csv(
     assert len(csv) == 1 + 5  # header + 5 docs with a single passport page in them
 
 
-async def test_export_as_jsonl(artifact_dir_with_passports: WorkerPaths) -> None:
+async def test_export_as_jsonl(
+    artifact_dir_with_passports: tuple[WorkerPaths, list[Document]],
+) -> None:
+    # Given
+    paths, docs = artifact_dir_with_passports
+    docs = (d async for d in _async_iter(docs))
     # When
-    jsonl = [
-        csv_l
-        async for csv_l in export_as_jsonl(
-            root=artifact_dir_with_passports.artifacts,
-        )
-    ]
+    jsonl = [csv_l async for csv_l in export_as_jsonl(docs, paths)]
 
     # Then
     assert len(jsonl) == 5

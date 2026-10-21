@@ -24,6 +24,7 @@ from icij_common.es import (
     and_query,
     has_id,
     has_type,
+    match_all,
 )
 from passport_service.constants import GOTENBERG_SUPPORTED_EXTS, PDF_EXT
 
@@ -91,6 +92,19 @@ async def create_preprocessing_batches_act(  # noqa: PLR0917
     )
 
 
+_GET_DOC_SOURCES = [DOC_LANGUAGE, DOC_ROOT_ID, DOC_EXTRACTION_LEVEL]
+
+
+async def get_docs(  # noqa: PLR0917
+    docs: list[DocId] | DocumentSearchQuery | None, project: str, es_client: ESClient
+) -> AsyncIterable[Document]:
+    query = _build_doc_query(docs)
+    async for d in _search_docs(
+        query, es_client, project, sort=_DOC_SORT, sources=_GET_DOC_SOURCES
+    ):
+        yield d
+
+
 async def _write_preprocessing_batches(
     docs: AsyncIterable[Document],
     paths: WorkerPaths,
@@ -107,9 +121,13 @@ async def _write_preprocessing_batches(
 
 
 def _build_doc_query(
-    docs: list[DocId] | DocumentSearchQuery | None, supported_exts: set[str]
+    docs: list[DocId] | DocumentSearchQuery | None,
+    supported_exts: set[str] | None = None,
 ) -> dict[str, Any]:
-    format_query = _with_supported_exts_query(supported_exts)
+    if supported_exts:
+        format_query = _with_supported_exts_query(supported_exts)
+    else:
+        format_query = match_all()
     match docs:
         case dict():
             if not docs:
@@ -137,10 +155,16 @@ DOC_SOURCES = [DOC_PATH, DOC_ROOT_ID, DOC_LANGUAGE, DOC_METADATA, DOC_EXTRACTION
 
 
 async def _search_docs(
-    query: dict[str, Any], es_client: ESClient, project: str, sort: ESSort = None
+    query: dict[str, Any],
+    es_client: ESClient,
+    project: str,
+    sort: ESSort = None,
+    sources: list[str] | None = None,
 ) -> AsyncIterable[Document]:
+    if sources is None:
+        sources = DOC_SOURCES
     async for page in es_client.poll_search_pages(
-        index=project, body=query, sort=sort, _source_includes=DOC_SOURCES
+        index=project, body=query, sort=sort, _source_includes=sources
     ):
         for hit in page[HITS][HITS]:
             yield Document.from_es(hit)
