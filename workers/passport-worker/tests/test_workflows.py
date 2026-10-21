@@ -10,15 +10,22 @@ from datashare_python.utils import safe_dir
 from icij_common.pydantic_utils import safe_copy
 from passport_worker.config import PassportWorkerConfig
 from passport_worker.objects import (
+    ExportFormat,
     PassportDetectionArgs,
     PassportDetectionConfig,
     PassportDetectionResponse,
+    PassportExportArgs,
+    PassportExportResponse,
     PassportInferenceConfig,
     PassportManifestEntry,
     Passports,
     YOLOPassportDetectorConfig,
 )
-from passport_worker.workflows import PassportDetectionWorkflow, TaskQueue
+from passport_worker.workflows import (
+    ExportWorkflow,
+    PassportDetectionWorkflow,
+    TaskQueue,
+)
 from temporalio.client import Client as TemporalClient
 from temporalio.worker import Worker
 
@@ -116,3 +123,21 @@ async def test_passport_detection_workflow(  # noqa: PLR0917
             with_mrz = with_mrz[0]
             assert with_mrz.mrz is not None
             assert with_mrz.mrz.metadata["names"] == "JANE"
+
+    # Given
+    wf_id = f"export-passports-{uuid.uuid4()}"
+    output_path = Path("export.csv")
+    args = PassportExportArgs(
+        project=TEST_PROJECT, format=ExportFormat.CSV, output_path=output_path
+    )
+    res = await temporal_client.execute_workflow(
+        ExportWorkflow,
+        args,
+        id=wf_id,
+        task_queue=TaskQueue.WORKFLOWS,
+    )
+    assert res == PassportExportResponse(export_path=output_path)
+    export_path = worker_paths.workdir / res.export_path
+    assert export_path.exists()
+    export_csv = export_path.read_text().splitlines()
+    assert len(export_csv) >= 3

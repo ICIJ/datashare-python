@@ -117,11 +117,16 @@ class PassportTimeouts(BaseModel):
     result_aggregation: ActivityTimeouts = ActivityTimeouts(
         start_to_close=timedelta(minutes=5)
     )
+    export: ActivityTimeouts = ActivityTimeouts(
+        start_to_close=timedelta(minutes=30), heartbeat=timedelta(minutes=5)
+    )
 
 
 class PassportWorkerConfig(WorkerConfig):
     logging: LoggingConfig = _DEFAULT_LOGGING_CONFIG
     paths: WorkerPaths
+
+    ds_url: str
 
     timeouts: PassportTimeouts = Field(default_factory=PassportTimeouts)
     cache: PassportWorkerCacheConfig = Field(default_factory=PassportWorkerCacheConfig)
