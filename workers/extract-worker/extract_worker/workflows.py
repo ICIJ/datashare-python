@@ -78,6 +78,12 @@ class EmbedDocumentsWorkflow(WorkflowWithProgress):
             task_queue=TaskQueues.IO,
             timeouts=ActivityTimeouts(start_to_close=timedelta(minutes=10)),
         )
+        await execute_activity(
+            DocumentEmbedding.check_embeddings_index,
+            args=[args.project, args.dim],
+            task_queue=TaskQueues.IO,
+            timeouts=worker_config.timeouts.check_embeddings_index,
+        )
         logger.info("creating embedding batches...")
         embedding_batches = await execute_activity(
             DocumentEmbedding.create_embedding_batches,
@@ -86,26 +92,26 @@ class EmbedDocumentsWorkflow(WorkflowWithProgress):
             timeouts=worker_config.timeouts.create_embedding_batches,
         )
         embed_and_index = (
-            self._embed_and_index(b, args.project, worker_config)
-            for b in embedding_batches
+            self._embed_and_index(b, args, worker_config) for b in embedding_batches
         )
         responses = await asyncio.gather(*embed_and_index)
         return sum(responses, start=EmbeddingResponse())
 
     @staticmethod
     async def _embed_and_index(
-        batch: Path, project: str, worker_config: ExtractWorkerConfig
+        batch: Path, args: EmbeddingArgs, worker_config: ExtractWorkerConfig
     ) -> EmbeddingResponse:
+        project = args.project
         task_queue = worker_config.embedding.device.embed_queue()
         res = await execute_activity(
             DocumentEmbedding.embed_documents,
-            args=[batch, project],
+            args=[batch, project, args.model, args.model_revision, args.dim],
             task_queue=task_queue,
             timeouts=worker_config.timeouts.embed,
         )
         n_indexed = await execute_activity(
             DocumentEmbedding.index_embeddings,
-            args=[res.chunks, project],
+            args=[res.chunks, project, args.dim],
             task_queue=TaskQueues.IO,
             timeouts=worker_config.timeouts.index_embeddings,
         )

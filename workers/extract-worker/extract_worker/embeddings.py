@@ -20,7 +20,7 @@ from datashare_python.types_ import AsyncProgressRateHandler
 from datashare_python.utils import (
     artifact_path,
     artifacts_dir,
-    read_jsonl_as,
+    async_read_jsonl_as,
     to_raw_async_progress,
 )
 from elasticsearch._async.helpers import async_bulk
@@ -52,10 +52,31 @@ _DOC_ID = "docId"
 _EMBEDDING = "embedding"
 
 
+class MissingEmbeddingsIndex(ValueError):
+    def __init__(self, index: str) -> None:
+        super().__init__(f"embeddings index {index} doesn't exist, create it first")
+        self.index = index
+
+
+class EmbeddingSizeMismatch(ValueError):
+    def __init__(self, index: str, expected: int, actual: int | None) -> None:
+        if actual is None:
+            msg = f"embeddings index {index} has no {_EMBEDDING} vector field"
+        else:
+            msg = (
+                f"embeddings index {index} expects vectors of size {actual},"
+                f" requested size is {expected}"
+            )
+        super().__init__(msg)
+        self.index = index
+        self.expected = expected
+        self.actual = actual
+
+
 class Embedder(Protocol):
     model: str
 
-    def embed(self, texts: list[str]) -> list[list[float]]: ...
+    def embed(self, texts: list[str], dim: int) -> list[list[float]]: ...
 
 
 class HFEmbedder:
@@ -63,24 +84,28 @@ class HFEmbedder:
     `encode` method (task + prompt name)
     """
 
-    def __init__(self, config: EmbeddingWorkerConfig) -> None:
+    def __init__(
+        self,
+        config: EmbeddingWorkerConfig,
+        model: str,
+        model_revision: str | None = None,
+    ) -> None:
         import torch  # noqa: PLC0415
         from transformers import AutoModel  # noqa: PLC0415
 
-        self.model = config.model
+        self.model = model
         self._task = config.task
-        self._dim = config.dim
         self._batch_size = config.inference_batch_size
         device = config.device.value
         dtype = torch.bfloat16 if device == "cuda" else torch.float32
         self._model = AutoModel.from_pretrained(
-            config.model,
-            revision=config.model_revision,
+            model,
+            revision=model_revision,
             trust_remote_code=True,
             dtype=dtype,
         ).to(device)
 
-    def embed(self, texts: list[str]) -> list[list[float]]:
+    def embed(self, texts: list[str], dim: int) -> list[list[float]]:
         embeddings = []
         for start in range(0, len(texts), self._batch_size):
             batch = texts[start : start + self._batch_size]
@@ -88,13 +113,15 @@ class HFEmbedder:
                 texts=batch,
                 task=self._task,
                 prompt_name="document",
-                truncate_dim=self._dim,
+                truncate_dim=dim,
             )
             embeddings.extend(batch_embeddings.float().cpu().tolist())
         return embeddings
 
 
-def make_chunker(config: EmbeddingWorkerConfig) -> "HybridChunker":  # noqa: F821
+def make_chunker(
+    config: EmbeddingWorkerConfig, model: str, model_revision: str | None = None
+) -> "HybridChunker":  # noqa: F821
     from docling_core.transforms.chunker.hybrid_chunker import (  # noqa: PLC0415
         HybridChunker,
     )
@@ -104,7 +131,7 @@ def make_chunker(config: EmbeddingWorkerConfig) -> "HybridChunker":  # noqa: F82
 
     # use the embedding model tokenizer so that chunks fit the model context
     tokenizer = HuggingFaceTokenizer.from_pretrained(
-        config.model, max_tokens=config.max_tokens, revision=config.model_revision
+        model, max_tokens=config.max_tokens, revision=model_revision
     )
     return HybridChunker(tokenizer=tokenizer)
 
@@ -122,11 +149,12 @@ async def embed_documents_act(
     chunker: "BaseChunker",  # noqa: F821
     md_converter: "DocumentConverter",  # noqa: F821
     embedder: Embedder,
+    dim: int,
     artifacts_root: Path,
     output_path: Path,
     progress: AsyncProgressRateHandler | None = None,
 ) -> EmbeddingResponse:
-    docs = list(read_jsonl_as(batch, PROCESSED_FILE_TA))
+    docs = [d async for d in async_read_jsonl_as(batch, PROCESSED_FILE_TA)]
     n_docs = len(docs)
     if progress is not None:
         progress = to_raw_async_progress(progress, max_progress=n_docs)
@@ -147,6 +175,7 @@ async def embed_documents_act(
                     chunker=chunker,
                     md_converter=md_converter,
                     embedder=embedder,
+                    dim=dim,
                     artifacts_root=artifacts_root,
                 )
             except Exception as e:  # noqa: BLE001
@@ -177,7 +206,7 @@ async def index_embeddings_act(
     bulk_size: int,
 ) -> int:
     await ensure_embeddings_index(es_client, index, dim=dim)
-    chunks = list(read_jsonl_as(chunks_path, EmbeddedChunk))
+    chunks = [c async for c in async_read_jsonl_as(chunks_path, EmbeddedChunk)]
     if not chunks:
         return 0
     # chunking might have changed, we don't want stale chunks to remain,
@@ -216,12 +245,23 @@ def embeddings_index_body(dim: int) -> dict[str, Any]:
 
 
 async def ensure_embeddings_index(es_client: ESClient, index: str, *, dim: int) -> None:
-    if await es_client.indices.exists(index=index):
-        return
-    logger.info("creating embeddings index %s...", index)
-    await es_client.indices.create(
-        index=index, body=embeddings_index_body(dim), ignore=400
-    )
+    """Check that the embeddings index exists and stores vectors of the right size.
+
+    :param es_client: ES client
+    :param index: name of the embeddings index
+    :param dim: expected embedding vector size
+    :raises MissingEmbeddingsIndex: when the index doesn't exist
+    :raises EmbeddingSizeMismatch: when the index vector size doesn't match dim
+    """
+    if not await es_client.indices.exists(index=index):
+        raise MissingEmbeddingsIndex(index)
+    mappings = await es_client.indices.get_mapping(index=index)
+    # index can be an alias, in which case the key is the concrete index name
+    (mapping,) = mappings.values()
+    properties = mapping["mappings"].get("properties", dict())
+    actual = properties.get(_EMBEDDING, dict()).get("dims")
+    if actual != dim:
+        raise EmbeddingSizeMismatch(index, expected=dim, actual=actual)
 
 
 def _index_action(chunk: EmbeddedChunk, index: str) -> dict[str, Any]:
@@ -240,6 +280,7 @@ def _embed_doc(
     chunker: "BaseChunker",  # noqa: F821
     md_converter: "DocumentConverter",  # noqa: F821
     embedder: Embedder,
+    dim: int,
     artifacts_root: Path,
 ) -> list[EmbeddedChunk]:
     page_chunks = [
@@ -249,7 +290,7 @@ def _embed_doc(
     ]
     if not page_chunks:
         return []
-    embeddings = embedder.embed([text for _, text, _ in page_chunks])
+    embeddings = embedder.embed([text for _, text, _ in page_chunks], dim)
     return [
         EmbeddedChunk(
             doc_id=doc.doc_id,

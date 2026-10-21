@@ -25,8 +25,6 @@ from icij_common.pydantic_utils import safe_copy
 from pydantic import Field
 
 from .constants import (
-    DEFAULT_EMBEDDING_DIM,
-    DEFAULT_EMBEDDING_MODEL,
     EMBEDDINGS_INDEX_SUFFIX,
     TorchDevice,
 )
@@ -163,13 +161,7 @@ class MarkdownExtractWorkerConfig(BaseModel):
 
 class EmbeddingWorkerConfig(BaseModel):
     device: TorchDevice = Field(default=TorchDevice.CPU)
-
-    model: str = DEFAULT_EMBEDDING_MODEL
-    # pin the model revision to avoid silently pulling new remote code
-    model_revision: str | None = None
     task: str = "retrieval"
-    # embeddings are truncated to this size
-    dim: int = DEFAULT_EMBEDDING_DIM
     # max tokens per chunk
     max_tokens: int = 512
     inference_batch_size: int = 16
@@ -192,6 +184,9 @@ class ExtractTimeouts(BaseModel):
     )
     extract_content: ActivityTimeouts = ActivityTimeouts(
         start_to_close=timedelta(hours=2), heartbeat=timedelta(minutes=5)
+    )
+    check_embeddings_index: ActivityTimeouts = ActivityTimeouts(
+        start_to_close=timedelta(minutes=1)
     )
     create_embedding_batches: ActivityTimeouts = ActivityTimeouts(
         start_to_close=timedelta(minutes=10)

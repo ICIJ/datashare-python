@@ -14,9 +14,12 @@ from docling_core.transforms.chunker.hierarchical_chunker import HierarchicalChu
 from extract_worker.activities import create_embedding_batches_act
 from extract_worker.config import ExtractWorkerConfig
 from extract_worker.embeddings import (
+    EmbeddingSizeMismatch,
+    MissingEmbeddingsIndex,
     build_embedding_doc_query,
     embed_documents_act,
     embeddings_index_body,
+    ensure_embeddings_index,
     index_embeddings_act,
     make_md_converter,
     read_structure_pages,
@@ -36,8 +39,8 @@ _DIM = 4
 class _FakeEmbedder:
     model = "fake-model"
 
-    def embed(self, texts: list[str]) -> list[list[float]]:
-        return [[float(len(t))] * _DIM for t in texts]
+    def embed(self, texts: list[str], dim: int) -> list[list[float]]:
+        return [[float(len(t))] * dim for t in texts]
 
 
 def test_read_structure_pages(
@@ -84,6 +87,7 @@ async def test_embed_documents_act(
         chunker=HierarchicalChunker(),
         md_converter=make_md_converter(),
         embedder=_FakeEmbedder(),
+        dim=_DIM,
         artifacts_root=test_worker_config.paths.artifacts,
         output_path=output_path,
     )
@@ -185,6 +189,7 @@ async def test_index_embeddings_act(test_es_client: ESClient, tmp_path: Path) ->
     chunks_path = tmp_path / "chunks.jsonl"
     chunks = [_chunk("doc-0", 0), _chunk("doc-0", 1), _chunk("doc-1", 0)]
     chunks_path.write_text("\n".join(c.model_dump_json() for c in chunks))
+    await test_es_client.indices.create(index=index, body=embeddings_index_body(_DIM))
     kwargs = {"es_client": test_es_client, "index": index, "dim": _DIM}
 
     # When
@@ -193,9 +198,6 @@ async def test_index_embeddings_act(test_es_client: ESClient, tmp_path: Path) ->
 
     # Then
     assert n_indexed == 3
-    mapping = await test_es_client.indices.get_mapping(index=index)
-    expected_mapping = embeddings_index_body(_DIM)["mappings"]
-    assert mapping[index]["mappings"] == expected_mapping
     res = await test_es_client.search(
         index=index, body={"query": {"match_all": {}}, "sort": ["_id"]}
     )
@@ -204,3 +206,60 @@ async def test_index_embeddings_act(test_es_client: ESClient, tmp_path: Path) ->
     assert [h["_id"] for h in hits] == ["doc-0-0", "doc-0-1", "doc-1-0"]
     assert hits[0]["_routing"] == "doc-0"
     assert hits[0]["_source"] == chunks[0].model_dump(by_alias=True)
+
+
+@pytest.mark.integration
+async def test_index_embeddings_act_should_raise_for_missing_index(
+    test_es_client: ESClient, tmp_path: Path
+) -> None:
+    # Given
+    index = f"{TEST_PROJECT}-embeddings"
+    chunks_path = tmp_path / "chunks.jsonl"
+    chunks_path.write_text(_chunk("doc-0", 0).model_dump_json())
+
+    # When/Then
+    with pytest.raises(MissingEmbeddingsIndex):
+        await index_embeddings_act(
+            chunks_path, es_client=test_es_client, index=index, dim=_DIM, bulk_size=2
+        )
+    assert not await test_es_client.indices.exists(index=index)
+
+
+@pytest.mark.integration
+async def test_ensure_embeddings_index(test_es_client: ESClient) -> None:
+    # Given
+    index = f"{TEST_PROJECT}-embeddings"
+    await test_es_client.indices.create(index=index, body=embeddings_index_body(_DIM))
+
+    # When/Then
+    await ensure_embeddings_index(test_es_client, index, dim=_DIM)
+
+
+@pytest.mark.integration
+async def test_ensure_embeddings_index_should_raise_for_size_mismatch(
+    test_es_client: ESClient,
+) -> None:
+    # Given
+    index = f"{TEST_PROJECT}-embeddings"
+    await test_es_client.indices.create(index=index, body=embeddings_index_body(_DIM))
+
+    # When/Then
+    with pytest.raises(EmbeddingSizeMismatch) as exc:
+        await ensure_embeddings_index(test_es_client, index, dim=_DIM + 1)
+    assert exc.value.expected == _DIM + 1
+    assert exc.value.actual == _DIM
+
+
+@pytest.mark.integration
+async def test_ensure_embeddings_index_should_raise_for_missing_vector_field(
+    test_es_client: ESClient,
+) -> None:
+    # Given
+    index = f"{TEST_PROJECT}-embeddings"
+    body = {"mappings": {"properties": {"text": {"type": "text"}}}}
+    await test_es_client.indices.create(index=index, body=body)
+
+    # When/Then
+    with pytest.raises(EmbeddingSizeMismatch) as exc:
+        await ensure_embeddings_index(test_es_client, index, dim=_DIM)
+    assert exc.value.actual is None

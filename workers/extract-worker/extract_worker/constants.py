@@ -5,6 +5,7 @@ from extract_core import Device, PipelineType
 MARKDOWN_METADATA_KEY = "extract.markdown"
 MARKDOWN_DIRNAME = "markdown"
 
+EMBEDDING_METADATA_KEY = "extract.embed"
 DEFAULT_EMBEDDING_MODEL = "jinaai/jina-embeddings-v5-text-nano"
 DEFAULT_EMBEDDING_DIM = 768
 EMBEDDINGS_INDEX_SUFFIX = "-embeddings"

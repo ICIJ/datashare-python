@@ -89,7 +89,7 @@ def test_worker_config(tmp_path_factory: TempPathFactory) -> ExtractWorkerConfig
                 ),
             )
         ),
-        embedding=EmbeddingWorkerConfig(dim=64, max_tokens=128),
+        embedding=EmbeddingWorkerConfig(max_tokens=128),
         datashare=DatashareClientConfig(url="http://localhost:8080"),
         temporal=TemporalClientConfig(host="localhost:7233"),
         paths=worker_paths,
@@ -223,6 +223,7 @@ async def io_worker(
     acts = [
         Activity.WORKER_CONFIG,
         Activity.CREATE_MD_BATCHES,
+        Activity.CHECK_EMBEDDINGS_INDEX,
         Activity.CREATE_EMBEDDING_BATCHES,
         Activity.INDEX_EMBEDDINGS,
     ]

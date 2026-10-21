@@ -19,6 +19,8 @@ from extract_core import PipelineBySize, PipelineConfig, Status
 # ExtractPipelineConfig.__subclasses__ list might be incomplete
 from pydantic import Field
 
+from extract_worker.constants import DEFAULT_EMBEDDING_DIM, DEFAULT_EMBEDDING_MODEL
+
 DocumentSearchQuery = dict[str, Any]
 DocId = str
 
@@ -68,6 +70,11 @@ class MarkdownExtractResponse(DatashareModel):
 class EmbeddingArgs(TaskArgs):
     project: str
     docs: list[DocId] | DocumentSearchQuery | None
+    model: str = DEFAULT_EMBEDDING_MODEL
+    # pin the model revision to avoid silently pulling new remote code
+    model_revision: str | None = None
+    # embeddings are truncated to this size, it must match the index vector size
+    dim: int = DEFAULT_EMBEDDING_DIM
 
     def as_manifest_task_input(self) -> dict[str, Any]:
         as_entry = super().as_manifest_task_input()

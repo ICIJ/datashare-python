@@ -70,6 +70,7 @@ from .embeddings import (
     HFEmbedder,
     build_embedding_doc_query,
     embed_documents_act,
+    ensure_embeddings_index,
     index_embeddings_act,
     make_chunker,
     make_md_converter,
@@ -96,6 +97,7 @@ class Activity(StrEnum):
     WORKER_CONFIG = "extract.worker-config"
     CREATE_MD_BATCHES = "extract.create-markdown-batches"
     EXTRACT_MD_CONTENT = "extract.extract-markdown-content"
+    CHECK_EMBEDDINGS_INDEX = "extract.check-embeddings-index"
     CREATE_EMBEDDING_BATCHES = "extract.create-embedding-batches"
     EMBED_DOCUMENTS = "extract.embed-documents"
     INDEX_EMBEDDINGS = "extract.index-embeddings"
@@ -193,6 +195,14 @@ class MarkdownExtract(ActivityWithProgress):
 
 
 class DocumentEmbedding(ActivityWithProgress):
+    @activity_defn(name=Activity.CHECK_EMBEDDINGS_INDEX)
+    async def check_embeddings_index(self, project: str, dim: int) -> None:
+        es_client = lifespan_es_client()
+        w_config = cast(ExtractWorkerConfig, lifespan_worker_config())
+        index = w_config.embedding.index_name(project)
+        logger.debug("checking embeddings index %s...", index)
+        await ensure_embeddings_index(es_client, index, dim=dim)
+
     @activity_defn(name=Activity.CREATE_EMBEDDING_BATCHES)
     async def create_embedding_batches(
         self, project: str, docs: list[DocId] | DocumentSearchQuery | None
@@ -222,6 +232,9 @@ class DocumentEmbedding(ActivityWithProgress):
         self,
         batch: Path,
         project: str,
+        model: str,
+        model_revision: str | None,
+        dim: int,
         *,
         progress: AsyncProgressRateHandler | None = None,
     ) -> EmbedBatchResult:
@@ -233,8 +246,10 @@ class DocumentEmbedding(ActivityWithProgress):
         batch = workdir / batch
         output_path = output_dir / f"{batch.stem}-chunks.jsonl"
         cache = lifespan_embedder_cache()
-        cache_key = config_cache_key(embedding_config)
-        factory = partial(_load_embedding_resources, embedding_config)
+        cache_key = f"{config_cache_key(embedding_config)}-{model}@{model_revision}"
+        factory = partial(
+            _load_embedding_resources, embedding_config, model, model_revision
+        )
         with cache.get_or_cache_resource(cache_key, factory) as resources:
             chunker, md_converter, embedder = resources
             logger.debug("embedding documents from %s...", batch)
@@ -243,6 +258,7 @@ class DocumentEmbedding(ActivityWithProgress):
                 chunker=chunker,
                 md_converter=md_converter,
                 embedder=embedder,
+                dim=dim,
                 artifacts_root=w_config.paths.artifacts,
                 output_path=output_path,
                 progress=progress,
@@ -253,7 +269,7 @@ class DocumentEmbedding(ActivityWithProgress):
         )
 
     @activity_defn(name=Activity.INDEX_EMBEDDINGS)
-    async def index_embeddings(self, chunks: Path, project: str) -> int:
+    async def index_embeddings(self, chunks: Path, project: str, dim: int) -> int:
         es_client = lifespan_es_client()
         w_config = cast(ExtractWorkerConfig, lifespan_worker_config())
         embedding_config = w_config.embedding
@@ -263,7 +279,7 @@ class DocumentEmbedding(ActivityWithProgress):
             w_config.paths.workdir / chunks,
             es_client=es_client,
             index=index,
-            dim=embedding_config.dim,
+            dim=dim,
             bulk_size=embedding_config.index_bulk_size,
         )
         logger.debug("indexed %s chunks !", n_indexed)
@@ -271,10 +287,14 @@ class DocumentEmbedding(ActivityWithProgress):
 
 
 def _load_embedding_resources(
-    config: EmbeddingWorkerConfig,
+    config: EmbeddingWorkerConfig, model: str, model_revision: str | None
 ) -> tuple["HybridChunker", "DocumentConverter", HFEmbedder]:  # noqa: F821
-    logger.debug("loading embedding model %s...", config.model)
-    resources = make_chunker(config), make_md_converter(), HFEmbedder(config)
+    logger.debug("loading embedding model %s (revision %s)...", model, model_revision)
+    resources = (
+        make_chunker(config, model, model_revision),
+        make_md_converter(),
+        HFEmbedder(config, model, model_revision),
+    )
     logger.debug("embedding model loaded !")
     return resources
 
@@ -482,6 +502,7 @@ ACTIVITIES = [
     MarkdownExtract.extract_worker_config,
     MarkdownExtract.create_markdown_extract_batches,
     MarkdownExtract.extract_markdown_content,
+    DocumentEmbedding.check_embeddings_index,
     DocumentEmbedding.create_embedding_batches,
     DocumentEmbedding.embed_documents,
     DocumentEmbedding.index_embeddings,
