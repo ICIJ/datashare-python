@@ -1,3 +1,4 @@
+import logging
 from collections import defaultdict
 from collections.abc import AsyncIterable, Iterable
 from contextlib import suppress
@@ -13,6 +14,8 @@ from datashare_python.utils import async_read_artifact
 from temporalio import activity
 
 from .objects import ExportFormat, PassportArtifact, Passports
+
+logger = logging.getLogger(__name__)
 
 
 async def export_passports_act(
@@ -79,6 +82,7 @@ async def _read_passport_artifacts(
     paths: WorkerPaths,
     docs: AsyncIterable[Document],
 ) -> AsyncIterable[Document, bytes]:
+    n_docs = 0
     async for doc in docs:
         try:
             passports = await async_read_artifact(
@@ -87,6 +91,9 @@ async def _read_passport_artifacts(
         except ArtifactNotFound:
             continue
         yield doc, passports
+        n_docs += 1
+        if n_docs % 100 == 0:
+            logger.info(f"processed {n_docs} docs")
 
 
 def _record_from_passports(
