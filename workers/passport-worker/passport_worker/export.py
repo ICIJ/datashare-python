@@ -90,6 +90,7 @@ async def _read_csv_passport_records(root: Path) -> AsyncIterable[dict[str, Any]
 
 
 def _make_url(*, base_url: str, doc_id: str, root_id: str | None, project: str) -> str:
+    base_url = base_url.removesuffix("/")
     if root_id is None:
         root_id = doc_id
     return f"{base_url}/#/ds/{project}/{doc_id}/{root_id}?tab=viewer"
