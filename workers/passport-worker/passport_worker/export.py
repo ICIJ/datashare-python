@@ -35,9 +35,9 @@ async def export_passports_act(
             lines = export_as_jsonl(docs, paths, progress=progress)
         case _:
             raise ValueError(f"unsupported export format {export_format}")
+    lines = [line async for line in lines]
     async with async_open(output_path, "w") as f:
-        async for line in lines:
-            await f.write(line + "\n")
+        await f.write("\n".join(lines))
 
 
 async def export_as_jsonl(
