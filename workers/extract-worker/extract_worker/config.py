@@ -17,6 +17,7 @@ from extract_core import (
     DoclingFormatOption,
     DoclingPipelineConfig,
     DoclingSettings,
+    LiteParsePipelineConfig,
     MarkerPipelineConfig,
     MinerUPipelineConfig,
     PipelineType,
@@ -109,7 +110,9 @@ class MarkdownInferenceWorkerConfig(BaseModel):
             case MarkerPipelineConfig():
                 return self._resolve_marker_config(pipeline_config)
             case MinerUPipelineConfig():
-                return self._resolve_miner_config(pipeline_config)
+                return self._resolve_mineru_config(pipeline_config)
+            case LiteParsePipelineConfig():
+                return self._resolve_liteparse_config(pipeline_config)
         raise TypeError(f"unexpected type: {pipeline_config.__class__.__name__}")
 
     def _resolve_docling_config(
@@ -170,17 +173,22 @@ class MarkdownInferenceWorkerConfig(BaseModel):
 
     def _resolve_marker_config(
         self, pipeline_config: MarkerPipelineConfig
-    ) -> DoclingPipelineConfig:
+    ) -> MarkerPipelineConfig:
         update = {"device": self.resolve_device(pipeline_config.pipeline).to_extract()}
         resolved = safe_copy(pipeline_config, update=update)
         return resolved
 
-    def _resolve_miner_config(
+    def _resolve_mineru_config(
         self, pipeline_config: MinerUPipelineConfig
-    ) -> DoclingPipelineConfig:
+    ) -> MinerUPipelineConfig:
         update = {"device": self.resolve_device(pipeline_config.pipeline).to_extract()}
         resolved = safe_copy(pipeline_config, update=update)
         return resolved
+
+    def _resolve_liteparse_config(
+        self, pipeline_config: LiteParsePipelineConfig
+    ) -> LiteParsePipelineConfig:
+        return pipeline_config
 
 
 class MarkdownExtractWorkerConfig(BaseModel):
