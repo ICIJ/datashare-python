@@ -105,6 +105,14 @@ async def get_docs(  # noqa: PLR0917
         yield d
 
 
+async def count_docs(  # noqa: PLR0917
+    docs: list[DocId] | DocumentSearchQuery | None, project: str, es_client: ESClient
+) -> dict[str, Any]:
+    query = _build_doc_query(docs)
+    counts = await es_client.count(query, index=project)
+    return counts
+
+
 async def _write_preprocessing_batches(
     docs: AsyncIterable[Document],
     paths: WorkerPaths,

@@ -5,7 +5,6 @@ import pytest
 from datashare_python.conftest import TEST_PROJECT
 from datashare_python.objects import Document, WorkerPaths
 from datashare_python.utils import write_artifact
-from icij_common.es import ESClient
 from passport_service.objects import Passport
 from passport_worker.config import PassportWorkerConfig
 from passport_worker.export import export_as_csv, export_as_jsonl
@@ -65,7 +64,6 @@ async def _async_iter[R](it: Iterable[R]) -> AsyncIterable[R]:
 
 async def test_export_as_csv(
     artifact_dir_with_passports: tuple[WorkerPaths, list[Document]],
-    test_es_client: ESClient,
 ) -> None:
     # Given
     paths, docs = artifact_dir_with_passports

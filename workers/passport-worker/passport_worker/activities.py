@@ -18,7 +18,9 @@ from datashare_python.utils import (
     async_enter_cm,
     config_cache_key,
     enter_cm,
+    to_raw_async_progress,
 )
+from icij_common.es import COUNT
 
 from .aggregate import aggregate_results_act
 from .config import PassportWorkerConfig
@@ -336,7 +338,7 @@ class PassportExportActivities(ActivityWithProgress):
         args: PassportExportArgs,
         *,
         progress: Annotated[  # noqa: ARG002
-            AsyncProgressRateHandler | None, Weight(value=_WORKER_CONFIG_WEIGHT)
+            AsyncProgressRateHandler | None, Weight(value=_BASE_WEIGHT)
         ] = None,
     ) -> PassportExportResponse:
         worker_config = cast(PassportWorkerConfig, lifespan_worker_config())
@@ -344,13 +346,21 @@ class PassportExportActivities(ActivityWithProgress):
         output_path = paths.workdir / args.output_path
         es_client = lifespan_es_client()
         output_path.parent.mkdir(parents=True, exist_ok=True)
+        n_docs = await es_client.count(args.docs)
         docs = (d async for d in get_docs(args.docs, args.project, es_client))
+        n_docs = n_docs[COUNT]
+        if progress is not None:
+            if n_docs:
+                progress = to_raw_async_progress(progress, max_progress=n_docs)
+            else:
+                progress = None
         await export_passports_act(
             docs,
             args.format,
             paths,
             output_path=output_path,
             ds_base_url=worker_config.ds_url,
+            progress=progress,
         )
         export_path = output_path.relative_to(paths.workdir)
         res = PassportExportResponse(export_path=export_path)

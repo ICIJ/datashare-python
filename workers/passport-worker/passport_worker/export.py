@@ -1,7 +1,6 @@
 import logging
 from collections import defaultdict
 from collections.abc import AsyncIterable, Iterable
-from contextlib import suppress
 from io import StringIO
 from pathlib import Path
 from typing import Any, Never
@@ -10,8 +9,8 @@ import pandas as pd
 from aiofile import async_open
 from datashare_python.exceptions import ArtifactNotFound
 from datashare_python.objects import Document, WorkerPaths
+from datashare_python.types_ import RawAsyncProgressHandler
 from datashare_python.utils import async_read_artifact
-from temporalio import activity
 
 from .objects import ExportFormat, PassportArtifact, Passports
 
@@ -25,40 +24,51 @@ async def export_passports_act(
     *,
     output_path: Path,
     ds_base_url: str,
+    progress: RawAsyncProgressHandler | None = None,
 ) -> None:
     match export_format:
         case ExportFormat.CSV:
-            lines = export_as_csv(docs, ds_base_url=ds_base_url, paths=paths)
+            lines = export_as_csv(
+                docs, ds_base_url=ds_base_url, paths=paths, progress=progress
+            )
         case ExportFormat.JSONL:
-            lines = export_as_jsonl(docs, paths)
+            lines = export_as_jsonl(docs, paths, progress=progress)
         case _:
             raise ValueError(f"unsupported export format {export_format}")
-    l_count = 0
     async with async_open(output_path, "w") as f:
         async for line in lines:
             await f.write(line + "\n")
-            l_count += 1
-        if l_count % 1000 == 0:
-            with suppress(RuntimeError):
-                activity.heartbeat()
 
 
 async def export_as_jsonl(
-    docs: AsyncIterable[Document], paths: WorkerPaths
+    docs: AsyncIterable[Document],
+    paths: WorkerPaths,
+    progress: RawAsyncProgressHandler | None = None,
 ) -> AsyncIterable[str]:
+    n_docs = 0
     async for _, p in _read_passport_artifacts(paths, docs):
         yield p
+        n_docs += 1
+        if progress is not None and n_docs % 100 == 0:
+            await progress(n_docs)
 
 
 async def export_as_csv(
-    docs: AsyncIterable[Document], ds_base_url: str, paths: WorkerPaths
+    docs: AsyncIterable[Document],
+    ds_base_url: str,
+    paths: WorkerPaths,
+    progress: RawAsyncProgressHandler | None = None,
 ) -> AsyncIterable[str]:
     out = StringIO()
+    n_docs = 0
     records_by_project = defaultdict(list)
     async for doc, passports in _read_passport_artifacts(paths, docs):
-        passports = Passports.model_validate_json(passports)
+        passports = Passports.model_validate_json(passports)  # noqa: PLW2901
         for r in _record_from_passports(doc, passports):
             records_by_project[r["project"]].append((doc, r))
+        n_docs += 1
+        if progress is not None and n_docs % 100 == 0:
+            await progress(n_docs)
     recs = []
     for project, records in records_by_project.items():
         for doc, r in records:
@@ -82,7 +92,6 @@ async def _read_passport_artifacts(
     paths: WorkerPaths,
     docs: AsyncIterable[Document],
 ) -> AsyncIterable[Document, bytes]:
-    n_docs = 0
     async for doc in docs:
         try:
             passports = await async_read_artifact(
@@ -91,9 +100,6 @@ async def _read_passport_artifacts(
         except ArtifactNotFound:
             continue
         yield doc, passports
-        n_docs += 1
-        if n_docs % 100 == 0:
-            logger.info(f"processed {n_docs} docs")
 
 
 def _record_from_passports(
