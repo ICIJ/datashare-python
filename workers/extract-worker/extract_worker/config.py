@@ -19,6 +19,7 @@ from extract_core import (
     DoclingSettings,
     MarkerPipelineConfig,
     MinerUPipelineConfig,
+    PipelineType,
 )
 from extract_core.docling_ import InferenceSettings
 from icij_common.pydantic_utils import safe_copy
@@ -26,6 +27,7 @@ from pydantic import Field
 
 from .constants import (
     EMBEDDINGS_INDEX_SUFFIX,
+    TaskQueue,
     TorchDevice,
 )
 
@@ -49,16 +51,38 @@ def _default_docling_settings() -> DoclingSettings:
 
 
 class DoclingWorkerConfig(BaseModel):
+    device: TorchDevice = Field(default=TorchDevice.CPU)
+
     settings: DoclingSettings = Field(default_factory=_default_docling_settings)
     format_options: dict[InputFormat, DoclingFormatOption] = Field(default_factory=dict)
+
+
+class LiteParseWorkerConfig(BaseModel):
+    device: TorchDevice = Field(default=TorchDevice.CPU, frozen=True)
+
+
+class MinerUWorkerConfig(BaseModel):
+    device: TorchDevice = Field(default=TorchDevice.CPU)
+
+
+class MarkerWorkerConfig(BaseModel):
+    device: TorchDevice = Field(default=TorchDevice.CPU)
 
 
 class MarkdownInferenceWorkerConfig(BaseModel):
     default_target_n_pages_per_task: int = 100
 
-    device: TorchDevice = Field(default=TorchDevice.CPU)
-
     docling: DoclingWorkerConfig = Field(default_factory=DoclingWorkerConfig)
+    liteparse: LiteParseWorkerConfig = Field(default_factory=LiteParseWorkerConfig)
+    mineru: MinerUWorkerConfig = Field(default_factory=MinerUWorkerConfig)
+    marker: MarkerWorkerConfig = Field(default_factory=MarkerWorkerConfig)
+
+    def resolve_task_queue(self, pipeline: PipelineType) -> TaskQueue:
+        try:
+            cfg = getattr(self, pipeline.value)
+        except AttributeError as e:
+            raise ValueError(f"unexpected type: {pipeline.value}") from e
+        return cfg.device.md_extract_queue(pipeline)
 
     def resolve_target_n_pages_per_task(
         self, pipeline_config: BasePipelineConfig

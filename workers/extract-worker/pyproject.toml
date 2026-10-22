@@ -15,7 +15,7 @@ dependencies = [
 
 [project.optional-dependencies]
 base = [
-  "extract-python[docling,marker,liteparse]==0.11.4",
+  "extract-python[docling,marker,liteparse]==0.12.1",
   "opencv-python-headless==4.11.0.86",
   # required by jina-embeddings-v5 remote code
   "peft~=0.18",

@@ -53,7 +53,7 @@ class ExtractMarkdownContentWorkflow(WorkflowWithProgress):
         # Distribute batches docs with (more or less) constant number of page per batch,
         # across workers
         extract_args = [(b, args) for b in extract_batches]
-        task_queue = worker_config.markdown.inference.device.md_extract_queue(
+        task_queue = worker_config.markdown.inference.resolve_task_queue(
             args.config.pipeline
         )
         extract_acts = (
