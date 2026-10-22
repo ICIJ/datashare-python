@@ -56,12 +56,13 @@ async def export_as_csv(
     progress: RawAsyncProgressHandler | None = None,
 ) -> AsyncIterable[str]:
     out = StringIO()
-
+    logger.info("reading passports from the artifact dir...")
     records_by_project = defaultdict(list)
     async for doc, passports in _read_passport_artifacts(paths, docs, progress):
         passports = Passports.model_validate_json(passports)  # noqa: PLW2901
         for r in _record_from_passports(doc, passports):
             records_by_project[r["project"]].append((doc, r))
+    logger.info("adding urls to passports data...")
     recs = []
     for project, records in records_by_project.items():
         for doc, r in records:
@@ -73,9 +74,11 @@ async def export_as_csv(
                 project=project,
             )
             recs.append(r)
+    logger.info("building dataframe...")
     df = pd.DataFrame.from_records(recs).sort_values(by=["doc_id"])
     df.to_csv(out, index=False)
     out.flush()
+    logger.info("writing emitting passport csv lines...")
     for line in out.getvalue().split("\n"):
         if line.strip():
             yield line
