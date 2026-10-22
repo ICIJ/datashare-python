@@ -122,6 +122,6 @@ class EmbeddingResponse(DatashareModel):
 
 
 class EmbedBatchResult(DatashareModel):
-    # path to the embedded chunks JSONL relative to workdir
     chunks: Path
+    n_chunks_by_doc: dict[DocId, int]
     response: EmbeddingResponse
