@@ -24,7 +24,6 @@ from icij_common.es import (
     and_query,
     has_id,
     has_type,
-    match_all,
 )
 from passport_service.constants import GOTENBERG_SUPPORTED_EXTS, PDF_EXT
 
@@ -135,7 +134,7 @@ def _build_doc_query(
     if supported_exts:
         format_query = _with_supported_exts_query(supported_exts)
     else:
-        format_query = match_all()
+        format_query = has_type(type_field="type", type_value=ES_DOCUMENT_TYPE)
     match docs:
         case dict():
             if not docs:
