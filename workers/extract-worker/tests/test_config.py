@@ -36,7 +36,9 @@ def test_default_resolve_pipeline_config_should_override_perf_config() -> None:
 
 def test_resolve_pipeline_config_should_set_device() -> None:
     # Given
-    worker_config = MarkdownInferenceWorkerConfig(device=TorchDevice.GPU)
+    worker_config = MarkdownInferenceWorkerConfig(
+        docling=DoclingWorkerConfig(device=TorchDevice.GPU)
+    )
     pipeline_config = DoclingPipelineConfig(
         format_options={
             InputFormat.PDF: DoclingFormatOption(

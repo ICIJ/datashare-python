@@ -103,6 +103,8 @@ DOC_2 = Document(
     [
         # Supports empty query
         ({}, [[(WorkerFile, "doc-0")], [(DatashareFile, "doc-2")]]),
+        # By ID
+        (["doc-0"], [[(WorkerFile, "doc-0")]]),
         # Return all supported docs
         (match_all(), [[(WorkerFile, "doc-0")], [(DatashareFile, "doc-2")]]),
         (ids_query(["doc-0"]), [[(WorkerFile, "doc-0")]]),
