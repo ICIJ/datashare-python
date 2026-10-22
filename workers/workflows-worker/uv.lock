@@ -379,15 +379,15 @@ wheels = [
 
 [[package]]
 name = "datashare-extract-worker"
-version = "0.7.3"
+version = "0.7.4"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "datashare-python" },
     { name = "extract-core" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/20/4c/b45dac2cc22c3933a395aa6b8bb477f5517745d15738590345729627694c/datashare_extract_worker-0.7.3.tar.gz", hash = "sha256:b95468ee721924f652720084a1ac26d71ef400d79fcd90ffaacf7e5874fc7cd3", size = 13896, upload-time = "2026-10-22T11:20:23.872Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/bd/b4/42497144f36215b4d66496f4f71bc51618919bf26533eeb93d838d276ee5/datashare_extract_worker-0.7.4.tar.gz", hash = "sha256:91ed8fc6275fde8334781d23427090e74e57ab6b5cca9d4535d20e4def070b29", size = 13897, upload-time = "2026-10-22T11:54:32.578Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/17/73/bb26bd21d32e990e466a81870eb672a4efba55c22f336e0cf21d4e49f44a/datashare_extract_worker-0.7.3-py3-none-any.whl", hash = "sha256:f11893d282be24d1ff420ca24ce27e6d8f76c015d9ffb58c0e8f55507105fe83", size = 17151, upload-time = "2026-10-22T11:20:24.763Z" },
+    { url = "https://files.pythonhosted.org/packages/0f/64/6bda7a605bab49ae3000d58077dd7d7bdc9a073d0ab1bb5cb8be865f6b44/datashare_extract_worker-0.7.4-py3-none-any.whl", hash = "sha256:83dbc8880e4ff305997d0c10c8490aef4fdcbacff2aa7f97624bfa112d1fa6eb", size = 17151, upload-time = "2026-10-22T11:54:31.477Z" },
 ]
 
 [[package]]
@@ -458,7 +458,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "datashare-asr-worker", specifier = "==0.12.8" },
-    { name = "datashare-extract-worker", specifier = "==0.7.3" },
+    { name = "datashare-extract-worker", specifier = "==0.7.4" },
     { name = "datashare-passport-worker", specifier = "==0.7.5" },
     { name = "datashare-python", specifier = "~=0.12.12" },
     { name = "datashare-translation-worker", specifier = "==0.12.3" },
@@ -551,7 +551,7 @@ async = [
 
 [[package]]
 name = "extract-core"
-version = "0.12.1"
+version = "0.12.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "docling-slim" },
@@ -559,9 +559,9 @@ dependencies = [
     { name = "pydantic" },
     { name = "pydantic-extra-types", extra = ["pycountry"] },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/5d/be/5f1227deea1b98d5ae7a4a323df4bcf0e48e132058fa1a437a016008e651/extract_core-0.12.1.tar.gz", hash = "sha256:796f3dde981e531ff401e86736771190c782364a5f83f935f113f9cc484be4b0", size = 41472, upload-time = "2026-10-22T10:05:53.378Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/cc/e8/d3dcbb621e9d93a208f051024084c417d8c924c555e7fdfe3ad65aaaf45e/extract_core-0.12.2.tar.gz", hash = "sha256:c77c682e7a3ac145bd1bde2a63fe8240971376d42d3b34b7ae4672808da44ab9", size = 41473, upload-time = "2026-10-22T11:52:11.092Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/9b/ec/cb6285790d70b38e560fda2ec3e1bd33a245183e2c462dc208b777bdc5e4/extract_core-0.12.1-py3-none-any.whl", hash = "sha256:be2e0aa78efed61e1c8c9d310f6d2b7bb4d6dffd3a517a67cefb27c7dd9e58d7", size = 50562, upload-time = "2026-10-22T10:05:54.102Z" },
+    { url = "https://files.pythonhosted.org/packages/1a/55/1e60b567e0ee05ee4010e2d7ba93e2866d107d8e680b9af9f6609002ff59/extract_core-0.12.2-py3-none-any.whl", hash = "sha256:991974a2e5e7f28ee27052cc9800612518e59d187e5181372475466b74850323", size = 50568, upload-time = "2026-10-22T11:52:09.943Z" },
 ]
 
 [[package]]
