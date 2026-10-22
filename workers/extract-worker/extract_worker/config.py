@@ -79,9 +79,9 @@ class MarkdownInferenceWorkerConfig(BaseModel):
     marker: MarkerWorkerConfig = Field(default_factory=MarkerWorkerConfig)
 
     def resolve_task_queue(self, pipeline: PipelineType) -> TaskQueue:
-        return self._resolve_device(pipeline).md_extract_queue(pipeline)
+        return self.resolve_device(pipeline).md_extract_queue(pipeline)
 
-    def _resolve_device(self, pipeline: PipelineType | FieldInfo) -> TorchDevice:
+    def resolve_device(self, pipeline: PipelineType | FieldInfo) -> TorchDevice:
         if isinstance(pipeline, FieldInfo):
             pipeline = pipeline.default
         try:
@@ -147,7 +147,7 @@ class MarkdownInferenceWorkerConfig(BaseModel):
         page_batch_size = self.docling.settings.perf.page_batch_size
         accelerator_opts = AcceleratorOptions(
             num_threads=os.cpu_count(),
-            device=self._resolve_device(pipeline_config.pipeline).to_extract(),
+            device=self.resolve_device(pipeline_config.pipeline).to_extract(),
         ).model_dump(exclude_unset=True)
         for fmt, default_opts in DoclingPipelineConfig().format_options.items():
             opts = pipeline_config.format_options.get(fmt)
@@ -171,14 +171,14 @@ class MarkdownInferenceWorkerConfig(BaseModel):
     def _resolve_marker_config(
         self, pipeline_config: MarkerPipelineConfig
     ) -> DoclingPipelineConfig:
-        update = {"device": self._resolve_device(pipeline_config.pipeline).to_extract()}
+        update = {"device": self.resolve_device(pipeline_config.pipeline).to_extract()}
         resolved = safe_copy(pipeline_config, update=update)
         return resolved
 
     def _resolve_miner_config(
         self, pipeline_config: MinerUPipelineConfig
     ) -> DoclingPipelineConfig:
-        update = {"device": self._resolve_device(pipeline_config.pipeline).to_extract()}
+        update = {"device": self.resolve_device(pipeline_config.pipeline).to_extract()}
         resolved = safe_copy(pipeline_config, update=update)
         return resolved
 

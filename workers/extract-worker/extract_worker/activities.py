@@ -167,7 +167,8 @@ class MarkdownExtract(ActivityWithProgress):
         if isinstance(config, PipelineBySize):
             # We don't specify device here, we'll resolve the device from the worker
             # config
-            device = w_config.markdown.inference.device.to_extract()
+            device = w_config.markdown.inference.resolve_device(config.pipeline)
+            device = device.to_extract()
             config = config.to_config(device)
         logger.debug(
             "resolving extract pipeline config %s with worker config %s",
