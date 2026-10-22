@@ -50,6 +50,8 @@ logger = logging.getLogger(__name__)
 
 _DOC_ID = "docId"
 _EMBEDDING = "embedding"
+_CHUNK_INDEX = "chunkIndex"
+_DELETE_GROUP_SIZE = 256
 
 
 class MissingEmbeddingsIndex(ValueError):
@@ -153,13 +155,14 @@ async def embed_documents_act(
     artifacts_root: Path,
     output_path: Path,
     progress: AsyncProgressRateHandler | None = None,
-) -> EmbeddingResponse:
+) -> tuple[EmbeddingResponse, dict[DocId, int]]:
     docs = [d async for d in async_read_jsonl_as(batch, PROCESSED_FILE_TA)]
     n_docs = len(docs)
     if progress is not None:
         progress = to_raw_async_progress(progress, max_progress=n_docs)
     n_pages, n_successes, n_successes_pages, n_chunks = 0, 0, 0, 0
     errors = []
+    n_chunks_by_doc = dict()
     with output_path.open("w") as f:
         for doc_i, doc in enumerate(docs):
             # to avoid heartbeat timeout
@@ -185,6 +188,7 @@ async def embed_documents_act(
                 for chunk in chunks:
                     f.write(f"{chunk.model_dump_json()}\n")
                 n_chunks += len(chunks)
+                n_chunks_by_doc[doc.doc_id] = len(chunks)
                 n_successes += 1
                 n_successes_pages += doc.n_pages
             if progress is not None:
@@ -192,13 +196,15 @@ async def embed_documents_act(
     processed = ProcessingReportWithPages(n_docs=n_docs, n_pages=n_pages)
     successes = ProcessingReportWithPages(n_docs=n_successes, n_pages=n_successes_pages)
     errors = ErrorReportWithPages.from_errors(*errors)
-    return EmbeddingResponse(
+    response = EmbeddingResponse(
         processed=processed, successes=successes, errors=errors, n_chunks=n_chunks
     )
+    return response, n_chunks_by_doc
 
 
 async def index_embeddings_act(
     chunks_path: Path,
+    n_chunks_by_doc: dict[DocId, int],
     *,
     es_client: ESClient,
     index: str,
@@ -206,26 +212,46 @@ async def index_embeddings_act(
     bulk_size: int,
 ) -> int:
     await ensure_embeddings_index(es_client, index, dim=dim)
-    chunks = [c async for c in async_read_jsonl_as(chunks_path, EmbeddedChunk)]
-    if not chunks:
-        return 0
-    # chunking might have changed, we don't want stale chunks to remain,
-    # remove previous chunks
-    doc_ids = sorted({c.doc_id for c in chunks})
-    delete_query = {QUERY: {"terms": {_DOC_ID: doc_ids}}}
-    await es_client.delete_by_query(
-        index=index, body=delete_query, conflicts="proceed", refresh=True
+    actions = (
+        _index_action(c, index)
+        async for c in async_read_jsonl_as(chunks_path, EmbeddedChunk)
     )
-    n_indexed = 0
-    for start in range(0, len(chunks), bulk_size):
-        bulk = chunks[start : start + bulk_size]
-        actions = (_index_action(c, index) for c in bulk)
-        n_success, _ = await async_bulk(
-            es_client, actions, raise_on_error=True, refresh="wait_for"
-        )
-        n_indexed += n_success
-    logger.debug("indexed %s chunks for %s docs in %s", n_indexed, len(doc_ids), index)
+    n_indexed, _ = await async_bulk(
+        es_client,
+        actions,
+        chunk_size=bulk_size,
+        stats_only=True,
+        raise_on_error=True,
+        refresh="wait_for",
+    )
+    await _delete_stale_chunks(es_client, index, n_chunks_by_doc)
+    logger.debug(
+        "indexed %s chunks for %s docs in %s", n_indexed, len(n_chunks_by_doc), index
+    )
     return n_indexed
+
+
+async def _delete_stale_chunks(
+    es_client: ESClient, index: str, n_chunks_by_doc: dict[DocId, int]
+) -> None:
+    docs = sorted(n_chunks_by_doc.items())
+    for start in range(0, len(docs), _DELETE_GROUP_SIZE):
+        group = docs[start : start + _DELETE_GROUP_SIZE]
+        stale = [
+            {
+                "bool": {
+                    "filter": [
+                        {"term": {_DOC_ID: doc_id}},
+                        {"range": {_CHUNK_INDEX: {"gte": n_chunks}}},
+                    ]
+                }
+            }
+            for doc_id, n_chunks in group
+        ]
+        query = {"bool": {"should": stale, "minimum_should_match": 1}}
+        await es_client.delete_by_query(
+            index=index, body={QUERY: query}, conflicts="proceed", refresh=True
+        )
 
 
 def embeddings_index_body(dim: int) -> dict[str, Any]:
@@ -234,7 +260,7 @@ def embeddings_index_body(dim: int) -> dict[str, Any]:
         _DOC_ID: keyword,
         "rootDocument": keyword,
         "project": keyword,
-        "chunkIndex": {"type": "integer"},
+        _CHUNK_INDEX: {"type": "integer"},
         "page": {"type": "integer"},
         "text": {"type": "text"},
         "headings": {"type": "text"},
@@ -284,13 +310,15 @@ def _embed_doc(
     artifacts_root: Path,
 ) -> list[EmbeddedChunk]:
     page_chunks = [
-        (page, chunker.contextualize(chunk), chunk.meta.headings)
+        (page, chunk)
         for page, md in read_structure_pages(doc, artifacts_root)
         for chunk in _chunk_markdown(md, chunker, md_converter)
     ]
     if not page_chunks:
         return []
-    embeddings = embedder.embed([text for _, text, _ in page_chunks], dim)
+    # embed chunks with their headings for context, but only store the chunk text
+    texts = [chunker.contextualize(chunk) for _, chunk in page_chunks]
+    embeddings = embedder.embed(texts, dim)
     return [
         EmbeddedChunk(
             doc_id=doc.doc_id,
@@ -298,12 +326,12 @@ def _embed_doc(
             project=doc.project,
             chunk_index=chunk_i,
             page=page,
-            text=text,
-            headings=headings,
+            text=chunk.text,
+            headings=chunk.meta.headings,
             model=embedder.model,
             embedding=embedding,
         )
-        for chunk_i, ((page, text, headings), embedding) in enumerate(
+        for chunk_i, ((page, chunk), embedding) in enumerate(
             zip(page_chunks, embeddings, strict=True)
         )
     ]

@@ -254,7 +254,7 @@ class DocumentEmbedding(ActivityWithProgress):
         with cache.get_or_cache_resource(cache_key, factory) as resources:
             chunker, md_converter, embedder = resources
             logger.debug("embedding documents from %s...", batch)
-            response = await embed_documents_act(
+            response, n_chunks_by_doc = await embed_documents_act(
                 batch,
                 chunker=chunker,
                 md_converter=md_converter,
@@ -266,11 +266,15 @@ class DocumentEmbedding(ActivityWithProgress):
             )
         logger.debug("embedded %s chunks !", response.n_chunks)
         return EmbedBatchResult(
-            chunks=output_path.relative_to(workdir), response=response
+            chunks=output_path.relative_to(workdir),
+            n_chunks_by_doc=n_chunks_by_doc,
+            response=response,
         )
 
     @activity_defn(name=Activity.INDEX_EMBEDDINGS)
-    async def index_embeddings(self, chunks: Path, project: str, dim: int) -> int:
+    async def index_embeddings(
+        self, chunks: Path, n_chunks_by_doc: dict[DocId, int], project: str, dim: int
+    ) -> int:
         es_client = lifespan_es_client()
         w_config = cast(ExtractWorkerConfig, lifespan_worker_config())
         embedding_config = w_config.embedding
@@ -278,6 +282,7 @@ class DocumentEmbedding(ActivityWithProgress):
         logger.debug("indexing embedded chunks into %s...", index)
         n_indexed = await index_embeddings_act(
             w_config.paths.workdir / chunks,
+            n_chunks_by_doc,
             es_client=es_client,
             index=index,
             dim=dim,

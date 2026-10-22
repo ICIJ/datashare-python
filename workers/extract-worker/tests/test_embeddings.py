@@ -1,4 +1,5 @@
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 from datashare_python.conftest import TEST_PROJECT
@@ -11,6 +12,7 @@ from datashare_python.objects import (
 )
 from datashare_python.utils import read_jsonl_as
 from docling_core.transforms.chunker.hierarchical_chunker import HierarchicalChunker
+from extract_worker import embeddings
 from extract_worker.activities import create_embedding_batches_act
 from extract_worker.config import ExtractWorkerConfig
 from extract_worker.embeddings import (
@@ -82,7 +84,7 @@ async def test_embed_documents_act(
     output_path = tmp_path / "chunks.jsonl"
 
     # When
-    response = await embed_documents_act(
+    response, n_chunks_by_doc = await embed_documents_act(
         batch,
         chunker=HierarchicalChunker(),
         md_converter=make_md_converter(),
@@ -98,13 +100,15 @@ async def test_embed_documents_act(
     assert response.errors.n_docs == 1
     assert response.errors.errors[0].doc_id == missing.doc_id
     assert response.n_chunks == 2
+    assert n_chunks_by_doc == {doc_with_structure.doc_id: 2}
     chunks = list(read_jsonl_as(output_path, EmbeddedChunk))
     assert [c.chunk_index for c in chunks] == [0, 1]
     assert [c.page for c in chunks] == [0, 1]
     assert all(c.doc_id == doc_with_structure.doc_id for c in chunks)
     assert all(c.root_document == "root-0" for c in chunks)
     assert chunks[0].headings == ["Offshore leaks"]
-    assert "Shell companies" in chunks[0].text
+    # stored text shouldn't contain the headings used as embedding context
+    assert chunks[0].text == "Shell companies registered in the islands."
     assert chunks[1].headings == ["Beneficial owners"]
     assert all(len(c.embedding) == _DIM for c in chunks)
     assert all(c.model == "fake-model" for c in chunks)
@@ -193,11 +197,20 @@ async def test_index_embeddings_act(test_es_client: ESClient, tmp_path: Path) ->
     kwargs = {"es_client": test_es_client, "index": index, "dim": _DIM}
 
     # When
-    await index_embeddings_act(stale, bulk_size=2, **kwargs)
-    n_indexed = await index_embeddings_act(chunks_path, bulk_size=2, **kwargs)
+    await index_embeddings_act(stale, {"doc-0": 3}, bulk_size=2, **kwargs)
+    with patch(
+        "extract_worker.embeddings.async_bulk", wraps=embeddings.async_bulk
+    ) as bulk:
+        n_indexed = await index_embeddings_act(
+            chunks_path, {"doc-0": 2, "doc-1": 1}, bulk_size=2, **kwargs
+        )
 
     # Then
     assert n_indexed == 3
+    bulk.assert_awaited_once()
+    actions = bulk.await_args.args[1]
+    assert hasattr(actions, "__aiter__")
+    assert bulk.await_args.kwargs["chunk_size"] == 2
     res = await test_es_client.search(
         index=index, body={"query": {"match_all": {}}, "sort": ["_id"]}
     )
@@ -220,7 +233,12 @@ async def test_index_embeddings_act_should_raise_for_missing_index(
     # When/Then
     with pytest.raises(MissingEmbeddingsIndex):
         await index_embeddings_act(
-            chunks_path, es_client=test_es_client, index=index, dim=_DIM, bulk_size=2
+            chunks_path,
+            {"doc-0": 1},
+            es_client=test_es_client,
+            index=index,
+            dim=_DIM,
+            bulk_size=2,
         )
     assert not await test_es_client.indices.exists(index=index)
 
@@ -263,3 +281,64 @@ async def test_ensure_embeddings_index_should_raise_for_missing_vector_field(
     with pytest.raises(EmbeddingSizeMismatch) as exc:
         await ensure_embeddings_index(test_es_client, index, dim=_DIM)
     assert exc.value.actual is None
+
+
+async def _indexed_ids(es_client: ESClient, index: str) -> list[str]:
+    body = {"query": {"match_all": {}}, "sort": ["_id"]}
+    res = await es_client.search(index=index, body=body)
+    return [h["_id"] for h in res[HITS][HITS]]
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize("delete_group_size", [1, 256])
+async def test_index_embeddings_act_should_only_replace_embedded_docs_chunks(
+    test_es_client: ESClient, tmp_path: Path, delete_group_size: int
+) -> None:
+    # Given
+    index = f"{TEST_PROJECT}-embeddings"
+    await test_es_client.indices.create(index=index, body=embeddings_index_body(_DIM))
+    kwargs = {"es_client": test_es_client, "index": index, "dim": _DIM}
+    previous = tmp_path / "previous.jsonl"
+    previous_chunks = [_chunk("doc-0", 0), _chunk("doc-1", 0), _chunk("doc-2", 0)]
+    previous.write_text("\n".join(c.model_dump_json() for c in previous_chunks))
+    await index_embeddings_act(
+        previous, {"doc-0": 1, "doc-1": 1, "doc-2": 1}, bulk_size=10, **kwargs
+    )
+    chunks_path = tmp_path / "chunks.jsonl"
+    chunks_path.write_text(_chunk("doc-0", 0).model_dump_json())
+
+    # When
+    with patch("extract_worker.embeddings._DELETE_GROUP_SIZE", delete_group_size):
+        await index_embeddings_act(
+            chunks_path, {"doc-0": 1, "doc-1": 0}, bulk_size=10, **kwargs
+        )
+
+    # Then
+    assert await _indexed_ids(test_es_client, index) == ["doc-0-0", "doc-2-0"]
+
+
+@pytest.mark.integration
+async def test_index_embeddings_act_should_keep_previous_chunks_on_write_failure(
+    test_es_client: ESClient, tmp_path: Path
+) -> None:
+    # Given
+    index = f"{TEST_PROJECT}-embeddings"
+    await test_es_client.indices.create(index=index, body=embeddings_index_body(_DIM))
+    kwargs = {"es_client": test_es_client, "index": index, "dim": _DIM}
+    previous = tmp_path / "previous.jsonl"
+    previous.write_text(
+        "\n".join(_chunk("doc-0", i).model_dump_json() for i in range(2))
+    )
+    await index_embeddings_act(previous, {"doc-0": 2}, bulk_size=10, **kwargs)
+    chunks_path = tmp_path / "chunks.jsonl"
+    chunks_path.write_text(_chunk("doc-0", 0).model_dump_json())
+
+    # When
+    with (
+        patch("extract_worker.embeddings.async_bulk", side_effect=RuntimeError("boom")),
+        pytest.raises(RuntimeError),
+    ):
+        await index_embeddings_act(chunks_path, {"doc-0": 1}, bulk_size=10, **kwargs)
+
+    # Then
+    assert await _indexed_ids(test_es_client, index) == ["doc-0-0", "doc-0-1"]

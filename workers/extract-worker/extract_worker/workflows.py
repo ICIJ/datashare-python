@@ -111,7 +111,7 @@ class EmbedDocumentsWorkflow(WorkflowWithProgress):
         )
         n_indexed = await execute_activity(
             DocumentEmbedding.index_embeddings,
-            args=[res.chunks, project, args.dim],
+            args=[res.chunks, res.n_chunks_by_doc, project, args.dim],
             task_queue=TaskQueues.IO,
             timeouts=worker_config.timeouts.index_embeddings,
         )
