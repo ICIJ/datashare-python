@@ -15,7 +15,7 @@ dependencies = [
 
 [project.optional-dependencies]
 base = [
-  "extract-python[docling,marker,liteparse]==0.12.1",
+  "extract-python[docling,marker,liteparse]==0.12.2",
   "opencv-python-headless==4.11.0.86",
   # required by jina-embeddings-v5 remote code
   "peft~=0.18",
@@ -30,13 +30,13 @@ gpu = [
   "torchvision==0.26.0+cu129; sys_platform == 'linux'",
 ]
 docling-gpu = [
-  "extract-python[docling-gpu]==0.12.1",
+  "extract-python[docling-gpu]==0.12.2",
 ]
 flash-attn = [
   "flash-attn==2.8.3.post1",
 ]
 mineru = [
-  "extract-python[mineru]==0.12.1",
+  "extract-python[mineru]==0.12.2",
   "opencv-python-headless==4.11.0.86"
 ]
 
@@ -54,7 +54,7 @@ worker_config_cls = "extract_worker.config:WORKER_CONFIG_CLS"
 
 [dependency-groups]
 dev = [
-  "extract-python[docling]==0.12.1",
+  "extract-python[docling]==0.12.2",
   "peft>=0.18.1",
   "black>=26.1.0",
   "nest-asyncio>=1.6.0",
