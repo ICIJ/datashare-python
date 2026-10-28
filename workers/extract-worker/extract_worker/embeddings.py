@@ -2,6 +2,7 @@ import asyncio
 import contextlib
 import json
 import logging
+import re
 from collections.abc import AsyncIterable, Iterator
 from io import BytesIO
 from pathlib import Path
@@ -11,6 +12,7 @@ from datashare_python.constants import MANIFEST_JSON
 from datashare_python.objects import (
     PROCESSED_FILE_TA,
     ByteRangesPagination,
+    DatashareFile,
     Document,
     ErrorReportWithPages,
     ProcessedFile,
@@ -25,9 +27,12 @@ from datashare_python.utils import (
 )
 from elasticsearch._async.helpers import async_bulk
 from icij_common.es import (
+    DOC_CONTENT,
     ES_DOCUMENT_TYPE,
+    HITS,
     ID_,
     QUERY,
+    SOURCE,
     ESClient,
     and_query,
     has_id,
@@ -52,6 +57,7 @@ _DOC_ID = "docId"
 _EMBEDDING = "embedding"
 _CHUNK_INDEX = "chunkIndex"
 _DELETE_GROUP_SIZE = 256
+_PARAGRAPH_SEP = re.compile(r"\n\s*\n")
 
 
 class MissingEmbeddingsIndex(ValueError):
@@ -309,11 +315,7 @@ def _embed_doc(
     dim: int,
     artifacts_root: Path,
 ) -> list[EmbeddedChunk]:
-    page_chunks = [
-        (page, chunk)
-        for page, md in read_structure_pages(doc, artifacts_root)
-        for chunk in _chunk_markdown(md, chunker, md_converter)
-    ]
+    page_chunks = list(_page_chunks(doc, chunker, md_converter, artifacts_root))
     if not page_chunks:
         return []
     # embed chunks with their headings for context, but only store the chunk text
@@ -335,6 +337,42 @@ def _embed_doc(
             zip(page_chunks, embeddings, strict=True)
         )
     ]
+
+
+def _page_chunks(
+    doc: ProcessedFile,
+    chunker: "BaseChunker",  # noqa: F821
+    md_converter: "DocumentConverter",  # noqa: F821
+    artifacts_root: Path,
+) -> Iterator[tuple[int, "BaseChunk"]]:  # noqa: F821
+    content = _fallback_content(doc)
+    if content is not None:
+        for chunk in _chunk_text(content, chunker):
+            yield 0, chunk
+        return
+    for page, md in read_structure_pages(doc, artifacts_root):
+        for chunk in _chunk_markdown(md, chunker, md_converter):
+            yield page, chunk
+
+
+def _fallback_content(doc: ProcessedFile) -> str | None:
+    if isinstance(doc, DatashareFile):
+        return doc.parent.content
+    return None
+
+
+def _chunk_text(
+    text: str,
+    chunker: "BaseChunker",  # noqa: F821
+) -> Iterator["BaseChunk"]:  # noqa: F821
+    from docling_core.types.doc import DocItemLabel, DoclingDocument  # noqa: PLC0415
+
+    dl_doc = DoclingDocument(name="content")
+    paragraphs = (p.strip() for p in _PARAGRAPH_SEP.split(text))
+    for paragraph in paragraphs:
+        if paragraph:
+            dl_doc.add_text(label=DocItemLabel.TEXT, text=paragraph)
+    yield from chunker.chunk(dl_doc)
 
 
 def _chunk_markdown(
@@ -418,14 +456,55 @@ def build_embedding_doc_query(
             raise ValueError(f"unsupported format {docs.__class__.__name__}")
 
 
-async def with_structure_artifact(
-    docs: AsyncIterable[Document], artifacts_root: Path
-) -> AsyncIterable[Document]:
-    async for d in docs:
-        structure_dir = artifact_path(
-            d.id, StructureArtifact, project=d.project, root=artifacts_root
-        )
-        if _structure_md_path(structure_dir) is None:
-            logger.debug("skipping %s (no markdown structure)", d.id)
-            continue
-        yield d
+async def with_embeddable_content(
+    batches: AsyncIterable[list[Document]],
+    *,
+    es_client: ESClient,
+    project: str,
+    artifacts_root: Path,
+) -> AsyncIterable[list[Document]]:
+    """Fall back to doc context when no markdown present (skip if neither available).
+
+    :param batches: batches of documents to filter
+    :param es_client: ES client
+    :param project: document project
+    :param artifacts_root: root of the artifacts directory
+    :return: batches of embeddable documents
+    """
+    async for batch in batches:
+        missing = [d.id for d in batch if not _has_structure(d, artifacts_root)]
+        contents = await _fetch_contents(es_client, project, missing)
+        embeddable = []
+        for d in batch:
+            if d.id not in contents:
+                embeddable.append(d)
+                continue
+            content = contents[d.id]
+            if content is None or not content.strip():
+                logger.debug("skipping %s (no markdown/content)", d.id)
+                continue
+            embeddable.append(d.model_copy(update={"content": content}))
+        if embeddable:
+            yield embeddable
+
+
+def _has_structure(doc: Document, artifacts_root: Path) -> bool:
+    structure_dir = artifact_path(
+        doc.id, StructureArtifact, project=doc.project, root=artifacts_root
+    )
+    return _structure_md_path(structure_dir) is not None
+
+
+async def _fetch_contents(
+    es_client: ESClient, project: str, doc_ids: list[DocId]
+) -> dict[DocId, str | None]:
+    contents = dict.fromkeys(doc_ids)
+    if not doc_ids:
+        return contents
+    body = {QUERY: has_id(doc_ids), "size": len(doc_ids)}
+    res = await es_client.search(
+        index=project, body=body, _source_includes=[DOC_CONTENT]
+    )
+    for hit in res[HITS][HITS]:
+        contents[hit[ID_]] = hit[SOURCE].get(DOC_CONTENT)
+    return contents

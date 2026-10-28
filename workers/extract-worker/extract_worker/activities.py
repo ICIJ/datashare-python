@@ -74,7 +74,7 @@ from .embeddings import (
     index_embeddings_act,
     make_chunker,
     make_md_converter,
-    with_structure_artifact,
+    with_embeddable_content,
 )
 from .objects import (
     DocId,
@@ -347,11 +347,14 @@ async def create_embedding_batches_act(
     es_client: ESClient,
 ) -> AsyncIterable[Path]:
     query = build_embedding_doc_query(docs)
-    docs = with_structure_artifact(
-        _search_docs(es_client, project, query), artifacts_root
+    docs = _search_docs(es_client, project, query)
+    batches = with_embeddable_content(
+        async_batches(docs, target_n_docs_per_task),
+        es_client=es_client,
+        project=project,
+        artifacts_root=artifacts_root,
     )
-    docs = (DatashareFile.from_parent(d) async for d in docs)
-    batches = async_batches(docs, target_n_docs_per_task)
+    batches = ([DatashareFile.from_parent(d) for d in b] async for b in batches)
     async for p in write_batches(batches, output_dir, prefix="embed_"):
         yield p
 

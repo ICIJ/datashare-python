@@ -20,6 +20,8 @@ PAGES = [
     "## Beneficial owners\n\nThe owners were hidden behind nominees.\n",
 ]
 
+DOC_3_CONTENT = "The vote is on Sunday.\n\n  \n\nPolls close at eight.\n"
+
 
 def write_structure(doc: ProcessedFile, artifacts_root: Path, pages: list[str]) -> None:
     contents = [(p + PAGE_SEP).encode() for p in pages[:-1]] + [pages[-1].encode()]

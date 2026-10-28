@@ -71,6 +71,7 @@ async def test_embed_workflow_e2e(  # noqa: PLR0917
     test_es_client: ESClient,
     test_worker_config: ExtractWorkerConfig,
     doc_with_structure: ProcessedFile,
+    doc_3: Document,
 ) -> None:
     # Given
     client = test_temporal_client
@@ -89,15 +90,14 @@ async def test_embed_workflow_e2e(  # noqa: PLR0917
     )
 
     # Then
-    assert response.successes == ProcessingReportWithPages(n_docs=1, n_pages=2)
+    assert response.successes == ProcessingReportWithPages(n_docs=2, n_pages=3)
     assert response.errors.n_docs == 0
-    assert response.n_chunks == 2
+    assert response.n_chunks == 3
     res = await test_es_client.search(index=index, body={"query": {"match_all": {}}})
     hits = res["hits"]["hits"]
-    assert len(hits) == 2
-    for h in hits:
-        assert h["_source"]["docId"] == doc_with_structure.doc_id
-        assert len(h["_source"]["embedding"]) == 64
+    doc_ids = sorted(h["_source"]["docId"] for h in hits)
+    assert doc_ids == sorted([doc_with_structure.doc_id] * 2 + [doc_3.id])
+    assert all(len(h["_source"]["embedding"]) == 64 for h in hits)
 
 
 @pytest.mark.e2e

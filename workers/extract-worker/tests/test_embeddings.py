@@ -33,7 +33,7 @@ from extract_worker.objects import (
 )
 from icij_common.es import HITS, ESClient
 
-from tests import PAGE_SEP, PAGES
+from tests import DOC_3_CONTENT, PAGE_SEP, PAGES
 
 _DIM = 4
 
@@ -114,6 +114,40 @@ async def test_embed_documents_act(
     assert all(c.model == "fake-model" for c in chunks)
 
 
+async def test_embed_documents_act_should_fallback_to_content(
+    doc_3: Document, test_worker_config: ExtractWorkerConfig, tmp_path: Path
+) -> None:
+    # Given
+    doc = DatashareFile.from_parent(doc_3)
+    batch = tmp_path / "batch.jsonl"
+    batch.write_text(PROCESSED_FILE_TA.dump_json(doc).decode() + "\n")
+    output_path = tmp_path / "chunks.jsonl"
+
+    # When
+    response, n_chunks_by_doc = await embed_documents_act(
+        batch,
+        chunker=HierarchicalChunker(),
+        md_converter=make_md_converter(),
+        embedder=_FakeEmbedder(),
+        dim=_DIM,
+        artifacts_root=test_worker_config.paths.artifacts,
+        output_path=output_path,
+    )
+
+    # Then
+    assert response.successes == ProcessingReportWithPages(n_docs=1, n_pages=1)
+    assert response.errors.n_docs == 0
+    assert n_chunks_by_doc == {doc.doc_id: 2}
+    chunks = list(read_jsonl_as(output_path, EmbeddedChunk))
+    assert [c.text for c in chunks] == [
+        "The vote is on Sunday.",
+        "Polls close at eight.",
+    ]
+    assert [c.page for c in chunks] == [0, 0]
+    assert all(c.headings is None for c in chunks)
+    assert all(c.root_document == "root-3" for c in chunks)
+
+
 @pytest.mark.parametrize(
     ("docs", "expected"),
     [
@@ -145,9 +179,10 @@ def test_build_embedding_doc_query(
 
 
 @pytest.mark.integration
-async def test_create_embedding_batches_act(
+async def test_create_embedding_batches_act(  # noqa: PLR0917
     populate_es: list[Document],  # noqa: ARG001
     doc_with_structure: ProcessedFile,
+    doc_3: Document,
     test_es_client: ESClient,
     test_worker_config: ExtractWorkerConfig,
     tmp_path: Path,
@@ -168,7 +203,10 @@ async def test_create_embedding_batches_act(
     # Then
     assert len(batches) == 1
     docs = list(read_jsonl_as(batches[0], PROCESSED_FILE_TA))
-    assert [d.doc_id for d in docs] == [doc_with_structure.doc_id]
+    by_id = {d.doc_id: d for d in docs}
+    assert sorted(by_id) == [doc_with_structure.doc_id, doc_3.id]
+    assert by_id[doc_with_structure.doc_id].parent.content is None
+    assert by_id[doc_3.id].parent.content == DOC_3_CONTENT
 
 
 def _chunk(doc_id: str, chunk_index: int) -> EmbeddedChunk:

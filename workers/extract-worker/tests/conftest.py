@@ -17,7 +17,6 @@ from datashare_python.conftest import (  # noqa: F401
     TEST_PROJECT,
     clear_dirs,
     dev_worker_context,
-    doc_3,
     index_docs,
     pytest_collection_modifyitems,
     test_es_client,
@@ -52,7 +51,7 @@ from extract_worker.config import (
 from extract_worker.constants import TaskQueue
 from icij_common.es import ESClient
 
-from tests import DOCS_PATH, PAGES, write_structure
+from tests import DOC_3_CONTENT, DOCS_PATH, PAGES, write_structure
 
 mimetypes.init()
 
@@ -139,13 +138,28 @@ def doc_2() -> Document:
     )
 
 
+@pytest.fixture(scope="session")
+def doc_3() -> Document:
+    return Document(
+        id="doc-3",
+        root_document="root-3",
+        extraction_level=1,
+        index=TEST_PROJECT,
+        language=DatashareLanguage("ENGLISH"),
+        content=DOC_3_CONTENT,
+        content_type="message/rfc822",
+        path=Path("doc-3.eml"),
+        metadata={"tika_metadata_resourcename": "doc-3.eml"},
+    )
+
+
 @pytest.fixture
 async def populate_es(
     test_es_client: ESClient,  # noqa: F811
     doc_0: Document,
     doc_1: Document,
     doc_2: Document,
-    doc_3: Document,  # noqa: F811
+    doc_3: Document,
 ) -> list[Document]:
     docs = [doc_0, doc_1, doc_2, doc_3]
     async for _ in index_docs(test_es_client, docs=docs, index_name=TEST_PROJECT):
