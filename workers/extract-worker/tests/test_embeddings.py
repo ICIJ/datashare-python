@@ -179,7 +179,7 @@ def test_build_embedding_doc_query(
 
 
 @pytest.mark.integration
-async def test_create_embedding_batches_act(
+async def test_create_embedding_batches_act(  # noqa: PLR0917
     populate_es: list[Document],  # noqa: ARG001
     doc_with_structure: ProcessedFile,
     doc_3: Document,
