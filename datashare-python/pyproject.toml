@@ -1,6 +1,6 @@
 [project]
 name = "datashare-python"
-version = "0.12.13"
+version = "0.12.14"
 description = "Manage Python tasks and local resources in Datashare"
 authors = [
   { name = "Clément Doumouro", email = "cdoumouro@icij.org" },
@@ -14,7 +14,7 @@ dependencies = [
   "aiofile~=3.11",
   "aiohttp~=3.11",
   "hatchling~=1.27",
-  "icij-common[elasticsearch]~=0.8.4",
+  "icij-common[elasticsearch]~=0.9.0",
   "langcodes~=3.5",
   "python-json-logger~=4.0",
   "pyyaml~=6.0",
