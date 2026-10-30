@@ -297,9 +297,9 @@ def _load_embedding_resources(
 ) -> tuple["HybridChunker", "DocumentConverter", HFEmbedder]:  # noqa: F821
     logger.debug("loading embedding model %s (revision %s)...", model, model_revision)
     resources = (
-        make_chunker(config, model, model_revision),
+        make_chunker(config, model=model, model_revision=model_revision),
         make_md_converter(),
-        HFEmbedder(config, model, model_revision),
+        HFEmbedder(config, model=model, model_revision=model_revision),
     )
     logger.debug("embedding model loaded !")
     return resources

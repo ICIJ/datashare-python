@@ -12,6 +12,8 @@ from datashare_python.objects import (
 )
 from datashare_python.utils import read_jsonl_as
 from docling_core.transforms.chunker.hierarchical_chunker import HierarchicalChunker
+from icij_common.es import HITS, ESClient
+
 from extract_worker import embeddings
 from extract_worker.activities import create_embedding_batches_act
 from extract_worker.config import ExtractWorkerConfig
@@ -31,8 +33,6 @@ from extract_worker.objects import (
     DocumentSearchQuery,
     EmbeddedChunk,
 )
-from icij_common.es import HITS, ESClient
-
 from tests import DOC_3_CONTENT, PAGE_SEP, PAGES
 
 _DIM = 4

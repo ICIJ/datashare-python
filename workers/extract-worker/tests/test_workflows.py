@@ -9,6 +9,11 @@ from datashare_python.objects import (
     ProcessingReportWithPages,
 )
 from extract_core import DoclingPipelineConfig
+from icij_common.es import ESClient
+from temporalio.client import Client as TemporalClient
+from temporalio.client import WorkflowFailureError
+from temporalio.worker import Worker
+
 from extract_worker.config import ExtractWorkerConfig
 from extract_worker.embeddings import embeddings_index_body
 from extract_worker.objects import (
@@ -21,10 +26,6 @@ from extract_worker.workflows import (
     ExtractMarkdownContentWorkflow,
     TaskQueues,
 )
-from icij_common.es import ESClient
-from temporalio.client import Client as TemporalClient
-from temporalio.client import WorkflowFailureError
-from temporalio.worker import Worker
 
 
 @pytest.mark.e2e

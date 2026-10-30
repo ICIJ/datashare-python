@@ -1,3 +1,4 @@
+from collections.abc import Sequence
 from pathlib import Path
 from typing import Any, ClassVar
 
@@ -23,6 +24,7 @@ from extract_worker.constants import DEFAULT_EMBEDDING_DIM, DEFAULT_EMBEDDING_MO
 
 DocumentSearchQuery = dict[str, Any]
 DocId = str
+Vector = Sequence[float | int]
 
 
 class MarkdownExtractArgs(TaskArgs):
@@ -98,8 +100,7 @@ class EmbeddedChunk(DatashareModel):
         return f"{self.doc_id}-{self.chunk_index}"
 
 
-class EmbeddingError(ProcessingError[ProcessedFile]):
-    pass
+class EmbeddingError(ProcessingError[ProcessedFile]): ...
 
 
 class EmbeddingResponse(DatashareModel):

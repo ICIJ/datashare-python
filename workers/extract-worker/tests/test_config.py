@@ -8,6 +8,7 @@ from extract_core import (
     DoclingSettings,
 )
 from extract_core.docling_ import DoclingFormatOption, InferenceSettings
+
 from extract_worker.config import DoclingWorkerConfig, MarkdownInferenceWorkerConfig
 from extract_worker.constants import TorchDevice
 

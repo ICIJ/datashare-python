@@ -1,12 +1,12 @@
-import mimetypes
-import shutil
-import uuid
-from collections.abc import AsyncGenerator
 from pathlib import Path
 
 import datashare_python
+import mimetypes
 import pytest
+import shutil
+import uuid
 from _pytest.tmpdir import TempPathFactory
+from collections.abc import AsyncGenerator
 from datashare_python.config import (
     DatashareClientConfig,
     LogFormat,
@@ -18,6 +18,7 @@ from datashare_python.conftest import (  # noqa: F401
     clear_dirs,
     dev_worker_context,
     index_docs,
+    indexed_docs,
     pytest_collection_modifyitems,
     test_es_client,
     test_es_client_session,
@@ -50,8 +51,7 @@ from extract_worker.config import (
 )
 from extract_worker.constants import TaskQueue
 from icij_common.es import ESClient
-
-from tests import DOC_3_CONTENT, DOCS_PATH, PAGES, write_structure
+from tests import DOCS_PATH, DOC_3_CONTENT, PAGES, write_structure
 
 mimetypes.init()
 
@@ -211,7 +211,7 @@ def doc_with_structure(
 async def workflows_worker(
     test_worker_config: ExtractWorkerConfig,  # noqa: F811
     test_temporal_client_session: TemporalClient,  # noqa: F811
-) -> AsyncGenerator[None, None]:
+) -> AsyncGenerator[None]:
     client = test_temporal_client_session
     worker_id = f"test-extract-workflows-worker-{uuid.uuid4()}"
     task_queue = TaskQueue.WORKFLOWS
@@ -231,7 +231,7 @@ async def workflows_worker(
 async def io_worker(
     test_worker_config: ExtractWorkerConfig,  # noqa: F811
     test_temporal_client_session: TemporalClient,  # noqa: F811
-) -> AsyncGenerator[None, None]:
+) -> AsyncGenerator[None]:
     client = test_temporal_client_session
     worker_id = f"test-extract-io-worker-{uuid.uuid4()}"
     acts = [
@@ -260,7 +260,7 @@ async def io_worker(
 async def md_extract_cpu_worker(
     test_worker_config: ExtractWorkerConfig,  # noqa: F811
     test_temporal_client_session: TemporalClient,  # noqa: F811
-) -> AsyncGenerator[None, None]:
+) -> AsyncGenerator[None]:
     client = test_temporal_client_session
     worker_id = f"test-extract-cpu-worker-{uuid.uuid4()}"
     acts = [Activity.EXTRACT_MD_CONTENT]
@@ -283,7 +283,7 @@ async def md_extract_cpu_worker(
 async def embed_cpu_worker(
     test_worker_config: ExtractWorkerConfig,  # noqa: F811
     test_temporal_client_session: TemporalClient,  # noqa: F811
-) -> AsyncGenerator[None, None]:
+) -> AsyncGenerator[None]:
     client = test_temporal_client_session
     worker_id = f"test-embed-cpu-worker-{uuid.uuid4()}"
     acts = [Activity.EMBED_DOCUMENTS]

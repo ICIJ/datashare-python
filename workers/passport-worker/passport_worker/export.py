@@ -119,6 +119,7 @@ def _record_from_passports(
             yield as_record
 
 
+# TODO: put in datashare-python
 def _make_url(*, base_url: str, doc_id: str, root_id: str | None, project: str) -> str:
     base_url = base_url.removesuffix("/")
     if root_id is None:

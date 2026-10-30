@@ -1,20 +1,19 @@
+from pathlib import Path
+
 import asyncio
-import contextlib
 import json
 import logging
 import re
-from collections.abc import AsyncIterable, Iterator
-from io import BytesIO
-from pathlib import Path
-from typing import Any, Protocol
-
+from abc import ABC, abstractmethod
+from aiofile import async_open
+from collections.abc import AsyncIterable, Iterable, Iterator
 from datashare_python.constants import MANIFEST_JSON
 from datashare_python.objects import (
-    PROCESSED_FILE_TA,
     ByteRangesPagination,
     DatashareFile,
     Document,
     ErrorReportWithPages,
+    PROCESSED_FILE_TA,
     ProcessedFile,
     ProcessingReportWithPages,
 )
@@ -23,22 +22,25 @@ from datashare_python.utils import (
     artifact_path,
     artifacts_dir,
     async_read_jsonl_as,
+    reports_errors,
     to_raw_async_progress,
 )
 from elasticsearch._async.helpers import async_bulk
+from functools import cache
 from icij_common.es import (
     DOC_CONTENT,
+    ESClient,
     ES_DOCUMENT_TYPE,
     HITS,
     ID_,
     QUERY,
     SOURCE,
-    ESClient,
     and_query,
     has_id,
     has_type,
 )
-from temporalio import activity
+from io import BytesIO
+from typing import Any
 
 from .config import EmbeddingWorkerConfig
 from .objects import (
@@ -57,7 +59,10 @@ _DOC_ID = "docId"
 _EMBEDDING = "embedding"
 _CHUNK_INDEX = "chunkIndex"
 _DELETE_GROUP_SIZE = 256
-_PARAGRAPH_SEP = re.compile(r"\n\s*\n")
+_PARAGRAPH_SEP = r"\n\s*\n"
+
+# TODO: this is way too wide, this must be restricted
+_EMBEDDING_RECOVERABLES = (Exception,)
 
 
 class MissingEmbeddingsIndex(ValueError):
@@ -81,13 +86,23 @@ class EmbeddingSizeMismatch(ValueError):
         self.actual = actual
 
 
-class Embedder(Protocol):
-    model: str
+class Embedder(ABC):
+    def __init__(self, config: EmbeddingWorkerConfig) -> None:
+        self._config = config
 
-    def embed(self, texts: list[str], dim: int) -> list[list[float]]: ...
+    @property
+    def config(self) -> EmbeddingWorkerConfig:
+        return self._config
+
+    @property
+    @abstractmethod
+    def model(self) -> str: ...
+
+    @abstractmethod
+    async def embed(self, texts: list[str], dim: int) -> list[list[float]]: ...
 
 
-class HFEmbedder:
+class HFEmbedder(Embedder):
     """Generate embeddings using a HuggingFace model exposing a jina-embeddings-like
     `encode` method (task + prompt name)
     """
@@ -95,13 +110,15 @@ class HFEmbedder:
     def __init__(
         self,
         config: EmbeddingWorkerConfig,
+        *,
         model: str,
         model_revision: str | None = None,
     ) -> None:
+        super().__init__(config)
         import torch  # noqa: PLC0415
         from transformers import AutoModel  # noqa: PLC0415
 
-        self.model = model
+        self.__model = model
         self._task = config.task
         self._batch_size = config.inference_batch_size
         device = config.device.value
@@ -113,11 +130,16 @@ class HFEmbedder:
             dtype=dtype,
         ).to(device)
 
-    def embed(self, texts: list[str], dim: int) -> list[list[float]]:
+    @property
+    def model(self) -> str:
+        return self.__model
+
+    async def embed(self, texts: list[str], dim: int) -> list[list[float]]:
         embeddings = []
         for start in range(0, len(texts), self._batch_size):
             batch = texts[start : start + self._batch_size]
-            batch_embeddings = self._model.encode(
+            batch_embeddings = await asyncio.to_thread(
+                self._model.encode,
                 texts=batch,
                 task=self._task,
                 prompt_name="document",
@@ -128,7 +150,7 @@ class HFEmbedder:
 
 
 def make_chunker(
-    config: EmbeddingWorkerConfig, model: str, model_revision: str | None = None
+    config: EmbeddingWorkerConfig, *, model: str, model_revision: str | None = None
 ) -> "HybridChunker":  # noqa: F821
     from docling_core.transforms.chunker.hybrid_chunker import (  # noqa: PLC0415
         HybridChunker,
@@ -169,36 +191,26 @@ async def embed_documents_act(
     n_pages, n_successes, n_successes_pages, n_chunks = 0, 0, 0, 0
     errors = []
     n_chunks_by_doc = dict()
-    with output_path.open("w") as f:
-        for doc_i, doc in enumerate(docs):
-            # to avoid heartbeat timeout
-            with contextlib.suppress(RuntimeError):
-                activity.heartbeat()
-            n_pages += doc.n_pages
-            try:
-                # run chunking and inference in a separate thread to avoid
-                # blocking the event loop
-                chunks = await asyncio.to_thread(
-                    _embed_doc,
-                    doc,
-                    chunker=chunker,
-                    md_converter=md_converter,
-                    embedder=embedder,
-                    dim=dim,
-                    artifacts_root=artifacts_root,
-                )
-            except Exception as e:  # noqa: BLE001
-                logger.exception("failed to embed doc %s", doc.doc_id)
-                errors.append(EmbeddingError.from_exception(doc, e))
+    doc_chunks = _embed_doc_chunks(
+        chunker, md_converter, embedder, dim, artifacts_root=artifacts_root
+    )
+    doc_i = 0
+    async with async_open(output_path, "w") as f:
+        for res in doc_chunks:
+            if isinstance(res, EmbeddingError):
+                doc = res.source.doc_id
+                errors.append(res)
             else:
+                doc, chunks = doc
                 for chunk in chunks:
-                    f.write(f"{chunk.model_dump_json()}\n")
+                    await f.write(f"{chunk.model_dump_json()}\n")
                 n_chunks += len(chunks)
                 n_chunks_by_doc[doc.doc_id] = len(chunks)
                 n_successes += 1
                 n_successes_pages += doc.n_pages
+            doc_i += 1
             if progress is not None:
-                await progress(doc_i + 1)
+                await progress(doc_i)
     processed = ProcessingReportWithPages(n_docs=n_docs, n_pages=n_pages)
     successes = ProcessingReportWithPages(n_docs=n_successes, n_pages=n_successes_pages)
     errors = ErrorReportWithPages.from_errors(*errors)
@@ -206,6 +218,28 @@ async def embed_documents_act(
         processed=processed, successes=successes, errors=errors, n_chunks=n_chunks
     )
     return response, n_chunks_by_doc
+
+
+@reports_errors(_EMBEDDING_RECOVERABLES, EmbeddingError)
+async def _embed_doc_chunks(
+    docs: Iterable[ProcessedFile],
+    chunker: "BaseChunker",  # noqa: F821
+    md_converter: "DocumentConverter",  # noqa: F821
+    embedder: Embedder,
+    dim: int,
+    *,
+    artifacts_root: Path,
+) -> AsyncIterable[tuple[ProcessedFile, list[EmbeddedChunk]]]:
+    for doc in docs:
+        chunks = await _embed_doc(
+            doc,
+            chunker=chunker,
+            md_converter=md_converter,
+            embedder=embedder,
+            dim=dim,
+            artifacts_root=artifacts_root,
+        )
+        yield doc, chunks
 
 
 async def index_embeddings_act(
@@ -306,7 +340,7 @@ def _index_action(chunk: EmbeddedChunk, index: str) -> dict[str, Any]:
     }
 
 
-def _embed_doc(
+async def _embed_doc(
     doc: ProcessedFile,
     *,
     chunker: "BaseChunker",  # noqa: F821
@@ -315,12 +349,12 @@ def _embed_doc(
     dim: int,
     artifacts_root: Path,
 ) -> list[EmbeddedChunk]:
-    page_chunks = list(_page_chunks(doc, chunker, md_converter, artifacts_root))
-    if not page_chunks:
+    chunks = list(page_chunks(doc, chunker, md_converter, artifacts_root))
+    if not chunks:
         return []
     # embed chunks with their headings for context, but only store the chunk text
-    texts = [chunker.contextualize(chunk) for _, chunk in page_chunks]
-    embeddings = embedder.embed(texts, dim)
+    texts = [chunker.contextualize(chunk) for _, chunk in chunks]
+    embeddings = await embedder.embed(texts, dim)
     return [
         EmbeddedChunk(
             doc_id=doc.doc_id,
@@ -334,12 +368,12 @@ def _embed_doc(
             embedding=embedding,
         )
         for chunk_i, ((page, chunk), embedding) in enumerate(
-            zip(page_chunks, embeddings, strict=True)
+            zip(chunks, embeddings, strict=True)
         )
     ]
 
 
-def _page_chunks(
+def page_chunks(
     doc: ProcessedFile,
     chunker: "BaseChunker",  # noqa: F821
     md_converter: "DocumentConverter",  # noqa: F821
@@ -347,7 +381,7 @@ def _page_chunks(
 ) -> Iterator[tuple[int, "BaseChunk"]]:  # noqa: F821
     content = _fallback_content(doc)
     if content is not None:
-        for chunk in _chunk_text(content, chunker):
+        for chunk in chunk_text(content, chunker):
             yield 0, chunk
         return
     for page, md in read_structure_pages(doc, artifacts_root):
@@ -361,14 +395,19 @@ def _fallback_content(doc: ProcessedFile) -> str | None:
     return None
 
 
-def _chunk_text(
+def chunk_text(
     text: str,
     chunker: "BaseChunker",  # noqa: F821
+    sep_pattern: str | None = _PARAGRAPH_SEP,
 ) -> Iterator["BaseChunk"]:  # noqa: F821
     from docling_core.types.doc import DocItemLabel, DoclingDocument  # noqa: PLC0415
 
     dl_doc = DoclingDocument(name="content")
-    paragraphs = (p.strip() for p in _PARAGRAPH_SEP.split(text))
+    if sep_pattern is not None:
+        pattern = _compile_pattern(sep_pattern)
+        paragraphs = (p.strip() for p in pattern.split(text))
+    else:
+        paragraphs = [text]
     for paragraph in paragraphs:
         if paragraph:
             dl_doc.add_text(label=DocItemLabel.TEXT, text=paragraph)
@@ -508,3 +547,8 @@ async def _fetch_contents(
     for hit in res[HITS][HITS]:
         contents[hit[ID_]] = hit[SOURCE].get(DOC_CONTENT)
     return contents
+
+
+@cache
+def _compile_pattern(p: str) -> re.Pattern:
+    return re.compile(p)

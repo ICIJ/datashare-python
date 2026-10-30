@@ -1,24 +1,16 @@
-import asyncio
-import faulthandler
-import logging
-import multiprocessing
-import shutil
 from asyncio import AbstractEventLoop
-from collections.abc import AsyncGenerator, Generator, Sequence
-from contextlib import AbstractAsyncContextManager, asynccontextmanager
 from multiprocessing import Event
 from pathlib import Path
 
 import aiohttp
+import asyncio
+import faulthandler
+import logging
+import multiprocessing
 import pytest
-from elasticsearch._async.helpers import async_streaming_bulk
-from icij_common.es import DOC_ROOT_ID, ES_DOCUMENT_TYPE, ID, ESClient
-from icij_common.test_utils import reset_env  # noqa: F401
-from pytest_asyncio import is_async_test
-from temporalio import workflow
-from temporalio.runtime import PrometheusConfig, Runtime, TelemetryConfig
-from temporalio.service import RPCError, RPCStatusCode
-
+import shutil
+from collections.abc import AsyncGenerator, Generator, Sequence
+from contextlib import AbstractAsyncContextManager, asynccontextmanager
 from datashare_python.config import (
     DatashareClientConfig,
     LogFormat,
@@ -32,6 +24,17 @@ from datashare_python.task_client import DatashareTaskClient
 from datashare_python.types_ import TemporalClient
 from datashare_python.utils import PYDANTIC_DATA_CONVERTER, activity_defn
 from datashare_python.worker import create_worker_id, worker_context
+from icij_common.es import DOC_ROOT_ID, ESClient, ES_DOCUMENT_TYPE, ID
+from icij_common.test_utils import reset_env  # noqa: F401
+from pytest_asyncio import is_async_test
+from temporalio import workflow
+from temporalio.runtime import PrometheusConfig, Runtime, TelemetryConfig
+from temporalio.service import RPCError, RPCStatusCode
+
+try:
+    from elasticsearch._async.helpers import async_streaming_bulk
+except ImportError:
+    from elasticsearch.helpers import async_streaming_bulk
 
 logger = logging.getLogger(__name__)
 
