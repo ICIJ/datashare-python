@@ -2,7 +2,6 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import Any, ClassVar
 
-from constants import CHUNK_DOC_ID, CHUNK_INDEX
 from datashare_python.objects import (
     ArtifactType,
     DatashareModel,
@@ -22,6 +21,8 @@ from extract_core import PipelineBySize, PipelineConfig, Status
 from pydantic import Field, model_validator
 
 from extract_worker.constants import DEFAULT_EMBEDDING_DIM, DEFAULT_EMBEDDING_MODEL
+
+from .constants import CHUNK_DOC_ID, CHUNK_INDEX
 
 DocumentSearchQuery = dict[str, Any]
 DocId = str
