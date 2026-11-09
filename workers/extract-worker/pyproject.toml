@@ -9,13 +9,14 @@ authors = [
 readme = "README.md"
 requires-python = ">=3.13,<3.15"
 dependencies = [
-  "datashare-python~=0.12.12",
-  "extract-core==0.12.2",
+  "datashare-python~=0.12.13",
+  "extract-core==0.12.3",
+  "icij-common[elasticsearch-8]==0.9.6",
 ]
 
 [project.optional-dependencies]
 base = [
-  "extract-python[docling,marker,liteparse]==0.12.2",
+  "extract-python[docling,marker,liteparse]==0.12.3",
   "opencv-python-headless==4.11.0.86",
   # required by jina-embeddings-v5 remote code
   "peft~=0.18",
@@ -30,14 +31,18 @@ gpu = [
   "torchvision==0.26.0+cu129; sys_platform == 'linux'",
 ]
 docling-gpu = [
-  "extract-python[docling-gpu]==0.12.2",
+  "extract-python[docling-gpu]==0.12.3",
 ]
 flash-attn = [
   "flash-attn==2.8.3.post1",
 ]
 mineru = [
-  "extract-python[mineru]==0.12.2",
+  "extract-python[mineru]==0.12.3",
   "opencv-python-headless==4.11.0.86"
+]
+cli = [
+  "elasticsearch==8.19.3",
+  "questionary==2.1.1",
 ]
 
 [project.entry-points."datashare.workflows"]
@@ -54,7 +59,7 @@ worker_config_cls = "extract_worker.config:WORKER_CONFIG_CLS"
 
 [dependency-groups]
 dev = [
-  "extract-python[docling]==0.12.2",
+  "extract-python[docling]==0.12.3",
   "peft>=0.18.1",
   "black>=26.1.0",
   "nest-asyncio>=1.6.0",
@@ -64,7 +69,7 @@ dev = [
   "pytest~=8.1",
   "pytest-asyncio~=0.24",
   "pytest-timeout==2.4.0",
-  "ruff==0.15.2",
+  "ruff==0.16.1",
   "typing-extensions>=4.15.0",
 ]
 
@@ -123,6 +128,8 @@ prerelease = "if-necessary"
 [tool.uv.extra-build-dependencies]
 flash-attn = ["torch"]
 
+[tool.ruff]
+extend = "../../qa/ruff.toml"
 
 [build-system]
 requires = ["hatchling", "uv-dynamic-versioning"]

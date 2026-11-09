@@ -3,22 +3,21 @@ services:
   # shared services
   ############################
   elasticsearch:
-    image: elasticsearch:${ELASTICSEARCH_VERSION:-7.17.28}
+    image: elasticsearch:${ELASTICSEARCH_VERSION:-8.19.23}
     container_name: elasticsearch
     environment:
       - cluster.name=datashare
-      - cluster.routing.allocation.disk.threshold_enabled=true
-      - cluster.routing.allocation.disk.watermark.low=512mb
-      - cluster.routing.allocation.disk.watermark.high=256mb
-      - cluster.routing.allocation.disk.watermark.flood_stage=128mb
+      - cluster.routing.allocation.disk.threshold_enabled=false
+      - cluster.routing.allocation.disk.watermark.low=3mb
+      - cluster.routing.allocation.disk.watermark.high=2mb
+      - cluster.routing.allocation.disk.watermark.flood_stage=1mb
       - discovery.type=single-node
-      - discovery.zen.minimum_master_nodes=1
       - xpack.license.self_generated.type=basic
       - xpack.security.enabled=false
       - http.cors.enabled=true
-      - http.cors.allow-origin=*
+      - http.cors.allow-origin="*"
       - http.cors.allow-methods=OPTIONS, HEAD, GET, POST, PUT, DELETE
-      - ES_JAVA_OPTS=-Xms256m -Xmx256m
+      - ES_JAVA_OPTS=-Xmx2g -Xmx6g
     healthcheck:
       test: [ "CMD-SHELL", "curl --silent --fail elasticsearch:9200/_cluster/health || exit 1" ]
       interval: 2s
@@ -27,8 +26,6 @@ services:
       retries: 10
     ports:
       - "9200:9200"
-    volumes:
-      - elasticsearch-data:/var/lib/elasticsearch/data
     networks:
       - datashare-network
 
@@ -47,8 +44,6 @@ services:
       retries: 5
     expose:
       - 5432
-    volumes:
-      - postgres-data:/var/lib/postgresql
     networks:
       - datashare-network
 
@@ -62,8 +57,6 @@ services:
       retries: 5
     ports:
       - "6379:6379"
-    volumes:
-      - redis-data:/data
     networks:
       - datashare-network
 

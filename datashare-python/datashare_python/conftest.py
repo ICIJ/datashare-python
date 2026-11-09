@@ -1,4 +1,5 @@
 import asyncio
+import contextlib
 import faulthandler
 import logging
 import multiprocessing
@@ -9,9 +10,9 @@ from contextlib import AbstractAsyncContextManager, asynccontextmanager
 from multiprocessing import Event
 from pathlib import Path
 
-import aiohttp
 import pytest
-from elasticsearch._async.helpers import async_streaming_bulk
+from aiohttp.helpers import encode_basic_auth
+from elasticsearch import NotFoundError
 from icij_common.es import DOC_ROOT_ID, ES_DOCUMENT_TYPE, ID, ESClient
 from icij_common.test_utils import reset_env  # noqa: F401
 from pytest_asyncio import is_async_test
@@ -21,6 +22,7 @@ from temporalio.service import RPCError, RPCStatusCode
 
 from datashare_python.config import (
     DatashareClientConfig,
+    ESClientConfig,
     LogFormat,
     LoggingConfig,
     TemporalClientConfig,
@@ -32,6 +34,11 @@ from datashare_python.task_client import DatashareTaskClient
 from datashare_python.types_ import TemporalClient
 from datashare_python.utils import PYDANTIC_DATA_CONVERTER, activity_defn
 from datashare_python.worker import create_worker_id, worker_context
+
+try:
+    from elasticsearch._async.helpers import async_streaming_bulk
+except ImportError:
+    from elasticsearch.helpers import async_streaming_bulk
 
 logger = logging.getLogger(__name__)
 
@@ -45,22 +52,89 @@ _DEFAULT_BROKER_URL = (
     f"amqp://guest:guest@{RABBITMQ_TEST_HOST}:{RABBITMQ_TEST_PORT}/"
     f"{RABBITMQ_DEFAULT_VHOST}"
 )
-_DEFAULT_AUTH = aiohttp.BasicAuth(login="guest", password="guest", encoding="utf-8")
+_DEFAULT_AUTH = encode_basic_auth(login="guest", password="guest", encoding="utf-8")
 
 TEST_PROJECT = "test-project"
 DS_URL = "https://datashare.org"
 
+_SETTINGS = {
+    "number_of_replicas": 0,
+    "analysis": {
+        "analyzer": {
+            "path_analyzer": {"type": "custom", "tokenizer": "path_tokenizer"},
+            "path_parts_analyzer": {
+                "type": "custom",
+                "tokenizer": "path_parts_tokenizer",
+                "filter": ["lowercase"],
+            },
+            "folding": {
+                "type": "custom",
+                "tokenizer": "standard",
+                "filter": ["lowercase", "asciifolding"],
+            },
+        },
+        "tokenizer": {
+            "path_tokenizer": {
+                "type": "path_hierarchy",
+                "delimiter": "/",
+                "replacement": "/",
+                "buffer_size": 1024,
+                "reverse": False,
+                "skip": 0,
+            },
+            "path_parts_tokenizer": {
+                "type": "pattern",
+                "pattern": "[/\\\\. ]+",
+                "flags": "",
+                "group": -1,
+            },
+        },
+        "normalizer": {
+            "keyword_lowercase": {"type": "custom", "filter": ["lowercase"]}
+        },
+    },
+}
 _INDEX_BODY = {
+    "settings": _SETTINGS,
     "mappings": {
         "properties": {
             "type": {"type": "keyword"},
             "language": {"type": "keyword"},
             "documentId": {"type": "keyword"},
+            "rootDocument": {"type": "keyword"},
             "join": {"type": "join", "relations": {"Document": "NamedEntity"}},
             "contentType": {"type": "keyword"},
-            "content": {"type": "text"},
+            "content": {
+                "type": "text",
+                "index_options": "offsets",
+                "analyzer": "folding",
+            },
         }
-    }
+    },
+}
+_EMBEDDING_INDEX_BODY = {
+    "settings": _SETTINGS,
+    "mappings": {
+        "dynamic": "strict",
+        "properties": {
+            "chunkIndex": {"type": "integer"},
+            "id": {"type": "keyword"},
+            "docId": {"type": "keyword"},
+            "embedding": {
+                "type": "dense_vector",
+                "dims": 64,
+                "index": True,
+                "similarity": "cosine",
+                "index_options": {"type": "bbq_hnsw"},
+            },
+            "headings": {"type": "text"},
+            "model": {"type": "keyword"},
+            "page": {"type": "integer"},
+            "project": {"type": "keyword"},
+            "rootDocument": {"type": "keyword"},
+            "text": {"type": "text", "index_options": "offsets", "analyzer": "folding"},
+        },
+    },
 }
 
 
@@ -90,16 +164,15 @@ class MockedWorkflow:
 
 @pytest.fixture(scope="session")
 def test_worker_config() -> WorkerConfig:
-    logging_config = LoggingConfig(
-        format=LogFormat.DEFAULT,
-        loggers={
-            "datashare_python": "DEBUG",
-            "icij_common": "DEBUG",
-            "worker_template": "DEBUG",
-        },
-    )
+    loggers = {
+        "datashare_python": "DEBUG",
+        "icij_common": "DEBUG",
+        "worker_template": "DEBUG",
+    }
+    logging_config = LoggingConfig(format=LogFormat.DEFAULT, loggers=loggers)
     return WorkerConfig(
         logging=logging_config,
+        elasticsearch=ESClientConfig(default_page_size=1),
         datashare=DatashareClientConfig(url="http://localhost:8080"),
         temporal=TemporalClientConfig(host="localhost:7233"),
     )
@@ -114,17 +187,27 @@ def test_worker_config_path(test_worker_config: WorkerConfig, tmpdir: Path) -> P
 
 @pytest.fixture(scope="session")
 async def test_es_client_session(test_worker_config: WorkerConfig) -> ESClient:
+    embedding_index = f"{TEST_PROJECT}-embeddings"
     es = test_worker_config.to_es_client()
-    await es.indices.delete(index="_all")
+    with contextlib.suppress(NotFoundError):
+        await es.indices.delete(index=TEST_PROJECT)
+    with contextlib.suppress(NotFoundError):
+        await es.indices.delete(index=embedding_index)
     await es.indices.create(index=TEST_PROJECT, body=_INDEX_BODY)
+    await es.indices.create(index=embedding_index, body=_EMBEDDING_INDEX_BODY)
     return es
 
 
 @pytest.fixture
 async def test_es_client(test_es_client_session: ESClient) -> ESClient:
+    embedding_index = f"{TEST_PROJECT}-embeddings"
     es = test_es_client_session
-    await es.indices.delete(index="_all")
+    with contextlib.suppress(NotFoundError):
+        await es.indices.delete(index=TEST_PROJECT)
+    with contextlib.suppress(NotFoundError):
+        await es.indices.delete(index=f"{TEST_PROJECT}-embeddings")
     await es.indices.create(index=TEST_PROJECT, body=_INDEX_BODY)
+    await es.indices.create(index=embedding_index, body=_EMBEDDING_INDEX_BODY)
     return es
 
 

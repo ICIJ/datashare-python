@@ -64,18 +64,8 @@ from icij_common.iter_utils import async_batches
 from pydantic import TypeAdapter
 from temporalio import activity
 
-from .config import EmbeddingWorkerConfig, ExtractWorkerConfig
+from .config import ExtractWorkerConfig
 from .dependencies import lifespan_embedder_cache
-from .embeddings import (
-    HFEmbedder,
-    build_embedding_doc_query,
-    embed_documents_act,
-    ensure_embeddings_index,
-    index_embeddings_act,
-    make_chunker,
-    make_md_converter,
-    with_embeddable_content,
-)
 from .objects import (
     DocId,
     DocumentSearchQuery,
@@ -198,6 +188,8 @@ class MarkdownExtract(ActivityWithProgress):
 class DocumentEmbedding(ActivityWithProgress):
     @activity_defn(name=Activity.CHECK_EMBEDDINGS_INDEX)
     async def check_embeddings_index(self, project: str, dim: int) -> None:
+        from .embeddings import ensure_embeddings_index  # noqa: PLC0415
+
         es_client = lifespan_es_client()
         w_config = cast(ExtractWorkerConfig, lifespan_worker_config())
         index = w_config.embedding.index_name(project)
@@ -239,6 +231,11 @@ class DocumentEmbedding(ActivityWithProgress):
         *,
         progress: AsyncProgressRateHandler | None = None,
     ) -> EmbedBatchResult:
+        from .embeddings import (  # noqa: PLC0415
+            embed_documents_act,
+            load_embedding_resources,
+        )
+
         w_config = cast(ExtractWorkerConfig, lifespan_worker_config())
         embedding_config = w_config.embedding
         workdir = w_config.paths.workdir
@@ -249,7 +246,7 @@ class DocumentEmbedding(ActivityWithProgress):
         cache = lifespan_embedder_cache()
         cache_key = f"{config_cache_key(embedding_config)}-{model}@{model_revision}"
         factory = partial(
-            _load_embedding_resources, embedding_config, model, model_revision
+            load_embedding_resources, embedding_config, model, model_revision
         )
         with cache.get_or_cache_resource(cache_key, factory) as resources:
             chunker, md_converter, embedder = resources
@@ -275,6 +272,8 @@ class DocumentEmbedding(ActivityWithProgress):
     async def index_embeddings(
         self, chunks: Path, n_chunks_by_doc: dict[DocId, int], project: str, dim: int
     ) -> int:
+        from .embeddings import index_embeddings_act  # noqa: PLC0415
+
         es_client = lifespan_es_client()
         w_config = cast(ExtractWorkerConfig, lifespan_worker_config())
         embedding_config = w_config.embedding
@@ -290,19 +289,6 @@ class DocumentEmbedding(ActivityWithProgress):
         )
         logger.debug("indexed %s chunks !", n_indexed)
         return n_indexed
-
-
-def _load_embedding_resources(
-    config: EmbeddingWorkerConfig, model: str, model_revision: str | None
-) -> tuple["HybridChunker", "DocumentConverter", HFEmbedder]:  # noqa: F821
-    logger.debug("loading embedding model %s (revision %s)...", model, model_revision)
-    resources = (
-        make_chunker(config, model, model_revision),
-        make_md_converter(),
-        HFEmbedder(config, model, model_revision),
-    )
-    logger.debug("embedding model loaded !")
-    return resources
 
 
 # Sort documents aiming for consistent processing type in a batch
@@ -346,6 +332,11 @@ async def create_embedding_batches_act(
     target_n_docs_per_task: int,
     es_client: ESClient,
 ) -> AsyncIterable[Path]:
+    from embeddings import (  # noqa: PLC0415
+        build_embedding_doc_query,
+        with_embeddable_content,
+    )
+
     query = build_embedding_doc_query(docs)
     docs = _search_docs(es_client, project, query)
     batches = with_embeddable_content(

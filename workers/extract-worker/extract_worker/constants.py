@@ -8,7 +8,13 @@ MARKDOWN_DIRNAME = "markdown"
 EMBEDDING_METADATA_KEY = "extract.embed"
 DEFAULT_EMBEDDING_MODEL = "jinaai/jina-embeddings-v5-text-nano"
 DEFAULT_EMBEDDING_DIM = 768
+DEFAULT_EMBEDDING_MODEL_REVISION = "8a7f00a"
 EMBEDDINGS_INDEX_SUFFIX = "-embeddings"
+CHUNK_DOC_ID = "docId"
+CHUNK_INDEX = "chunkIndex"
+CHUNK_ID = "id"
+CHUNK_EMBEDDING = "embedding"
+CHUNK_TEXT = "text"
 
 
 class TaskQueue(StrEnum):

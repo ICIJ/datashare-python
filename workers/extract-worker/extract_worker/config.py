@@ -3,7 +3,9 @@ from copy import deepcopy
 from datetime import timedelta
 
 from datashare_python.config import (
+    DS_WORKER_SETTINGS_CONFIG,
     ActivityTimeouts,
+    ESClientConfig,
     LoggingConfig,
     ResourceCacheConfig,
     WorkerConfig,
@@ -23,7 +25,7 @@ from extract_core import (
     PipelineType,
 )
 from extract_core.docling_ import InferenceSettings
-from icij_common.pydantic_utils import safe_copy
+from icij_common.pydantic_utils import ICIJSettings, safe_copy
 from pydantic import Field
 from pydantic.fields import FieldInfo
 
@@ -197,6 +199,10 @@ class MarkdownExtractWorkerConfig(BaseModel):
     )
 
 
+def index_name(*, project: str, embedding_index_suffix: str) -> str:
+    return f"{project}{embedding_index_suffix}"
+
+
 class EmbeddingWorkerConfig(BaseModel):
     device: TorchDevice = Field(default=TorchDevice.CPU)
     task: str = "retrieval"
@@ -213,7 +219,7 @@ class EmbeddingWorkerConfig(BaseModel):
     )
 
     def index_name(self, project: str) -> str:
-        return f"{project}{self.index_suffix}"
+        return index_name(project=project, embedding_index_suffix=self.index_suffix)
 
 
 class ExtractTimeouts(BaseModel):
@@ -247,6 +253,10 @@ class ExtractWorkerConfig(WorkerConfig):
     timeouts: ExtractTimeouts = Field(default_factory=ExtractTimeouts)
 
     paths: WorkerPaths
+
+
+class ESClientSetting(ICIJSettings, ESClientConfig):
+    model_config = DS_WORKER_SETTINGS_CONFIG
 
 
 WORKER_CONFIG_CLS = ExtractWorkerConfig

@@ -7,8 +7,10 @@ from pathlib import Path
 import datashare_python
 import pytest
 from _pytest.tmpdir import TempPathFactory
+from constants import DEFAULT_EMBEDDING_MODEL, DEFAULT_EMBEDDING_MODEL_REVISION
 from datashare_python.config import (
     DatashareClientConfig,
+    ESClientConfig,
     LogFormat,
     LoggingConfig,
     TemporalClientConfig,
@@ -18,6 +20,7 @@ from datashare_python.conftest import (  # noqa: F401
     clear_dirs,
     dev_worker_context,
     index_docs,
+    indexed_docs,
     pytest_collection_modifyitems,
     test_es_client,
     test_es_client_session,
@@ -37,9 +40,13 @@ from datashare_python.objects import (
 )
 from datashare_python.types_ import TemporalClient
 from datashare_python.utils import artifacts_dir
+from docling.document_converter import DocumentConverter
+from docling_core.transforms.chunker import HybridChunker
 from extract_core import BatchConcurrencySettings, DoclingSettings
 from extract_core.docling_ import InferenceSettings
 from extract_core.objects import SupportedExt
+from icij_common.es import ESClient
+
 from extract_worker.activities import Activity
 from extract_worker.config import (
     DoclingWorkerConfig,
@@ -49,11 +56,13 @@ from extract_worker.config import (
     MarkdownInferenceWorkerConfig,
 )
 from extract_worker.constants import TaskQueue
-from icij_common.es import ESClient
-
+from extract_worker.embeddings import HFEmbedder, make_chunker, make_md_converter
 from tests import DOC_3_CONTENT, DOCS_PATH, PAGES, write_structure
 
 mimetypes.init()
+
+
+TEST_EMBEDDING_DIM = 64
 
 
 @pytest.fixture(scope="session")
@@ -73,7 +82,9 @@ def test_worker_config(tmp_path_factory: TempPathFactory) -> ExtractWorkerConfig
         format=LogFormat.DEFAULT,
     )
 
+    es_config = ESClientConfig(default_page_size=1)
     return ExtractWorkerConfig(
+        elasticsearch=es_config,
         logging=logging_config,
         markdown=MarkdownExtractWorkerConfig(
             inference=MarkdownInferenceWorkerConfig(
@@ -211,7 +222,7 @@ def doc_with_structure(
 async def workflows_worker(
     test_worker_config: ExtractWorkerConfig,  # noqa: F811
     test_temporal_client_session: TemporalClient,  # noqa: F811
-) -> AsyncGenerator[None, None]:
+) -> AsyncGenerator[None]:
     client = test_temporal_client_session
     worker_id = f"test-extract-workflows-worker-{uuid.uuid4()}"
     task_queue = TaskQueue.WORKFLOWS
@@ -231,7 +242,7 @@ async def workflows_worker(
 async def io_worker(
     test_worker_config: ExtractWorkerConfig,  # noqa: F811
     test_temporal_client_session: TemporalClient,  # noqa: F811
-) -> AsyncGenerator[None, None]:
+) -> AsyncGenerator[None]:
     client = test_temporal_client_session
     worker_id = f"test-extract-io-worker-{uuid.uuid4()}"
     acts = [
@@ -260,7 +271,7 @@ async def io_worker(
 async def md_extract_cpu_worker(
     test_worker_config: ExtractWorkerConfig,  # noqa: F811
     test_temporal_client_session: TemporalClient,  # noqa: F811
-) -> AsyncGenerator[None, None]:
+) -> AsyncGenerator[None]:
     client = test_temporal_client_session
     worker_id = f"test-extract-cpu-worker-{uuid.uuid4()}"
     acts = [Activity.EXTRACT_MD_CONTENT]
@@ -283,7 +294,7 @@ async def md_extract_cpu_worker(
 async def embed_cpu_worker(
     test_worker_config: ExtractWorkerConfig,  # noqa: F811
     test_temporal_client_session: TemporalClient,  # noqa: F811
-) -> AsyncGenerator[None, None]:
+) -> AsyncGenerator[None]:
     client = test_temporal_client_session
     worker_id = f"test-embed-cpu-worker-{uuid.uuid4()}"
     acts = [Activity.EMBED_DOCUMENTS]
@@ -300,3 +311,32 @@ async def embed_cpu_worker(
     )
     async with worker_ctx:
         yield
+
+
+@pytest.fixture(scope="session")
+def test_embedding_config() -> EmbeddingWorkerConfig:
+    return EmbeddingWorkerConfig()
+
+
+@pytest.fixture(scope="session")
+def test_embedder(test_embedding_config: EmbeddingWorkerConfig) -> HFEmbedder:
+    return HFEmbedder(
+        test_embedding_config,
+        model=DEFAULT_EMBEDDING_MODEL,
+        model_revision=DEFAULT_EMBEDDING_MODEL_REVISION,
+    )
+
+
+@pytest.fixture(scope="session")
+def test_chunker(test_embedding_config: EmbeddingWorkerConfig) -> HybridChunker:
+    return make_chunker(
+        test_embedding_config,
+        model=DEFAULT_EMBEDDING_MODEL,
+        model_revision=DEFAULT_EMBEDDING_MODEL_REVISION,
+        merge_peers=False,
+    )
+
+
+@pytest.fixture(scope="session")
+def test_md_converter() -> DocumentConverter:
+    return make_md_converter()

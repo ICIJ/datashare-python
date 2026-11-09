@@ -12,10 +12,13 @@ from datashare_python.objects import (
 )
 from datashare_python.utils import read_jsonl_as
 from docling_core.transforms.chunker.hierarchical_chunker import HierarchicalChunker
-from extract_worker import embeddings
+from elasticsearch.helpers import async_bulk
+from icij_common.es import HITS, ESClient
+
 from extract_worker.activities import create_embedding_batches_act
 from extract_worker.config import ExtractWorkerConfig
 from extract_worker.embeddings import (
+    Embedder,
     EmbeddingSizeMismatch,
     MissingEmbeddingsIndex,
     build_embedding_doc_query,
@@ -26,22 +29,19 @@ from extract_worker.embeddings import (
     make_md_converter,
     read_structure_pages,
 )
-from extract_worker.objects import (
-    DocId,
-    DocumentSearchQuery,
-    EmbeddedChunk,
-)
-from icij_common.es import HITS, ESClient
-
+from extract_worker.objects import DocId, DocumentSearchQuery, EmbeddedChunk, Vector
 from tests import DOC_3_CONTENT, PAGE_SEP, PAGES
 
 _DIM = 4
 
 
-class _FakeEmbedder:
+class _FakeEmbedder(Embedder):
     model = "fake-model"
 
-    def embed(self, texts: list[str], dim: int) -> list[list[float]]:
+    def __init__(self, config: None = None) -> None:
+        self._config = config
+
+    async def embed(self, texts: list[str], dim: int) -> list[Vector]:
         return [[float(len(t))] * dim for t in texts]
 
 
@@ -236,9 +236,7 @@ async def test_index_embeddings_act(test_es_client: ESClient, tmp_path: Path) ->
 
     # When
     await index_embeddings_act(stale, {"doc-0": 3}, bulk_size=2, **kwargs)
-    with patch(
-        "extract_worker.embeddings.async_bulk", wraps=embeddings.async_bulk
-    ) as bulk:
+    with patch("extract_worker.embeddings.async_bulk", wraps=async_bulk) as bulk:
         n_indexed = await index_embeddings_act(
             chunks_path, {"doc-0": 2, "doc-1": 1}, bulk_size=2, **kwargs
         )

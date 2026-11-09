@@ -1,6 +1,8 @@
+from collections.abc import Sequence
 from pathlib import Path
 from typing import Any, ClassVar
 
+from constants import CHUNK_DOC_ID, CHUNK_INDEX
 from datashare_python.objects import (
     ArtifactType,
     DatashareModel,
@@ -17,12 +19,13 @@ from extract_core import PipelineBySize, PipelineConfig, Status
 
 # Import the config class from extract python otherwise the
 # ExtractPipelineConfig.__subclasses__ list might be incomplete
-from pydantic import Field
+from pydantic import Field, model_validator
 
 from extract_worker.constants import DEFAULT_EMBEDDING_DIM, DEFAULT_EMBEDDING_MODEL
 
 DocumentSearchQuery = dict[str, Any]
 DocId = str
+Vector = Sequence[float | int]
 
 
 class MarkdownExtractArgs(TaskArgs):
@@ -92,14 +95,23 @@ class EmbeddedChunk(DatashareModel):
     headings: list[str] | None = None
     model: str
     embedding: list[float]
+    id: str | None = None
 
-    @property
-    def es_id(self) -> str:
-        return f"{self.doc_id}-{self.chunk_index}"
+    @model_validator(mode="before")
+    @classmethod
+    def _add_es_id(cls, v: Any) -> Any:
+        if isinstance(v, dict):
+            doc_id = v.get(CHUNK_DOC_ID, v["doc_id"])
+            chunk_index = v.get(CHUNK_INDEX, v["chunk_index"])
+            v["id"] = f"{doc_id}-{chunk_index}"
+        else:
+            doc_id = v.doc_id
+            chunk_index = v.chunk_index
+            v.id = f"{doc_id}-{chunk_index}"
+        return v
 
 
-class EmbeddingError(ProcessingError[ProcessedFile]):
-    pass
+class EmbeddingError(ProcessingError[ProcessedFile]): ...
 
 
 class EmbeddingResponse(DatashareModel):
