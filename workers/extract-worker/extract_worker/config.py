@@ -3,7 +3,6 @@ from copy import deepcopy
 from datetime import timedelta
 
 from datashare_python.config import (
-    DS_WORKER_SETTINGS_CONFIG,
     ActivityTimeouts,
     ESClientConfig,
     LoggingConfig,
@@ -28,12 +27,9 @@ from extract_core.docling_ import InferenceSettings
 from icij_common.pydantic_utils import ICIJSettings, safe_copy
 from pydantic import Field
 from pydantic.fields import FieldInfo
+from pydantic_settings import SettingsConfigDict
 
-from .constants import (
-    EMBEDDINGS_INDEX_SUFFIX,
-    TaskQueue,
-    TorchDevice,
-)
+from .constants import EMBEDDINGS_INDEX_SUFFIX, TaskQueue, TorchDevice
 
 loggers = {"datashare_python": "INFO", "extract_python": "INFO", "extract_core": "INFO"}
 _DEFAULT_LOGGING_CONFIG = LoggingConfig(loggers=loggers)
@@ -256,7 +252,11 @@ class ExtractWorkerConfig(WorkerConfig):
 
 
 class ESClientSetting(ICIJSettings, ESClientConfig):
-    model_config = DS_WORKER_SETTINGS_CONFIG
+    model_config = SettingsConfigDict(
+        env_prefix="DS_ES__",
+        env_nested_delimiter="__",
+        nested_model_default_partial_update=True,
+    )
 
 
 WORKER_CONFIG_CLS = ExtractWorkerConfig

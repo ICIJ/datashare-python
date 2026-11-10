@@ -1,3 +1,4 @@
+import contextlib
 from pathlib import Path
 from unittest.mock import patch
 
@@ -12,6 +13,7 @@ from datashare_python.objects import (
 )
 from datashare_python.utils import read_jsonl_as
 from docling_core.transforms.chunker.hierarchical_chunker import HierarchicalChunker
+from elasticsearch import NotFoundError
 from elasticsearch.helpers import async_bulk
 from icij_common.es import HITS, ESClient
 
@@ -33,6 +35,14 @@ from extract_worker.objects import DocId, DocumentSearchQuery, EmbeddedChunk, Ve
 from tests import DOC_3_CONTENT, PAGE_SEP, PAGES
 
 _DIM = 4
+
+
+@pytest.fixture
+async def tiny_embedding_index(test_es_client: ESClient) -> None:
+    index = f"{TEST_PROJECT}-embeddings"
+    with contextlib.suppress(NotFoundError):
+        await test_es_client.indices.delete(index=index)
+    await test_es_client.indices.create(index=index, body=embeddings_index_body(_DIM))
 
 
 class _FakeEmbedder(Embedder):
@@ -114,6 +124,7 @@ async def test_embed_documents_act(
     assert all(c.model == "fake-model" for c in chunks)
 
 
+@pytest.mark.usefixtures("tiny_embedding_index")
 async def test_embed_documents_act_should_fallback_to_content(
     doc_3: Document, test_worker_config: ExtractWorkerConfig, tmp_path: Path
 ) -> None:
@@ -223,6 +234,7 @@ def _chunk(doc_id: str, chunk_index: int) -> EmbeddedChunk:
 
 
 @pytest.mark.integration
+@pytest.mark.usefixtures("tiny_embedding_index")
 async def test_index_embeddings_act(test_es_client: ESClient, tmp_path: Path) -> None:
     # Given
     index = f"{TEST_PROJECT}-embeddings"
@@ -231,14 +243,21 @@ async def test_index_embeddings_act(test_es_client: ESClient, tmp_path: Path) ->
     chunks_path = tmp_path / "chunks.jsonl"
     chunks = [_chunk("doc-0", 0), _chunk("doc-0", 1), _chunk("doc-1", 0)]
     chunks_path.write_text("\n".join(c.model_dump_json() for c in chunks))
-    await test_es_client.indices.create(index=index, body=embeddings_index_body(_DIM))
-    kwargs = {"es_client": test_es_client, "index": index, "dim": _DIM}
 
     # When
-    await index_embeddings_act(stale, {"doc-0": 3}, bulk_size=2, **kwargs)
+    chunks = {"doc-0": 3}
+    await index_embeddings_act(
+        stale, chunks, bulk_size=2, es_client=test_es_client, dim=_DIM, index=index
+    )
     with patch("extract_worker.embeddings.async_bulk", wraps=async_bulk) as bulk:
+        chunks = {"doc-0": 2, "doc-1": 1}
         n_indexed = await index_embeddings_act(
-            chunks_path, {"doc-0": 2, "doc-1": 1}, bulk_size=2, **kwargs
+            chunks_path,
+            chunks,
+            bulk_size=2,
+            es_client=test_es_client,
+            dim=_DIM,
+            index=index,
         )
 
     # Then
@@ -258,6 +277,7 @@ async def test_index_embeddings_act(test_es_client: ESClient, tmp_path: Path) ->
 
 
 @pytest.mark.integration
+@pytest.mark.usefixtures("tiny_embedding_index")
 async def test_index_embeddings_act_should_raise_for_missing_index(
     test_es_client: ESClient, tmp_path: Path
 ) -> None:
@@ -280,6 +300,7 @@ async def test_index_embeddings_act_should_raise_for_missing_index(
 
 
 @pytest.mark.integration
+@pytest.mark.usefixtures("tiny_embedding_index")
 async def test_ensure_embeddings_index(test_es_client: ESClient) -> None:
     # Given
     index = f"{TEST_PROJECT}-embeddings"
@@ -290,13 +311,12 @@ async def test_ensure_embeddings_index(test_es_client: ESClient) -> None:
 
 
 @pytest.mark.integration
+@pytest.mark.usefixtures("tiny_embedding_index")
 async def test_ensure_embeddings_index_should_raise_for_size_mismatch(
     test_es_client: ESClient,
 ) -> None:
     # Given
     index = f"{TEST_PROJECT}-embeddings"
-    await test_es_client.indices.create(index=index, body=embeddings_index_body(_DIM))
-
     # When/Then
     with pytest.raises(EmbeddingSizeMismatch) as exc:
         await ensure_embeddings_index(test_es_client, index, dim=_DIM + 1)
@@ -309,7 +329,7 @@ async def test_ensure_embeddings_index_should_raise_for_missing_vector_field(
     test_es_client: ESClient,
 ) -> None:
     # Given
-    index = f"{TEST_PROJECT}-embeddings"
+    index = f"{TEST_PROJECT}-missing-vector-field"
     body = {"mappings": {"properties": {"text": {"type": "text"}}}}
     await test_es_client.indices.create(index=index, body=body)
 
@@ -327,26 +347,32 @@ async def _indexed_ids(es_client: ESClient, index: str) -> list[str]:
 
 @pytest.mark.integration
 @pytest.mark.parametrize("delete_group_size", [1, 256])
+@pytest.mark.usefixtures("tiny_embedding_index")
 async def test_index_embeddings_act_should_only_replace_embedded_docs_chunks(
     test_es_client: ESClient, tmp_path: Path, delete_group_size: int
 ) -> None:
     # Given
     index = f"{TEST_PROJECT}-embeddings"
-    await test_es_client.indices.create(index=index, body=embeddings_index_body(_DIM))
-    kwargs = {"es_client": test_es_client, "index": index, "dim": _DIM}
     previous = tmp_path / "previous.jsonl"
     previous_chunks = [_chunk("doc-0", 0), _chunk("doc-1", 0), _chunk("doc-2", 0)]
     previous.write_text("\n".join(c.model_dump_json() for c in previous_chunks))
+    chunks = {"doc-0": 1, "doc-1": 1, "doc-2": 1}
     await index_embeddings_act(
-        previous, {"doc-0": 1, "doc-1": 1, "doc-2": 1}, bulk_size=10, **kwargs
+        previous, chunks, es_client=test_es_client, dim=_DIM, bulk_size=10, index=index
     )
     chunks_path = tmp_path / "chunks.jsonl"
     chunks_path.write_text(_chunk("doc-0", 0).model_dump_json())
 
     # When
     with patch("extract_worker.embeddings._DELETE_GROUP_SIZE", delete_group_size):
+        chunks = {"doc-0": 1, "doc-1": 0}
         await index_embeddings_act(
-            chunks_path, {"doc-0": 1, "doc-1": 0}, bulk_size=10, **kwargs
+            chunks_path,
+            chunks,
+            es_client=test_es_client,
+            dim=_DIM,
+            bulk_size=10,
+            index=index,
         )
 
     # Then
@@ -359,22 +385,31 @@ async def test_index_embeddings_act_should_keep_previous_chunks_on_write_failure
 ) -> None:
     # Given
     index = f"{TEST_PROJECT}-embeddings"
-    await test_es_client.indices.create(index=index, body=embeddings_index_body(_DIM))
-    kwargs = {"es_client": test_es_client, "index": index, "dim": _DIM}
     previous = tmp_path / "previous.jsonl"
     previous.write_text(
         "\n".join(_chunk("doc-0", i).model_dump_json() for i in range(2))
     )
-    await index_embeddings_act(previous, {"doc-0": 2}, bulk_size=10, **kwargs)
+    chunks = {"doc-0": 2}
+    await index_embeddings_act(
+        previous, chunks, es_client=test_es_client, dim=_DIM, bulk_size=10, index=index
+    )
     chunks_path = tmp_path / "chunks.jsonl"
     chunks_path.write_text(_chunk("doc-0", 0).model_dump_json())
 
     # When
+    chunks = {"doc-0": 1}
     with (
         patch("extract_worker.embeddings.async_bulk", side_effect=RuntimeError("boom")),
         pytest.raises(RuntimeError),
     ):
-        await index_embeddings_act(chunks_path, {"doc-0": 1}, bulk_size=10, **kwargs)
+        await index_embeddings_act(
+            chunks_path,
+            chunks,
+            bulk_size=10,
+            es_client=test_es_client,
+            dim=_DIM,
+            index=index,
+        )
 
     # Then
     assert await _indexed_ids(test_es_client, index) == ["doc-0-0", "doc-0-1"]

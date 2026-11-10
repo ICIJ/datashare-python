@@ -45,6 +45,7 @@ from extract_core import (
     SupportedExt,
 )
 from icij_common.es import (
+    ASC,
     DOC_CONTENT_TYPE,
     DOC_EXTRACTION_LEVEL,
     DOC_LANGUAGE,
@@ -292,7 +293,7 @@ class DocumentEmbedding(ActivityWithProgress):
 
 
 # Sort documents aiming for consistent processing type in a batch
-_DOC_SORT = [f"{DOC_CONTENT_TYPE}:asc", f"{DOC_LANGUAGE}:asc", "_doc:asc"]
+_DOC_SORT = [{DOC_CONTENT_TYPE: ASC}, {DOC_LANGUAGE: ASC}, {"_doc": ASC}]
 _DOC_CONTENT_SOURCES = [
     DOC_PATH,
     DOC_ROOT_ID,

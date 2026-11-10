@@ -28,7 +28,7 @@ from datashare_python.utils import (
     reports_errors,
     to_raw_async_progress,
 )
-from elasticsearch._async.helpers import async_bulk
+from elasticsearch.helpers import async_bulk
 from icij_common.es import (
     DOC_CONTENT,
     ES_DOCUMENT_TYPE,
@@ -177,9 +177,13 @@ def make_chunker(
         HuggingFaceTokenizer,
     )
 
+    trust_remote_code = model_revision is not None
     # use the embedding model tokenizer so that chunks fit the model context
     tokenizer = HuggingFaceTokenizer.from_pretrained(
-        model, max_tokens=config.max_tokens, revision=model_revision
+        model,
+        max_tokens=config.max_tokens,
+        revision=model_revision,
+        trust_remote_code=trust_remote_code,
     )
     return HybridChunker(tokenizer=tokenizer, merge_peers=merge_peers)
 
@@ -229,12 +233,11 @@ async def embed_documents_act(
     )
     doc_i = 0
     async with async_open(output_path, "w") as f:
-        for res in doc_chunks:
+        async for res in doc_chunks:
             if isinstance(res, EmbeddingError):
-                doc = res.source.doc_id
                 errors.append(res)
             else:
-                doc, chunks = doc
+                doc, chunks = res
                 for chunk in chunks:
                     await f.write(f"{chunk.model_dump_json()}\n")
                 n_chunks += len(chunks)

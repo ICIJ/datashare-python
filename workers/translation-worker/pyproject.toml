@@ -8,7 +8,7 @@ authors = [
   { name = "Lion Summerbell", email = "lsummerbell@icij.org" }
 ]
 readme = "README.md"
-requires-python = ">=3.11.0, <3.13"
+requires-python = ">=3.12.0, <3.13"
 
 dependencies = [
   "datashare-python~=0.12.12",
@@ -56,8 +56,8 @@ datashare-python = { path = "../../datashare-python", editable = true }
 [tool.uv]
 package = true
 exclude-dependencies = [
-    # TODO: put me back when this is solved: https://github.com/argosopentech/argos-translate/pull/521
-    #  "torch",
+  # TODO: put me back when this is solved: https://github.com/argosopentech/argos-translate/pull/521
+  #  "torch",
 ]
 
 [tool.uv-dynamic-versioning]

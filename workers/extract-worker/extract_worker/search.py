@@ -4,11 +4,12 @@ import logging
 from abc import ABC, abstractmethod
 from collections import defaultdict
 from collections.abc import AsyncIterable, Collection, Sequence
+from copy import copy
 from dataclasses import dataclass, field
 from enum import StrEnum
 from functools import partial
 from types import TracebackType
-from typing import TYPE_CHECKING, Any, Self
+from typing import TYPE_CHECKING, Annotated, Any, Literal, Self
 
 from datashare_python.objects import BaseModel, Document
 from elastic_transport._models import DefaultType
@@ -46,12 +47,14 @@ from icij_common.es import (
     VALUE,
     ESClient,
 )
-from pydantic import Field
+from icij_common.pydantic_utils import safe_copy
+from pydantic import Discriminator, Field, Tag
 
 from .constants import (
     CHUNK_DOC_ID,
     CHUNK_EMBEDDING,
     CHUNK_ID,
+    CHUNK_INDEX,
     CHUNK_TEXT,
     DEFAULT_EMBEDDING_DIM,
 )
@@ -126,13 +129,6 @@ class LikeDoc(_ToES):
         text_fields: list[str] | None = None,
         embedding_field: str | None = None,
     ) -> QueryComponent:
-        # TODO: put me back
-        # self._validate_args(
-        #     self.similarity,
-        #     vectors,
-        #     text_fields=text_fields,
-        #     embedding_field=embedding_field,
-        # )
         match self.similarity:
             case SimilarityType.TERM_FREQUENCY:
                 queries = [self._mtl(text_fields, routings)]
@@ -189,12 +185,6 @@ class LikeText(_ToES):
         text_fields: list[str] | None = None,
         embedding_field: str | None = None,
     ) -> QueryComponent:
-        # self._validate_args(
-        #     self.similarity,
-        #     vector,
-        #     text_fields=text_fields,
-        #     embedding_field=embedding_field,
-        # )
         match self.similarity:
             case SimilarityType.TERM_FREQUENCY:
                 queries = [self._mtl(text_fields)]
@@ -246,7 +236,6 @@ class WithTerms(_ToES):
 
 
 class UnlikeDoc(_ToES):
-    # TODO: add support for semantic UnlikeDoc through _get_boostative boosting
     doc_id: str
     weight: float = 1.0
 
@@ -265,7 +254,6 @@ class UnlikeDoc(_ToES):
 
 
 class UnlikeText(_ToES):
-    # TODO: add support for semantic UnlikeText through negative boosting
     text: str
     weight: float = 1.0
 
@@ -289,9 +277,58 @@ class WithoutTerms(_ToES):
         return QueryComponent(must_not=must_not)
 
 
-# TODO: discriminated union ?
-Like = LikeDoc | LikeText | WithTerms
-Unlike = UnlikeDoc | UnlikeText | WithoutTerms
+def _like_discriminator(
+    v: Any,
+) -> Literal["like_doc", "like_text", "with_terms"] | None:
+    if isinstance(v, dict):
+        if "doc_id" in v:
+            return "like_doc"
+        if "text" in v:
+            return "like_text"
+        if "terms" in v:
+            return "with_terms"
+        return None
+    if hasattr(v, "doc_id"):
+        return "like_doc"
+    if hasattr(v, "text"):
+        return "like_text"
+    if hasattr(v, "terms"):
+        return "with_terms"
+    return None
+
+
+def _unlike_discriminator(
+    v: Any,
+) -> Literal["unlike_doc", "unlike_text", "without_terms"] | None:
+    if isinstance(v, dict):
+        if "doc_id" in v:
+            return "unlike_doc"
+        if "text" in v:
+            return "unlike_text"
+        if "terms" in v:
+            return "without_terms"
+        return None
+    if hasattr(v, "doc_id"):
+        return "unlike_doc"
+    if hasattr(v, "text"):
+        return "unlike_text"
+    if hasattr(v, "terms"):
+        return "without_terms"
+    return None
+
+
+Like = Annotated[
+    Annotated[LikeDoc, Tag("like_doc")]
+    | Annotated[LikeText, Tag("like_text")]
+    | Annotated[WithTerms, Tag("with_terms")],
+    Discriminator(_like_discriminator),
+]
+Unlike = Annotated[
+    Annotated[UnlikeDoc, Tag("unlike_doc")]
+    | Annotated[UnlikeText, Tag("unlike_text")]
+    | Annotated[WithoutTerms, Tag("without_terms")],
+    Discriminator(_unlike_discriminator),
+]
 
 
 class SimilarDocSearch(BaseModel):
@@ -438,6 +475,50 @@ class SimilarDocSearch(BaseModel):
     def is_empty(self) -> bool:
         return not (self.like or self.unlike)
 
+    def with_valid_candidates(
+        self,
+        valid: set[str],
+        similarity: SimilarityType = SimilarityType.HYBRID,
+        *,
+        excluded: set[str],
+        valid_weight: int | None = None,
+        excluded_weight: int | None = None,
+    ) -> Self:
+        like_doc = [q for q in self.like if isinstance(q, LikeDoc)]
+        already_included = {q for q in like_doc if q.doc_id}
+        if valid_weight is None:
+            valid_weight = max(
+                (max(q.term_frequency_weight, q.embedding_weight) for q in like_doc),
+                default=1.0,
+            )
+
+        to_add = [doc_id for doc_id in valid if doc_id not in already_included]
+        to_add = [
+            LikeDoc(
+                doc_id=doc_id,
+                term_frequency_weight=valid_weight,
+                embedding_weight=valid_weight,
+                similarity=similarity,
+            )
+            for doc_id in to_add
+        ]
+        updated_like = copy(self.like) + to_add
+        update = {"like": updated_like}
+        if excluded:
+            if excluded_weight is None:
+                excluded_weight = valid_weight
+            already_excluded = {q for q in like_doc if q.doc_id}
+            to_exclude = [
+                doc_id for doc_id in excluded if doc_id not in already_excluded
+            ]
+            to_exclude = [
+                UnlikeDoc(doc_id=doc_id, weight=excluded_weight)
+                for doc_id in to_exclude
+            ]
+            updated_unlike = copy(self.unlike) + to_exclude
+            update["unlike"] = updated_unlike
+        return safe_copy(self, update)
+
 
 def _sum_boosts(should: Query | list[Query]) -> float:
     if isinstance(should, DefaultType):
@@ -453,7 +534,7 @@ def _get_boost(q: dict) -> float:
         return boost
     comps = [v for v in q.values() if isinstance(v, dict)]
     comps += [
-        v for l in q.values() if isinstance(l, list) for v in l if isinstance(v, dict)
+        v for i in q.values() if isinstance(i, list) for v in i if isinstance(v, dict)
     ]
     boost = sum(_get_boost(v) for v in comps)
     return boost
@@ -565,9 +646,7 @@ class ESRetriever(Retriever):
             track_scores=True,
         )
         # Fetch mix of docs and chunks until we have enough results
-        while len(similar_docs) < top_k:
-            # TODO: remove log
-            logger.info("ES query: %s", query)
+        while len(scores) < top_k:
             if search_after is not None:
                 query[SEARCH_AFTER] = search_after
             has_new_results = False
@@ -639,12 +718,14 @@ class ESRetriever(Retriever):
         to_retrieve = to_vectorize.union(to_route)
         if not to_retrieve:
             return
-        # TODO: ideally we should use routing...
         # TODO: poll concurrently
         query = Bool(should=[Term(CHUNK_DOC_ID, doc_id) for doc_id in to_retrieve])
         query = {QUERY: query.to_dict()}
         search = self._client.poll_search_pages(
-            query, CHUNK_ID, index=self._chunk_index, source=self._CHUNKS_SOURCE
+            query,
+            [CHUNK_DOC_ID, CHUNK_INDEX],
+            index=self._chunk_index,
+            source=self._CHUNKS_SOURCE,
         )
         async for page in search:
             for chunk in page[HITS][HITS]:

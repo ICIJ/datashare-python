@@ -24,6 +24,7 @@ with workflow.unsafe.imports_passed_through():
     from icij_common.es import (
         DOC_CONTENT,
         DOC_CONTENT_TRANSLATED,
+        DOC_CONTENT_TYPE,
         DOC_EXTRACTION_LEVEL,
         DOC_LANGUAGE,
         DOC_METADATA,
@@ -250,6 +251,7 @@ class Document(DatashareModel):
             id=es_doc[ID_],
             index=es_doc.get(INDEX_),
             content=sources.get(DOC_CONTENT),
+            content_type=sources.get(DOC_CONTENT_TYPE),
             content_translated=sources.get(DOC_CONTENT_TRANSLATED),
             content_text_length=sources.get("content_text_length"),
             language=DatashareLanguage(sources[DOC_LANGUAGE]),

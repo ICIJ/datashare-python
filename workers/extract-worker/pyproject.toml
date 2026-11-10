@@ -21,6 +21,14 @@ base = [
   # required by jina-embeddings-v5 remote code
   "peft~=0.18",
 ]
+cli = [
+  "elasticsearch==8.19.3",
+  "prompt-toolkit==3.0.53",
+  "questionary==2.1.1",
+  "rich==15.0.0",
+  "typer==0.25.0",
+  "wcwidth==0.9.1",
+]
 cpu = [
   "torch==2.11.0",
   "torchvision==0.26.0",
@@ -39,10 +47,6 @@ flash-attn = [
 mineru = [
   "extract-python[mineru]==0.12.3",
   "opencv-python-headless==4.11.0.86"
-]
-cli = [
-  "elasticsearch==8.19.3",
-  "questionary==2.1.1",
 ]
 
 [project.entry-points."datashare.workflows"]

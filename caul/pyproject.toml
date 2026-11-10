@@ -3,19 +3,18 @@ name = "caul"
 version = "0.13.13"
 description = "Python implementation of an ASR service"
 authors = [
-    {name = "Lion Summerbell", email = "lsummerbell@icij.org"}
+  { name = "Lion Summerbell", email = "lsummerbell@icij.org" }
 ]
 requires-python = ">=3.12.0, <3.13.0"
 dependencies = [
-    "icij-common~=0.8.1",
-    "kaldialign~=0.9",
-    "langcodes~=3.5",
-    "librosa>=0.10.1,<0.12",
-    "pydantic-extra-types[pycountry]~=2.11",
-    "typer~=0.24",
-    "huggingface-hub~=1.11",
-    "caul-core~=0.6.6",
-    "tiktoken~=0.13",
+  "kaldialign~=0.9",
+  "langcodes~=3.5",
+  "librosa>=0.10.1,<0.12",
+  "pydantic-extra-types[pycountry]~=2.11",
+  "typer~=0.24",
+  "huggingface-hub~=1.11",
+  "caul-core~=0.6.6",
+  "tiktoken~=0.13",
 ]
 
 [project.scripts]
@@ -23,59 +22,59 @@ caul = "caul.__main__:main"
 
 [project.optional-dependencies]
 preprocessing = [
-    "torchcodec>=0.10.0,<0.11",  # pulls in torch automatically so we've made it optional for a base install
+  "torchcodec>=0.10.0,<0.11", # pulls in torch automatically so we've made it optional for a base install
 ]
 nemo = [
-    "nemo-toolkit[asr]~=3.0",
-    "torch~=2.10",
+  "nemo-toolkit[asr]~=3.0",
+  "torch~=2.10",
 ]
 pyannote = [
-    "pyannote-audio~=4.0",
-    "torchaudio~=2.10",
+  "pyannote-audio~=4.0",
+  "torchaudio~=2.10",
 ]
 fireredasr2 = [
-    "fireredasr2s",
-    "kaldi-native-fbank~=1.22",
-    "torchaudio~=2.10",
+  "fireredasr2s",
+  "kaldi-native-fbank~=1.22",
+  "torchaudio~=2.10",
 ]
 faster-whisper = [
-    "faster_whisper~=1.2"
+  "faster_whisper~=1.2"
 ]
 parakeet-trt = [
-    # TensorRT only builds on linux or windown
-    "tensorrt-lean==11.2.1.2; platform_system == 'Linux' or platform_system == 'Windows'",
+  # TensorRT only builds on linux or windown
+  "tensorrt-lean==11.2.1.2; platform_system == 'Linux' or platform_system == 'Windows'",
 ]
 whisper-trt = [
-    # TensorRT only builds on linux or windown
-    "tensorrt_llm~=1.2; platform_system == 'Linux' or platform_system == 'Windows'",
+  # TensorRT only builds on linux or windown
+  "tensorrt_llm~=1.2; platform_system == 'Linux' or platform_system == 'Windows'",
 ]
 cpu = [
-    # Pins torch packages to the pytorch CPU index for local dev/CI, scoped to this extra so
-    # downstream path dependents (e.g. datashare-asr-worker) can pick their own torch index
-    "torch~=2.10",
-    "torchaudio~=2.10",
-    "torchcodec>=0.10.0,<0.11",
+  # Pins torch packages to the pytorch CPU index for local dev/CI, scoped to this extra so
+  # downstream path dependents (e.g. datashare-asr-worker) can pick their own torch index
+  "torch~=2.10",
+  "torchaudio~=2.10",
+  "torchcodec>=0.10.0,<0.11",
 ]
 
 [tool.uv]
 package = true
 override-dependencies = [
-    # TODO: needed by tensorrt-llm which needs transformers < 5, remove when bumping to tensorrt-llm 1.3.0
-    "transformers~=5.5.4",
+  # TODO: needed by tensorrt-llm which needs transformers < 5, remove when bumping to tensorrt-llm 1.3.0
+  "transformers~=5.5.4",
 ]
 conflicts = [
-    [
-        { extra = "whisper-trt" },
-        { extra = "pyannote" },
-    ],
-    [
-        { extra = "whisper-trt" },
-        { extra = "nemo" },
-    ],
-    [
-        { extra = "whisper-trt" },
-        { extra = "fireredasr2" },
-    ],
+  [
+    { extra = "whisper-trt" },
+    { extra = "pyannote" },
+  ],
+  [
+    { extra = "whisper-trt" },
+    { extra = "nemo" },
+  ],
+  [
+    { extra = "whisper-trt" },
+    { extra = "fireredasr2" },
+  ],
 ]
 # Static metadata for TensorRT packages to avoid running their stub setup.py
 # during cross-platform lockfile generation (stubs fail on macOS).
@@ -138,7 +137,7 @@ torchcodec = [
   { index = "pytorch-cpu", extra = "cpu" }
 ]
 fireredasr2s = [
-    { git = "https://github.com/FireRedTeam/FireRedASR2S.git" }
+  { git = "https://github.com/FireRedTeam/FireRedASR2S.git" }
 ]
 caul-core = { path = "../caul-core", editable = true }
 
@@ -151,18 +150,18 @@ packages = ["caul"]
 
 [dependency-groups]
 dev = [
-    "pre-commit>=4.5.1",
-    "pytest>=9.0.2",
-    "nest-asyncio>=1.6.0",
-    "pytest-asyncio>=1.3.0",
-    "ruff==0.16.1",
+  "pre-commit>=4.5.1",
+  "pytest>=9.0.2",
+  "nest-asyncio>=1.6.0",
+  "pytest-asyncio>=1.3.0",
+  "ruff==0.16.1",
 ]
 
 [tool.pytest.ini_options]
 markers = [
-    "e2e: end-to-end tests requiring live models and infrastructure",
-    "no_ci: test which are too slow to run in the CI",
-    "integration: integration tests that download and run real ASR models (slow)",
+  "e2e: end-to-end tests requiring live models and infrastructure",
+  "no_ci: test which are too slow to run in the CI",
+  "integration: integration tests that download and run real ASR models (slow)",
 ]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "session"

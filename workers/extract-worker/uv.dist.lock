@@ -676,7 +676,11 @@ base = [
 ]
 cli = [
     { name = "elasticsearch", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-24-datashare-extract-worker-base' and extra == 'extra-24-datashare-extract-worker-mineru') or (platform_machine != 'x86_64' and extra == 'extra-24-datashare-extract-worker-cpu' and extra == 'extra-24-datashare-extract-worker-gpu') or sys_platform == 'darwin' or (sys_platform != 'linux' and extra == 'extra-24-datashare-extract-worker-base' and extra == 'extra-24-datashare-extract-worker-mineru') or (sys_platform != 'linux' and extra == 'extra-24-datashare-extract-worker-cpu' and extra == 'extra-24-datashare-extract-worker-gpu')" },
+    { name = "prompt-toolkit", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-24-datashare-extract-worker-base' and extra == 'extra-24-datashare-extract-worker-mineru') or (platform_machine != 'x86_64' and extra == 'extra-24-datashare-extract-worker-cpu' and extra == 'extra-24-datashare-extract-worker-gpu') or sys_platform == 'darwin' or (sys_platform != 'linux' and extra == 'extra-24-datashare-extract-worker-base' and extra == 'extra-24-datashare-extract-worker-mineru') or (sys_platform != 'linux' and extra == 'extra-24-datashare-extract-worker-cpu' and extra == 'extra-24-datashare-extract-worker-gpu')" },
     { name = "questionary", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-24-datashare-extract-worker-base' and extra == 'extra-24-datashare-extract-worker-mineru') or (platform_machine != 'x86_64' and extra == 'extra-24-datashare-extract-worker-cpu' and extra == 'extra-24-datashare-extract-worker-gpu') or sys_platform == 'darwin' or (sys_platform != 'linux' and extra == 'extra-24-datashare-extract-worker-base' and extra == 'extra-24-datashare-extract-worker-mineru') or (sys_platform != 'linux' and extra == 'extra-24-datashare-extract-worker-cpu' and extra == 'extra-24-datashare-extract-worker-gpu')" },
+    { name = "rich", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-24-datashare-extract-worker-base' and extra == 'extra-24-datashare-extract-worker-mineru') or (platform_machine != 'x86_64' and extra == 'extra-24-datashare-extract-worker-cpu' and extra == 'extra-24-datashare-extract-worker-gpu') or sys_platform == 'darwin' or (sys_platform != 'linux' and extra == 'extra-24-datashare-extract-worker-base' and extra == 'extra-24-datashare-extract-worker-mineru') or (sys_platform != 'linux' and extra == 'extra-24-datashare-extract-worker-cpu' and extra == 'extra-24-datashare-extract-worker-gpu')" },
+    { name = "typer", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-24-datashare-extract-worker-base' and extra == 'extra-24-datashare-extract-worker-mineru') or (platform_machine != 'x86_64' and extra == 'extra-24-datashare-extract-worker-cpu' and extra == 'extra-24-datashare-extract-worker-gpu') or sys_platform == 'darwin' or (sys_platform != 'linux' and extra == 'extra-24-datashare-extract-worker-base' and extra == 'extra-24-datashare-extract-worker-mineru') or (sys_platform != 'linux' and extra == 'extra-24-datashare-extract-worker-cpu' and extra == 'extra-24-datashare-extract-worker-gpu')" },
+    { name = "wcwidth", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-24-datashare-extract-worker-base' and extra == 'extra-24-datashare-extract-worker-mineru') or (platform_machine != 'x86_64' and extra == 'extra-24-datashare-extract-worker-cpu' and extra == 'extra-24-datashare-extract-worker-gpu') or sys_platform == 'darwin' or (sys_platform != 'linux' and extra == 'extra-24-datashare-extract-worker-base' and extra == 'extra-24-datashare-extract-worker-mineru') or (sys_platform != 'linux' and extra == 'extra-24-datashare-extract-worker-cpu' and extra == 'extra-24-datashare-extract-worker-gpu')" },
 ]
 cpu = [
     { name = "torch", version = "2.11.0", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "(sys_platform == 'darwin' and extra == 'extra-24-datashare-extract-worker-cpu') or (extra == 'extra-24-datashare-extract-worker-cpu' and extra == 'extra-24-datashare-extract-worker-gpu') or (extra == 'extra-24-datashare-extract-worker-base' and extra == 'extra-24-datashare-extract-worker-mineru')" },
@@ -726,15 +730,19 @@ requires-dist = [
     { name = "extract-python", extras = ["docling-gpu"], marker = "extra == 'docling-gpu'", specifier = "==0.12.3" },
     { name = "extract-python", extras = ["mineru"], marker = "extra == 'mineru'", specifier = "==0.12.3" },
     { name = "flash-attn", marker = "extra == 'flash-attn'", specifier = "==2.8.3.post1" },
-    { name = "icij-common", extras = ["elasticsearch-8"] },
+    { name = "icij-common", extras = ["elasticsearch-8"], specifier = "==0.9.6" },
     { name = "opencv-python-headless", marker = "extra == 'base'", specifier = "==4.11.0.86" },
     { name = "opencv-python-headless", marker = "extra == 'mineru'", specifier = "==4.11.0.86" },
     { name = "peft", marker = "extra == 'base'", specifier = "~=0.18" },
+    { name = "prompt-toolkit", marker = "extra == 'cli'", specifier = "==3.0.53" },
     { name = "questionary", marker = "extra == 'cli'", specifier = "==2.1.1" },
+    { name = "rich", marker = "extra == 'cli'", specifier = "==15.0.0" },
     { name = "torch", marker = "sys_platform == 'linux' and extra == 'gpu'", specifier = "==2.11.0+cu129", index = "https://download.pytorch.org/whl/cu129", conflict = { package = "datashare-extract-worker", extra = "gpu" } },
     { name = "torch", marker = "extra == 'cpu'", specifier = "==2.11.0", index = "https://download.pytorch.org/whl/cpu", conflict = { package = "datashare-extract-worker", extra = "cpu" } },
     { name = "torchvision", marker = "sys_platform == 'linux' and extra == 'gpu'", specifier = "==0.26.0+cu129", index = "https://download.pytorch.org/whl/cu129", conflict = { package = "datashare-extract-worker", extra = "gpu" } },
     { name = "torchvision", marker = "extra == 'cpu'", specifier = "==0.26.0", index = "https://download.pytorch.org/whl/cpu", conflict = { package = "datashare-extract-worker", extra = "cpu" } },
+    { name = "typer", marker = "extra == 'cli'", specifier = "==0.25.0" },
+    { name = "wcwidth", marker = "extra == 'cli'", specifier = "==0.9.1" },
 ]
 provides-extras = ["base", "cli", "cpu", "docling-gpu", "flash-attn", "gpu", "mineru"]
 
@@ -1563,16 +1571,16 @@ hf-xet = [
 
 [[package]]
 name = "icij-common"
-version = "0.9.1"
+version = "0.9.6"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiostream", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-24-datashare-extract-worker-base' and extra == 'extra-24-datashare-extract-worker-mineru') or (platform_machine != 'x86_64' and extra == 'extra-24-datashare-extract-worker-cpu' and extra == 'extra-24-datashare-extract-worker-gpu') or sys_platform == 'darwin' or (sys_platform != 'linux' and extra == 'extra-24-datashare-extract-worker-base' and extra == 'extra-24-datashare-extract-worker-mineru') or (sys_platform != 'linux' and extra == 'extra-24-datashare-extract-worker-cpu' and extra == 'extra-24-datashare-extract-worker-gpu')" },
     { name = "pydantic", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-24-datashare-extract-worker-base' and extra == 'extra-24-datashare-extract-worker-mineru') or (platform_machine != 'x86_64' and extra == 'extra-24-datashare-extract-worker-cpu' and extra == 'extra-24-datashare-extract-worker-gpu') or sys_platform == 'darwin' or (sys_platform != 'linux' and extra == 'extra-24-datashare-extract-worker-base' and extra == 'extra-24-datashare-extract-worker-mineru') or (sys_platform != 'linux' and extra == 'extra-24-datashare-extract-worker-cpu' and extra == 'extra-24-datashare-extract-worker-gpu')" },
     { name = "pydantic-settings", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-24-datashare-extract-worker-base' and extra == 'extra-24-datashare-extract-worker-mineru') or (platform_machine != 'x86_64' and extra == 'extra-24-datashare-extract-worker-cpu' and extra == 'extra-24-datashare-extract-worker-gpu') or sys_platform == 'darwin' or (sys_platform != 'linux' and extra == 'extra-24-datashare-extract-worker-base' and extra == 'extra-24-datashare-extract-worker-mineru') or (sys_platform != 'linux' and extra == 'extra-24-datashare-extract-worker-cpu' and extra == 'extra-24-datashare-extract-worker-gpu')" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/41/6a/3a25ae0fd909f8068b2617a05a5c14d084b741821a258823f23dbec80124/icij_common-0.9.1.tar.gz", hash = "sha256:3af0795d0ebd051abe243e1f72bc180a100b2503059d9250cfbe6612d92c59fe", size = 16738, upload-time = "2026-10-30T11:22:28.72Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/ba/67/af4e1ef2647e202f3af2924ce5a369870021758fa62484bd105a46a419b7/icij_common-0.9.6.tar.gz", hash = "sha256:71cb1692c5cd0b10ebc4a42e42517e189cacbd4472126ae91212640353952310", size = 17226, upload-time = "2026-10-30T15:13:13.647Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/ee/d3/32a3f3623c75189682312cb691d8221f91d7e9db997b230acdb1a888d79e/icij_common-0.9.1-py3-none-any.whl", hash = "sha256:ef63493aaea6c9cea55d16a951630f26dc9ad4e1d763ab83c57700057e68420f", size = 21510, upload-time = "2026-10-30T11:22:27.826Z" },
+    { url = "https://files.pythonhosted.org/packages/3a/2a/ba84d3791027d129df34a4b77a3623903788b0516b630fa6785ceb7eb186/icij_common-0.9.6-py3-none-any.whl", hash = "sha256:5c8bc55fba195ef1f0f06ab1bcf3638d9454d400d1324c1ed4716cd4962e8ca3", size = 22042, upload-time = "2026-10-30T15:13:12.401Z" },
 ]
 
 [package.optional-dependencies]
