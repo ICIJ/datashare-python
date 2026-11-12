@@ -1,8 +1,8 @@
 ruff-check:
-    ./scripts/ruff-check.sh
+	./scripts/ruff-check.sh
 
 ruff-format:
-    ./scripts/ruff-format.sh
+	./scripts/ruff-format.sh
 
 lock-all:
 	./scripts/lock-dist.sh worker-template ${uv_extra}

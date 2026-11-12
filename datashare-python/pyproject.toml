@@ -12,7 +12,7 @@ requires-python = ">=3.12,<4"
 dependencies = [
   "alive-progress~=3.2",
   "aiofile~=3.11",
-  "aiohttp~=3.11",
+  "aiohttp~=3.14",
   "hatchling~=1.27",
   "icij-common[elasticsearch-8]~=0.9.0",
   "langcodes~=3.5",
