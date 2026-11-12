@@ -27,7 +27,7 @@ def eprint(*args, **kwargs) -> None:
 
 
 def _to_concurrent(
-        fut: asyncio.Future, loop: asyncio.AbstractEventLoop
+    fut: asyncio.Future, loop: asyncio.AbstractEventLoop
 ) -> concurrent.futures.Future:
     async def wait() -> None:
         await fut

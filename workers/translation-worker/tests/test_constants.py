@@ -2,6 +2,7 @@ import re
 from pathlib import Path
 
 import pytest
+
 from translation_worker.constants import TaskQueue
 from translation_worker.objects import (
     ArgosTranslatorConfig,

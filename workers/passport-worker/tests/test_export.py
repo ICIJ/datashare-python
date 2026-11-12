@@ -6,6 +6,7 @@ from datashare_python.conftest import TEST_PROJECT
 from datashare_python.objects import Document, WorkerPaths
 from datashare_python.utils import write_artifact
 from passport_service.objects import Passport
+
 from passport_worker.config import PassportWorkerConfig
 from passport_worker.export import export_as_csv, export_as_jsonl
 from passport_worker.objects import (

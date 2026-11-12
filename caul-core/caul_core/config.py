@@ -101,12 +101,8 @@ class TrtLlmDecoderConfig(BaseModel):
     debug_mode: bool = WHISPER_TRT_DECODER_DEBUG_MODE
 
     def to_model_config(self) -> "ModelConfig":
-        from tensorrt_llm.llmapi.kv_cache_type import (
-            KVCacheType,
-        )
-        from tensorrt_llm.runtime import (
-            ModelConfig,
-        )
+        from tensorrt_llm.llmapi.kv_cache_type import KVCacheType  # noqa: PLC0415
+        from tensorrt_llm.runtime import ModelConfig  # noqa: PLC0415
 
         return ModelConfig(
             max_batch_size=self.batch_size,

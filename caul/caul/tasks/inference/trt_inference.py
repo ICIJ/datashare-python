@@ -18,7 +18,7 @@ class TrtInferenceMixin:
         exc_val: BaseException | None,
         exc_tb: "TracebackType | None",
     ):
-        import torch
+        import torch  # noqa: PLC0415
 
         self._encoder = None
         self._decoder = None

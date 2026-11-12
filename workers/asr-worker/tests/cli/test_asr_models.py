@@ -1,6 +1,7 @@
+from typer.testing import CliRunner
+
 from asr_worker.cli import cli_app
 from asr_worker.objects import AvailableModels
-from typer.testing import CliRunner
 
 
 async def test_list_models(

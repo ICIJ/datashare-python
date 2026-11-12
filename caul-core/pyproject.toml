@@ -23,3 +23,5 @@ build-backend = "hatchling.build"
 [tool.hatch.build.targets.wheel]
 packages = ["caul_core"]
 
+[tool.ruff]
+extend = "../qa/ruff.toml"

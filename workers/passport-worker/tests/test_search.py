@@ -12,6 +12,8 @@ from datashare_python.utils import ext_to_mime_types, read_jsonl_as
 from icij_common.es import ESClient, ids_query, match_all
 from passport_service.constants import GOTENBERG_SUPPORTED_EXTS
 from passport_service.core.preprocessing import PIL_SUPPORTED_EXTENSIONS
+from pydantic import Field
+
 from passport_worker.config import PassportWorkerConfig
 from passport_worker.objects import DocId, DocumentSearchQuery
 from passport_worker.search import (
@@ -19,8 +21,6 @@ from passport_worker.search import (
     restrict_image_formats,
     restrict_to_pdf_file_formats,
 )
-from pydantic import Field
-
 from tests.conftest import DS_FILE_1, DS_FILE_2, DS_FILE_5, SYMLINKED_DS_FILE_0
 
 

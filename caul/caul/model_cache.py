@@ -45,10 +45,7 @@ def cache_parakeet_trt_models(cache_dir: Path | None = None) -> None:
 
 
 def cache_faster_whisper_models(cache_dir: Path | None = None) -> None:
-    from huggingface_hub import (
-        get_token,
-        snapshot_download,
-    )
+    from huggingface_hub import get_token, snapshot_download  # noqa: PLC0415
 
     for model_id in FasterWhisperModel:
         logger.info("Caching faster whisper model of size %s", model_id)

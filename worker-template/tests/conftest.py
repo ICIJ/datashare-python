@@ -30,6 +30,7 @@ from datashare_python.conftest import (  # noqa: F401
     text_1,
 )
 from temporalio.client import Client as TemporalClient
+
 from worker_template.config_ import TranslateAndClassifyWorkerConfig
 from worker_template.workflows import (
     TaskQueues,

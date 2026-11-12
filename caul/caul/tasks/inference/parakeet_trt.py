@@ -2,7 +2,7 @@ import logging
 from collections.abc import Iterable
 from functools import cache
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Self
 
 from caul_core import (
     ASRModel,
@@ -10,7 +10,6 @@ from caul_core import (
     ParakeetTrtInferenceRunnerConfig,
     TorchDevice,
 )
-from icij_common.registrable import FromConfig
 
 from ...exception import TrtEngineLoadError
 from ...trt import import_trt
@@ -33,14 +32,14 @@ if TYPE_CHECKING:
 
 @cache
 def _decoder_joint_connector() -> "SaveRestoreConnector":
-    from nemo.core.connectors.save_restore_connector import (
+    from nemo.core.connectors.save_restore_connector import (  # noqa: PLC0415
         SaveRestoreConnector,
     )
 
     class DecoderJointConnector(SaveRestoreConnector):
         @staticmethod
         def _load_state_dict_from_disk(
-            model_weights: dict, map_location: TorchDevice = "cpu"
+            model_weights: dict, map_location: TorchDevice = TorchDevice.CPU
         ) -> dict:
             """Map model weights into virtual address space
 
@@ -48,7 +47,7 @@ def _decoder_joint_connector() -> "SaveRestoreConnector":
             :param map_location: device to load weights to
             :return: decoder + joint weights
             """
-            import torch
+            import torch  # noqa: PLC0415
 
             weight_pointers = torch.load(
                 model_weights,
@@ -92,16 +91,15 @@ class ParakeetTrtInferenceRunner(ParakeetInferenceRunner, TrtInferenceMixin):
         self._engine_path = str(engine_path)
 
     @classmethod
-    def _from_config(
-        cls, config: ParakeetTrtInferenceRunnerConfig, **extras
-    ) -> FromConfig:
+    def _from_config(cls, config: ParakeetTrtInferenceRunnerConfig, **extras) -> Self:
         return cls(
-            model_path=config.model_path,
-            engine_path=config.engine_path,
-            **extras,
+            model_path=config.model_path, engine_path=config.engine_path, **extras
         )
 
     def __enter__(self):
+        import nemo.collections.asr as nemo_asr  # noqa: PLC0415
+        from omegaconf import open_dict  # noqa: PLC0415
+
         trt = import_trt()
 
         runtime = trt.Runtime(trt.Logger(trt.Logger.ERROR))
@@ -110,9 +108,6 @@ class ParakeetTrtInferenceRunner(ParakeetInferenceRunner, TrtInferenceMixin):
             self._encoder = runtime.deserialize_cuda_engine(f.read())
         if self._encoder is None:
             raise TrtEngineLoadError(self._engine_path, trt.__version__)
-
-        import nemo.collections.asr as nemo_asr
-        from omegaconf import open_dict
 
         config = nemo_asr.models.ASRModel.restore_from(
             self._model_path, return_config=True
@@ -141,14 +136,17 @@ class ParakeetTrtInferenceRunner(ParakeetInferenceRunner, TrtInferenceMixin):
     def _transcribe(
         self,
         audio_inputs: "torch.Tensor | str | Path | Iterable[torch.Tensor | str | Path]",
-        trt_device: TorchDevice = None,
+        trt_device: TorchDevice | None = None,
     ) -> "list[Hypothesis] | list[list[Hypothesis]]":
         """Transcribe audio tensors
 
         :param audio_inputs: audio tensors or audio file paths
         :return: transcription results
         """
-        import torch
+        import torch  # noqa: PLC0415
+        from nemo.collections.asr.parts.utils.timestamp_utils import (  # noqa: PLC0415
+            process_timestamp_outputs,
+        )
 
         # trt only runs on cuda
         if trt_device is None:
@@ -194,10 +192,6 @@ class ParakeetTrtInferenceRunner(ParakeetInferenceRunner, TrtInferenceMixin):
             hypotheses = self._decoder.decoding.rnnt_decoder_predictions_tensor(
                 enc_out, enc_len, return_hypotheses=True
             )
-
-        from nemo.collections.asr.parts.utils.timestamp_utils import (
-            process_timestamp_outputs,
-        )
 
         # convert frame offsets to seconds, as the model's transcribe() would
         return process_timestamp_outputs(

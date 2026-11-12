@@ -3,8 +3,9 @@ from unittest.mock import call, patch
 
 import pytest
 import torch
-from caul.utils import cache_hf_model, to_filesystem
 from caul_core import MemoryProcessedSegment, SegmentMetadata
+
+from caul.utils import cache_hf_model, to_filesystem
 
 _HF_HUB_DOWNLOAD_PATH = "huggingface_hub.hf_hub_download"
 _GET_TOKEN_PATH = "huggingface_hub.get_token"

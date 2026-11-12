@@ -7,6 +7,7 @@ from unittest.mock import AsyncMock
 
 from _pytest.monkeypatch import MonkeyPatch
 from aiohttp.typedefs import StrOrURL
+
 from datashare_python.objects import (
     StacktraceItem,
     Task,

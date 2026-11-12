@@ -1,12 +1,9 @@
 import shutil
 from pathlib import Path
 
-import asr_worker
 import datashare_python
 import pytest
 from _pytest.tmpdir import TempPathFactory
-from asr_worker.config import ASRWorkerConfig, ASRWorkerDevices
-from asr_worker.constants import SUPPORTED_CONTENT_TYPES
 from caul_core import TorchDevice
 from datashare_python.config import (
     DatashareClientConfig,
@@ -32,6 +29,9 @@ from datashare_python.objects import DatashareLanguage, Document, WorkerPaths
 from datashare_python.utils import artifacts_dir
 from icij_common.es import ESClient
 
+import asr_worker
+from asr_worker.config import ASRWorkerConfig, ASRWorkerDevices
+from asr_worker.constants import SUPPORTED_CONTENT_TYPES
 from tests import AUDIOS_PATH
 
 DS_ENGLISH = DatashareLanguage("ENGLISH")

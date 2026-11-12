@@ -2,6 +2,7 @@ import pytest
 from datashare_python.conftest import TEST_PROJECT
 from datashare_python.objects import DatashareLanguage, Document
 from icij_common.es import ESClient
+
 from worker_template.activities import classify_docs, translate_docs
 
 

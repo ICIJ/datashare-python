@@ -9,6 +9,7 @@ from icij_common.es import HITS, ESClient, has_type
 from icij_common.test_utils import async_true_after
 from temporalio.client import Client as TemporalClient
 from temporalio.worker import Worker
+
 from worker_template.objects import (
     TranslateAndClassifyArgs,
     TranslateAndClassifyResponse,

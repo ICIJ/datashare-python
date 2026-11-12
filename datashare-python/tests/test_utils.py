@@ -16,6 +16,10 @@ from _pytest.monkeypatch import MonkeyPatch
 
 with temporalio.workflow.unsafe.imports_passed_through():
     from datashare_python.conftest import TEST_PROJECT
+from temporalio import activity, workflow
+from temporalio.client import WorkflowFailureError
+from temporalio.exceptions import ApplicationError
+
 from datashare_python.constants import MANIFEST_JSON
 from datashare_python.objects import (
     ArtifactType,
@@ -35,9 +39,6 @@ from datashare_python.utils import (
     write_artifact,
 )
 from datashare_python.worker import datashare_worker
-from temporalio import activity, workflow
-from temporalio.client import WorkflowFailureError
-from temporalio.exceptions import ApplicationError
 
 
 @positional_args_only

@@ -18,6 +18,20 @@ from icij_common.es import (
     ESSort,
 )
 from icij_common.registrable import RegistrableConfig
+
+from tests.conftest import (
+    DOC_ID_1,
+    DOC_ID_2,
+    DS_ENGLISH,
+    DS_FRENCH,
+    DS_SPANISH,
+    ENGLISH,
+    FRENCH,
+    ROOT_DOCUMENT_1,
+    ROOT_DOCUMENT_2,
+    SPANISH,
+    TEST_PROJECT,
+)
 from translation_worker import activities
 from translation_worker.activities import (
     _DOC_CONTENT_TEXT_LENGTH,
@@ -38,20 +52,6 @@ from translation_worker.objects import (
     untranslated_query,
 )
 from translation_worker.processors import SentenceSplitter, Translator
-
-from tests.conftest import (
-    DOC_ID_1,
-    DOC_ID_2,
-    DS_ENGLISH,
-    DS_FRENCH,
-    DS_SPANISH,
-    ENGLISH,
-    FRENCH,
-    ROOT_DOCUMENT_1,
-    ROOT_DOCUMENT_2,
-    SPANISH,
-    TEST_PROJECT,
-)
 
 
 class MockESClient(ESClient):

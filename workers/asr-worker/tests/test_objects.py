@@ -1,4 +1,5 @@
 import pytest
+
 from asr_worker.objects import Transcript, Transcription
 
 _TRANSCRIPTION_0 = Transcription(

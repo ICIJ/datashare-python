@@ -2,8 +2,9 @@ import os
 from unittest.mock import AsyncMock, patch
 
 import pytest
-from datashare_python.config import WorkerConfig
 from pydantic import ValidationError
+
+from datashare_python.config import WorkerConfig
 
 
 def test_worker_config_loggers_from_env(reset_env) -> None:  # noqa: ANN001, ARG001

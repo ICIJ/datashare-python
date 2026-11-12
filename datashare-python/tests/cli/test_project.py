@@ -1,7 +1,8 @@
 from pathlib import Path
 
-from datashare_python.cli import cli_app
 from typer.testing import CliRunner
+
+from datashare_python.cli import cli_app
 
 
 async def test_init_project(

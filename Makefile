@@ -1,3 +1,9 @@
+ruff-check:
+    ./scripts/ruff-check.sh
+
+ruff-format:
+    ./scripts/ruff-format.sh
+
 lock-all:
 	./scripts/lock-dist.sh worker-template ${uv_extra}
 	./scripts/lock-dist.sh asr-worker ${uv_extra}

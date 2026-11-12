@@ -3,6 +3,7 @@ from pathlib import Path
 
 from datashare_python.objects import ByteRangesPagination, Pages, ProcessedFile
 from datashare_python.utils import write_artifact
+
 from extract_worker.objects import (
     MarkdownExtractArgs,
     StructureArtifact,

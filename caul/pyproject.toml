@@ -165,3 +165,6 @@ markers = [
 ]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "session"
+
+[tool.ruff]
+extend = "../qa/ruff.toml"

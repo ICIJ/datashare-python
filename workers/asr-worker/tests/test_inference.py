@@ -2,7 +2,6 @@ from collections.abc import Iterable
 from pathlib import Path
 from typing import Self
 
-from asr_worker.inference import infer_act
 from caul_core import (
     ASRResult,
     FSProcessedSegment,
@@ -12,6 +11,8 @@ from caul_core import (
 )
 from caul_core import Error as CaulError
 from icij_common.registrable import RegistrableConfig
+
+from asr_worker.inference import infer_act
 
 PROCESSED_SEG_0 = FSProcessedSegment(
     path=Path("preprocessed_0.wav"),

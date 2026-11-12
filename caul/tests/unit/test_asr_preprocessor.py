@@ -7,12 +7,12 @@ from typing import Never
 import pytest
 import torch
 import torchcodec.decoders
-from caul.tasks.preprocessing.asr_preprocessor import ASRPreprocessorMixin
-from caul.utils import load_audio
 from caul_core import DEFAULT_SAMPLE_RATE, Error
 from torchcodec.decoders import AudioDecoder
 from torchcodec.encoders import AudioEncoder
 
+from caul.tasks.preprocessing.asr_preprocessor import ASRPreprocessorMixin
+from caul.utils import load_audio
 from tests.unit.constant import TEST_WAV_PATH
 
 

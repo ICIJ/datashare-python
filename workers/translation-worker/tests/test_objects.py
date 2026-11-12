@@ -3,6 +3,7 @@ from typing import Any
 import pytest
 from datashare_python.conftest import TEST_PROJECT
 from datashare_python.objects import DatashareLanguage, Language
+
 from translation_worker.objects import (
     ArgosSentenceSplitterConfig,
     ArgosSentencizer,

@@ -2,6 +2,11 @@ from functools import partial
 from pathlib import Path
 
 import pytest
+from caul_core import ASRResult
+from datashare_python.objects import PROCESSED_FILE_TA, Document
+from datashare_python.utils import read_jsonl_as
+from icij_common.es import HITS, ESClient, ids_query, match_all
+
 from asr_worker.config import ASRWorkerConfig
 from asr_worker.es import index_transcriptions_act, search_audios_act
 from asr_worker.objects import (
@@ -10,10 +15,6 @@ from asr_worker.objects import (
     TranscriptionManifestEntry,
 )
 from asr_worker.postprocessing import write_transcription
-from caul_core import ASRResult
-from datashare_python.objects import PROCESSED_FILE_TA, Document
-from datashare_python.utils import read_jsonl_as
-from icij_common.es import HITS, ESClient, ids_query, match_all
 
 from .conftest import DS_ENGLISH, TEST_PROJECT
 

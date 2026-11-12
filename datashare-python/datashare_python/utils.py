@@ -116,9 +116,9 @@ class ProgressSignal:
 
 class ActivityWithProgress:
     def __init__(
-            self,
-            temporal_client: Client,
-            event_loop: asyncio.AbstractEventLoop | None = None,
+        self,
+        temporal_client: Client,
+        event_loop: asyncio.AbstractEventLoop | None = None,
     ):
         self._temporal_client = temporal_client
         self._event_loop = event_loop or asyncio.get_event_loop()
@@ -160,13 +160,13 @@ def _retry_policy_with_default(retry_policy: RetryPolicy | None) -> RetryPolicy:
 
 
 async def execute_activity(
-        activity: Callable | str,
-        task_queue: str,
-        arg: Any = temporalio.common._arg_unset,
-        *,
-        args: list | None = None,
-        timeouts: ActivityTimeouts | None = None,
-        retry_policy: temporalio.common.RetryPolicy | None = None,
+    activity: Callable | str,
+    task_queue: str,
+    arg: Any = temporalio.common._arg_unset,
+    *,
+    args: list | None = None,
+    timeouts: ActivityTimeouts | None = None,
+    retry_policy: temporalio.common.RetryPolicy | None = None,
 ) -> Any:
     if timeouts is None:
         timeouts = ActivityTimeouts()
@@ -220,7 +220,7 @@ def positional_args_only[**P, T](activity_fn: Callable[P, T]) -> Callable[P, T]:
 
 
 def _unpack_positional_args(
-        args: tuple, keyword_only_names: set[str], params: list
+    args: tuple, keyword_only_names: set[str], params: list
 ) -> tuple[list, dict]:
     new_args = []
     new_kwargs = dict()
@@ -233,7 +233,7 @@ def _unpack_positional_args(
 
 
 def with_retriables[**P, T](
-        logger: logging.Logger, retriables: set[type[Exception]] = None
+    logger: logging.Logger, retriables: set[type[Exception]] = None
 ) -> Callable[[Callable[P, T]], Callable[P, T]]:
     if retriables is None:
 
@@ -298,9 +298,9 @@ def with_retriables[**P, T](
 
 
 def activity_defn[**P, T](
-        name: str,
-        retriables: set[type[Exception]] = None,
-        logger: logging.Logger | None = None,
+    name: str,
+    retriables: set[type[Exception]] = None,
+    logger: logging.Logger | None = None,
 ) -> Callable[[Callable[P, T]], Callable[P, T]]:
     if logger is None:
         frame = inspect.stack()[1]
@@ -336,7 +336,7 @@ def fatal_error_from_exception(exc: Exception) -> ApplicationError:
 
 
 def to_raw_async_progress(
-        progress: AsyncProgressRateHandler, max_progress: int
+    progress: AsyncProgressRateHandler, max_progress: int
 ) -> RawAsyncProgressHandler:
     if not max_progress > 0:
         raise ValueError("max_progress must be > 0")
@@ -348,7 +348,7 @@ def to_raw_async_progress(
 
 
 def to_incremental_async_progress(
-        progress: RawAsyncProgressHandler,
+    progress: RawAsyncProgressHandler,
 ) -> RawAsyncProgressHandler:
     offset = 0
 
@@ -361,14 +361,13 @@ def to_incremental_async_progress(
 
 
 def to_raw_sync_progress(
-        progress: SyncProgressRateHandler, max_progress: int
+    progress: SyncProgressRateHandler, max_progress: int
 ) -> RawSyncProgressHandler:
     if not max_progress > 0:
         raise ValueError("max_progress must be > 0")
 
     def raw(
-            iteration: int, event_loop: asyncio.AbstractEventLoop, *,
-            force: bool = False
+        iteration: int, event_loop: asyncio.AbstractEventLoop, *, force: bool = False
     ) -> None:
         progress(iteration / max_progress, event_loop, force=force)
 
@@ -376,7 +375,7 @@ def to_raw_sync_progress(
 
 
 def to_scaled_async_progress(
-        progress: AsyncProgressRateHandler, *, start: float = 0.0, end: float = 1.0
+    progress: AsyncProgressRateHandler, *, start: float = 0.0, end: float = 1.0
 ) -> AsyncProgressRateHandler:
     if not 0 <= start < end:
         raise ValueError("start must be [0, end[")
@@ -400,15 +399,14 @@ def artifacts_dir(doc_id: str, *, project: str) -> Path:
 
 
 async def async_read_artifact(
-        paths: WorkerPaths, doc_id: str, artifact_type: type[DocArtifact], *,
-        project: str
+    paths: WorkerPaths, doc_id: str, artifact_type: type[DocArtifact], *, project: str
 ) -> bytes:
     # Reading the manifest can be long, we load it only if the artifact exists then
     # we check that the entry is in the manifest
     artifact_path = (
-            paths.artifacts
-            / artifacts_dir(doc_id, project=project)
-            / artifact_type.filename
+        paths.artifacts
+        / artifacts_dir(doc_id, project=project)
+        / artifact_type.filename
     )
     if not artifact_path.exists():
         raise ArtifactNotFound(doc_id, artifact_type)
@@ -452,7 +450,7 @@ def _read_artifact_manifest(root: Path, artifact: DocArtifact) -> dict:
 
 
 def write_artifact(
-        root: Path, artifact: DocArtifact, lock_timeout_ms: int = 30_000
+    root: Path, artifact: DocArtifact, lock_timeout_ms: int = 30_000
 ) -> Path:
     # TODO: WARNING many writers could write at the time, to avoid inconsistent
     #  states we should handle this somehow
@@ -499,7 +497,7 @@ def _set_event() -> Generator[None, None, None]:
 
 @contextlib.contextmanager
 def artifact_lock(
-        artifacts_dir: Path, lock_timeout_ms: int
+    artifacts_dir: Path, lock_timeout_ms: int
 ) -> Generator[None, None, None]:
     lock_path = artifacts_dir / f"{MANIFEST_JSON}.lock"
     acquired = False
@@ -528,7 +526,7 @@ def artifact_lock(
 
 
 def _read_manifest_backward_compatible(
-        root: Path, artifact: DocArtifact
+    root: Path, artifact: DocArtifact
 ) -> tuple[Path, dict[str, Any]]:
     manifest_path = root / _manifest_path(artifact.doc_id, project=artifact.project)
     if manifest_path.exists():
@@ -563,7 +561,7 @@ def _remove_previous_artifacts(path: Path) -> None:
 
 
 def debuggable_name(
-        path: str, component_size_limit: int = 10, *, deterministic: bool = False
+    path: str, component_size_limit: int = 10, *, deterministic: bool = False
 ) -> str:
     path = Path(path)
     displayable_file_name = [c[:component_size_limit] for c in path.parts]
@@ -573,7 +571,7 @@ def debuggable_name(
 
 
 def contextual_id(
-        *, wf_context: bool = True, act_context: bool = False, run_context: bool = False
+    *, wf_context: bool = True, act_context: bool = False, run_context: bool = False
 ) -> str:
     contextual_id = []
     act_info = activity.info()
@@ -596,11 +594,11 @@ activity_contextual_id = contextual_id
 
 
 def _contextual_path(
-        *,
-        wf_context: bool = True,
-        act_context: bool = True,
-        run_context: bool = False,
-        caching_key: str | None = None,
+    *,
+    wf_context: bool = True,
+    act_context: bool = True,
+    run_context: bool = False,
+    caching_key: str | None = None,
 ) -> Path:
     act_info = activity.info()
     path = []
@@ -624,13 +622,13 @@ def _contextual_path(
 
 
 def activity_workdir(
-        workdir: Path,
-        project: str,
-        *,
-        wf_context: bool = True,
-        act_context: bool = True,
-        run_context: bool = False,
-        caching_key: str | None = None,
+    workdir: Path,
+    project: str,
+    *,
+    wf_context: bool = True,
+    act_context: bool = True,
+    run_context: bool = False,
+    caching_key: str | None = None,
 ) -> Path:
     ctx_path = _contextual_path(
         wf_context=wf_context,
@@ -642,7 +640,7 @@ def activity_workdir(
 
 
 def symlink_embedded_document_to_workdir(
-        doc: Document, paths: WorkerPaths
+    doc: Document, paths: WorkerPaths
 ) -> ProcessedFile:
     ds_file = DatashareFile.from_parent(doc)
     if doc.is_root_document:
@@ -657,11 +655,11 @@ def symlink_embedded_document_to_workdir(
 
 
 def artifact_path(
-        doc_id: str,
-        artifact_type: type[DocArtifact],
-        *,
-        project: str,
-        root: Path,
+    doc_id: str,
+    artifact_type: type[DocArtifact],
+    *,
+    project: str,
+    root: Path,
 ) -> Path:
     return root / artifacts_dir(doc_id, project=project) / artifact_type.filename
 
@@ -678,7 +676,7 @@ M = TypeVar("M", bound=BaseModel)
 
 
 def read_jsonl_as[M](
-        path: Path, processed_file_cls: type[M] | TypeAdapter[M]
+    path: Path, processed_file_cls: type[M] | TypeAdapter[M]
 ) -> Iterable[M]:
     if isinstance(processed_file_cls, TypeAdapter):
         deser_fn = processed_file_cls.validate_python
@@ -688,7 +686,7 @@ def read_jsonl_as[M](
 
 
 async def async_read_jsonl_as[M](
-        path: Path, processed_file_cls: type[M] | TypeAdapter[M]
+    path: Path, processed_file_cls: type[M] | TypeAdapter[M]
 ) -> AsyncIterable[M]:
     if isinstance(processed_file_cls, TypeAdapter):
         deser_fn = processed_file_cls.validate_json
@@ -702,10 +700,10 @@ async def async_read_jsonl_as[M](
 
 
 async def write_batches(
-        batches: AsyncIterable[list[ProcessedFile]] | Iterable[list[ProcessedFile]],
-        root: Path,
-        batch_offset: int = 0,
-        prefix: str = "batch_",
+    batches: AsyncIterable[list[ProcessedFile]] | Iterable[list[ProcessedFile]],
+    root: Path,
+    batch_offset: int = 0,
+    prefix: str = "batch_",
 ) -> AsyncIterable[Path]:
     if hasattr(batches, "__aiter__"):
         async for b in _async_write_batches(batches, root, batch_offset, prefix):
@@ -716,10 +714,10 @@ async def write_batches(
 
 
 async def _async_write_batches(
-        batches: AsyncIterable[list[ProcessedFile]],
-        root: Path,
-        batch_offset: int,
-        prefix: str,
+    batches: AsyncIterable[list[ProcessedFile]],
+    root: Path,
+    batch_offset: int,
+    prefix: str,
 ) -> AsyncIterable[Path]:
     batch_id = batch_offset
     async for batch in batches:
@@ -736,10 +734,10 @@ async def _async_write_batches(
 
 
 async def _write_batches(
-        batches: Iterable[list[ProcessedFile]],
-        root: Path,
-        batch_offset: int,
-        prefix: str,
+    batches: Iterable[list[ProcessedFile]],
+    root: Path,
+    batch_offset: int,
+    prefix: str,
 ) -> AsyncIterable[Path]:
     batch_id = batch_offset
     for batch in batches:
@@ -784,10 +782,10 @@ def ext_to_mime_types(ext: str) -> set[str]:
 
 
 async def publish_and_consume(
-        publisher: asyncio.Task,
-        publisher_completion_callback: Callable[[], None],
-        *,
-        consumer: asyncio.Task,
+    publisher: asyncio.Task,
+    publisher_completion_callback: Callable[[], None],
+    *,
+    consumer: asyncio.Task,
 ) -> tuple[Any, Any]:
     # Publish and consume concurrently
     logger.debug("starting publish and subscribe")
@@ -826,7 +824,7 @@ class _PydanticPayloadConverter(CompositePayloadConverter):
         )
 
     def from_payloads(
-            self, payloads: Sequence[Payload], type_hints: list[type] | None = None
+        self, payloads: Sequence[Payload], type_hints: list[type] | None = None
     ) -> list[Any]:
         try:
             return super().from_payloads(payloads, type_hints)
@@ -849,10 +847,10 @@ PYDANTIC_DATA_CONVERTER = DataConverter(
 
 class SharedResources:
     def __init__(
-            self,
-            cache_size: int = 1,
-            eviction_callback: Callable[[Any, Any], None] | None = None,
-            refresh_interval: int | None = None,
+        self,
+        cache_size: int = 1,
+        eviction_callback: Callable[[Any, Any], None] | None = None,
+        refresh_interval: int | None = None,
     ) -> None:
         self._eviction_callback = eviction_callback
         self._cache = LRU(cache_size, self._on_evict)
@@ -873,7 +871,7 @@ class SharedResources:
 
     @contextlib.contextmanager
     def get_or_cache_resource(
-            self, key: str, default_factory: Callable[[], Any]
+        self, key: str, default_factory: Callable[[], Any]
     ) -> Generator[Any, None, None]:
         """Get or cache a resource, leasing it for the duration of the context.
 
@@ -903,7 +901,7 @@ class SharedResources:
 
     @contextlib.asynccontextmanager
     async def async_get_or_cache_resource(
-            self, key: str, default_factory: Callable[[], Awaitable[Any]]
+        self, key: str, default_factory: Callable[[], Awaitable[Any]]
     ) -> AsyncGenerator[Any, None]:
         """Async version of get_or_cache_resource.
 
@@ -936,9 +934,9 @@ class SharedResources:
                 # The old value will be release with the last user call to _release.
                 # Returning the sentinel will trigger the call to the factory
                 refresh = (
-                        self._refresh_interval is not None
-                        and self._n_leases.get(self._vkey(value), 0)
-                        >= self._refresh_interval
+                    self._refresh_interval is not None
+                    and self._n_leases.get(self._vkey(value), 0)
+                    >= self._refresh_interval
                 )
                 if refresh:
                     self._pending_evictions[self._vkey(value)] = (key, value)
@@ -989,7 +987,7 @@ def close_cm_callback(key: str, value: Any) -> None:  # noqa: ARG001
 
 
 def enter_cm(
-        cm_factory: Callable[[], contextlib.AbstractContextManager],
+    cm_factory: Callable[[], contextlib.AbstractContextManager],
 ) -> Callable[[], contextlib.AbstractContextManager]:  # noqa: ARG001
     @wraps(cm_factory)
     def factory() -> contextlib.AbstractContextManager:
@@ -1001,7 +999,7 @@ def enter_cm(
 
 
 def async_enter_cm(
-        cm_factory: Callable[[], contextlib.AbstractAsyncContextManager],
+    cm_factory: Callable[[], contextlib.AbstractAsyncContextManager],
 ) -> Callable[[], Awaitable[contextlib.AbstractAsyncContextManager]]:  # noqa: ARG001
     @wraps(cm_factory)
     async def wrapper() -> contextlib.AbstractAsyncContextManager:
@@ -1027,12 +1025,12 @@ class _PreprocessingFunction[S: ErrorSource, R](Protocol):
 
 
 def reports_errors[S: ErrorSource, R](
-        errors: tuple[type[Exception]], exc_cls: type[ProcessingError[S]]
+    errors: tuple[type[Exception]], exc_cls: type[ProcessingError[S]]
 ) -> Callable[
     [_PreprocessingFunction[S, R]], _PreprocessingFunction[S, R | ProcessingError[S]]
 ]:
     def parent_wrapper(
-            f: _PreprocessingFunction[S, R],
+        f: _PreprocessingFunction[S, R],
     ) -> _PreprocessingFunction[S, R | ProcessingError[S]]:
         if inspect.iscoroutinefunction(f):
 
@@ -1062,7 +1060,7 @@ def reports_errors[S: ErrorSource, R](
 
 
 async def run_with_concurrency(
-        aws: Iterable[Coroutine | asyncio.Future], max_concurrency: int
+    aws: Iterable[Coroutine | asyncio.Future], max_concurrency: int
 ) -> AsyncGenerator:
     max_concurrency = asyncio.Semaphore(max_concurrency)
     aws = (_run_with_semaphore(aw, max_concurrency) for aw in aws)
@@ -1071,7 +1069,7 @@ async def run_with_concurrency(
 
 
 async def _run_with_semaphore[T](
-        aws: Awaitable[T] | asyncio.Future, sem: asyncio.Semaphore
+    aws: Awaitable[T] | asyncio.Future, sem: asyncio.Semaphore
 ) -> T:
     async with sem:
         return await aws
