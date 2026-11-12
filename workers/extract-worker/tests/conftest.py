@@ -7,7 +7,6 @@ from pathlib import Path
 import datashare_python
 import pytest
 from _pytest.tmpdir import TempPathFactory
-from constants import DEFAULT_EMBEDDING_MODEL, DEFAULT_EMBEDDING_MODEL_REVISION
 from datashare_python.config import (
     DatashareClientConfig,
     ESClientConfig,
@@ -55,7 +54,11 @@ from extract_worker.config import (
     MarkdownExtractWorkerConfig,
     MarkdownInferenceWorkerConfig,
 )
-from extract_worker.constants import TaskQueue
+from extract_worker.constants import (
+    DEFAULT_EMBEDDING_MODEL,
+    DEFAULT_EMBEDDING_MODEL_REVISION,
+    TaskQueue,
+)
 from extract_worker.embeddings import HFEmbedder, make_chunker, make_md_converter
 from tests import DOC_3_CONTENT, DOCS_PATH, PAGES, write_structure
 
