@@ -19,6 +19,7 @@ from datashare_python.utils import (
 )
 from elasticsearch._async.helpers import async_bulk
 from icij_common.es import (
+    ASC,
     DOC_CONTENT,
     DOC_CONTENT_TRANSLATED,
     DOC_EXTRACTION_LEVEL,
@@ -30,6 +31,7 @@ from icij_common.es import (
     QUERY,
     SOURCE,
     ESClient,
+    ESSort,
     and_query,
     has_id,
     has_type,
@@ -419,7 +421,7 @@ async def _get_es_docs_by_language(
         project,
         body=query,
         source_includes=source_includes,
-        sort=[f"{DOC_LANGUAGE}:asc", "_doc:asc"],
+        sort=[{DOC_LANGUAGE: ASC}, {"_doc": ASC}],
     )
     while True:
         try:
@@ -484,8 +486,8 @@ async def _poll_from_es(
     project: str,
     *,
     body: dict,
-    source_includes: list[str] = None,
-    sort: list[str] = None,
+    source_includes: list[str] | None = None,
+    sort: ESSort | None = None,
 ) -> AsyncGenerator[dict, None]:
     async for res in es_client.poll_search_pages(
         index=project, body=body, _source_includes=source_includes, sort=sort
