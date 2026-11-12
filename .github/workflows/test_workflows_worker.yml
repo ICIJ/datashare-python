@@ -12,20 +12,23 @@ on:
 env:
   PYTHON_VERSION: 3.12
   ASTRAL_VERSION: 0.11.6
-  
+
 jobs:
   lint:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-      - uses: astral-sh/ruff-action@v4.1.0
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
         with:
-          args: "--version" # skips test by displaying the version
-          version: "0.16.1"
+          version: ${{ env.ASTRAL_VERSION }}
+          python-version: ${{ env.PYTHON_VERSION }}
+          enable-cache: true
+          working-directory: workers/workflows-worker
       - name: Check formatting
-        run: ruff format --config qa/ruff.toml --check workers/workflows-worker
+        run: cd workers/workflows-worker && uv run --with ruff ruff check --fix .
       - name: Lint test
-        run: ruff check --config qa/ruff.toml workers/workflows-worker
+        run: cd workers/workflows-worker && uv run --with ruff ruff format
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
