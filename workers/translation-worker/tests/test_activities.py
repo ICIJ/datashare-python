@@ -56,7 +56,7 @@ from translation_worker.processors import SentenceSplitter, Translator
 
 class MockESClient(ESClient):
     def __init__(self, docs: list[dict[str, Any]]):
-        super().__init__(pagination=10)
+        super().__init__(hosts=["http://somehost:9200"], pagination=10)
         self._docs = docs
 
     async def poll_search_pages(

@@ -11,7 +11,7 @@ on:
       - 'caul-core/**'
 
 env:
-  PYTHON_VERSION: 3.13
+  PYTHON_VERSION: 3.12
   ASTRAL_VERSION: 0.11.6
 
 # TODO: leverage some caching here

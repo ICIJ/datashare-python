@@ -10,7 +10,7 @@ on:
       - 'workers/workflows-worker/**'
 
 env:
-  PYTHON_VERSION: 3.12
+  PYTHON_VERSION: 3.13
   ASTRAL_VERSION: 0.11.6
 
 jobs:

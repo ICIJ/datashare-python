@@ -5,6 +5,7 @@ ruff-format:
 	./scripts/ruff-format.sh
 
 lock-all:
+	./scripts/lock-dist.sh datashare-python ${uv_extra}
 	./scripts/lock-dist.sh worker-template ${uv_extra}
 	./scripts/lock-dist.sh asr-worker ${uv_extra}
 	./scripts/lock-dist.sh extract-worker ${uv_extra}
