@@ -179,41 +179,42 @@ async def create_translation_batches_act(
 ) -> AsyncGenerator[tuple[DatashareLanguage, list[Batch]], None]:
     # retrieve unprocessed docs
     query = _with_doc_type(query)
-    es_docs = _get_es_docs_by_language(
-        es_client, project, query, source_includes=_BATCHING_DOC_SOURCES
-    )
-    n_docs = 0
-    async for language_docs in es_docs:
-        language_batches: list[Batch] = []
-        current_batch = []
-        current_length = 0
-        current_language = None
+    async with es_client.pit(index=project) as pit:
+        es_docs = _get_es_docs_by_language(
+            es_client, pit, query, source_includes=_BATCHING_DOC_SOURCES
+        )
+        n_docs = 0
+        async for language_docs in es_docs:
+            language_batches: list[Batch] = []
+            current_batch = []
+            current_length = 0
+            current_language = None
 
-        async for doc in language_docs:
-            if max_docs is not None and n_docs >= max_docs:
-                break
-            n_docs += 1
-            doc_id: str = doc[ID_]
-            doc_length = doc[SOURCE][_DOC_CONTENT_TEXT_LENGTH]
-            if current_language is None:
-                current_language = DatashareLanguage(doc[SOURCE][DOC_LANGUAGE])
-                logger.debug("creating batches for %s docs...", current_language)
+            async for doc in language_docs:
+                if max_docs is not None and n_docs >= max_docs:
+                    break
+                n_docs += 1
+                doc_id: str = doc[ID_]
+                doc_length = doc[SOURCE][_DOC_CONTENT_TEXT_LENGTH]
+                if current_language is None:
+                    current_language = DatashareLanguage(doc[SOURCE][DOC_LANGUAGE])
+                    logger.debug("creating batches for %s docs...", current_language)
 
-            next_length = current_length + doc_length
-            if next_length > batch_text_length:
+                next_length = current_length + doc_length
+                if next_length > batch_text_length:
+                    language_batches.append(list(current_batch))
+                    current_batch = []
+
+                current_batch.append(doc_id)
+                current_length = next_length
+
+            if current_batch:
                 language_batches.append(list(current_batch))
-                current_batch = []
-
-            current_batch.append(doc_id)
-            current_length = next_length
-
-        if current_batch:
-            language_batches.append(list(current_batch))
-        if current_language is None:
-            continue
-        yield current_language, language_batches
-        if max_docs is not None and n_docs >= max_docs:
-            return
+            if current_language is None:
+                continue
+            yield current_language, language_batches
+            if max_docs is not None and n_docs >= max_docs:
+                return
 
 
 async def translate_docs_act(
@@ -287,25 +288,26 @@ async def _translate_and_queue(  # noqa: PLR0917
     n_batches = len(batches)
     for batch_i, doc_ids in enumerate(batches):
         logger.debug("translating batch %s / %s", batch_i, n_batches)
-        docs = _poll_from_es(
-            es_client,
-            project,
-            body={QUERY: has_id(doc_ids)},
-            source_includes=_TRANSLATION_DOC_SOURCES,
-        )
-        doc_sents = _split_sentences(docs, sentence_splitter)
-        translated_docs = translate_sentences(
-            doc_sents, translator, batch_size=worker_config.batch_size
-        )
-        async for doc, translated_sents in translated_docs:
-            buffer.append((doc, translation_factory(content=translated_sents)))
-            if len(buffer) >= worker_config.es_buffer_size:
-                queue.put_nowait(buffer)
-                buffer = []
-            seen += 1
-            if progress is not None:
-                await progress(seen)
-        logger.debug("batch %s / %s translated !", batch_i, n_batches)
+        async with es_client.pit(index=project) as pit:
+            docs = _poll_from_es(
+                es_client,
+                pit,
+                body={QUERY: has_id(doc_ids)},
+                source_includes=_TRANSLATION_DOC_SOURCES,
+            )
+            doc_sents = _split_sentences(docs, sentence_splitter)
+            translated_docs = translate_sentences(
+                doc_sents, translator, batch_size=worker_config.batch_size
+            )
+            async for doc, translated_sents in translated_docs:
+                buffer.append((doc, translation_factory(content=translated_sents)))
+                if len(buffer) >= worker_config.es_buffer_size:
+                    queue.put_nowait(buffer)
+                    buffer = []
+                seen += 1
+                if progress is not None:
+                    await progress(seen)
+            logger.debug("batch %s / %s translated !", batch_i, n_batches)
     if buffer:
         queue.put_nowait(buffer)
     return n_docs
@@ -412,13 +414,13 @@ async def _split_sentences(
 
 async def _get_es_docs_by_language(
     es_client: ESClient,
-    project: str,
+    pit: dict[str, Any],
     query: dict[str, Any],
     source_includes: list[str],
 ) -> AsyncGenerator[AsyncIterator[dict], None]:
     docs = _poll_from_es(
         es_client,
-        project,
+        pit,
         body=query,
         source_includes=source_includes,
         sort=[{DOC_LANGUAGE: ASC}, {"_doc": ASC}],
@@ -483,14 +485,14 @@ async def _update_docs_translation(
 
 async def _poll_from_es(
     es_client: ESClient,
-    project: str,
+    pit: dict[str, Any],
     *,
     body: dict,
     source_includes: list[str] | None = None,
     sort: ESSort | None = None,
 ) -> AsyncGenerator[dict, None]:
     async for res in es_client.poll_search_pages(
-        index=project, body=body, _source_includes=source_includes, sort=sort
+        pit=pit, body=body, _source_includes=source_includes, sort=sort
     ):
         for hit in res[HITS][HITS]:
             yield hit

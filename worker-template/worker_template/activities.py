@@ -15,10 +15,12 @@ from datashare_python.utils import (
 )
 from elasticsearch._async.helpers import async_bulk
 from icij_common.es import (
+    ASC,
     BOOL,
     COUNT,
     DOC_CONTENT,
     DOC_CONTENT_TRANSLATED,
+    DOC_CONTENT_TYPE,
     DOC_EXTRACTION_LEVEL,
     DOC_LANGUAGE,
     DOC_ROOT_ID,
@@ -198,6 +200,7 @@ _TRANSLATION_DOC_SOURCES = [
     DOC_LANGUAGE,
     DOC_EXTRACTION_LEVEL,
 ]
+_DOC_SORT = [{DOC_CONTENT_TYPE: ASC}, {DOC_LANGUAGE: ASC}, {"_doc": ASC}]
 
 
 async def translate_docs(
@@ -234,9 +237,9 @@ async def translate_docs(
         if not batch:
             continue
         batch_docs = []
+        body = {QUERY: has_id(batch)}
         async for page in es_client.poll_search_pages(
-            body={QUERY: has_id(batch)},
-            _source_includes=_TRANSLATION_DOC_SOURCES,
+            body=body, source=_TRANSLATION_DOC_SOURCES, sort=_DOC_SORT
         ):
             batch_docs.extend(Document.from_es(doc) for doc in page[HITS][HITS])
         if pipe is None:
@@ -314,9 +317,9 @@ async def classify_docs(
     for batch in batches(docs, batch_size=config.batch_size):
         batch_length = len(batch)
         batch_docs = []
+        body = {QUERY: has_id(batch)}
         async for page in es_client.poll_search_pages(
-            body={QUERY: has_id(batch)},
-            _source_includes=_CLASSIF_DOC_SOURCES,
+            body=body, source=_CLASSIF_DOC_SOURCES, sort=_DOC_SORT
         ):
             batch_docs.extend([Document.from_es(doc) for doc in page[HITS][HITS]])
         contents = (_get_language_content(d, classified_language) for d in batch_docs)
@@ -431,7 +434,7 @@ async def _get_untranslated(
         index=project,
         body=_untranslated_query(target_language),
         _source_includes=[DOC_LANGUAGE],
-        sort=[f"{DOC_LANGUAGE}:asc", "_doc:asc"],
+        sort=[{DOC_LANGUAGE: ASC}, {"_doc": ASC}],
     ):
         for hit in res[HITS][HITS]:
             yield hit
@@ -518,7 +521,7 @@ async def _get_unclassified(
     async for res in es_client.poll_search_pages(
         index=project,
         body=_unclassified_query(model, language=language),
-        sort="_doc:asc",
+        sort=_DOC_SORT,
         _source=False,
         **kwargs,
     ):

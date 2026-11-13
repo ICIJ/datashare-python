@@ -27,6 +27,7 @@ DocumentSearchQuery = dict[str, Any]
 DocRoutes = dict[str | int, str]
 
 
+@ManifestEntry.register(ArtifactType.ASR_TRANSCRIPTION)
 class TranscriptionManifestEntry(ManifestEntry):
     confidence: float | None
 

@@ -1,4 +1,5 @@
-from collections.abc import AsyncGenerator, Callable, Iterable
+from collections.abc import AsyncGenerator, Callable, Iterable, Sequence
+from contextlib import asynccontextmanager
 from functools import partial
 from typing import Any, Self, TypeVar
 from unittest.mock import patch
@@ -58,6 +59,16 @@ class MockESClient(ESClient):
     def __init__(self, docs: list[dict[str, Any]]):
         super().__init__(hosts=["http://somehost:9200"], pagination=10)
         self._docs = docs
+
+    @asynccontextmanager
+    async def pit(
+        self,
+        *,
+        index: str | Sequence[str],  # noqa: ARG002
+        keep_alive: str | None = None,  # noqa: ARG002
+        **kwargs,  # noqa: ARG002
+    ) -> AsyncGenerator[dict[str, Any], None]:
+        yield dict()
 
     async def poll_search_pages(
         self,
@@ -779,9 +790,7 @@ async def test__get_es_docs(
     # When
     docs = [
         [d async for d in group]
-        async for group in _get_es_docs_by_language(
-            es_client, TEST_PROJECT, DS_ENGLISH, []
-        )
+        async for group in _get_es_docs_by_language(es_client, dict(), DS_ENGLISH, [])
     ]
     docs = [[d[ID_] for d in g] for g in docs]
     # Then
