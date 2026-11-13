@@ -214,11 +214,10 @@ async def test_es_client(test_es_client_session: ESClient) -> ESClient:
 @pytest.fixture(scope="session")
 async def test_task_client_session(
     test_worker_config: WorkerConfig,
-) -> AsyncGenerator[DatashareTaskClient, None]:
+) -> AsyncGenerator[DatashareTaskClient]:
     task_client = test_worker_config.to_task_client()
     async with task_client:
-        user, key = await task_client.create_api_key()
-        task_client.authenticate(user, key)
+        await task_client.authenticate_with_yes_cookie_filter()
         await task_client.delete_all_tasks()
         yield task_client
 

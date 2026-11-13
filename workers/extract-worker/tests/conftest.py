@@ -242,6 +242,7 @@ def _write_structure_artifact(
 def doc_with_structure(
     doc_0: Document, test_worker_config: ExtractWorkerConfig
 ) -> DatashareFile:
+    clear_dirs(test_worker_config)
     paths = test_worker_config.paths
     md_path, pages = _write_md(doc_0.id, DOC_0_PAGES, paths)
     ds_file = DatashareFile.from_parent(doc_0)
@@ -399,3 +400,8 @@ def test_chunker(test_embedding_config: EmbeddingWorkerConfig) -> HybridChunker:
 @pytest.fixture(scope="session")
 def test_md_converter() -> DocumentConverter:
     return make_md_converter()
+
+
+@pytest.fixture(scope="session")
+def chunk_index(test_worker_config: ExtractWorkerConfig) -> str:
+    return test_worker_config.embedding.index_name(TEST_PROJECT)

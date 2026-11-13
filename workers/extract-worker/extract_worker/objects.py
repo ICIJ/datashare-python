@@ -18,7 +18,11 @@ from extract_core import PipelineBySize, PipelineConfig, Status
 # ExtractPipelineConfig.__subclasses__ list might be incomplete
 from pydantic import Field, model_validator
 
-from extract_worker.constants import DEFAULT_EMBEDDING_DIM, DEFAULT_EMBEDDING_MODEL
+from extract_worker.constants import (
+    DEFAULT_EMBEDDING_DIM,
+    DEFAULT_EMBEDDING_MODEL,
+    DEFAULT_EMBEDDING_MODEL_REVISION,
+)
 
 from .constants import CHUNK_DOC_ID, CHUNK_INDEX
 
@@ -64,7 +68,7 @@ class EmbeddingArgs(TaskArgs):
     docs: list[DocId] | DocumentSearchQuery | None
     model: str = DEFAULT_EMBEDDING_MODEL
     # pin the model revision to avoid silently pulling new remote code
-    model_revision: str | None = None
+    model_revision: str | None = DEFAULT_EMBEDDING_MODEL_REVISION
     # embeddings are truncated to this size, it must match the index vector size
     dim: int = DEFAULT_EMBEDDING_DIM
 

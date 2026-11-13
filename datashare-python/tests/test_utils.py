@@ -149,6 +149,7 @@ class MockedArgs(TaskArgs):
     some_value: str
 
 
+@ManifestEntry.register("mocked")
 class MockedManifestEntry(ManifestEntry): ...
 
 

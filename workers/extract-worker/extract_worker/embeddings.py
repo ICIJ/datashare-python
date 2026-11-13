@@ -15,7 +15,6 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from aiofile import async_open
-from constants import CHUNK_DOC_ID, CHUNK_EMBEDDING, CHUNK_INDEX
 from datashare_python.exceptions import ArtifactNotFound
 from datashare_python.objects import (
     PROCESSED_FILE_TA,
@@ -52,6 +51,8 @@ from icij_common.es import (
     has_id,
     has_type,
 )
+
+from extract_worker.constants import CHUNK_DOC_ID, CHUNK_EMBEDDING, CHUNK_INDEX
 
 from .config import EmbeddingWorkerConfig
 from .objects import (
@@ -231,7 +232,7 @@ async def embed_documents_act(
     n_docs = len(docs)
     if progress is not None:
         progress = to_raw_async_progress(progress, max_progress=n_docs)
-    n_pages, n_successes, n_successes_pages, n_chunks = 0, 0, 0, 0
+    n_pages, n_successes, n_successes_pages = 0, 0, 0
     errors = []
     n_chunks_by_doc = dict()
     doc_chunks = embed_docs(docs, chunker, md_converter, embedder, dim, paths=paths)
@@ -245,7 +246,6 @@ async def embed_documents_act(
                 doc, chunks = res
                 for chunk in chunks:
                     await f.write(f"{chunk.model_dump_json()}\n")
-                n_chunks += len(chunks)
                 n_chunks_by_doc[doc.doc_id] = len(chunks)
                 n_pages += doc.n_pages
                 n_successes += 1
@@ -256,6 +256,7 @@ async def embed_documents_act(
     processed = ProcessingReportWithPages(n_docs=n_docs, n_pages=n_pages)
     successes = ProcessingReportWithPages(n_docs=n_successes, n_pages=n_successes_pages)
     errors = ErrorReportWithPages.from_errors(*errors)
+    n_chunks = sum(n_chunks_by_doc.values())
     response = EmbeddingResponse(
         processed=processed, successes=successes, errors=errors, n_chunks=n_chunks
     )

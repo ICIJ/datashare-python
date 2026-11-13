@@ -136,6 +136,12 @@ services:
       - temporal
     environment:
       - TEMPORAL_ADDRESS=temporal:7233
+    healthcheck:
+      test: [ "CMD", "nc", "-z", "temporal-ui", "8080" ]
+      interval: 2s
+      timeout: 3s
+      start_period: 5s
+      retries: 10
     ports:
       - "8233:8080"
     networks:
@@ -148,6 +154,8 @@ services:
     image: icij/datashare:${DATASHARE_VERSION:-20.14.10}
     container_name: datashare-init
     depends_on:
+      postgres:
+        condition: service_healthy
       elasticsearch:
         condition: service_healthy
     networks:
@@ -161,7 +169,7 @@ services:
       --elasticsearchAddress http://elasticsearch:9200
 
   datashare:
-    image: icij/datashare:${DATASHARE_VERSION:-20.14.10}
+    image: icij/datashare:${DATASHARE_VERSION:-21.24.1}
     container_name: datashare
     hostname: datashare
     depends_on:
@@ -171,6 +179,8 @@ services:
         condition: service_healthy
       datashare-init:
         condition: service_completed_successfully
+      temporal:
+        condition: service_healthy
     environment:
       DS_DOCKER_MOUNTED_DATA_DIR: ${PWD}/data
       TEMPORAL_ADDRESS: http://temporal:7233
@@ -179,12 +189,13 @@ services:
     networks:
       - datashare-network
     command: >-
+      app start
       --mode SERVER
       --taskRoutingStrategy GROUP
       --dataDir /home/datashare/Datashare
       --pluginsDir /home/datashare/plugins
       --extensionsDir /home/datashare/extensions
-      --authFilter org.icij.datashare.session.YesCookieAuthFilter
+      --auth yesCookie
       --dataSourceUrl jdbc:postgresql://postgres/datashare?user=datashare\&password=datashare
       --defaultProject sandbox
       --elasticsearchAddress http://elasticsearch:9200
@@ -195,7 +206,7 @@ services:
       --sessionTtlSeconds 43200
       --tcpListenPort 8080
       --batchQueueType TEMPORAL
-      --messageBusAddress temporal:7233
+      --messageBusAddress localhost:7233
 
   gotenberg:
     image: gotenberg/gotenberg:8
@@ -215,6 +226,7 @@ networks:
   datashare-network:
     driver: bridge
     name: datashare-network
+
 volumes:
   elasticsearch-data:
   postgres-data:
