@@ -13,9 +13,9 @@ from icij_common.es import ESClient
 from temporalio.client import Client as TemporalClient
 from temporalio.client import WorkflowFailureError
 from temporalio.worker import Worker
+from test_embeddings import embeddings_index_body
 
 from extract_worker.config import ExtractWorkerConfig
-from extract_worker.embeddings import embeddings_index_body
 from extract_worker.objects import (
     EmbeddingArgs,
     MarkdownExtractArgs,

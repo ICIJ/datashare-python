@@ -31,14 +31,18 @@ from datashare_python.conftest import (  # noqa: F401
     text_1,
 )
 from datashare_python.objects import (
+    ByteRangesPagination,
     DatashareFile,
     DatashareLanguage,
     Document,
+    Pages,
     ProcessedFile,
+    StructureManifestEntry,
+    WorkerFile,
     WorkerPaths,
 )
 from datashare_python.types_ import TemporalClient
-from datashare_python.utils import artifacts_dir
+from datashare_python.utils import artifacts_dir, write_artifact
 from docling.document_converter import DocumentConverter
 from docling_core.transforms.chunker import HybridChunker
 from extract_core import BatchConcurrencySettings, DoclingSettings
@@ -60,12 +64,22 @@ from extract_worker.constants import (
     TaskQueue,
 )
 from extract_worker.embeddings import HFEmbedder, make_chunker, make_md_converter
-from tests import DOC_3_CONTENT, DOCS_PATH, PAGES, write_structure
+from extract_worker.objects import MarkdownExtractArgs, StructureArtifact
+from tests import DOCS_PATH
 
 mimetypes.init()
 
 
 TEST_EMBEDDING_DIM = 64
+
+PAGE_SEP = '\n<div style="page-break-after: always;"></div>\n'
+
+DOC_0_PAGES = [
+    "# Offshore leaks\n\nShell companies registered in the islands.\n",
+    "## Beneficial owners\n\nThe owners were hidden behind nominees.\n",
+]
+
+DOC_3_CONTENT = "The vote is on Sunday.\n\n  \n\nPolls close at eight.\n"
 
 
 @pytest.fixture(scope="session")
@@ -211,14 +225,56 @@ def docs_with_cached_artifacts(
     return files
 
 
+def _write_structure_artifact(
+    processed: DatashareFile, md_path: Path, pages: Pages, paths: WorkerPaths
+) -> None:
+    args = MarkdownExtractArgs(project=processed.project, docs=None)
+    artifact = StructureArtifact(
+        project=processed.project,
+        doc_id=processed.doc_id,
+        artifact=md_path,
+        manifest_entry=StructureManifestEntry.complete(args=args, pages=pages),
+    )
+    write_artifact(paths.artifacts, artifact)
+
+
 @pytest.fixture
 def doc_with_structure(
     doc_0: Document, test_worker_config: ExtractWorkerConfig
-) -> ProcessedFile:
-    clear_dirs(test_worker_config)
-    doc = DatashareFile.from_parent(doc_0)
-    write_structure(doc, test_worker_config.paths.artifacts, PAGES)
-    return doc
+) -> DatashareFile:
+    paths = test_worker_config.paths
+    md_path, pages = _write_md(doc_0.id, DOC_0_PAGES, paths)
+    ds_file = DatashareFile.from_parent(doc_0)
+    _write_structure_artifact(ds_file, md_path, pages, paths)
+    return ds_file
+
+
+@pytest.fixture
+def doc_without_md(
+    doc_3: Document, test_worker_config: ExtractWorkerConfig
+) -> WorkerFile:
+    paths = test_worker_config.paths
+    content_path = paths.workdir / f"{doc_3.id}-content"
+    content_path.write_text(doc_3.content)
+    return WorkerFile.from_parent(
+        DatashareFile.from_parent(doc_3), paths=paths, path=content_path
+    )
+
+
+def _write_md(doc_id: str, pages: list[str], paths: WorkerPaths) -> tuple[Path, Pages]:
+    contents = [(p + PAGE_SEP).encode() for p in pages[:-1]] + [pages[-1].encode()]
+    byte_ranges, start = [], 0
+    for c in contents:
+        byte_ranges.append((start, start + len(c)))
+        start += len(c)
+    md_dir = paths.workdir / doc_id
+    md_dir.mkdir(exist_ok=True, parents=True)
+    (md_dir / "doc.md").write_bytes(b"".join(contents))
+    pages = Pages(
+        total=len(contents),
+        pagination=ByteRangesPagination(byte_ranges=byte_ranges),
+    )
+    return md_dir, pages
 
 
 @pytest.fixture(scope="session")

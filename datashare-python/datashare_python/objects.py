@@ -10,7 +10,16 @@ from datetime import UTC, datetime
 from enum import StrEnum, unique
 from io import BytesIO
 from pathlib import Path
-from typing import Annotated, Any, ClassVar, Literal, Self, TypeVar, cast, final
+from typing import (
+    Annotated,
+    Any,
+    ClassVar,
+    Literal,
+    Self,
+    TypeVar,
+    cast,
+    final,
+)
 
 import langcodes
 from icij_common.registrable import Registrable
@@ -354,7 +363,7 @@ class TaskArgs(DatashareModel, ABC):
 A = TypeVar("A", bound=TaskArgs)
 
 
-class ManifestEntry[A](DatashareModel, ABC):
+class ManifestEntry[A](DatashareModel, Registrable):
     status: ManifestEntryStatus
     # TODO: make this one non optional in the next major !
     task_id: str | None
@@ -879,3 +888,14 @@ ProcessedFile = Annotated[
 ]
 WorkerFile.model_rebuild()
 PROCESSED_FILE_TA = TypeAdapter(ProcessedFile, config=BaseModel.model_config)
+
+
+@ManifestEntry.register(ArtifactType.STRUCTURE)
+class StructureManifestEntry(ManifestEntry):
+    confidence: float | None = None
+    pages: Pages
+
+
+class StructureArtifact(DocArtifact):
+    filename: ClassVar[str] = "structure"
+    type: ClassVar[ArtifactType] = ArtifactType.STRUCTURE

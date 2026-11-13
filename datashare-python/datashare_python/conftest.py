@@ -57,7 +57,7 @@ _DEFAULT_AUTH = encode_basic_auth(login="guest", password="guest", encoding="utf
 TEST_PROJECT = "test-project"
 DS_URL = "https://datashare.org"
 
-_SETTINGS = {
+ES_SETTINGS = {
     "number_of_replicas": 0,
     "analysis": {
         "analyzer": {
@@ -95,7 +95,7 @@ _SETTINGS = {
     },
 }
 _INDEX_BODY = {
-    "settings": _SETTINGS,
+    "settings": ES_SETTINGS,
     "mappings": {
         "properties": {
             "type": {"type": "keyword"},
@@ -113,7 +113,7 @@ _INDEX_BODY = {
     },
 }
 _EMBEDDING_INDEX_BODY = {
-    "settings": _SETTINGS,
+    "settings": ES_SETTINGS,
     "mappings": {
         "dynamic": "strict",
         "properties": {

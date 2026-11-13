@@ -11,7 +11,6 @@ from datashare_python.dependencies import lifespan_es_client, lifespan_worker_co
 from datashare_python.objects import (
     PROCESSED_FILE_TA,
     ByteRangesPagination,
-    DatashareFile,
     Document,
     Error,
     ErrorReportWithPages,
@@ -258,7 +257,7 @@ class DocumentEmbedding(ActivityWithProgress):
                 md_converter=md_converter,
                 embedder=embedder,
                 dim=dim,
-                artifacts_root=w_config.paths.artifacts,
+                paths=w_config.paths,
                 output_path=output_path,
                 progress=progress,
             )
@@ -328,25 +327,27 @@ async def create_embedding_batches_act(
     docs: list[DocId] | DocumentSearchQuery | None,
     project: str,
     *,
-    artifacts_root: Path,
+    paths: WorkerPaths,
     output_dir: Path,
     target_n_docs_per_task: int,
     es_client: ESClient,
 ) -> AsyncIterable[Path]:
-    from embeddings import (  # noqa: PLC0415
+    from .embeddings import (  # noqa: PLC0415
         build_embedding_doc_query,
-        with_embeddable_content,
+        locate_embeddable_content,
     )
 
     query = build_embedding_doc_query(docs)
-    docs = _search_docs(es_client, project, query)
-    batches = with_embeddable_content(
+    docs = _search_docs(es_client, project, query, sort=_DOC_SORT)
+    md_content_root = output_dir / "md_content"
+    md_content_root.mkdir(parents=True, exist_ok=True)
+    batches = locate_embeddable_content(
         async_batches(docs, target_n_docs_per_task),
+        md_content_root,
         es_client=es_client,
         project=project,
-        artifacts_root=artifacts_root,
+        paths=paths,
     )
-    batches = ([DatashareFile.from_parent(d) for d in b] async for b in batches)
     async for p in write_batches(batches, output_dir, prefix="embed_"):
         yield p
 
@@ -446,13 +447,10 @@ def _build_doc_query(
 
 
 async def _search_docs(
-    es_client: ESClient, project: str, query: dict[str, Any], sort: ESSort = None
+    es_client: ESClient, project: str, query: dict[str, Any], *, sort: ESSort
 ) -> AsyncIterable[Document]:
     async for page in es_client.poll_search_pages(
-        index=project,
-        body=query,
-        sort=sort,
-        _source_includes=_DOC_CONTENT_SOURCES,
+        index=project, body=query, sort=sort, source=_DOC_CONTENT_SOURCES
     ):
         for hit in page[HITS][HITS]:
             yield Document.from_es(hit)

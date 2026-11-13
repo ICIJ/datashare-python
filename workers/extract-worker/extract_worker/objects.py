@@ -1,17 +1,15 @@
 from collections.abc import Sequence
 from pathlib import Path
-from typing import Any, ClassVar
+from typing import Any
 
 from datashare_python.objects import (
-    ArtifactType,
     DatashareModel,
-    DocArtifact,
     ErrorReportWithPages,
-    ManifestEntry,
-    Pages,
     ProcessedFile,
     ProcessingError,
     ProcessingReportWithPages,
+    StructureArtifact,  # noqa: F401
+    StructureManifestEntry,  # noqa: F401
     TaskArgs,
 )
 from extract_core import PipelineBySize, PipelineConfig, Status
@@ -38,16 +36,6 @@ class MarkdownExtractArgs(TaskArgs):
         as_entry = super().as_manifest_task_input()
         as_entry.pop("docs")
         return as_entry
-
-
-class StructureArtifact(DocArtifact):
-    filename: ClassVar[str] = "structure"
-    type: ClassVar[ArtifactType] = ArtifactType.STRUCTURE
-
-
-class StructureManifestEntry(ManifestEntry):
-    confidence: float | None = None
-    pages: Pages
 
 
 class ExtractError(ProcessingError[ProcessedFile]):
@@ -89,7 +77,6 @@ class EmbeddingArgs(TaskArgs):
 class EmbeddedChunk(DatashareModel):
     doc_id: str
     root_document: str
-    project: str
     chunk_index: int
     page: int
     text: str
