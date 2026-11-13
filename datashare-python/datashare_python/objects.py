@@ -5,6 +5,7 @@ import os
 import traceback
 from abc import ABC, abstractmethod
 from collections.abc import Callable
+from copy import deepcopy
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from enum import StrEnum, unique
@@ -23,6 +24,7 @@ from typing import (
 
 import langcodes
 from icij_common.registrable import Registrable
+from pydantic import model_serializer
 from pydantic_core import PydanticCustomError, core_schema
 from pydantic_core.core_schema import PlainValidatorFunctionSchema
 from temporalio import activity, workflow
@@ -364,6 +366,8 @@ A = TypeVar("A", bound=TaskArgs)
 
 
 class ManifestEntry[A](DatashareModel, Registrable):
+    model_config = deepcopy(DatashareModel.model_config)
+
     status: ManifestEntryStatus
     # TODO: make this one non optional in the next major !
     task_id: str | None
@@ -375,6 +379,14 @@ class ManifestEntry[A](DatashareModel, Registrable):
             serialization_alias="taskInput",
         ),
     ]
+
+    @model_serializer(mode="wrap")  # noqa: F821
+    def serialize_without_registry_key(
+        self, nxt: core_schema.SerializerFunctionWrapHandler
+    ) -> dict[str, Any]:
+        serialized = nxt(self)
+        serialized.pop(self.registry_key.default, None)
+        return serialized
 
     @classmethod
     def complete(cls, args: A, label: str | None = None, **kwargs) -> Self:

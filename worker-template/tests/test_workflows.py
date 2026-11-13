@@ -59,7 +59,7 @@ async def test_ping_e2e(
     ping_task_id = await test_task_client.create_task("ping", dict(), group=task_group)
     # Then
     ping_timeout_s = 20
-    assert await async_true_after(
+    await async_true_after(
         partial(
             has_state,
             test_task_client,

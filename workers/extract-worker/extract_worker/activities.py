@@ -211,7 +211,7 @@ class DocumentEmbedding(ActivityWithProgress):
             async for p in create_embedding_batches_act(
                 docs,
                 project,
-                artifacts_root=w_config.paths.artifacts,
+                paths=w_config.paths,
                 output_dir=output_dir,
                 target_n_docs_per_task=w_config.embedding.target_n_docs_per_task,
                 es_client=es_client,
