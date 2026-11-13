@@ -12,7 +12,7 @@ if TYPE_CHECKING:
 @cache
 def _dtypes_map() -> "dict[trt.DataType, torch.dtype]":
     trt = import_trt()
-    import torch
+    import torch  # noqa: PLC0415
 
     return {
         trt.float16: torch.float16,
@@ -40,7 +40,7 @@ class TrtInferenceHandler:
 
     def infer(self, inputs: dict) -> tuple:
         trt = import_trt()
-        import torch
+        import torch  # noqa: PLC0415
 
         trt_to_torch_dtypes = _dtypes_map()
 

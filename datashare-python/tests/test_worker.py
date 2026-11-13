@@ -1,11 +1,12 @@
 import logging
 import uuid
 
-import datashare_python
 from _pytest.logging import LogCaptureFixture
+from temporalio.worker import PollerBehaviorSimpleMaximum
+
+import datashare_python
 from datashare_python.types_ import TemporalClient
 from datashare_python.worker import datashare_worker
-from temporalio.worker import PollerBehaviorSimpleMaximum
 
 from .conftest import MockedWorkflow, mocked_act, mocked_async_act
 

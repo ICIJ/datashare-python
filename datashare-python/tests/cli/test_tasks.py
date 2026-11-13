@@ -7,11 +7,12 @@ from unittest.mock import AsyncMock, MagicMock
 import click
 from _pytest.logging import LogCaptureFixture
 from _pytest.monkeypatch import MonkeyPatch
+from packaging.version import Version
+from typer.testing import CliRunner
+
 from datashare_python.cli import cli_app
 from datashare_python.cli import task as cli_task
 from datashare_python.objects import StacktraceItem, Task, TaskError, TaskState
-from packaging.version import Version
-from typer.testing import CliRunner
 
 BUGGED_CLICK_VERSION = Version("8.1.8")
 CLICK_VERSION = Version(click.__version__)

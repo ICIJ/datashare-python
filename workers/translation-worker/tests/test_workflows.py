@@ -4,9 +4,10 @@ import uuid
 import pytest
 from datashare_python.conftest import TEST_PROJECT
 from datashare_python.objects import DatashareLanguage, Document
-from icij_common.es import HITS, ESClient, has_type
+from icij_common.es import ASC, HITS, ESClient, has_type
 from temporalio.client import Client as TemporalClient
 from temporalio.worker import Worker
+
 from translation_worker.constants import TaskQueue
 from translation_worker.objects import (
     DefaultSentenceSplitterConfig,
@@ -45,7 +46,7 @@ async def test_translation_workflow(  # noqa: PLR0917
     assert res.n_translations == 2
 
     body = {"query": has_type(type_field="type", type_value="Document")}
-    sort = "_doc:asc"
+    sort = {"_doc": ASC}
     index_docs = []
     async for hits in test_es_client.poll_search_pages(
         index=TEST_PROJECT, body=body, sort=sort

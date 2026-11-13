@@ -3,12 +3,13 @@ from collections.abc import Iterable
 from pathlib import Path
 from typing import Self
 
-from asr_worker.objects import ASRArgs, Transcription, TranscriptionManifestEntry
-from asr_worker.postprocessing import postprocess_act
 from caul_core import ASRResult, AudioMetadata, Postprocessor, SegmentIndex
 from caul_core import Error as CaulError
 from datashare_python.conftest import TEST_PROJECT
 from icij_common.registrable import RegistrableConfig
+
+from asr_worker.objects import ASRArgs, Transcription, TranscriptionManifestEntry
+from asr_worker.postprocessing import postprocess_act
 
 from .conftest import DS_ENGLISH
 

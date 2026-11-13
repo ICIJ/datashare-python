@@ -2,6 +2,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 import torch
+
 from caul.exception import TrtInputShapeError
 from caul.trt.handler import TrtInferenceHandler
 

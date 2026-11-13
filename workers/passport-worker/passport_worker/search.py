@@ -10,6 +10,7 @@ from datashare_python.utils import (
     write_batches,
 )
 from icij_common.es import (
+    ASC,
     DOC_CONTENT_TYPE,
     DOC_EXTRACTION_LEVEL,
     DOC_LANGUAGE,
@@ -157,7 +158,7 @@ def _with_supported_exts_query(supported_exts: set[str]) -> dict[str, Any]:
     return query[QUERY]
 
 
-_DOC_SORT = [f"{DOC_CONTENT_TYPE}:asc", "_doc:asc"]
+_DOC_SORT = [{DOC_CONTENT_TYPE: ASC}, {"_doc": ASC}]
 DOC_SOURCES = [DOC_PATH, DOC_ROOT_ID, DOC_LANGUAGE, DOC_METADATA, DOC_EXTRACTION_LEVEL]
 
 

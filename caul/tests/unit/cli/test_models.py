@@ -4,9 +4,10 @@ from pathlib import Path
 import pytest
 from _pytest.logging import LogCaptureFixture
 from _pytest.monkeypatch import MonkeyPatch
-from caul.cli import cli_app, models
 from caul_core import ASRModel
 from typer.testing import CliRunner
+
+from caul.cli import cli_app, models
 
 logger = logging.getLogger(__name__)
 

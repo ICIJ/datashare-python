@@ -38,7 +38,9 @@ ignore = [
   "ASYNC240",
   "C408", # missing-type-kwargs
   "D1", # doc
-  "D205", # missing-blank-line-after-summary
+  "D203",
+  "D205",
+  "D213",
   "D400", # missing-trailing-period
   "D415", # missing-terminal-punctuation
   "N818", # error-suffix-on-exception-name
@@ -56,11 +58,3 @@ ignore = [
 ]
 [lint.flake8-tidy-imports]
 ban-relative-imports = "parents"
-
-[lint.per-file-ignores]
-# caul lazily imports its optional heavy dependencies (torch, nemo, tensorrt, ...) so that a base
-# install works without them
-"**/caul/caul/**" = ["PLC0415"]
-"**/caul-core/caul_core/**" = ["PLC0415"]
-# Task implementations override base class interfaces and don't use every argument
-"**/caul/caul/tasks/**" = ["ARG002", "ARG003"]

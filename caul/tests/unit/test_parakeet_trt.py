@@ -2,10 +2,11 @@ from unittest.mock import MagicMock, mock_open, patch
 
 import pytest
 import torch
-from caul.exception import TrtEngineLoadError
-from caul.tasks.inference.parakeet_trt import ParakeetTrtInferenceRunner
 from caul_core import PARAKEET_MODEL_REF
 from omegaconf import OmegaConf
+
+from caul.exception import TrtEngineLoadError
+from caul.tasks.inference.parakeet_trt import ParakeetTrtInferenceRunner
 
 _ENGINE_PATH = "/fake/encoder.trt"
 _INFERENCE_HANDLER_PATH = "caul.tasks.inference.parakeet_trt.TrtInferenceHandler"

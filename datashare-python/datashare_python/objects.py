@@ -5,15 +5,26 @@ import os
 import traceback
 from abc import ABC, abstractmethod
 from collections.abc import Callable
+from copy import deepcopy
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from enum import StrEnum, unique
 from io import BytesIO
 from pathlib import Path
-from typing import Annotated, Any, ClassVar, Literal, Self, TypeVar, cast, final
+from typing import (
+    Annotated,
+    Any,
+    ClassVar,
+    Literal,
+    Self,
+    TypeVar,
+    cast,
+    final,
+)
 
 import langcodes
 from icij_common.registrable import Registrable
+from pydantic import model_serializer
 from pydantic_core import PydanticCustomError, core_schema
 from pydantic_core.core_schema import PlainValidatorFunctionSchema
 from temporalio import activity, workflow
@@ -24,6 +35,7 @@ with workflow.unsafe.imports_passed_through():
     from icij_common.es import (
         DOC_CONTENT,
         DOC_CONTENT_TRANSLATED,
+        DOC_CONTENT_TYPE,
         DOC_EXTRACTION_LEVEL,
         DOC_LANGUAGE,
         DOC_METADATA,
@@ -250,6 +262,7 @@ class Document(DatashareModel):
             id=es_doc[ID_],
             index=es_doc.get(INDEX_),
             content=sources.get(DOC_CONTENT),
+            content_type=sources.get(DOC_CONTENT_TYPE),
             content_translated=sources.get(DOC_CONTENT_TRANSLATED),
             content_text_length=sources.get("content_text_length"),
             language=DatashareLanguage(sources[DOC_LANGUAGE]),
@@ -352,7 +365,9 @@ class TaskArgs(DatashareModel, ABC):
 A = TypeVar("A", bound=TaskArgs)
 
 
-class ManifestEntry[A](DatashareModel, ABC):
+class ManifestEntry[A](DatashareModel, Registrable):
+    model_config = deepcopy(DatashareModel.model_config)
+
     status: ManifestEntryStatus
     # TODO: make this one non optional in the next major !
     task_id: str | None
@@ -364,6 +379,14 @@ class ManifestEntry[A](DatashareModel, ABC):
             serialization_alias="taskInput",
         ),
     ]
+
+    @model_serializer(mode="wrap")  # noqa: F821
+    def serialize_without_registry_key(
+        self, nxt: core_schema.SerializerFunctionWrapHandler
+    ) -> dict[str, Any]:
+        serialized = nxt(self)
+        serialized.pop(self.registry_key.default, None)
+        return serialized
 
     @classmethod
     def complete(cls, args: A, label: str | None = None, **kwargs) -> Self:
@@ -877,3 +900,14 @@ ProcessedFile = Annotated[
 ]
 WorkerFile.model_rebuild()
 PROCESSED_FILE_TA = TypeAdapter(ProcessedFile, config=BaseModel.model_config)
+
+
+@ManifestEntry.register(ArtifactType.STRUCTURE)
+class StructureManifestEntry(ManifestEntry):
+    confidence: float | None = None
+    pages: Pages
+
+
+class StructureArtifact(DocArtifact):
+    filename: ClassVar[str] = "structure"
+    type: ClassVar[ArtifactType] = ArtifactType.STRUCTURE

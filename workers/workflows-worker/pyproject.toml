@@ -18,7 +18,7 @@ dependencies = [
 
 [tool.uv]
 package = true
-exclude-dependencies =  [
+exclude-dependencies = [
   "anthropic",
   "cuda-bindings",
   "cuda-pathfinde",
@@ -76,3 +76,6 @@ packages = ["main"]
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
+
+[tool.ruff]
+extend = "../../qa/ruff.toml"

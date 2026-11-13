@@ -1,28 +1,34 @@
+from collections.abc import Sequence
 from pathlib import Path
-from typing import Any, ClassVar
+from typing import Any
 
 from datashare_python.objects import (
-    ArtifactType,
     DatashareModel,
-    DocArtifact,
     ErrorReportWithPages,
-    ManifestEntry,
-    Pages,
     ProcessedFile,
     ProcessingError,
     ProcessingReportWithPages,
+    StructureArtifact,  # noqa: F401
+    StructureManifestEntry,  # noqa: F401
     TaskArgs,
 )
 from extract_core import PipelineBySize, PipelineConfig, Status
 
 # Import the config class from extract python otherwise the
 # ExtractPipelineConfig.__subclasses__ list might be incomplete
-from pydantic import Field
+from pydantic import Field, model_validator
 
-from extract_worker.constants import DEFAULT_EMBEDDING_DIM, DEFAULT_EMBEDDING_MODEL
+from extract_worker.constants import (
+    DEFAULT_EMBEDDING_DIM,
+    DEFAULT_EMBEDDING_MODEL,
+    DEFAULT_EMBEDDING_MODEL_REVISION,
+)
+
+from .constants import CHUNK_DOC_ID, CHUNK_INDEX
 
 DocumentSearchQuery = dict[str, Any]
 DocId = str
+Vector = Sequence[float | int]
 
 
 class MarkdownExtractArgs(TaskArgs):
@@ -34,16 +40,6 @@ class MarkdownExtractArgs(TaskArgs):
         as_entry = super().as_manifest_task_input()
         as_entry.pop("docs")
         return as_entry
-
-
-class StructureArtifact(DocArtifact):
-    filename: ClassVar[str] = "structure"
-    type: ClassVar[ArtifactType] = ArtifactType.STRUCTURE
-
-
-class StructureManifestEntry(ManifestEntry):
-    confidence: float | None = None
-    pages: Pages
 
 
 class ExtractError(ProcessingError[ProcessedFile]):
@@ -72,7 +68,7 @@ class EmbeddingArgs(TaskArgs):
     docs: list[DocId] | DocumentSearchQuery | None
     model: str = DEFAULT_EMBEDDING_MODEL
     # pin the model revision to avoid silently pulling new remote code
-    model_revision: str | None = None
+    model_revision: str | None = DEFAULT_EMBEDDING_MODEL_REVISION
     # embeddings are truncated to this size, it must match the index vector size
     dim: int = DEFAULT_EMBEDDING_DIM
 
@@ -85,21 +81,29 @@ class EmbeddingArgs(TaskArgs):
 class EmbeddedChunk(DatashareModel):
     doc_id: str
     root_document: str
-    project: str
     chunk_index: int
     page: int
     text: str
     headings: list[str] | None = None
     model: str
     embedding: list[float]
+    id: str | None = None
 
-    @property
-    def es_id(self) -> str:
-        return f"{self.doc_id}-{self.chunk_index}"
+    @model_validator(mode="before")
+    @classmethod
+    def _add_es_id(cls, v: Any) -> Any:
+        if isinstance(v, dict):
+            doc_id = v.get(CHUNK_DOC_ID, v["doc_id"])
+            chunk_index = v.get(CHUNK_INDEX, v["chunk_index"])
+            v["id"] = f"{doc_id}-{chunk_index}"
+        else:
+            doc_id = v.doc_id
+            chunk_index = v.chunk_index
+            v.id = f"{doc_id}-{chunk_index}"
+        return v
 
 
-class EmbeddingError(ProcessingError[ProcessedFile]):
-    pass
+class EmbeddingError(ProcessingError[ProcessedFile]): ...
 
 
 class EmbeddingResponse(DatashareModel):

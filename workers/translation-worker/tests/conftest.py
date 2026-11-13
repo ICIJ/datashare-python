@@ -3,7 +3,6 @@ from collections.abc import AsyncGenerator
 
 import datashare_python
 import pytest
-import translation_worker
 from _pytest.tmpdir import TempPathFactory
 from datashare_python.config import (
     DatashareClientConfig,
@@ -27,6 +26,8 @@ from datashare_python.conftest import (  # noqa: F401
 from datashare_python.objects import DatashareLanguage, Document, WorkerPaths
 from datashare_python.types_ import TemporalClient
 from icij_common.es import ESClient
+
+import translation_worker
 from translation_worker.activities import Activity
 from translation_worker.config import TranslationWorkerConfig
 from translation_worker.constants import TRANSLATION_WORKFLOW_NAME

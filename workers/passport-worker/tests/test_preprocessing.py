@@ -14,6 +14,8 @@ from icij_common.pydantic_utils import safe_copy
 from icij_common.registrable import FromConfig, RegistrableConfig
 from passport_service.constants import GOTENBERG_SUPPORTED_EXTS
 from passport_service.exceptions import InvalidPDF, UnsupportedDocExtension
+from PIL import Image
+
 from passport_worker.config import PassportWorkerConfig
 from passport_worker.objects import ProcessedPage
 from passport_worker.preprocessing import (
@@ -26,8 +28,6 @@ from passport_worker.preprocessing import (
     preprocess_images_act,
     preprocess_pdfs_act,
 )
-from PIL import Image
-
 from tests import DOCS_PATH
 from tests.conftest import (
     DS_FILE_0,

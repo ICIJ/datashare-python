@@ -11,7 +11,6 @@ from datashare_python.dependencies import lifespan_es_client, lifespan_worker_co
 from datashare_python.objects import (
     PROCESSED_FILE_TA,
     ByteRangesPagination,
-    DatashareFile,
     Document,
     Error,
     ErrorReportWithPages,
@@ -45,6 +44,7 @@ from extract_core import (
     SupportedExt,
 )
 from icij_common.es import (
+    ASC,
     DOC_CONTENT_TYPE,
     DOC_EXTRACTION_LEVEL,
     DOC_LANGUAGE,
@@ -64,18 +64,8 @@ from icij_common.iter_utils import async_batches
 from pydantic import TypeAdapter
 from temporalio import activity
 
-from .config import EmbeddingWorkerConfig, ExtractWorkerConfig
+from .config import ExtractWorkerConfig
 from .dependencies import lifespan_embedder_cache
-from .embeddings import (
-    HFEmbedder,
-    build_embedding_doc_query,
-    embed_documents_act,
-    ensure_embeddings_index,
-    index_embeddings_act,
-    make_chunker,
-    make_md_converter,
-    with_embeddable_content,
-)
 from .objects import (
     DocId,
     DocumentSearchQuery,
@@ -198,6 +188,8 @@ class MarkdownExtract(ActivityWithProgress):
 class DocumentEmbedding(ActivityWithProgress):
     @activity_defn(name=Activity.CHECK_EMBEDDINGS_INDEX)
     async def check_embeddings_index(self, project: str, dim: int) -> None:
+        from .embeddings import ensure_embeddings_index  # noqa: PLC0415
+
         es_client = lifespan_es_client()
         w_config = cast(ExtractWorkerConfig, lifespan_worker_config())
         index = w_config.embedding.index_name(project)
@@ -219,7 +211,7 @@ class DocumentEmbedding(ActivityWithProgress):
             async for p in create_embedding_batches_act(
                 docs,
                 project,
-                artifacts_root=w_config.paths.artifacts,
+                paths=w_config.paths,
                 output_dir=output_dir,
                 target_n_docs_per_task=w_config.embedding.target_n_docs_per_task,
                 es_client=es_client,
@@ -239,6 +231,11 @@ class DocumentEmbedding(ActivityWithProgress):
         *,
         progress: AsyncProgressRateHandler | None = None,
     ) -> EmbedBatchResult:
+        from .embeddings import (  # noqa: PLC0415
+            embed_documents_act,
+            load_embedding_resources,
+        )
+
         w_config = cast(ExtractWorkerConfig, lifespan_worker_config())
         embedding_config = w_config.embedding
         workdir = w_config.paths.workdir
@@ -249,7 +246,7 @@ class DocumentEmbedding(ActivityWithProgress):
         cache = lifespan_embedder_cache()
         cache_key = f"{config_cache_key(embedding_config)}-{model}@{model_revision}"
         factory = partial(
-            _load_embedding_resources, embedding_config, model, model_revision
+            load_embedding_resources, embedding_config, model, model_revision
         )
         with cache.get_or_cache_resource(cache_key, factory) as resources:
             chunker, md_converter, embedder = resources
@@ -260,7 +257,7 @@ class DocumentEmbedding(ActivityWithProgress):
                 md_converter=md_converter,
                 embedder=embedder,
                 dim=dim,
-                artifacts_root=w_config.paths.artifacts,
+                paths=w_config.paths,
                 output_path=output_path,
                 progress=progress,
             )
@@ -275,6 +272,8 @@ class DocumentEmbedding(ActivityWithProgress):
     async def index_embeddings(
         self, chunks: Path, n_chunks_by_doc: dict[DocId, int], project: str, dim: int
     ) -> int:
+        from .embeddings import index_embeddings_act  # noqa: PLC0415
+
         es_client = lifespan_es_client()
         w_config = cast(ExtractWorkerConfig, lifespan_worker_config())
         embedding_config = w_config.embedding
@@ -292,21 +291,8 @@ class DocumentEmbedding(ActivityWithProgress):
         return n_indexed
 
 
-def _load_embedding_resources(
-    config: EmbeddingWorkerConfig, model: str, model_revision: str | None
-) -> tuple["HybridChunker", "DocumentConverter", HFEmbedder]:  # noqa: F821
-    logger.debug("loading embedding model %s (revision %s)...", model, model_revision)
-    resources = (
-        make_chunker(config, model, model_revision),
-        make_md_converter(),
-        HFEmbedder(config, model, model_revision),
-    )
-    logger.debug("embedding model loaded !")
-    return resources
-
-
 # Sort documents aiming for consistent processing type in a batch
-_DOC_SORT = [f"{DOC_CONTENT_TYPE}:asc", f"{DOC_LANGUAGE}:asc", "_doc:asc"]
+_DOC_SORT = [{DOC_CONTENT_TYPE: ASC}, {DOC_LANGUAGE: ASC}, {"_doc": ASC}]
 _DOC_CONTENT_SOURCES = [
     DOC_PATH,
     DOC_ROOT_ID,
@@ -341,20 +327,27 @@ async def create_embedding_batches_act(
     docs: list[DocId] | DocumentSearchQuery | None,
     project: str,
     *,
-    artifacts_root: Path,
+    paths: WorkerPaths,
     output_dir: Path,
     target_n_docs_per_task: int,
     es_client: ESClient,
 ) -> AsyncIterable[Path]:
+    from .embeddings import (  # noqa: PLC0415
+        build_embedding_doc_query,
+        locate_embeddable_content,
+    )
+
     query = build_embedding_doc_query(docs)
-    docs = _search_docs(es_client, project, query)
-    batches = with_embeddable_content(
+    docs = _search_docs(es_client, project, query, sort=_DOC_SORT)
+    md_content_root = output_dir / "md_content"
+    md_content_root.mkdir(parents=True, exist_ok=True)
+    batches = locate_embeddable_content(
         async_batches(docs, target_n_docs_per_task),
+        md_content_root,
         es_client=es_client,
         project=project,
-        artifacts_root=artifacts_root,
+        paths=paths,
     )
-    batches = ([DatashareFile.from_parent(d) for d in b] async for b in batches)
     async for p in write_batches(batches, output_dir, prefix="embed_"):
         yield p
 
@@ -454,13 +447,10 @@ def _build_doc_query(
 
 
 async def _search_docs(
-    es_client: ESClient, project: str, query: dict[str, Any], sort: ESSort = None
+    es_client: ESClient, project: str, query: dict[str, Any], *, sort: ESSort
 ) -> AsyncIterable[Document]:
     async for page in es_client.poll_search_pages(
-        index=project,
-        body=query,
-        sort=sort,
-        _source_includes=_DOC_CONTENT_SOURCES,
+        index=project, body=query, sort=sort, source=_DOC_CONTENT_SOURCES
     ):
         for hit in page[HITS][HITS]:
             yield Document.from_es(hit)

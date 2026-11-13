@@ -33,7 +33,7 @@ class ParakeetPreprocessor(ASRPreprocessorMixin):
         self._max_duration_s = max_duration_s
 
     @classmethod
-    def _from_config(cls, config: ParakeetPreprocessorConfig, **extras) -> Self:
+    def _from_config(cls, config: ParakeetPreprocessorConfig, **extras) -> Self:  # noqa: ARG003
         return cls(
             max_frames=config.max_frames,
             batcher=config.batcher,

@@ -4,14 +4,14 @@ import uuid
 from collections.abc import AsyncGenerator
 from contextlib import AbstractAsyncContextManager, asynccontextmanager
 from copy import deepcopy
-from typing import Any, Self, Unpack
+from typing import Any, Unpack
 
 from aiohttp import (
     BasicAuth,
     ClientResponse,
     ClientResponseError,
     ClientSession,
-    DummyCookieJar,
+    CookieJar,
 )
 from aiohttp.client import _RequestOptions
 from aiohttp.typedefs import StrOrURL
@@ -36,13 +36,18 @@ class AiohttpClient(AbstractAsyncContextManager):
         self._base_url = base_url
         self._auth = auth
         self._session: ClientSession | None = None
-        self._user_id = None
         if headers is None:
             headers = dict()
         self._headers = headers
 
     async def __aenter__(self):
-        self._session = ClientSession(self._base_url, auth=self._auth)
+        cookie_jar = CookieJar(quote_cookie=False)
+        self._session = ClientSession(
+            self._base_url,
+            auth=self._auth,
+            raise_for_status=_raise_for_status,
+            cookie_jar=cookie_jar,
+        )
         await self._session.__aenter__()
         return self
 
@@ -56,7 +61,7 @@ class AiohttpClient(AbstractAsyncContextManager):
         headers = deepcopy(self._headers)
         headers.update(kwargs.pop("headers", dict()))
         async with self._session.put(url, data=data, headers=headers, **kwargs) as res:
-            _raise_for_status(res)
+            self._update(res)
             yield res
 
     @asynccontextmanager
@@ -68,7 +73,7 @@ class AiohttpClient(AbstractAsyncContextManager):
         async with self._session.get(
             url, headers=headers, allow_redirects=allow_redirects, **kwargs
         ) as res:
-            _raise_for_status(res)
+            self._update(res)
             yield res
 
     @asynccontextmanager
@@ -78,7 +83,7 @@ class AiohttpClient(AbstractAsyncContextManager):
         headers = deepcopy(self._headers)
         headers.update(kwargs.pop("headers", dict()))
         async with self._session.post(url, json=json, headers=headers, **kwargs) as res:
-            _raise_for_status(res)
+            self._update(res)
             yield res
 
     @asynccontextmanager
@@ -88,16 +93,18 @@ class AiohttpClient(AbstractAsyncContextManager):
         headers = deepcopy(self._headers)
         headers.update(kwargs.pop("headers", dict()))
         async with self._session.delete(url, headers=headers, **kwargs) as res:
-            _raise_for_status(res)
+            self._update(res)
             yield res
 
+    def _update(self, res: ClientResponse) -> None: ...
 
-def _raise_for_status(res: ClientResponse) -> None:
+
+async def _raise_for_status(res: ClientResponse) -> None:
     try:
         res.raise_for_status()
     except ClientResponseError as e:
-        msg = "request to %s, failed with reason %s"
-        logger.exception(msg, res.request_info, res.reason)
+        msg = " %s: request %s failed"
+        logger.exception(msg, res.reason, res.request_info)
         raise e
 
 
@@ -109,44 +116,35 @@ class DatashareTaskClient(AiohttpClient):
             headers = {"Authorization": f"Bearer {self._api_key}"}
         super().__init__(datashare_url, headers=headers)
 
-    async def __aenter__(self) -> Self:
-        if self._api_key is None:  # Assume no auth necessary
-            # Disable aiohttp cookie handling which messes up with the CSRF token stuff
-            cookies = DummyCookieJar()
-            self._session = ClientSession(
-                self._base_url, auth=self._auth, cookies=cookies
-            )
-            await self._session.__aenter__()
-            async with self._get("/settings") as res:  # Get a random route with no auth
-                self._session.cookie_jar.clear()
-                cookies = {}
-                for header_val in res.headers.getall("Set-Cookie", []):
-                    cookie_part = header_val.split(";")[0].strip()
-                    name, _, value = cookie_part.partition("=")
-                    name, value = name.strip(), value.strip('"')
-                    cookies[name] = value
-                self._headers["Cookie"] = "; ".join(
-                    f"{k}={v}" for k, v in cookies.items()
-                )
-                self._headers["X-DS-CSRF-TOKEN"] = cookies["_ds_csrf_token"]
-        else:
-            await super().__aenter__()
-        return self
+    @property
+    def user(self) -> User:
+        if self._user is None:
+            raise ValueError("not authenticated")
+        return self._user
 
-    async def create_api_key(self, user: User | None = None) -> tuple[User, str]:
-        if user is None:
-            cookies = self._headers["Cookie"].split(";")
-            session = [c for c in cookies if c.startswith("_ds_session_id=")]
-            if len(session) != 1:
-                raise ValueError("invalid cookies")
-            session = json.loads(session[0].replace("_ds_session_id=", ""))
-            user = User(id=session["login"])
+    def _update(self, res: ClientResponse) -> None:
+        token = res.cookies.get("_ds_csrf_token")
+        if token is not None:
+            self._headers["X-DS-CSRF-TOKEN"] = token.value
+
+    async def create_api_key(self, user: User) -> tuple[User, str]:
         url = f"/api/key/{user.id}"
         async with self._put(url) as res:
             api_key = await res.text()
         return user, api_key
 
-    def authenticate(self, user: User, api_key: str) -> None:
+    async def authenticate_with_yes_cookie_filter(self) -> None:
+        # Create a new session to set the user
+        async with self._get("/") as res:
+            raw_cookies = res.cookies["_ds_session_id"].value
+        sess = json.loads(raw_cookies)
+        self._user = User(id=sess["login"])
+
+        # Reach a protected URL to set the CSRF token
+        async with self._get("/api/users/me"):
+            pass
+
+    def authenticate_with_api_key(self, user: User, api_key: str) -> None:
         self._user = user
         self._headers["Authorization"] = f"Bearer {api_key}"
 
@@ -161,7 +159,7 @@ class DatashareTaskClient(AiohttpClient):
         if id_ is None:
             id_ = _generate_task_id(name)
         if "user" not in args:
-            args["user"] = self._user
+            args["user"] = self.user
         task = Task(id=id_, name=name, args=args)
         task = task.model_dump(mode="json", exclude_none=True)
         url = f"/api/task/{id_}"

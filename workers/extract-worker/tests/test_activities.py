@@ -25,6 +25,9 @@ from datashare_python.utils import read_jsonl_as
 from extract_core import InputDoc, OutputFormat, Pipeline, Result, Status
 from extract_core.objects import ConversionOutput, Pages, SupportedExt
 from extract_core.objects import Error as ExtractCoreError
+from icij_common.es import ESClient, ids_query, match_all
+from icij_common.registrable import FromConfig, RegistrableConfig
+
 from extract_worker.activities import (
     _build_doc_query,
     create_markdown_extract_batches_act,
@@ -39,9 +42,6 @@ from extract_worker.objects import (
     MarkdownExtractResponse,
     StructureManifestEntry,
 )
-from icij_common.es import ESClient, ids_query, match_all
-from icij_common.registrable import FromConfig, RegistrableConfig
-
 from tests import DOCS_PATH
 
 

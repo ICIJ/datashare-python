@@ -2,13 +2,6 @@ from pathlib import Path
 
 import pytest
 import torch
-from caul.model_cache import cache_parakeet_models
-from caul.tasks import (
-    ParakeetInferenceRunner,
-    ParakeetPostprocessor,
-    ParakeetPreprocessor,
-)
-from caul.tasks.preprocessing.batcher import MaxDurationBatcher
 from caul_core import (
     DEFAULT_SAMPLE_RATE,
     ASRPipeline,
@@ -22,6 +15,14 @@ from caul_core import (
     TorchDevice,
 )
 from huggingface_hub.constants import HF_HUB_CACHE
+
+from caul.model_cache import cache_parakeet_models
+from caul.tasks import (
+    ParakeetInferenceRunner,
+    ParakeetPostprocessor,
+    ParakeetPreprocessor,
+)
+from caul.tasks.preprocessing.batcher import MaxDurationBatcher
 
 
 def test__parakeet_preprocess_inputs_to_fs(tmpdir: Path) -> None:

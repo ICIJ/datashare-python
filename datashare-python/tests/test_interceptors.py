@@ -9,6 +9,9 @@ from unittest.mock import AsyncMock, call
 
 import pytest
 import temporalio
+from temporalio import exceptions as temporalio_exceptions
+from temporalio.common import RetryPolicy
+
 from datashare_python.objects import DatashareModel
 from datashare_python.utils import (
     ActivityWithProgress,
@@ -17,10 +20,19 @@ from datashare_python.utils import (
     activity_defn,
     execute_activity,
 )
-from temporalio import exceptions as temporalio_exceptions
-from temporalio.common import RetryPolicy
 
 with temporalio.workflow.unsafe.imports_passed_through():
+    from temporalio import workflow
+    from temporalio.client import (
+        Interceptor,
+        OutboundInterceptor,
+        StartWorkflowInput,
+        WorkflowFailureError,
+        WorkflowHandle,
+    )
+    from temporalio.converter import DataConverter
+    from temporalio.worker import Worker
+
     from datashare_python.config import ActivityTimeouts, WorkerConfig
     from datashare_python.interceptors import (
         HeartbeatInterceptor,
@@ -37,16 +49,6 @@ with temporalio.workflow.unsafe.imports_passed_through():
         Weight,
     )
     from datashare_python.utils import PYDANTIC_DATA_CONVERTER
-    from temporalio import workflow
-    from temporalio.client import (
-        Interceptor,
-        OutboundInterceptor,
-        StartWorkflowInput,
-        WorkflowFailureError,
-        WorkflowHandle,
-    )
-    from temporalio.converter import DataConverter
-    from temporalio.worker import Worker
 
 
 logger = logging.getLogger(__name__)

@@ -4,6 +4,7 @@ from datetime import timedelta
 
 from datashare_python.config import (
     ActivityTimeouts,
+    ESClientConfig,
     LoggingConfig,
     ResourceCacheConfig,
     WorkerConfig,
@@ -23,15 +24,12 @@ from extract_core import (
     PipelineType,
 )
 from extract_core.docling_ import InferenceSettings
-from icij_common.pydantic_utils import safe_copy
+from icij_common.pydantic_utils import ICIJSettings, safe_copy
 from pydantic import Field
 from pydantic.fields import FieldInfo
+from pydantic_settings import SettingsConfigDict
 
-from .constants import (
-    EMBEDDINGS_INDEX_SUFFIX,
-    TaskQueue,
-    TorchDevice,
-)
+from .constants import EMBEDDINGS_INDEX_SUFFIX, TaskQueue, TorchDevice
 
 loggers = {"datashare_python": "INFO", "extract_python": "INFO", "extract_core": "INFO"}
 _DEFAULT_LOGGING_CONFIG = LoggingConfig(loggers=loggers)
@@ -197,6 +195,10 @@ class MarkdownExtractWorkerConfig(BaseModel):
     )
 
 
+def index_name(*, project: str, embedding_index_suffix: str) -> str:
+    return f"{project}{embedding_index_suffix}"
+
+
 class EmbeddingWorkerConfig(BaseModel):
     device: TorchDevice = Field(default=TorchDevice.CPU)
     task: str = "retrieval"
@@ -213,7 +215,7 @@ class EmbeddingWorkerConfig(BaseModel):
     )
 
     def index_name(self, project: str) -> str:
-        return f"{project}{self.index_suffix}"
+        return index_name(project=project, embedding_index_suffix=self.index_suffix)
 
 
 class ExtractTimeouts(BaseModel):
@@ -247,6 +249,14 @@ class ExtractWorkerConfig(WorkerConfig):
     timeouts: ExtractTimeouts = Field(default_factory=ExtractTimeouts)
 
     paths: WorkerPaths
+
+
+class ESClientSetting(ICIJSettings, ESClientConfig):
+    model_config = SettingsConfigDict(
+        env_prefix="DS_ES__",
+        env_nested_delimiter="__",
+        nested_model_default_partial_update=True,
+    )
 
 
 WORKER_CONFIG_CLS = ExtractWorkerConfig
