@@ -4,7 +4,6 @@ from typing import Any
 from unittest.mock import patch
 
 import pytest
-from conftest import DOC_0_PAGES, DOC_3_CONTENT, PAGE_SEP
 from datashare_python.conftest import ES_SETTINGS, TEST_PROJECT
 from datashare_python.exceptions import ArtifactNotFound
 from datashare_python.objects import (
@@ -45,6 +44,8 @@ from extract_worker.embeddings import (
     make_md_converter,
 )
 from extract_worker.objects import DocId, DocumentSearchQuery, EmbeddedChunk, Vector
+
+from .conftest import DOC_0_PAGES, DOC_3_CONTENT, PAGE_SEP
 
 _DIM = 4
 
