@@ -4,8 +4,6 @@ from pathlib import Path
 
 import pytest
 import torch
-from caul.model_cache import cache_faster_whisper_models
-from caul.tasks.inference.faster_whisper import FasterWhisperInferenceRunner
 from caul_core import (
     DEFAULT_SAMPLE_RATE,
     ASRResult,
@@ -21,6 +19,9 @@ from faster_whisper.transcribe import TranscriptionOptions
 from huggingface_hub.constants import HF_HUB_CACHE
 from numpy import ndarray
 from torchcodec.encoders import AudioEncoder
+
+from caul.model_cache import cache_faster_whisper_models
+from caul.tasks.inference.faster_whisper import FasterWhisperInferenceRunner
 
 EN_TEXT_A = "hello"
 EN_TEXT_B = "world"

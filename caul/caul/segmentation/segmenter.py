@@ -30,7 +30,7 @@ def _load_vad_model() -> tuple["torch.nn.Module", Callable]:
 
     :return: tuple of silero VAD model with VAD parsing function
     """
-    import torch
+    import torch  # noqa: PLC0415
 
     model, utils = torch.hub.load(
         VadModelRef.SILERO_MODEL, SILERO_VAD_MODEL, trust_repo=True
@@ -86,7 +86,7 @@ class SilenceAudioSegmenter(AudioSegmenter):
 @AudioSegmenter.register(SegmentationStrategy.VOICE_SILERO)
 class SileroVoiceAudioSegmenter(AudioSegmenter):
     def __init__(self, config: SegmentationConfig, device: str = "cpu"):
-        import torch
+        import torch  # noqa: PLC0415
 
         super().__init__(config)
         self._vad_model: torch.nn.Module | None = None
@@ -114,7 +114,7 @@ class SileroVoiceAudioSegmenter(AudioSegmenter):
         exc_val: BaseException | None,
         exc_tb: TracebackType | None,
     ) -> None:
-        import torch
+        import torch  # noqa: PLC0415
 
         self._vad_model = None
         self._vad_parser_fn = None
@@ -133,7 +133,7 @@ class PyannoteVoiceAudioSegmenter(AudioSegmenter):
         hf_token: str,
         device: str = "cpu",
     ):
-        import torch
+        import torch  # noqa: PLC0415
 
         super().__init__(config)
         self._pipeline: Any | None = None
@@ -148,10 +148,8 @@ class PyannoteVoiceAudioSegmenter(AudioSegmenter):
         return self
 
     def _load_pipeline(self) -> Any:
-        from pyannote.audio import Model
-        from pyannote.audio.pipelines import (
-            VoiceActivityDetection,
-        )
+        from pyannote.audio import Model  # noqa: PLC0415
+        from pyannote.audio.pipelines import VoiceActivityDetection  # noqa: PLC0415
 
         model = Model.from_pretrained(VadModelRef.PYANNOTE_MODEL, token=self._hf_token)
 
@@ -163,7 +161,7 @@ class PyannoteVoiceAudioSegmenter(AudioSegmenter):
         exc_val: BaseException | None,
         exc_tb: TracebackType | None,
     ) -> None:
-        import torch
+        import torch  # noqa: PLC0415
 
         self._pipeline = None
         with suppress(RuntimeError):

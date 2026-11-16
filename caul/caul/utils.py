@@ -28,7 +28,7 @@ def save_tensor(audio: "torch.Tensor", path: Path) -> None:
     """
     # TODO: Change paths to run_id + tensor uuid + pagination
     #  Allow for remote paths
-    from torchcodec.encoders import AudioEncoder
+    from torchcodec.encoders import AudioEncoder  # noqa: PLC0415
 
     # Channel required as first dim
     audio = audio.unsqueeze(0)
@@ -48,9 +48,7 @@ def audio_decoder(
     :param num_channels: output channels
     :return: audio decoder
     """
-    from torchcodec.decoders import (
-        AudioDecoder,
-    )
+    from torchcodec.decoders import AudioDecoder  # noqa: PLC0415
 
     return AudioDecoder(path, sample_rate=sample_rate, num_channels=num_channels)
 
@@ -71,7 +69,7 @@ def load_audio(
 
 
 def device_to_torch(device: TorchDevice) -> "torch.device":
-    import torch
+    import torch  # noqa: PLC0415
 
     match device:
         case TorchDevice.GPU:
@@ -125,10 +123,7 @@ def cache_hf_model_file(
     library_version: str | None = None,
     cache_dir: Path | None = None,
 ) -> None:
-    from huggingface_hub import (
-        get_token,
-        hf_hub_download,
-    )
+    from huggingface_hub import get_token, hf_hub_download  # noqa: PLC0415
 
     hf_hub_download(
         repo_id=repo_id,
@@ -148,10 +143,7 @@ def cache_hf_repo(
     library_version: str | None = None,
     cache_dir: Path | None = None,
 ) -> None:
-    from huggingface_hub import (
-        get_token,
-        snapshot_download,
-    )
+    from huggingface_hub import get_token, snapshot_download  # noqa: PLC0415
 
     snapshot_download(
         repo_id=repo_id,
@@ -170,9 +162,7 @@ def cache_hf_model(
     library_name: str | None = None,
     cache_dir: Path | None = None,
 ) -> None:
-    from huggingface_hub.constants import (
-        HF_HUB_CACHE,
-    )
+    from huggingface_hub.constants import HF_HUB_CACHE  # noqa: PLC0415
 
     if cache_dir is not None and str(cache_dir) != HF_HUB_CACHE:
         msg = f"{model_family} models must be loaded from {HF_HUB_CACHE}, "
@@ -189,7 +179,7 @@ def cache_hf_model(
 @cache
 def load_mel_filters(
     n_mels: int,
-    mel_filters_path: Path | str = None,
+    mel_filters_path: Path | str | None = None,
     device: "str | torch.Device" = "cpu",
 ) -> "torch.Tensor | None":
     """Load the mel filterbank matrix for projecting an stft into a mel spectrogram
@@ -198,8 +188,8 @@ def load_mel_filters(
     :param mel_filters_dir: directory where mel filterbank matrix is saved
     :param device: cpu or cuda
     """
-    import numpy as np
-    import torch
+    import numpy as np  # noqa: PLC0415
+    import torch  # noqa: PLC0415
 
     if mel_filters_path is None or n_mels not in {80, 128}:
         return None

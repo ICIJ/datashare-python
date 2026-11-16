@@ -1,6 +1,6 @@
 from abc import ABC
 
-from .objects import DocArtifact
+from .objects import ArtifactType, DocArtifact
 
 
 class DatashareError(Exception, ABC): ...
@@ -20,7 +20,18 @@ class DependencyInjectionError(DatashareError, RuntimeError):
         super().__init__(msg)
 
 
+class ManifestNotFound(DatashareError):
+    def __init__(self, doc_id: str):
+        msg = f"could not find artifact manifest for {doc_id}"
+        super().__init__(msg)
+
+
 class ArtifactNotFound(DatashareError):
-    def __init__(self, doc_id: str, artifact_type: type[DocArtifact]):
-        msg = f"could not find {artifact_type.__name__} for {doc_id}"
+    def __init__(self, doc_id: str, artifact_type: type[DocArtifact] | ArtifactType):
+        name = (
+            artifact_type.__name__
+            if isinstance(artifact_type, type)
+            else artifact_type.value
+        )
+        msg = f"could not find {name} for {doc_id}"
         super().__init__(msg)

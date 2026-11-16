@@ -9,6 +9,7 @@ import pytest
 from _pytest.tmpdir import TempPathFactory
 from datashare_python.config import (
     DatashareClientConfig,
+    ESClientConfig,
     LogFormat,
     LoggingConfig,
     TemporalClientConfig,
@@ -18,6 +19,7 @@ from datashare_python.conftest import (  # noqa: F401
     clear_dirs,
     dev_worker_context,
     index_docs,
+    indexed_docs,
     pytest_collection_modifyitems,
     test_es_client,
     test_es_client_session,
@@ -29,17 +31,25 @@ from datashare_python.conftest import (  # noqa: F401
     text_1,
 )
 from datashare_python.objects import (
+    ByteRangesPagination,
     DatashareFile,
     DatashareLanguage,
     Document,
+    Pages,
     ProcessedFile,
+    StructureManifestEntry,
+    WorkerFile,
     WorkerPaths,
 )
 from datashare_python.types_ import TemporalClient
-from datashare_python.utils import artifacts_dir
+from datashare_python.utils import artifacts_dir, write_artifact
+from docling.document_converter import DocumentConverter
+from docling_core.transforms.chunker import HybridChunker
 from extract_core import BatchConcurrencySettings, DoclingSettings
 from extract_core.docling_ import InferenceSettings
 from extract_core.objects import SupportedExt
+from icij_common.es import ESClient
+
 from extract_worker.activities import Activity
 from extract_worker.config import (
     DoclingWorkerConfig,
@@ -48,12 +58,28 @@ from extract_worker.config import (
     MarkdownExtractWorkerConfig,
     MarkdownInferenceWorkerConfig,
 )
-from extract_worker.constants import TaskQueue
-from icij_common.es import ESClient
-
-from tests import DOC_3_CONTENT, DOCS_PATH, PAGES, write_structure
+from extract_worker.constants import (
+    DEFAULT_EMBEDDING_MODEL,
+    DEFAULT_EMBEDDING_MODEL_REVISION,
+    TaskQueue,
+)
+from extract_worker.embeddings import HFEmbedder, make_chunker, make_md_converter
+from extract_worker.objects import MarkdownExtractArgs, StructureArtifact
+from tests import DOCS_PATH
 
 mimetypes.init()
+
+
+TEST_EMBEDDING_DIM = 64
+
+PAGE_SEP = '\n<div style="page-break-after: always;"></div>\n'
+
+DOC_0_PAGES = [
+    "# Offshore leaks\n\nShell companies registered in the islands.\n",
+    "## Beneficial owners\n\nThe owners were hidden behind nominees.\n",
+]
+
+DOC_3_CONTENT = "The vote is on Sunday.\n\n  \n\nPolls close at eight.\n"
 
 
 @pytest.fixture(scope="session")
@@ -73,7 +99,9 @@ def test_worker_config(tmp_path_factory: TempPathFactory) -> ExtractWorkerConfig
         format=LogFormat.DEFAULT,
     )
 
+    es_config = ESClientConfig(default_page_size=1)
     return ExtractWorkerConfig(
+        elasticsearch=es_config,
         logging=logging_config,
         markdown=MarkdownExtractWorkerConfig(
             inference=MarkdownInferenceWorkerConfig(
@@ -197,21 +225,64 @@ def docs_with_cached_artifacts(
     return files
 
 
+def _write_structure_artifact(
+    processed: DatashareFile, md_path: Path, pages: Pages, paths: WorkerPaths
+) -> None:
+    args = MarkdownExtractArgs(project=processed.project, docs=None)
+    artifact = StructureArtifact(
+        project=processed.project,
+        doc_id=processed.doc_id,
+        artifact=md_path,
+        manifest_entry=StructureManifestEntry.complete(args=args, pages=pages),
+    )
+    write_artifact(paths.artifacts, artifact)
+
+
 @pytest.fixture
 def doc_with_structure(
     doc_0: Document, test_worker_config: ExtractWorkerConfig
-) -> ProcessedFile:
+) -> DatashareFile:
     clear_dirs(test_worker_config)
-    doc = DatashareFile.from_parent(doc_0)
-    write_structure(doc, test_worker_config.paths.artifacts, PAGES)
-    return doc
+    paths = test_worker_config.paths
+    md_path, pages = _write_md(doc_0.id, DOC_0_PAGES, paths)
+    ds_file = DatashareFile.from_parent(doc_0)
+    _write_structure_artifact(ds_file, md_path, pages, paths)
+    return ds_file
+
+
+@pytest.fixture
+def doc_without_md(
+    doc_3: Document, test_worker_config: ExtractWorkerConfig
+) -> WorkerFile:
+    paths = test_worker_config.paths
+    content_path = paths.workdir / f"{doc_3.id}-content"
+    content_path.write_text(doc_3.content)
+    return WorkerFile.from_parent(
+        DatashareFile.from_parent(doc_3), paths=paths, path=content_path
+    )
+
+
+def _write_md(doc_id: str, pages: list[str], paths: WorkerPaths) -> tuple[Path, Pages]:
+    contents = [(p + PAGE_SEP).encode() for p in pages[:-1]] + [pages[-1].encode()]
+    byte_ranges, start = [], 0
+    for c in contents:
+        byte_ranges.append((start, start + len(c)))
+        start += len(c)
+    md_dir = paths.workdir / doc_id
+    md_dir.mkdir(exist_ok=True, parents=True)
+    (md_dir / "doc.md").write_bytes(b"".join(contents))
+    pages = Pages(
+        total=len(contents),
+        pagination=ByteRangesPagination(byte_ranges=byte_ranges),
+    )
+    return md_dir, pages
 
 
 @pytest.fixture(scope="session")
 async def workflows_worker(
     test_worker_config: ExtractWorkerConfig,  # noqa: F811
     test_temporal_client_session: TemporalClient,  # noqa: F811
-) -> AsyncGenerator[None, None]:
+) -> AsyncGenerator[None]:
     client = test_temporal_client_session
     worker_id = f"test-extract-workflows-worker-{uuid.uuid4()}"
     task_queue = TaskQueue.WORKFLOWS
@@ -231,7 +302,7 @@ async def workflows_worker(
 async def io_worker(
     test_worker_config: ExtractWorkerConfig,  # noqa: F811
     test_temporal_client_session: TemporalClient,  # noqa: F811
-) -> AsyncGenerator[None, None]:
+) -> AsyncGenerator[None]:
     client = test_temporal_client_session
     worker_id = f"test-extract-io-worker-{uuid.uuid4()}"
     acts = [
@@ -260,7 +331,7 @@ async def io_worker(
 async def md_extract_cpu_worker(
     test_worker_config: ExtractWorkerConfig,  # noqa: F811
     test_temporal_client_session: TemporalClient,  # noqa: F811
-) -> AsyncGenerator[None, None]:
+) -> AsyncGenerator[None]:
     client = test_temporal_client_session
     worker_id = f"test-extract-cpu-worker-{uuid.uuid4()}"
     acts = [Activity.EXTRACT_MD_CONTENT]
@@ -283,7 +354,7 @@ async def md_extract_cpu_worker(
 async def embed_cpu_worker(
     test_worker_config: ExtractWorkerConfig,  # noqa: F811
     test_temporal_client_session: TemporalClient,  # noqa: F811
-) -> AsyncGenerator[None, None]:
+) -> AsyncGenerator[None]:
     client = test_temporal_client_session
     worker_id = f"test-embed-cpu-worker-{uuid.uuid4()}"
     acts = [Activity.EMBED_DOCUMENTS]
@@ -300,3 +371,37 @@ async def embed_cpu_worker(
     )
     async with worker_ctx:
         yield
+
+
+@pytest.fixture(scope="session")
+def test_embedding_config() -> EmbeddingWorkerConfig:
+    return EmbeddingWorkerConfig()
+
+
+@pytest.fixture(scope="session")
+def test_embedder(test_embedding_config: EmbeddingWorkerConfig) -> HFEmbedder:
+    return HFEmbedder(
+        test_embedding_config,
+        model=DEFAULT_EMBEDDING_MODEL,
+        model_revision=DEFAULT_EMBEDDING_MODEL_REVISION,
+    )
+
+
+@pytest.fixture(scope="session")
+def test_chunker(test_embedding_config: EmbeddingWorkerConfig) -> HybridChunker:
+    return make_chunker(
+        test_embedding_config,
+        model=DEFAULT_EMBEDDING_MODEL,
+        model_revision=DEFAULT_EMBEDDING_MODEL_REVISION,
+        merge_peers=False,
+    )
+
+
+@pytest.fixture(scope="session")
+def test_md_converter() -> DocumentConverter:
+    return make_md_converter()
+
+
+@pytest.fixture(scope="session")
+def chunk_index(test_worker_config: ExtractWorkerConfig) -> str:
+    return test_worker_config.embedding.index_name(TEST_PROJECT)

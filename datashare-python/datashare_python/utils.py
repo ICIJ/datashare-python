@@ -54,16 +54,21 @@ from datashare_python.types_ import (
 )
 
 from .constants import MANIFEST_JSON, METADATA_JSON
-from .exceptions import ArtifactNotFound
+from .exceptions import ArtifactNotFound, ManifestNotFound
 from .mimetypes_ import types_map
 from .objects import (
+    ArtifactType,
     BaseModel,
+    ByteRangesPagination,
     DatashareFile,
     DocArtifact,
     Document,
     ErrorSource,
+    FilesystemPagination,
+    ManifestEntry,
     ProcessedFile,
     ProcessingError,
+    StructureArtifact,
     WorkerFile,
     WorkerPaths,
 )
@@ -79,14 +84,12 @@ DependencyAsyncSetup = Callable[..., Coroutine[None, None, None]]
 
 PROGRESS_HANDLER_ARG = "progress"
 
-
 _NEVER_RETRIABLES = {
     "ValidationError",
     "TypeError",
     "PydanticSchemaGenerationError",
     "PydanticSerializationError",
 }
-
 
 _ARTIFACT_LOCK = threading.Lock()
 # For test
@@ -304,7 +307,6 @@ def activity_defn[**P, T](
     retriables: set[type[Exception]] = None,
     logger: logging.Logger | None = None,
 ) -> Callable[[Callable[P, T]], Callable[P, T]]:
-
     if logger is None:
         frame = inspect.stack()[1]
         caller_module = inspect.getmodule(frame[0])
@@ -353,7 +355,6 @@ def to_raw_async_progress(
 def to_incremental_async_progress(
     progress: RawAsyncProgressHandler,
 ) -> RawAsyncProgressHandler:
-
     offset = 0
 
     async def incremental(p: int, *, force: bool = False) -> None:
@@ -402,6 +403,19 @@ def artifacts_dir(doc_id: str, *, project: str) -> Path:
     return Path(project, safe_dir(doc_id), doc_id)
 
 
+def read_manifest_entry(
+    paths: WorkerPaths, doc_id: str, artifact_type: ArtifactType, *, project: str
+) -> ManifestEntry:
+    _, manifest = _read_manifest_backward_compatible(
+        paths.artifacts, doc_id=doc_id, project=project
+    )
+    manifest_entry = manifest.get(artifact_type.value)
+    if manifest_entry is None:
+        raise ArtifactNotFound(doc_id, artifact_type)
+    entry_cls = ManifestEntry.by_name(artifact_type)
+    return entry_cls.model_validate(manifest_entry)
+
+
 async def async_read_artifact(
     paths: WorkerPaths, doc_id: str, artifact_type: type[DocArtifact], *, project: str
 ) -> bytes:
@@ -433,6 +447,29 @@ async def async_read_artifact(
         raise ArtifactNotFound(doc_id, artifact_type) from e
 
 
+async def async_has_artifact(
+    paths: WorkerPaths, doc_id: str, artifact_type: type[DocArtifact], *, project: str
+) -> bool:
+    # Reading the manifest can be long, we load it only if the artifact exists then
+    # we check that the entry is in the manifest
+    artifact_path = (
+        paths.artifacts
+        / artifacts_dir(doc_id, project=project)
+        / artifact_type.filename
+    )
+    if not artifact_path.exists():
+        return False
+    m_path = paths.artifacts / _manifest_path(doc_id, project=project)
+    try:
+        async with async_open(m_path, "r") as f:
+            manifest_json = await f.read()
+    except OSError as e:
+        raise ManifestNotFound(doc_id) from e
+
+    manifest = json.loads(manifest_json)
+    return artifact_type.type.value in manifest
+
+
 def _metadata_path(doc_id: str, *, project: str) -> Path:
     metadata_path = artifacts_dir(doc_id, project=project) / METADATA_JSON
     return metadata_path
@@ -443,12 +480,12 @@ def _manifest_path(doc_id: str, *, project: str) -> Path:
     return manifest_path
 
 
-def _read_artifact_manifest(root: Path, artifact: DocArtifact) -> dict:
-    m_path = root / _manifest_path(artifact.doc_id, project=artifact.project)
+def _read_artifact_manifest(root: Path, *, doc_id: str, project: str) -> dict:
+    m_path = root / _manifest_path(doc_id, project=project)
     if not m_path.exists():
-        m_path = root / _metadata_path(artifact.doc_id, project=artifact.project)
+        m_path = root / _metadata_path(doc_id, project=project)
         if not m_path.exists():
-            msg = f"couldn't find manifest nor metadata for {artifact.doc_id}"
+            msg = f"couldn't find manifest nor metadata for {doc_id}"
             raise FileNotFoundError(msg)
     return json.loads(m_path.read_text())
 
@@ -469,7 +506,9 @@ def write_artifact(
         # at the same time). We read in a backward compatible wat and write to that same
         # location. We don't take responsibility for migrating the data, the DS back
         # will do it
-        manifest_path, manifest = _read_manifest_backward_compatible(root, artifact)
+        manifest_path, manifest = _read_manifest_backward_compatible(
+            root, doc_id=artifact.doc_id, project=artifact.project
+        )
         is_legacy = manifest_path.name == "metadata.json"
         # Pop the status key from the manifest before writing
         manifest_entry = manifest.get(artifact.type)
@@ -530,14 +569,16 @@ def artifact_lock(
 
 
 def _read_manifest_backward_compatible(
-    root: Path, artifact: DocArtifact
+    root: Path, *, doc_id: str, project: str
 ) -> tuple[Path, dict[str, Any]]:
-    manifest_path = root / _manifest_path(artifact.doc_id, project=artifact.project)
+    manifest_path = root / _manifest_path(doc_id, project=project)
     if manifest_path.exists():
-        return manifest_path, _read_artifact_manifest(root, artifact)
-    meta_path = root / _metadata_path(artifact.doc_id, project=artifact.project)
+        return manifest_path, _read_artifact_manifest(
+            root, doc_id=doc_id, project=project
+        )
+    meta_path = root / _metadata_path(doc_id, project=project)
     if meta_path.exists():
-        return meta_path, _read_artifact_manifest(root, artifact)
+        return meta_path, _read_artifact_manifest(root, doc_id=doc_id, project=project)
     return manifest_path, dict()
 
 
@@ -1033,14 +1074,15 @@ def reports_errors[S: ErrorSource, R](
 ) -> Callable[
     [_PreprocessingFunction[S, R]], _PreprocessingFunction[S, R | ProcessingError[S]]
 ]:
-
     def parent_wrapper(
         f: _PreprocessingFunction[S, R],
     ) -> _PreprocessingFunction[S, R | ProcessingError[S]]:
         if inspect.iscoroutinefunction(f):
 
             @wraps(f)  # noqa: F821
-            async def wrapper(doc: S, *args, **kwargs) -> R | ProcessingError[S]:
+            async def wrapper(
+                doc: ProcessedFile, *args, **kwargs
+            ) -> R | ProcessingError[S]:
                 try:
                     return await f(doc, *args, **kwargs)
                 except errors as e:
@@ -1062,3 +1104,67 @@ def reports_errors[S: ErrorSource, R](
         return wrapper
 
     return parent_wrapper
+
+
+async def run_with_concurrency(
+    aws: Iterable[Coroutine | asyncio.Future], max_concurrency: int
+) -> AsyncGenerator:
+    max_concurrency = asyncio.Semaphore(max_concurrency)
+    aws = (_run_with_semaphore(aw, max_concurrency) for aw in aws)
+    async for res in asyncio.as_completed(aws):
+        yield await res
+
+
+async def _run_with_semaphore[T](
+    aws: Awaitable[T] | asyncio.Future, sem: asyncio.Semaphore
+) -> T:
+    async with sem:
+        return await aws
+
+
+async def paginate_md(
+    paths: WorkerPaths, *, doc_id: str, project: str
+) -> AsyncGenerator[bytes]:
+    entry = read_manifest_entry(paths, doc_id, ArtifactType.STRUCTURE, project=project)
+    pagination = entry.pages.pagination
+    match pagination:
+        case ByteRangesPagination():
+            async for p in _bytes_range_paginate(
+                doc_id, pagination, project=project, paths=paths
+            ):
+                yield p
+        case FilesystemPagination():
+            async for p in _fs_paginate(doc_id, project=project):
+                yield p
+        case _:
+            raise TypeError(f"unexpected pagination type: {pagination}")
+
+
+async def _bytes_range_paginate(
+    doc_id: str, pagination: ByteRangesPagination, *, project: str, paths: WorkerPaths
+) -> AsyncGenerator[bytes]:
+    md_dir = artifact_path(
+        doc_id, StructureArtifact, project=project, root=paths.artifacts
+    )
+    try:
+        md_path = next(md_dir.glob("*.md"))
+    except StopIteration as e:
+        raise ArtifactNotFound(doc_id, ArtifactType.STRUCTURE) from e
+    try:
+        async with async_open(md_path, "rb") as f:
+            content = await f.read()
+    except FileNotFoundError as e:
+        raise ArtifactNotFound(doc_id, ArtifactType.STRUCTURE) from e
+    for p in pagination.byte_ranges:
+        yield content[p[0] : p[1]]
+
+
+async def _fs_paginate(doc_id: str, *, project: str) -> AsyncGenerator[bytes]:
+    md_dir = artifacts_dir(doc_id, project=project) / ArtifactType.STRUCTURE.value
+    if not md_dir.exists():
+        raise ArtifactNotFound(doc_id, ArtifactType.STRUCTURE)
+    i = 1
+    while (page_path := (md_dir / f"page-{i}.md")).exists():
+        async with async_open(page_path, "rb") as f:
+            yield await f.read()
+        i += 1

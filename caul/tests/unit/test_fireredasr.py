@@ -2,8 +2,6 @@ from pathlib import Path
 
 import pytest
 import torch
-from caul.model_cache import cache_fireredasr2_models
-from caul.tasks import FireRedASR2InferenceRunner, FireRedASR2Preprocessor
 from caul_core import (
     FIREREDASR2_INFERENCE_MAX_FRAMES,
     ASRResult,
@@ -13,6 +11,9 @@ from caul_core import (
 )
 from fireredasr2s.fireredasr2 import FireRedAsr2
 from huggingface_hub.constants import HF_HUB_CACHE
+
+from caul.model_cache import cache_fireredasr2_models
+from caul.tasks import FireRedASR2InferenceRunner, FireRedASR2Preprocessor
 
 ZH_TEXT = "你好世界"
 ZH_CONFIDENCE = 0.97

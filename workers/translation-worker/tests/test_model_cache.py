@@ -3,11 +3,12 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
+from typer.testing import CliRunner
+
 from translation_worker import model_cache
 from translation_worker.cli import cli_app
 from translation_worker.model_cache import cache_models
 from translation_worker.objects import DEFAULT_HUNYUAN_MODEL_REF, TranslationModel
-from typer.testing import CliRunner
 
 
 @pytest.mark.parametrize(

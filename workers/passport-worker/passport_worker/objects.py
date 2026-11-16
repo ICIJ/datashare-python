@@ -151,6 +151,7 @@ class PreprocessingBatches(BaseModel):
     pdfs: Batches
 
 
+@ManifestEntry.register(ArtifactType.PASSPORTS)
 class PassportManifestEntry(ManifestEntry): ...
 
 

@@ -2,12 +2,12 @@ from typing import ClassVar
 
 import numpy as np
 import torch
-from caul.tasks import ParakeetInferenceRunner
 from caul_core import InferenceRunner, ParakeetInferenceRunnerConfig, TorchDevice
 from nemo.collections.asr.parts.mixins import TranscribeConfig
 from nemo.collections.asr.parts.utils import Hypothesis
 from pydantic import Field
 
+from caul.tasks import ParakeetInferenceRunner
 from tests.unit.constant import (
     PARAKEET_TEST_CONFIDENCE,
     PARAKEET_TEST_SEGMENT_END,

@@ -27,9 +27,7 @@ logger = logging.getLogger(__name__)
 def inference_config_to_transcription_options(
     inference_config: FasterWhisperInferenceRunnerConfig,
 ) -> "TranscriptionOptions":
-    from faster_whisper.transcribe import (
-        TranscriptionOptions,
-    )
+    from faster_whisper.transcribe import TranscriptionOptions  # noqa: PLC0415
 
     return TranscriptionOptions(
         beam_size=inference_config.beam_size,
@@ -90,7 +88,7 @@ class FasterWhisperInferenceRunner(InferenceRunner):
         return cls(config=config, device=device, **extras)
 
     def __enter__(self):
-        import faster_whisper
+        import faster_whisper  # noqa: PLC0415
 
         self._model = faster_whisper.BatchedInferencePipeline(
             faster_whisper.WhisperModel(
@@ -106,7 +104,7 @@ class FasterWhisperInferenceRunner(InferenceRunner):
         inputs: Iterable[tuple[ProcessedAudioSegment, ...]],
         *,
         languages: tuple[str] | None = None,
-        **kwargs,
+        **kwargs,  # noqa: ARG002
     ) -> Iterable[ASRResult | Error]:
         """Transcribe batches of preprocessed audio segments using
         faster_whisper.generate_segment_batched.
@@ -115,16 +113,10 @@ class FasterWhisperInferenceRunner(InferenceRunner):
         :param languages: ISO-639-1 code or list of codes
         :return: ASRResult per input, in batch order
         """
-        import numpy as np
-        from faster_whisper.audio import (
-            pad_or_trim,
-        )
-        from faster_whisper.tokenizer import (
-            Tokenizer,
-        )
-        from faster_whisper.transcribe import (
-            Segment,
-        )
+        import numpy as np  # noqa: PLC0415
+        from faster_whisper.audio import pad_or_trim  # noqa: PLC0415
+        from faster_whisper.tokenizer import Tokenizer  # noqa: PLC0415
+        from faster_whisper.transcribe import Segment  # noqa: PLC0415
 
         options = inference_config_to_transcription_options(self._config)
 

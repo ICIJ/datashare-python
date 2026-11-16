@@ -2,6 +2,11 @@ from functools import partial
 from pathlib import Path
 
 import pytest
+from caul_core import ASRResult
+from datashare_python.objects import PROCESSED_FILE_TA, Document
+from datashare_python.utils import read_jsonl_as
+from icij_common.es import ASC, DOC_ROOT_ID, HITS, ESClient, ids_query, match_all
+
 from asr_worker.config import ASRWorkerConfig
 from asr_worker.es import index_transcriptions_act, search_audios_act
 from asr_worker.objects import (
@@ -10,10 +15,6 @@ from asr_worker.objects import (
     TranscriptionManifestEntry,
 )
 from asr_worker.postprocessing import write_transcription
-from caul_core import ASRResult
-from datashare_python.objects import PROCESSED_FILE_TA, Document
-from datashare_python.utils import read_jsonl_as
-from icij_common.es import HITS, ESClient, ids_query, match_all
 
 from .conftest import DS_ENGLISH, TEST_PROJECT
 
@@ -90,7 +91,7 @@ async def test_index_transcriptions_act(
     docs, transcriptions = zip(*with_transcribed_docs, strict=True)
     docs = list(docs)
     routes = dict(d.route for d in docs)
-    transcriptions = list(transcriptions)
+    transcriptions = sorted(transcriptions)
     # When
     n_docs = await index_transcriptions_act(
         routes,
@@ -104,6 +105,8 @@ async def test_index_transcriptions_act(
     contents = []
     docs_ids = [d.id for d in docs]
     body = {"query": ids_query(docs_ids)}
-    async for res in test_es_client.poll_search_pages(index=TEST_PROJECT, body=body):
+    async for res in test_es_client.poll_search_pages(
+        index=TEST_PROJECT, body=body, sort={DOC_ROOT_ID: ASC}
+    ):
         contents += [Document.from_es(d).content for d in res[HITS][HITS]]
-    assert contents == transcriptions
+    assert sorted(contents) == transcriptions

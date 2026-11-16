@@ -2,9 +2,10 @@ from pathlib import Path
 
 import pytest
 import torch
+from caul_core import FIREREDASR2_INFERENCE_MAX_FRAMES, ASRResult, SegmentIndex
+
 from caul.tasks.postprocessing.asr_postprocessor import PostprocessorMixin
 from caul.tasks.preprocessing.asr_preprocessor import ASRPreprocessorMixin
-from caul_core import FIREREDASR2_INFERENCE_MAX_FRAMES, ASRResult, SegmentIndex
 
 
 class TestASRPreprocessor:

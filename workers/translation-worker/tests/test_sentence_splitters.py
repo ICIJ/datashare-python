@@ -3,6 +3,8 @@ import sys
 from unittest.mock import MagicMock, patch
 
 import pytest
+
+from tests.conftest import DS_ENGLISH
 from translation_worker.objects import (
     DEFAULT_SAT_MODEL_REF,
     DefaultSentenceSplitterConfig,
@@ -16,8 +18,6 @@ from translation_worker.sentence_splitters import (
     RulesSentenceSplitter,
     SaTSentenceSplitter,
 )
-
-from tests.conftest import DS_ENGLISH
 
 
 @pytest.mark.parametrize(

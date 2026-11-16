@@ -3,6 +3,8 @@ import sys
 from unittest.mock import MagicMock, patch
 
 import pytest
+
+from tests.conftest import DS_CHINESE, DS_ENGLISH, DS_FRENCH
 from translation_worker.objects import (
     DEFAULT_HUNYUAN_MODEL_REF,
 )
@@ -11,8 +13,6 @@ from translation_worker.translators.hunyuan import (
     _message_template,
     _strip_target_tags,
 )
-
-from tests.conftest import DS_CHINESE, DS_ENGLISH, DS_FRENCH
 
 TEXT_TO_TRANSLATE = "text to translate"
 MORE_TEXT_TO_TRANSLATE = "more text to translate"

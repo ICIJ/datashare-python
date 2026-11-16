@@ -6,6 +6,9 @@ from unittest.mock import MagicMock, PropertyMock
 
 import pytest
 from _pytest.monkeypatch import MonkeyPatch
+from pydantic import TypeAdapter, ValidationError
+from temporalio import activity
+
 from datashare_python.conftest import TEST_PROJECT
 from datashare_python.constants import TIKA_METADATA_RESOURCENAME
 from datashare_python.objects import (
@@ -23,8 +26,6 @@ from datashare_python.objects import (
     TaskState,
     WorkerFilePath,
 )
-from pydantic import TypeAdapter, ValidationError
-from temporalio import activity
 
 
 class MockedManifestEntry(ManifestEntry): ...

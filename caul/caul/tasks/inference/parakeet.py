@@ -1,6 +1,6 @@
 import logging
 from collections.abc import Iterable
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Self
 
 from caul_core import (
     PARAKEET_MODEL_REF,
@@ -12,7 +12,6 @@ from caul_core import (
     ProcessedAudioSegment,
     TorchDevice,
 )
-from icij_common.registrable import FromConfig
 
 logger = logging.getLogger(__name__)
 
@@ -43,19 +42,16 @@ class ParakeetInferenceRunner(InferenceRunner):
         self._batch_size = batch_size
 
     @classmethod
-    def _from_config(
-        cls, config: ParakeetInferenceRunnerConfig, **extras
-    ) -> FromConfig:
-        return cls(
-            model_name=config.model_name,
-            **extras,
-        )
+    def _from_config(cls, config: ParakeetInferenceRunnerConfig, **extras) -> Self:
+        return cls(model_name=config.model_name, **extras)
 
     @property
     def _transcribe_config(self) -> "TranscribeConfig":
         if self.__transcribe_config is None:
-            from nemo.collections.asr.parts.mixins import TranscribeConfig
-            from nemo.collections.asr.parts.mixins.transcription import (
+            from nemo.collections.asr.parts.mixins import (  # noqa: PLC0415
+                TranscribeConfig,
+            )
+            from nemo.collections.asr.parts.mixins.transcription import (  # noqa: PLC0415
                 InternalTranscribeConfig,
             )
 
@@ -74,16 +70,14 @@ class ParakeetInferenceRunner(InferenceRunner):
         return self.__transcribe_config
 
     def __enter__(self):
-        import nemo.collections.asr as nemo_asr
+        import nemo.collections.asr as nemo_asr  # noqa: PLC0415
 
         self._model = nemo_asr.models.ASRModel.from_pretrained(
             self.model_name, map_location=self._torch_device
         ).eval()
         return self
 
-    def _transcribe(
-        self, audio_inputs: Iterable["torch.Tensor"], **kwargs
-    ) -> ASRResult:
+    def _transcribe(self, audio_inputs: Iterable["torch.Tensor"]) -> ASRResult:
         """Transcribe normalized audio tensors
 
         :param audio_inputs: input tensors
@@ -96,7 +90,10 @@ class ParakeetInferenceRunner(InferenceRunner):
         )
 
     def process(
-        self, inputs: Iterable[tuple[ProcessedAudioSegment, ...]], *args, **kwargs
+        self,
+        inputs: Iterable[tuple[ProcessedAudioSegment, ...]],
+        *args,  # noqa: ARG002
+        **kwargs,  # noqa: ARG002
     ) -> Iterable[ASRResult | Error]:
         """Transcribe a batch of audio tensors or file names of max duration <= 20 min
 

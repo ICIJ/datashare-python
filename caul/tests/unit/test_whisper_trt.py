@@ -21,8 +21,6 @@ sys.modules["tensorrt_llm._utils"].trt_dtype_to_torch = lambda _: torch.float32
 sys.modules["tensorrt_llm._utils"].torch_dtype_to_trt = MagicMock()
 
 # These imports must run after the tensorrt_llm stubs above are installed
-from caul.tasks.inference.whisper_trt import WhisperTrtInferenceRunner  # noqa: E402
-from caul.tasks.preprocessing.whisper_trt import WhisperTrtPreprocessor  # noqa: E402
 from caul_core import (  # noqa: E402
     DEFAULT_SAMPLE_RATE,
     WHISPER_TRT_ENCODER_DOWNSAMPLING_FACTOR,
@@ -35,6 +33,9 @@ from caul_core import (  # noqa: E402
     SegmentMetadata,
 )
 from tensorrt_llm.runtime import SamplingConfig  # noqa: E402 - mocked above
+
+from caul.tasks.inference.whisper_trt import WhisperTrtInferenceRunner  # noqa: E402
+from caul.tasks.preprocessing.whisper_trt import WhisperTrtPreprocessor  # noqa: E402
 
 _BATCH_SIZE = 2
 _PROMPT_IDS = [50258, 50259, 50360, 50363]  # fake prompt token ids

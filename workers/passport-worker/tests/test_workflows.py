@@ -8,6 +8,9 @@ from datashare_python.conftest import TEST_PROJECT
 from datashare_python.objects import DatashareFile, ProcessingReportWithPages
 from datashare_python.utils import safe_dir
 from icij_common.pydantic_utils import safe_copy
+from temporalio.client import Client as TemporalClient
+from temporalio.worker import Worker
+
 from passport_worker.config import PassportWorkerConfig
 from passport_worker.objects import (
     ExportFormat,
@@ -26,9 +29,6 @@ from passport_worker.workflows import (
     PassportDetectionWorkflow,
     TaskQueue,
 )
-from temporalio.client import Client as TemporalClient
-from temporalio.worker import Worker
-
 from tests import DOCS_PATH
 
 

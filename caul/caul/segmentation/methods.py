@@ -108,7 +108,7 @@ def segment_by_silence(
         exceeding this are split at fixed intervals as a fallback
     :return: list of TensorSegment
     """
-    import librosa
+    import librosa  # noqa: PLC0415
 
     if len(audio_tensor.shape) != 1:
         msg = (
@@ -239,7 +239,7 @@ def segment_by_pyannote_vad(
         exceeding this are split at fixed intervals as a fallback
     :return: list of TensorSegment
     """
-    from torch import float32
+    from torch import float32  # noqa: PLC0415
 
     tensor_id = uuid.uuid4().hex
     max_segment_samples = int(max_segment_len_s * sample_rate)

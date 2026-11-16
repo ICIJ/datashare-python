@@ -71,7 +71,7 @@ class ASRPreprocessorMixin(Preprocessor):
         self._reported_errors = reported_errors
 
     @classmethod
-    def _from_config(cls, config: BasePreprocessorConfig, **extras) -> Self:
+    def _from_config(cls, config: BasePreprocessorConfig, **extras) -> Self:  # noqa: ARG003
         # TODO: configure segmentation fn
         return cls(
             max_frames=config.max_frames,
@@ -85,7 +85,7 @@ class ASRPreprocessorMixin(Preprocessor):
         inputs: ASRInput,
         sample_rates: SampleRate | None = None,
         output_dir: Path | None = None,
-        **kwargs,
+        **kwargs,  # noqa: ARG002
     ) -> Iterable[tuple[ProcessedAudioSegment, ...] | Error]:
         """Segment and batch audio inputs
 
@@ -206,7 +206,7 @@ class ASRPreprocessorMixin(Preprocessor):
     def _load_audio(
         self, audio_input: "np.ndarray | torch.Tensor | Path", sample_rate: int | None
     ) -> tuple[Iterable[Tensor], int]:
-        import numpy as np
+        import numpy as np  # noqa: PLC0415
 
         if isinstance(audio_input, (Path, str)):
             audio_path = Path(audio_input)
@@ -214,7 +214,7 @@ class ASRPreprocessorMixin(Preprocessor):
             audio_chunks = self._load_file_as_chunks(audio_path, sample_rate)
         else:
             if isinstance(audio_input, np.ndarray):
-                import torch
+                import torch  # noqa: PLC0415
 
                 audio_input = torch.Tensor(audio_input)
             if sample_rate is None:
@@ -310,7 +310,7 @@ def _persist_seg(
 def _resample_audio(
     audio: "torch.Tensor", sample_rate: int, *, target_rate: int
 ) -> "torch.Tensor":
-    from torchcodec.encoders import AudioEncoder
+    from torchcodec.encoders import AudioEncoder  # noqa: PLC0415
 
     encoder = AudioEncoder(samples=audio, sample_rate=sample_rate)
 

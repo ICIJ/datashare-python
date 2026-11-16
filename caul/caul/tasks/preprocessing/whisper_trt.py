@@ -25,8 +25,8 @@ if TYPE_CHECKING:
 
 def _mel_filters_factory(
     n_mels: int, mel_filters_dir: Path | str, device: "str | torch.Device" = "cpu"
-) -> Callable[[], "torch.Tensor"]:
-    def _load_mel_filters() -> "torch.Tensor":
+) -> Callable[[], "torch.Tensor | None"]:
+    def _load_mel_filters() -> "torch.Tensor | None":
         return load_mel_filters(n_mels, mel_filters_dir, device)
 
     return _load_mel_filters
@@ -38,11 +38,11 @@ class WhisperTrtPreprocessor(ASRPreprocessorMixin):
         self,
         batcher: BaseBatcherConfig | None = None,
         n_mels: int = 80,
-        mel_filters_factory: Callable[[], "torch.Tensor"] = None,
+        mel_filters_factory: Callable[[], "torch.Tensor"] | None = None,
         dtype: "str | None" = None,
         max_frames: int = WHISPER_TRT_MAX_FRAMES,
     ) -> None:
-        import torch
+        import torch  # noqa: PLC0415
 
         super().__init__(batcher=batcher, max_frames=max_frames)
         self._n_mels = n_mels
@@ -55,7 +55,7 @@ class WhisperTrtPreprocessor(ASRPreprocessorMixin):
     def _from_config(
         cls,
         config: WhisperTrtPreprocessorConfig,
-        **extras,
+        **extras,  # noqa: ARG003
     ) -> Self:
         return cls(
             n_mels=config.n_mels,
@@ -90,7 +90,7 @@ class WhisperTrtPreprocessor(ASRPreprocessorMixin):
         :audio_tensor: input audio tensor
         :returns: log mel spectrogram
         """
-        import torch
+        import torch  # noqa: PLC0415
 
         window = torch.hann_window(WHISPER_TRT_N_FFT)
         stft = torch.stft(

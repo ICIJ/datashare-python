@@ -4,9 +4,9 @@ from collections.abc import Iterable
 from contextlib import AbstractContextManager
 from pathlib import Path
 from types import TracebackType
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Self
 
-from icij_common.registrable import FromConfig, RegistrableFromConfig
+from icij_common.registrable import RegistrableFromConfig
 from overrides import final
 
 from .config import BaseBatcherConfig
@@ -79,16 +79,13 @@ class Preprocessor(ASRTask, RegistrableFromConfig):
 class InferenceRunner(ASRTask, RegistrableFromConfig):
     """Abstract for ASR inference"""
 
-    def __init__(self, device: TorchDevice = TorchDevice.CPU):
-        self._device = device
-
     def __exit__(
         self,
         exc_type: type[BaseException] | None,
         exc_val: BaseException | None,
         exc_tb: TracebackType | None,
     ) -> None:
-        import torch
+        import torch  # noqa: PLC0415
 
         self._model = None
         gc.collect()
@@ -102,7 +99,7 @@ class InferenceRunner(ASRTask, RegistrableFromConfig):
 
     @property
     def _torch_device(self) -> "torch.device":
-        import torch
+        import torch  # noqa: PLC0415
 
         return torch.device(self.device)
 
@@ -132,5 +129,5 @@ class Batcher[I, O, C](RegistrableFromConfig):
     @classmethod
     def _from_config(
         cls, config: BaseBatcherConfig, *, items: Iterable[I | Error]
-    ) -> FromConfig:
+    ) -> Self:
         return cls(config=config, items=items)

@@ -1,6 +1,7 @@
 from pathlib import Path
 
 import tomlkit
+
 from datashare_python.template import init_project
 
 

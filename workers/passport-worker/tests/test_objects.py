@@ -1,4 +1,5 @@
 import pytest
+
 from passport_worker.objects import PassportProcessingError
 
 

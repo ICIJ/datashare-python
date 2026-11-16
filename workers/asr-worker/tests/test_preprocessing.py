@@ -3,8 +3,6 @@ from collections.abc import Iterable
 from pathlib import Path
 from typing import Self
 
-from asr_worker.config import ASRWorkerConfig
-from asr_worker.preprocessing import preprocess_act
 from caul_core import (
     ASRInput,
     FSProcessedSegment,
@@ -18,6 +16,9 @@ from caul_core.asr_task import SampleRate
 from datashare_python.conftest import TEST_PROJECT
 from datashare_python.objects import DatashareFile, DatashareLanguage, Document, Error
 from icij_common.registrable import RegistrableConfig
+
+from asr_worker.config import ASRWorkerConfig
+from asr_worker.preprocessing import preprocess_act
 
 PROCESSED_SEG_0 = FSProcessedSegment(
     path=Path("preprocessed_0.wav"),

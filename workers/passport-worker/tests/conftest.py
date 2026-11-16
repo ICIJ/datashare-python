@@ -39,6 +39,7 @@ from datashare_python.types_ import TemporalClient
 from datashare_python.utils import artifacts_dir, ext_to_mime_types
 from icij_common.es import ESClient
 from icij_common.pydantic_utils import safe_copy
+
 from passport_worker.activities import Activity
 from passport_worker.config import (
     ImagePreprocessingWorkerConfig,

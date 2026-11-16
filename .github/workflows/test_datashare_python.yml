@@ -7,26 +7,30 @@ on:
     paths:
       - 'datashare-python/**'
 
+env:
+  PYTHON_VERSION: 3.12
+  ASTRAL_VERSION: 0.11.6
+
 # TODO: leverage some caching here
 jobs:
   lint:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-      - uses: astral-sh/ruff-action@v4.1.0
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
         with:
-          args: "--version" # skips test by displaying the version
-          version: "0.16.1"
+          version: ${{ env.ASTRAL_VERSION }}
+          python-version: ${{ env.PYTHON_VERSION }}
+          enable-cache: true
+          working-directory: datashare-python
       - name: Check formatting
-        run: ruff format --config qa/ruff.toml --check datashare-python
+        run: cd datashare-python && uv run --with ruff ruff check --fix .
       - name: Lint test
-        run: ruff check --config qa/ruff.toml datashare-python
+        run: cd datashare-python && uv run --with ruff ruff format
 
   test:
     runs-on: ubuntu-latest
-    env:
-      PYTHON_VERSION: 3.12
-      ASTRAL_VERSION: 0.11.6
     steps:
       - uses: actions/checkout@v6
       - name: Setup Python project

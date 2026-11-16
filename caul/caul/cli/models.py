@@ -28,14 +28,14 @@ logger = logging.getLogger(__name__)
 
 @models_app.async_command(help=_CACHE_MODELS_HELP)
 async def cache(
-    model: Annotated[ASRModel, typer.Argument(help=_CACHE_MODELS_NAMES_HELP)] = None,
+    model: Annotated[
+        ASRModel | None, typer.Argument(help=_CACHE_MODELS_NAMES_HELP)
+    ] = None,
     cache_dir: Annotated[
         Path | None, typer.Argument(help=_CACHE_MODELS_CACHE_DIR_HELP)
     ] = None,
 ) -> None:
-    from huggingface_hub.constants import (
-        HF_HUB_CACHE,
-    )
+    from huggingface_hub.constants import HF_HUB_CACHE  # noqa: PLC0415
 
     if cache_dir is None:
         cache_dir = HF_HUB_CACHE

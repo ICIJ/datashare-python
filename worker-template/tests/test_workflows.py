@@ -5,10 +5,11 @@ import pytest
 from datashare_python.conftest import TEST_PROJECT, has_state
 from datashare_python.objects import DatashareLanguage, Document, TaskResult, TaskState
 from datashare_python.task_client import DatashareTaskClient
-from icij_common.es import HITS, ESClient, has_type
+from icij_common.es import ASC, HITS, ESClient, has_type
 from icij_common.test_utils import async_true_after
 from temporalio.client import Client as TemporalClient
 from temporalio.worker import Worker
+
 from worker_template.objects import (
     TranslateAndClassifyArgs,
     TranslateAndClassifyResponse,
@@ -58,7 +59,7 @@ async def test_ping_e2e(
     ping_task_id = await test_task_client.create_task("ping", dict(), group=task_group)
     # Then
     ping_timeout_s = 20
-    assert await async_true_after(
+    await async_true_after(
         partial(
             has_state,
             test_task_client,
@@ -104,7 +105,7 @@ async def test_translate_and_classify_workflow_e2e(  # noqa: PLR0917
     assert response == expected_response
 
     body = {"query": has_type(type_field="type", type_value="Document")}
-    sort = "_doc:asc"
+    sort = {"_doc": ASC}
     index_docs = []
     async for hits in test_es_client.poll_search_pages(
         index=TEST_PROJECT, body=body, sort=sort

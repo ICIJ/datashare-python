@@ -2,9 +2,10 @@ from pathlib import Path
 
 from _pytest.capture import CaptureFixture
 from _pytest.monkeypatch import MonkeyPatch
+from typer.testing import CliRunner
+
 from datashare_python.cli import cli_app
 from datashare_python.worker import DatashareWorker
-from typer.testing import CliRunner
 
 
 async def _mock_worker__aenter__(self) -> None:  # noqa: ANN001

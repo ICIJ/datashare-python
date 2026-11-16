@@ -3,7 +3,7 @@ from collections.abc import Iterable
 from contextlib import nullcontext
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Self
 
 from caul_core import (
     FIREREDASR2_MODEL_HUB_PREFIX,
@@ -17,14 +17,12 @@ from caul_core import (
     ProcessedAudioSegment,
     TorchDevice,
 )
-from icij_common.registrable import FromConfig
 
 from caul.utils import to_filesystem
 
 logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
-    import torch
     from fireredasr2s.fireredasr2 import FireRedAsr2, FireRedAsr2Config
 
 
@@ -43,16 +41,9 @@ def fireredasr2_from_pretrained(
     :param model_tag: For ASR models, can be either AED or LLM
     :param config: Configuration options for model
     """
-    from fireredasr2s.fireredasr2 import (
-        FireRedAsr2,
-        FireRedAsr2Config,
-    )
-    from huggingface_hub import (
-        snapshot_download,
-    )
-    from huggingface_hub.constants import (
-        HF_HUB_CACHE,
-    )
+    from fireredasr2s.fireredasr2 import FireRedAsr2, FireRedAsr2Config  # noqa: PLC0415
+    from huggingface_hub import snapshot_download  # noqa: PLC0415
+    from huggingface_hub.constants import HF_HUB_CACHE  # noqa: PLC0415
 
     if cache_dir is None:
         cache_dir = HF_HUB_CACHE
@@ -74,10 +65,8 @@ def inference_config_to_fire_red_asr_model(
     *,
     use_gpu: bool = True,
     cache_dir: Path | None = None,
-) -> "torch.Module":
-    from fireredasr2s.fireredasr2 import (
-        FireRedAsr2Config,
-    )
+) -> "FireRedAsr2":
+    from fireredasr2s.fireredasr2 import FireRedAsr2Config  # noqa: PLC0415
 
     asr_config = FireRedAsr2Config(
         use_gpu=use_gpu,
@@ -110,7 +99,7 @@ class FireRedASR2InferenceRunner(InferenceRunner):
 
     def __init__(
         self,
-        config: FireRedASR2InferenceRunnerConfig = None,
+        config: FireRedASR2InferenceRunnerConfig | None = None,
         device: TorchDevice = TorchDevice.CPU,
     ):
         super().__init__(device)
@@ -126,7 +115,7 @@ class FireRedASR2InferenceRunner(InferenceRunner):
         config: FireRedASR2InferenceRunnerConfig,
         device: TorchDevice = TorchDevice.CPU,
         **extras,
-    ) -> FromConfig:
+    ) -> Self:
         return cls(config=config, device=device, **extras)
 
     def __enter__(self):
@@ -141,7 +130,7 @@ class FireRedASR2InferenceRunner(InferenceRunner):
         inputs: Iterable[tuple[ProcessedAudioSegment, ...]],
         *,
         output_dir: str | Path = None,
-        **kwargs,
+        **kwargs,  # noqa: ARG002
     ) -> Iterable[ASRResult | Error]:
         """Transcribe batches of preprocessed audio segments.
 

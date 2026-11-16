@@ -2,9 +2,10 @@ import re
 from importlib.metadata import EntryPoints
 from unittest.mock import MagicMock
 
-import datashare_python
 import pytest
 from _pytest.monkeypatch import MonkeyPatch
+
+import datashare_python
 from datashare_python.config import WorkerConfig
 from datashare_python.discovery import (
     discover,

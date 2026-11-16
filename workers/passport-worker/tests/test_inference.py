@@ -21,6 +21,7 @@ from datashare_python.utils import async_read_jsonl_as, safe_dir, write_batches
 from icij_common.pydantic_utils import safe_copy
 from icij_common.registrable import FromConfig, RegistrableConfig
 from passport_service.objects import MRZ, ObjectDetection, Passport
+
 from passport_worker.activities import Activity
 from passport_worker.config import PassportWorkerConfig
 from passport_worker.exceptions import InferenceRuntimeError
@@ -41,7 +42,6 @@ from passport_worker.objects import (
     YOLOPassportDetectorConfig,
 )
 from passport_worker.preprocessing import PDFPreprocessor
-
 from tests import DOCS_PATH
 from tests.conftest import DS_FILE_0
 

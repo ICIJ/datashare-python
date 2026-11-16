@@ -1,4 +1,5 @@
-from collections.abc import AsyncGenerator, Callable, Iterable
+from collections.abc import AsyncGenerator, Callable, Iterable, Sequence
+from contextlib import asynccontextmanager
 from functools import partial
 from typing import Any, Self, TypeVar
 from unittest.mock import patch
@@ -18,6 +19,20 @@ from icij_common.es import (
     ESSort,
 )
 from icij_common.registrable import RegistrableConfig
+
+from tests.conftest import (
+    DOC_ID_1,
+    DOC_ID_2,
+    DS_ENGLISH,
+    DS_FRENCH,
+    DS_SPANISH,
+    ENGLISH,
+    FRENCH,
+    ROOT_DOCUMENT_1,
+    ROOT_DOCUMENT_2,
+    SPANISH,
+    TEST_PROJECT,
+)
 from translation_worker import activities
 from translation_worker.activities import (
     _DOC_CONTENT_TEXT_LENGTH,
@@ -39,25 +54,21 @@ from translation_worker.objects import (
 )
 from translation_worker.processors import SentenceSplitter, Translator
 
-from tests.conftest import (
-    DOC_ID_1,
-    DOC_ID_2,
-    DS_ENGLISH,
-    DS_FRENCH,
-    DS_SPANISH,
-    ENGLISH,
-    FRENCH,
-    ROOT_DOCUMENT_1,
-    ROOT_DOCUMENT_2,
-    SPANISH,
-    TEST_PROJECT,
-)
-
 
 class MockESClient(ESClient):
     def __init__(self, docs: list[dict[str, Any]]):
-        super().__init__(pagination=10)
+        super().__init__(hosts=["http://somehost:9200"], pagination=10)
         self._docs = docs
+
+    @asynccontextmanager
+    async def pit(
+        self,
+        *,
+        index: str | Sequence[str],  # noqa: ARG002
+        keep_alive: str | None = None,  # noqa: ARG002
+        **kwargs,  # noqa: ARG002
+    ) -> AsyncGenerator[dict[str, Any], None]:
+        yield dict()
 
     async def poll_search_pages(
         self,
@@ -779,9 +790,7 @@ async def test__get_es_docs(
     # When
     docs = [
         [d async for d in group]
-        async for group in _get_es_docs_by_language(
-            es_client, TEST_PROJECT, DS_ENGLISH, []
-        )
+        async for group in _get_es_docs_by_language(es_client, dict(), DS_ENGLISH, [])
     ]
     docs = [[d[ID_] for d in g] for g in docs]
     # Then

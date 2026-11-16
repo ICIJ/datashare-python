@@ -35,23 +35,23 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "icij-common", specifier = "~=0.8.1" },
+    { name = "icij-common", specifier = "~=0.9.0" },
     { name = "overrides", specifier = "~=7.7.0" },
     { name = "pydantic-extra-types", extras = ["pycountry"], specifier = "~=2.11" },
 ]
 
 [[package]]
 name = "icij-common"
-version = "0.8.2"
+version = "0.9.6"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiostream" },
     { name = "pydantic" },
     { name = "pydantic-settings" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/e0/51/91d85cc23e275bb51a5cae47873af9a7160f62797b25663d902cf38e6ab7/icij_common-0.8.2.tar.gz", hash = "sha256:7db68266d8facb43142131d81e998cd74c6ae73508456743e00df43a15cc2995", size = 15937, upload-time = "2026-04-07T12:13:39.774Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/ba/67/af4e1ef2647e202f3af2924ce5a369870021758fa62484bd105a46a419b7/icij_common-0.9.6.tar.gz", hash = "sha256:71cb1692c5cd0b10ebc4a42e42517e189cacbd4472126ae91212640353952310", size = 17226, upload-time = "2026-10-30T15:13:13.647Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/15/5a/99d123230023124ba4ec67765feb2a04b656ae1f473a14f6b29cc54b02bf/icij_common-0.8.2-py3-none-any.whl", hash = "sha256:c5a1a3ccd54e7bf53acad293a0af50ab15156b225791b43383197b896bae955f", size = 20565, upload-time = "2026-04-07T12:13:38.709Z" },
+    { url = "https://files.pythonhosted.org/packages/3a/2a/ba84d3791027d129df34a4b77a3623903788b0516b630fa6785ceb7eb186/icij_common-0.9.6-py3-none-any.whl", hash = "sha256:5c8bc55fba195ef1f0f06ab1bcf3638d9454d400d1324c1ed4716cd4962e8ca3", size = 22042, upload-time = "2026-10-30T15:13:12.401Z" },
 ]
 
 [[package]]

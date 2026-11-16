@@ -16,6 +16,7 @@ from datashare_python.utils import (
 )
 from elasticsearch._async.helpers import async_bulk
 from icij_common.es import (
+    ASC,
     DOC_CONTENT,
     DOC_CONTENT_TYPE,
     DOC_EXTRACTION_LEVEL,
@@ -119,7 +120,10 @@ async def _search_audio_paths(
 ) -> AsyncGenerator[Document, None]:
     body = _with_audio_content(query, supported_content_types)
     async for page in es_client.poll_search_pages(
-        index=project, body=body, sort="_doc:asc", _source_includes=_DOC_CONTENT_SOURCES
+        index=project,
+        body=body,
+        sort={"_doc": ASC},
+        _source_includes=_DOC_CONTENT_SOURCES,
     ):
         for hit in page[HITS][HITS]:
             yield Document.from_es(hit)
