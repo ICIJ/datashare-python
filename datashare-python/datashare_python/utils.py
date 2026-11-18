@@ -1111,7 +1111,7 @@ async def run_with_concurrency(
 ) -> AsyncGenerator:
     max_concurrency = asyncio.Semaphore(max_concurrency)
     aws = (_run_with_semaphore(aw, max_concurrency) for aw in aws)
-    async for res in asyncio.as_completed(aws):
+    for res in asyncio.as_completed(aws):
         yield await res
 
 

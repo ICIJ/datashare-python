@@ -166,7 +166,7 @@ async def preprocess(
     pdf_batches = preprocessing_batches.pdfs + pdf_paths
     preprocess_pdfs_tasks = _process_pdfs_tasks(
         pdf_batches,
-        args.project,
+        args,
         force_reprocessing=force_reprocessing,
         worker_config=worker_config,
     )
@@ -225,17 +225,19 @@ def _convert_to_pdfs_tasks(
 
 def _process_pdfs_tasks(
     batches: Batches,
-    project: str,
+    args: PassportDetectionArgs,
     *,
     force_reprocessing: bool,
     worker_config: PassportWorkerConfig,
 ) -> list[Coroutine]:
     all_tasks = []
+    config = args.config.preprocessing.pdfs
+    project = args.project
     for b in batches:
         all_tasks.append(
             execute_activity(
                 PassportDetectionActivities.preprocess_pdfs,
-                args=(b, project, force_reprocessing),
+                args=(b, project, config, force_reprocessing),
                 task_queue=TaskQueue.IO,
                 timeouts=worker_config.timeouts.pdf_preprocessing,
             )

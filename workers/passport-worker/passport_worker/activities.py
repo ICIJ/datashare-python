@@ -41,12 +41,14 @@ from .objects import (
     PassportDetectionResponse,
     PassportExportArgs,
     PassportExportResponse,
+    PDFPreprocessorConfig,
     PreprocessingBatches,
     PreprocessingConfig,
 )
 from .preprocessing import (
     ImagePreprocessor,
     PDFConverter,
+    PDFPreprocessor,
     convert_to_pdfs_act,
     preprocess_images_act,
     preprocess_pdfs_act,
@@ -177,7 +179,7 @@ class PassportDetectionActivities(ActivityWithProgress):
         ] = None,
     ) -> tuple[Path, Path]:
         worker_config = cast(PassportWorkerConfig, lifespan_worker_config())
-        config = worker_config.preprocessing.pdfs
+        config = worker_config.preprocessing.pdfs.conversion
         cache = lifespan_pdf_converter_cache()
         cache_key = config_cache_key(config.pdf_converter)
         pdf_converter_factory = async_enter_cm(
@@ -215,6 +217,7 @@ class PassportDetectionActivities(ActivityWithProgress):
         self,
         batch: Path,
         project: str,
+        config: PDFPreprocessorConfig,
         *,
         force_reprocessing: bool,
         progress: Annotated[
@@ -222,12 +225,19 @@ class PassportDetectionActivities(ActivityWithProgress):
         ] = None,
     ) -> tuple[Path, Path]:
         worker_config = cast(PassportWorkerConfig, lifespan_worker_config())
+        worker_pdf_config = worker_config.preprocessing.pdfs.preprocessing
         workdir = worker_config.paths.workdir
+        logger.info("loading pdf preprocessor...")
+        # We don't cache the pdf preprocessor, it's lightweight
+        extras = worker_pdf_config.resolve_preprocessor_extras(config)
+        pdf_preprocessor = PDFPreprocessor.from_config(config, **extras)
         # We cache processing at the config level, we ignore package updates,
         # to discard the cache we just need to disable it in the args to overwrite
-        output_root = activity_workdir(workdir, project, caching_key="pdf-preprocessor")
+        result_cache_key = config_cache_key(config)
+        output_root = activity_workdir(workdir, project, caching_key=result_cache_key)
         output_root.mkdir(parents=True, exist_ok=True)
         successes, errors = await preprocess_pdfs_act(
+            pdf_preprocessor,
             batch,
             worker_config.paths,
             output_root=output_root,

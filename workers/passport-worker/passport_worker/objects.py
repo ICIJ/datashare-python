@@ -21,7 +21,7 @@ from datashare_python.objects import (
     WorkerFile,
     WorkerPaths,
 )
-from icij_common.pydantic_utils import safe_copy
+from icij_common.pydantic_utils import make_enum_discriminator, safe_copy, tagged_union
 from icij_common.registrable import RegistrableConfig
 from passport_service.constants import (
     DEFAULT_DETECTION_THRESHOLD,
@@ -30,7 +30,7 @@ from passport_service.constants import (
     DEFAULT_NMS_THRESHOLD,
 )
 from passport_service.objects import Passport
-from pydantic import Field
+from pydantic import Discriminator, Field
 
 DocumentSearchQuery = dict[str, Any]
 DocId = str
@@ -71,11 +71,72 @@ class DefaultImagePreprocessorConfig(ImagePreprocessorConfigBase):
 ImagePreprocessorConfig = DefaultImagePreprocessorConfig
 
 
+class PDFPreprocessorType(StrEnum):
+    DEFAULT = "default"
+    LITEPARSE = "liteparse"
+
+
+class PDFPreprocessorConfigBase(DatashareModel, RegistrableConfig):
+    registry_key: ClassVar[str] = Field(frozen=True, default="type")
+    type: ClassVar[PDFPreprocessorType]
+
+
+class DefaultPDFPreprocessorConfig(PDFPreprocessorConfigBase):
+    type: ClassVar[PDFPreprocessorType] = Field(
+        frozen=True, default=PDFPreprocessorType.DEFAULT
+    )
+
+
+class OCRReason(StrEnum):
+    SCANNED = "scanned"
+    NO_TEXT = "no-text"
+    SPARSE_TEXT = "sparse-text"
+    EMBEDDED_IMAGES = "embedded-images"
+    GARBLED = "garbled"
+    VECTOR_TEXT = "vector-text"
+    ANNOTATION_TEXT = "annotation-text"
+
+
+class LayoutReason(StrEnum):
+    MULTI_COLUMN = "multi-column"
+    TABLE_LIKELY = "table-likely"
+    DENSE_GRAPHICS = "dense-graphics"
+
+
+def _all_ocr_reasons() -> set[OCRReason]:
+    return set(OCRReason)
+
+
+class LiteparsePageFilter(BaseModel):
+    accept_ocr_reasons: set[OCRReason] = Field(default_factory=_all_ocr_reasons)
+    accept_layout_reasons: set[LayoutReason] = Field(default_factory=set)
+
+
+class LiteparsePDFPreprocessorConfig(PDFPreprocessorConfigBase):
+    type: ClassVar[PDFPreprocessorType] = Field(
+        frozen=True, default=PDFPreprocessorType.LITEPARSE
+    )
+    preprocessor: DefaultPDFPreprocessorConfig = Field(
+        default_factory=DefaultPDFPreprocessorConfig
+    )
+    page_filter: LiteparsePageFilter = Field(default_factory=LiteparsePageFilter)
+
+
+PDFPreprocessorConfig = tagged_union(
+    PDFPreprocessorConfigBase.__subclasses__(), lambda t: t.type.default
+)
+pdf_preprocessor_discriminator = make_enum_discriminator("type", PDFPreprocessorType)
+
+
 class PreprocessingConfig(DatashareModel):
     use_caching: bool = True
 
     images: ImagePreprocessorConfig = Field(
         default_factory=DefaultImagePreprocessorConfig
+    )
+    pdfs: PDFPreprocessorConfig = Field(
+        discriminator=Discriminator(pdf_preprocessor_discriminator),
+        default_factory=DefaultPDFPreprocessorConfig,
     )
 
 

@@ -1,11 +1,13 @@
 import asyncio
 import logging
 from abc import abstractmethod
+from collections.abc import AsyncGenerator
 from concurrent.futures import ProcessPoolExecutor
+from contextlib import asynccontextmanager
 from functools import partial
 from pathlib import Path
 from types import TracebackType
-from typing import Protocol, Self, TypeVar
+from typing import Self, TypeVar
 
 from aiofile import async_open
 from aiohttp import ClientResponseError
@@ -22,13 +24,14 @@ from datashare_python.utils import (
 from icij_common.registrable import RegistrableFromConfig
 from passport_service import GotenbergClient
 from passport_service.constants import Colorspace
-from passport_service.core import process_image, process_pdf
+from passport_service.core import async_process_pdf, process_image
 from passport_service.exceptions import (
     REPORTED_ERRORS,
     ProcessingTimeout,
     UnsupportedDocExtension,
 )
 from passport_service.utils import run_with_concurrency
+from pymupdf import Document, pymupdf
 
 from passport_worker.config import GotenbergPDFConverterConfig, PDFConverterType
 from passport_worker.constants import pil_supported_extensions
@@ -36,9 +39,12 @@ from passport_worker.objects import (
     DefaultImagePreprocessorConfig,
     ImagePreprocessorType,
     PassportProcessingError,
+    PDFPreprocessorType,
     ProcessedPage,
     WorkerPaths,
 )
+
+from .config import DefaultPDFPreprocessorConfig, PDFPreprocessorConfigBase
 
 logger = logging.getLogger(__name__)
 
@@ -113,15 +119,45 @@ class GotenbergPDFConverter(GotenbergClient, PDFConverter):
         return cls(config)
 
 
-class PDFPreprocessor(Protocol):
-    def __call__(
-        self,
-        pdf_path: Path,
-        pdf_bytes: bytes,
-        output_dir: Path,
-        *,
-        force_reprocessing: bool,
+class PDFPreprocessor[C: PDFPreprocessorConfigBase](RegistrableFromConfig):
+    def __init__(self, config: C):
+        self._config = config
+
+    @abstractmethod
+    async def __call__(
+        self, path: Path, *, output_dir: Path, force_reprocessing: bool
     ) -> list[Path]: ...
+
+
+@PDFPreprocessor.register(PDFPreprocessorType.DEFAULT)
+class DefaultPDFPreprocessor(PDFPreprocessor):
+    async def __call__(
+        self, path: Path, *, output_dir: Path, force_reprocessing: bool
+    ) -> list[Path]:
+        pages = await self.process_pdf(
+            path,
+            output_dir=output_dir,
+            force_reprocessing=force_reprocessing,
+            skip=set(),
+        )
+        return pages
+
+    async def process_pdf(
+        self, path: Path, skip: set[int], *, output_dir: Path, force_reprocessing: bool
+    ) -> list[Path]:
+        async with async_open_pdf(path) as pdf_doc:
+            return await async_process_pdf(
+                pdf_doc,
+                path,
+                output_dir=output_dir,
+                force_reprocessing=force_reprocessing,
+                colorspace=Colorspace.RGB,
+                skip=skip,
+            )
+
+    @classmethod
+    def _from_config(cls, config: DefaultPDFPreprocessorConfig, **extras) -> Self:  # noqa: ARG003
+        return cls(config)
 
 
 def preprocess_images_act(
@@ -235,16 +271,14 @@ def _preprocess_image_doc(
 
 
 async def preprocess_pdfs_act(
+    pdf_preprocessor: PDFPreprocessor,
     batch: Path,
     paths: WorkerPaths,
-    pdf_preprocessor: PDFPreprocessor | None = None,
     *,
     output_root: Path,
     force_reprocessing: bool,
     progress: AsyncProgressRateHandler | None = None,
 ) -> tuple[list[ProcessedPage], list[PassportProcessingError]]:
-    if pdf_preprocessor is None:
-        pdf_preprocessor = partial(process_pdf, colorspace=Colorspace.RGB)
     docs = [d async for d in async_read_jsonl_as(batch, PROCESSED_FILE_TA)]
     n_docs = len(docs)
     if progress is not None:
@@ -303,14 +337,10 @@ async def _preprocess_pdf(
     output_root: Path,
 ) -> list[ProcessedPage]:
     pdf_path = doc.locate(paths)
-    async with async_open(pdf_path, "rb") as f:
-        pdf_bytes = await f.read()
     output_dir = output_root / safe_dir(doc.doc_id) / doc.doc_id
     output_dir.mkdir(parents=True, exist_ok=True)
-    pages = await asyncio.to_thread(
-        pdf_processor,
+    pages = await pdf_processor(
         pdf_path,
-        pdf_bytes,
         output_dir=output_dir,
         force_reprocessing=force_reprocessing,
     )
@@ -322,8 +352,6 @@ async def _preprocess_pdf(
 
 
 async def is_valid_pdf(path: Path) -> bool:
-    import pymupdf  # noqa: PLC0415
-
     if not path.exists():
         return False
     async with async_open(path, "rb") as f:
@@ -335,6 +363,17 @@ async def is_valid_pdf(path: Path) -> bool:
         return doc.is_pdf
     except Exception:  # noqa: BLE001
         return False
+    finally:
+        if doc is not None:
+            doc.close()
+
+
+@asynccontextmanager
+async def async_open_pdf(path: Path) -> AsyncGenerator[Document]:
+    doc = None
+    try:
+        doc = await asyncio.to_thread(pymupdf.open, path)
+        yield doc
     finally:
         if doc is not None:
             doc.close()

@@ -11,19 +11,24 @@ requires-python = ">=3.12,<3.14"
 dependencies = [
   "datashare-python~=0.12.12",
   "icij-common[elasticsearch-8]~=0.9.3",
-  "icij-passport-core==0.11.9",
+  "icij-passport-core==0.11.13",
+  # ⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️
+  # The LiteparsePDFPreprocessor was benched for this specific version
+  # bumping it might result in passport false negative
+  "liteparse==2.19.0",
+  # ⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️
 ]
 
 [project.optional-dependencies]
 preprocessing = [
-  "icij-passport-core[preprocessing]==0.11.9",
+  "icij-passport-core[preprocessing]==0.11.13",
   "pandas~=3.0",
 ]
 inference-gpu = [
-  "icij-passport-core[inference,gpu]==0.11.9"
+  "icij-passport-core[inference,gpu]==0.11.13"
 ]
 inference-cpu = [
-  "icij-passport-core[inference,cpu]==0.11.9"
+  "icij-passport-core[inference,cpu]==0.11.13"
 ]
 
 [tool.uv.sources]
