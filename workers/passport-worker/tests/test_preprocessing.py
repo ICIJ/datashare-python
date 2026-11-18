@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import Self
 
 import pytest
 from datashare_python.conftest import TEST_PROJECT
@@ -83,10 +84,9 @@ class MockPDFPreprocessor(PDFPreprocessor):
         self._res = iter(res)
         self.processed = []
 
-    def __call__(
+    async def __call__(
         self,
         pdf_path: Path,
-        pdf_bytes: bytes,  # noqa: ARG002
         output_dir: Path,  # noqa: ARG002
         *,
         force_reprocessing: bool,
@@ -98,6 +98,9 @@ class MockPDFPreprocessor(PDFPreprocessor):
             if force_reprocessing and not im_path.exists():
                 self.processed.append(pdf_path)
         return r
+
+    @classmethod
+    def _from_config(cls, config: RegistrableConfig, **extras) -> Self: ...
 
 
 @pytest.fixture
@@ -289,14 +292,14 @@ async def test_convert_to_pdfs_act_caching(
 
 @pytest.fixture
 def doc_1_pages(
-    test_worker_config: PassportWorkerConfig, doc_0: Document
+    test_worker_config: PassportWorkerConfig, doc_1: Document
 ) -> list[Path]:
     worker_paths = test_worker_config.paths
     workdir = worker_paths.workdir
     output_root = workdir.joinpath(TEST_PROJECT, "workflow_id")
     output_root.mkdir(parents=True, exist_ok=True)
-    doc_0_page_dir = output_root / safe_dir(doc_0.id) / doc_0.id
-    doc_0_pages = [doc_0_page_dir / "page_0.png", doc_0_page_dir / "page_1.png"]
+    doc_1_page_dir = output_root / safe_dir(doc_1.id) / doc_1.id
+    doc_0_pages = [doc_1_page_dir / "page_0.png", doc_1_page_dir / "page_1.png"]
     return doc_0_pages
 
 
@@ -318,9 +321,9 @@ async def test_preprocess_pdfs_act(
     batch_path.write_text("\n".join(d.model_dump_json() for d in batch))
     # When
     successes, errors = await preprocess_pdfs_act(
+        preprocessor,
         batch_path,
         worker_paths,
-        preprocessor,
         output_root=output_root,
         force_reprocessing=True,
     )
@@ -362,9 +365,9 @@ async def test_preprocess_pdfs_act_caching(
         p.write_bytes((DOCS_PATH / "passport.png").read_bytes())
     # When
     successes, errors = await preprocess_pdfs_act(
+        preprocessor,
         batch_path,
         worker_paths,
-        preprocessor,
         output_root=output_root,
         force_reprocessing=False,
     )

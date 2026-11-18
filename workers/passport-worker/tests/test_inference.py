@@ -41,7 +41,6 @@ from passport_worker.objects import (
     ProcessedPage,
     YOLOPassportDetectorConfig,
 )
-from passport_worker.preprocessing import PDFPreprocessor
 from tests import DOCS_PATH
 from tests.conftest import DS_FILE_0
 
@@ -89,22 +88,6 @@ class FailingPassportDetector:
     @classmethod
     def _from_config(cls, config: RegistrableConfig, **extras) -> FromConfig:
         pass
-
-
-class MockPDFPreprocessor(PDFPreprocessor):
-    def __init__(self, res: list[list[Path] | Exception]):
-        self._res = iter(res)
-
-    def __call__(
-        self,
-        pdf_path: Path,  # noqa: ARG002
-        pdf_bytes: bytes,  # noqa: ARG002
-        output_dir: Path,  # noqa: ARG002
-    ) -> list[Path]:
-        r = next(self._res)
-        if isinstance(r, Exception):
-            raise r
-        return r
 
 
 @pytest.fixture

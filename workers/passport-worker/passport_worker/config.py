@@ -1,7 +1,8 @@
+import os
 from concurrent.futures import ProcessPoolExecutor
 from datetime import timedelta
 from enum import StrEnum
-from typing import ClassVar
+from typing import Any, ClassVar
 
 import datashare_python
 from datashare_python.config import (
@@ -14,6 +15,8 @@ from datashare_python.config import (
 from datashare_python.objects import BaseModel, DatashareModel, WorkerPaths
 from icij_common.registrable import RegistrableConfig
 from pydantic import Field
+
+from .objects import DefaultPDFPreprocessorConfig, PDFPreprocessorConfigBase
 
 _ALL_LOGGERS = [datashare_python.__name__, __name__, "__main__"]
 
@@ -68,13 +71,50 @@ class PDFConversionWorkerConfig(DatashareModel):
     )
 
 
+class LiteparsePDFPreprocessorWorkerConfig(BaseModel):
+    concurrency: int = Field(default_factory=os.cpu_count)
+    page_batch_size: int = 8
+
+
+class PDFPreprocessingWorkerConfig(BaseModel):
+    liteparse: LiteparsePDFPreprocessorWorkerConfig = Field(
+        default_factory=LiteparsePDFPreprocessorWorkerConfig
+    )
+
+    def resolve_preprocessor_extras(
+        self, preprocessor_config: PDFPreprocessorConfigBase
+    ) -> dict[str, Any]:
+        from .liteparse_ import LiteparsePDFPreprocessorConfig  # noqa: PLC0415
+
+        match preprocessor_config:
+            case DefaultPDFPreprocessorConfig():
+                return dict()
+            case LiteparsePDFPreprocessorConfig():
+                return self.liteparse.model_dump()
+        raise TypeError(f"unexpected type: {preprocessor_config.__class__.__name__}")
+
+
+class PDFProcessingWorkerConfig(BaseModel):
+    conversion: PDFConversionWorkerConfig = Field(
+        default_factory=PDFConversionWorkerConfig
+    )
+    preprocessing: PDFPreprocessingWorkerConfig = Field(
+        default_factory=PDFPreprocessingWorkerConfig
+    )
+
+    def resolve_pdf_preprocessor_extras(
+        self, preprocessor_config: PDFPreprocessorConfigBase
+    ) -> dict[str, Any]:
+        return self.preprocessing.resolve_preprocessor_extras(preprocessor_config)
+
+
 class PreprocessingWorkerConfig(DatashareModel):
     target_n_pages_per_batch: int = 200
 
     images: ImagePreprocessingWorkerConfig = Field(
         default_factory=ImagePreprocessingWorkerConfig
     )
-    pdfs: PDFConversionWorkerConfig = Field(default_factory=PDFConversionWorkerConfig)
+    pdfs: PDFProcessingWorkerConfig = Field(default_factory=PDFProcessingWorkerConfig)
 
     def to_image_preprocessing_executor(self) -> ProcessPoolExecutor:
         return self.images.to_image_preprocessing_executor()

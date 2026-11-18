@@ -1,6 +1,7 @@
 import shutil
 from collections.abc import AsyncGenerator
 from pathlib import Path
+from typing import Self
 
 import pytest
 from _pytest.tmpdir import TempPathFactory
@@ -39,6 +40,7 @@ from datashare_python.types_ import TemporalClient
 from datashare_python.utils import artifacts_dir, ext_to_mime_types
 from icij_common.es import ESClient
 from icij_common.pydantic_utils import safe_copy
+from icij_common.registrable import RegistrableConfig
 
 from passport_worker.activities import Activity
 from passport_worker.config import (
@@ -46,6 +48,7 @@ from passport_worker.config import (
     PassportWorkerConfig,
     PreprocessingWorkerConfig,
 )
+from passport_worker.preprocessing import PDFPreprocessor
 from passport_worker.workflows import TaskQueue
 
 from . import DOCS_PATH, TEST_RESOURCE_PATH
@@ -434,3 +437,24 @@ def test_model_path() -> Path:
     if not test_model_path.exists():
         raise ValueError("place a model in here or implement automatic model DL")
     return test_model_path
+
+
+class MockPDFPreprocessor(PDFPreprocessor):
+    def __init__(self, res: list[list[Path] | Exception]):
+        self._res = iter(res)
+
+    async def __call__(
+        self,
+        path: Path,  # noqa: ARG002
+        *,
+        output_dir: Path,  # noqa: ARG002
+        force_reprocessing: bool,  # noqa: ARG002
+    ) -> list[Path]:
+        r = next(self._res)
+        if isinstance(r, Exception):
+            raise r
+        return r
+
+    @classmethod
+    def _from_config(cls, config: RegistrableConfig, **extras) -> Self:  # noqa: ARG003
+        return cls()
