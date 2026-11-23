@@ -1,13 +1,16 @@
-from typing import cast
-
 from docling.datamodel.base_models import InputFormat
 from docling.datamodel.settings import DebugSettings
 from extract_core import (
     BatchConcurrencySettings,
     DoclingPipelineConfig,
     DoclingSettings,
+    HybridLiteParsePipelineConfig,
+    PipelineBySize,
+    PipelineSize,
+    PipelineType,
 )
 from extract_core.docling_ import DoclingFormatOption, InferenceSettings
+from sympy.testing.runtests_pytest import pytest
 
 from extract_worker.config import DoclingWorkerConfig, MarkdownInferenceWorkerConfig
 from extract_worker.constants import TorchDevice
@@ -68,9 +71,7 @@ def test_default_resolve_pipeline_config_should_override_document_timeout() -> N
     )
     pipeline_config = DoclingPipelineConfig()
     # When
-    resolved = cast(
-        DoclingPipelineConfig, worker_config.resolve_pipeline_config(pipeline_config)
-    )
+    resolved = worker_config.resolve_pipeline_config(pipeline_config)
     # Then
     expected_settings = DoclingSettings(
         inference=InferenceSettings(document_timeout=120.0)
@@ -80,3 +81,32 @@ def test_default_resolve_pipeline_config_should_override_document_timeout() -> N
         pipeline_opts = fmt_opts.pipeline_options
         accelerator_opts = pipeline_opts["document_timeout"]
         assert accelerator_opts == 120.0
+
+
+@pytest.mark.parametrize(
+    ("config",),
+    [
+        (
+            HybridLiteParsePipelineConfig(
+                device=TorchDevice.CPU,
+                advanced=DoclingPipelineConfig(device=TorchDevice.CPU),
+            ),
+        ),
+        (
+            PipelineBySize(
+                pipeline=PipelineType.HYBRID_LITEPARSE, size=PipelineSize.MEDIUM
+            ),
+        ),
+    ],
+)
+def test_resolve_hybrid_liteparse_device(
+    config: HybridLiteParsePipelineConfig | PipelineBySize,
+) -> None:
+    # Given
+    worker_config = MarkdownInferenceWorkerConfig(
+        docling=DoclingWorkerConfig(device=TorchDevice.GPU)
+    )
+    # When
+    device = worker_config.resolve_device(config)
+    # Then
+    assert device == TorchDevice.GPU

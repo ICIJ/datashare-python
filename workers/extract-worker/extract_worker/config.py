@@ -21,7 +21,7 @@ from extract_core import (
     LiteParsePipelineConfig,
     MarkerPipelineConfig,
     MinerUPipelineConfig,
-    PipelineType,
+    PipelineBySize,
 )
 from extract_core.docling_ import InferenceSettings
 from icij_common.pydantic_utils import ICIJSettings, safe_copy
@@ -77,10 +77,21 @@ class MarkdownInferenceWorkerConfig(BaseModel):
     mineru: MinerUWorkerConfig = Field(default_factory=MinerUWorkerConfig)
     marker: MarkerWorkerConfig = Field(default_factory=MarkerWorkerConfig)
 
-    def resolve_task_queue(self, pipeline: PipelineType) -> TaskQueue:
-        return self.resolve_device(pipeline).md_extract_queue(pipeline)
+    def resolve_task_queue(
+        self, pipeline: PipelineBySize | BasePipelineConfig
+    ) -> TaskQueue:
+        return self.resolve_device(pipeline).md_extract_queue(pipeline.pipeline)
 
-    def resolve_device(self, pipeline: PipelineType | FieldInfo) -> TorchDevice:
+    def resolve_device(
+        self, pipeline: PipelineBySize | BasePipelineConfig | FieldInfo
+    ) -> TorchDevice:
+        if isinstance(pipeline, FieldInfo):
+            pipeline = pipeline.default
+        if isinstance(pipeline, PipelineBySize):
+            pipeline = pipeline.to_config()
+        if pipeline.__class__.__name__ == "HybridLiteParsePipelineConfig":
+            pipeline = pipeline.advanced
+        pipeline = pipeline.pipeline
         if isinstance(pipeline, FieldInfo):
             pipeline = pipeline.default
         try:
@@ -148,7 +159,7 @@ class MarkdownInferenceWorkerConfig(BaseModel):
         page_batch_size = self.docling.settings.perf.page_batch_size
         accelerator_opts = AcceleratorOptions(
             num_threads=os.cpu_count(),
-            device=self.resolve_device(pipeline_config.pipeline).to_extract(),
+            device=self.resolve_device(pipeline_config).to_extract(),
         ).model_dump(exclude_unset=True)
         for fmt, default_opts in DoclingPipelineConfig().format_options.items():
             opts = pipeline_config.format_options.get(fmt)
@@ -172,14 +183,14 @@ class MarkdownInferenceWorkerConfig(BaseModel):
     def _resolve_marker_config(
         self, pipeline_config: MarkerPipelineConfig
     ) -> MarkerPipelineConfig:
-        update = {"device": self.resolve_device(pipeline_config.pipeline).to_extract()}
+        update = {"device": self.resolve_device(pipeline_config).to_extract()}
         resolved = safe_copy(pipeline_config, update=update)
         return resolved
 
     def _resolve_mineru_config(
         self, pipeline_config: MinerUPipelineConfig
     ) -> MinerUPipelineConfig:
-        update = {"device": self.resolve_device(pipeline_config.pipeline).to_extract()}
+        update = {"device": self.resolve_device(pipeline_config).to_extract()}
         resolved = safe_copy(pipeline_config, update=update)
         return resolved
 
