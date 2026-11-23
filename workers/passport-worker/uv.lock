@@ -329,7 +329,7 @@ requires-dist = [
     { name = "icij-passport-core", extras = ["cpu", "inference"], marker = "extra == 'inference-cpu'", specifier = "==0.11.13" },
     { name = "icij-passport-core", extras = ["gpu", "inference"], marker = "extra == 'inference-gpu'", specifier = "==0.11.13" },
     { name = "icij-passport-core", extras = ["preprocessing"], marker = "extra == 'preprocessing'", specifier = "==0.11.13" },
-    { name = "liteparse", specifier = ">=2.19.0" },
+    { name = "liteparse", specifier = "==2.19.0" },
     { name = "pandas", marker = "extra == 'preprocessing'", specifier = "~=3.0" },
 ]
 provides-extras = ["inference-cpu", "inference-gpu", "preprocessing"]
@@ -345,7 +345,7 @@ dev = [
 
 [[package]]
 name = "datashare-python"
-version = "0.12.14"
+version = "0.12.15"
 source = { editable = "../../datashare-python" }
 dependencies = [
     { name = "aiofile" },
