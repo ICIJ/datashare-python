@@ -1,6 +1,6 @@
-[project]
+[pœroject]
 name = "caul"
-version = "0.13.13"
+version = "0.13.14"
 description = "Python implementation of an ASR service"
 authors = [
   { name = "Lion Summerbell", email = "lsummerbell@icij.org" }
