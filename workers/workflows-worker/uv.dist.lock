@@ -407,7 +407,7 @@ wheels = [
 
 [[package]]
 name = "datashare-passport-worker"
-version = "0.7.8"
+version = "0.7.9"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "datashare-python" },
@@ -415,9 +415,9 @@ dependencies = [
     { name = "icij-passport-core" },
     { name = "liteparse" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/89/4e/5bb4b741734e02f5bb3c4a39e6a4fa45a11a524ce72b1a482e35aeffcd9e/datashare_passport_worker-0.7.8.tar.gz", hash = "sha256:b65e090539b3a363c68b4d00b14c8d2406e038327603450f18178d411067b621", size = 18697, upload-time = "2026-11-23T12:30:00.021Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/d7/c0/8b1789fd1766317d80144dff7ed230582cc569609c926af22d0125cdbf51/datashare_passport_worker-0.7.9.tar.gz", hash = "sha256:43706db8634f8ae1250278104317334427bdcf08db7c3b95a753c92655dca2f2", size = 18778, upload-time = "2026-11-23T13:04:11.233Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/d8/62/b1dfc0a0b466051ef0f5223dc6bf5770caa636be42aff1c72521f8b189b3/datashare_passport_worker-0.7.8-py3-none-any.whl", hash = "sha256:76c524afb08e1d9ddf329f68066cc09af440edde6812859b1f8d1881c23edbd4", size = 24903, upload-time = "2026-11-23T12:29:59.325Z" },
+    { url = "https://files.pythonhosted.org/packages/e0/45/1da1aff3348d4a7dcdb69404f8d71826d6d62abb228d6453f5158599e44d/datashare_passport_worker-0.7.9-py3-none-any.whl", hash = "sha256:bd44464c708e81cbcf9f4ae2e9b082c0ad109398c0afcd3ad5c5591a271e70d8", size = 24938, upload-time = "2026-11-23T13:04:10.359Z" },
 ]
 
 [[package]]
@@ -475,7 +475,7 @@ dependencies = [
 requires-dist = [
     { name = "datashare-asr-worker", specifier = "==0.12.10" },
     { name = "datashare-extract-worker", specifier = "==0.7.12" },
-    { name = "datashare-passport-worker", specifier = "==0.7.8" },
+    { name = "datashare-passport-worker", specifier = "==0.7.9" },
     { name = "datashare-python", specifier = "~=0.12.12" },
     { name = "datashare-translation-worker", specifier = "==0.12.4" },
 ]
