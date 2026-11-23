@@ -725,7 +725,7 @@ requires-dist = [
     { name = "cuda-bindings", marker = "sys_platform == 'linux' and extra == 'gpu'", specifier = "==12.9.4" },
     { name = "datashare-python", specifier = "~=0.12.15" },
     { name = "elasticsearch", marker = "extra == 'cli'", specifier = "==8.19.3" },
-    { name = "extract-core", specifier = "==0.13.1" },
+    { name = "extract-core", specifier = "==0.13.2" },
     { name = "extract-python", extras = ["docling", "liteparse", "marker"], marker = "extra == 'base'", specifier = "==0.13.0" },
     { name = "extract-python", extras = ["docling-gpu"], marker = "extra == 'docling-gpu'", specifier = "==0.13.0" },
     { name = "extract-python", extras = ["mineru"], marker = "extra == 'mineru'", specifier = "==0.13.0" },
@@ -1122,7 +1122,7 @@ wheels = [
 
 [[package]]
 name = "extract-core"
-version = "0.13.1"
+version = "0.13.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "docling-slim", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-24-datashare-extract-worker-base' and extra == 'extra-24-datashare-extract-worker-mineru') or (platform_machine != 'x86_64' and extra == 'extra-24-datashare-extract-worker-cpu' and extra == 'extra-24-datashare-extract-worker-gpu') or sys_platform == 'darwin' or (sys_platform != 'linux' and extra == 'extra-24-datashare-extract-worker-base' and extra == 'extra-24-datashare-extract-worker-mineru') or (sys_platform != 'linux' and extra == 'extra-24-datashare-extract-worker-cpu' and extra == 'extra-24-datashare-extract-worker-gpu')" },
@@ -1130,9 +1130,9 @@ dependencies = [
     { name = "pydantic", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-24-datashare-extract-worker-base' and extra == 'extra-24-datashare-extract-worker-mineru') or (platform_machine != 'x86_64' and extra == 'extra-24-datashare-extract-worker-cpu' and extra == 'extra-24-datashare-extract-worker-gpu') or sys_platform == 'darwin' or (sys_platform != 'linux' and extra == 'extra-24-datashare-extract-worker-base' and extra == 'extra-24-datashare-extract-worker-mineru') or (sys_platform != 'linux' and extra == 'extra-24-datashare-extract-worker-cpu' and extra == 'extra-24-datashare-extract-worker-gpu')" },
     { name = "pydantic-extra-types", extra = ["pycountry"], marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-24-datashare-extract-worker-base' and extra == 'extra-24-datashare-extract-worker-mineru') or (platform_machine != 'x86_64' and extra == 'extra-24-datashare-extract-worker-cpu' and extra == 'extra-24-datashare-extract-worker-gpu') or sys_platform == 'darwin' or (sys_platform != 'linux' and extra == 'extra-24-datashare-extract-worker-base' and extra == 'extra-24-datashare-extract-worker-mineru') or (sys_platform != 'linux' and extra == 'extra-24-datashare-extract-worker-cpu' and extra == 'extra-24-datashare-extract-worker-gpu')" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/ed/77/1762b2c1ae6c7042349557b7cbb45981a23e42b2f48b61a734c445b1758d/extract_core-0.13.1.tar.gz", hash = "sha256:2fd9a8eeda85a76adeb9099803ee363d04543f89b6b60a3b2c5e303a99ece7cf", size = 42430, upload-time = "2026-11-23T13:34:17.108Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/de/b5/065940da477ca4917624f20f7c019e77e42d836f8442a81b72853b61cc8a/extract_core-0.13.2.tar.gz", hash = "sha256:ef3f5bac4070ebf429cb1b8e6e32013157394686ead2f5571aa724a97a1f34ce", size = 42523, upload-time = "2026-11-23T14:08:47.973Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/1d/93/bad3027ee03eb13db014a6e17720abfc1a0da3331b63b8140e3ebddba980/extract_core-0.13.1-py3-none-any.whl", hash = "sha256:f92dc8b5219f58b78d41df4cedbf2b08b3fe42352ef93337093752c67cbdf61c", size = 51589, upload-time = "2026-11-23T13:34:17.723Z" },
+    { url = "https://files.pythonhosted.org/packages/92/18/1716dd57e18545a38a608f746ba6b4dbdff10ff87c8a2280b9389cd3fa87/extract_core-0.13.2-py3-none-any.whl", hash = "sha256:e503a0a131baa4ba5e761ea2af559132787ad3b3f8bca1e796154e9d218c2701", size = 51743, upload-time = "2026-11-23T14:08:49.074Z" },
 ]
 
 [[package]]
