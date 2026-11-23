@@ -407,7 +407,7 @@ wheels = [
 
 [[package]]
 name = "datashare-passport-worker"
-version = "0.7.9"
+version = "0.7.10"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "datashare-python" },
@@ -415,9 +415,9 @@ dependencies = [
     { name = "icij-passport-core" },
     { name = "liteparse" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/d7/c0/8b1789fd1766317d80144dff7ed230582cc569609c926af22d0125cdbf51/datashare_passport_worker-0.7.9.tar.gz", hash = "sha256:43706db8634f8ae1250278104317334427bdcf08db7c3b95a753c92655dca2f2", size = 18778, upload-time = "2026-11-23T13:04:11.233Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/7a/79/f3ae4d9c045238c959c3c2ca5d91feb92c0d01c83435617e0ed15fb54bc1/datashare_passport_worker-0.7.10.tar.gz", hash = "sha256:0730183cd2a10d976f15b176d453f3c6512fb45b0eac7088f6d6e6fc20105855", size = 18789, upload-time = "2026-11-23T13:07:03.186Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/e0/45/1da1aff3348d4a7dcdb69404f8d71826d6d62abb228d6453f5158599e44d/datashare_passport_worker-0.7.9-py3-none-any.whl", hash = "sha256:bd44464c708e81cbcf9f4ae2e9b082c0ad109398c0afcd3ad5c5591a271e70d8", size = 24938, upload-time = "2026-11-23T13:04:10.359Z" },
+    { url = "https://files.pythonhosted.org/packages/99/37/eb77b051e9496ce56a7559af0d38754784e9a64bf7123f82ca2b2b644db9/datashare_passport_worker-0.7.10-py3-none-any.whl", hash = "sha256:be527c5dd3d71e1ba955b7d4431f17f3b93e800c63037bdce5c75ffb4abf628d", size = 24953, upload-time = "2026-11-23T13:07:02.449Z" },
 ]
 
 [[package]]
@@ -475,7 +475,7 @@ dependencies = [
 requires-dist = [
     { name = "datashare-asr-worker", specifier = "==0.12.10" },
     { name = "datashare-extract-worker", specifier = "==0.7.12" },
-    { name = "datashare-passport-worker", specifier = "==0.7.9" },
+    { name = "datashare-passport-worker", specifier = "==0.7.10" },
     { name = "datashare-python", specifier = "~=0.12.12" },
     { name = "datashare-translation-worker", specifier = "==0.12.4" },
 ]
