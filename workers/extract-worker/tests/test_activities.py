@@ -22,7 +22,7 @@ from datashare_python.objects import (
     WorkerFile,
 )
 from datashare_python.utils import read_jsonl_as
-from extract_core import InputDoc, OutputFormat, Pipeline, Result, Status
+from extract_core import InputDoc, InputPages, OutputFormat, Pipeline, Result, Status
 from extract_core.objects import ConversionOutput, Pages, SupportedExt
 from extract_core.objects import Error as ExtractCoreError
 from icij_common.es import ESClient, ids_query, match_all
@@ -67,6 +67,14 @@ class MockPipeline(Pipeline):
                     yield Result(input=doc, status=Status.SUCCESS, output=res)
                 case _:
                     raise TypeError(f"unexpected result type {res}")
+
+    async def extract_pages_content(
+        self,
+        pages: Iterable[InputPages],  # noqa: ARG002
+        output_format: OutputFormat,  # noqa: ARG002
+        output_path: Path,  # noqa: ARG002
+    ) -> AsyncIterable[Result]:
+        return
 
     @classmethod
     def _from_config(cls, config: RegistrableConfig, **extras) -> FromConfig: ...
