@@ -393,16 +393,16 @@ wheels = [
 
 [[package]]
 name = "datashare-extract-worker"
-version = "0.7.17"
+version = "0.7.18"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "datashare-python" },
     { name = "extract-core" },
     { name = "icij-common", extra = ["elasticsearch-8"] },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/a2/92/5e04bfb92b8f02177c1e762f84fc53f3df58ca8618706134078bb453c6fe/datashare_extract_worker-0.7.17.tar.gz", hash = "sha256:68036a45e0faab54b2f3000301325d45a2b436bb572964a3b4e09dc7bc091574", size = 28020, upload-time = "2026-11-23T14:55:51.072Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/7b/d6/c78109674c9e75534debadbfb83e1e99c44a8309e34830cb2c180887cd48/datashare_extract_worker-0.7.18.tar.gz", hash = "sha256:5ff8cffd85d9fb6b96cdc87755b72bc61c7d82eaf73827f579ee4d1248135909", size = 28029, upload-time = "2026-11-23T15:12:29.49Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/41/2f/fa93bddb2b972a3d76e7f30539ec2a62719c5c521328aca302ae9b715720/datashare_extract_worker-0.7.17-py3-none-any.whl", hash = "sha256:2e03134cbc5b91e8e7047ce5a4be362e8154499589c011d31ccab458ff27c9e6", size = 33268, upload-time = "2026-11-23T14:55:50.285Z" },
+    { url = "https://files.pythonhosted.org/packages/08/c7/c9f2d2c9f1569fb5c2166bcad25a7b9f8243f3b0a37695f548be01b474e7/datashare_extract_worker-0.7.18-py3-none-any.whl", hash = "sha256:be34b60d8cdfd54e8480c307d6ab379f419648c9bcff261de199eddd0fa7c525", size = 33278, upload-time = "2026-11-23T15:12:28.51Z" },
 ]
 
 [[package]]
@@ -474,7 +474,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "datashare-asr-worker", specifier = "==0.12.10" },
-    { name = "datashare-extract-worker", specifier = "==0.7.17" },
+    { name = "datashare-extract-worker", specifier = "==0.7.18" },
     { name = "datashare-passport-worker", specifier = "==0.7.10" },
     { name = "datashare-python", specifier = "~=0.12.12" },
     { name = "datashare-translation-worker", specifier = "==0.12.4" },
