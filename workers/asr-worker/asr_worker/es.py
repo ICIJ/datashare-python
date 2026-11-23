@@ -14,7 +14,7 @@ from datashare_python.utils import (
     to_raw_async_progress,
     write_batches,
 )
-from elasticsearch._async.helpers import async_bulk
+from elasticsearch.helpers import async_bulk
 from icij_common.es import (
     ASC,
     DOC_CONTENT,
