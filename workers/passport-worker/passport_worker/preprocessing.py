@@ -373,7 +373,7 @@ async def is_valid_pdf(path: Path) -> bool:
 
 
 @asynccontextmanager
-async def async_open_pdf(path: Path) -> AsyncGenerator[Document]:
+async def async_open_pdf(path: Path) -> AsyncGenerator["Document"]:
     from pymupdf import pymupdf  # noqa: PLC0415
 
     doc = None
