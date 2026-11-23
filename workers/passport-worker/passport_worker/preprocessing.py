@@ -7,7 +7,7 @@ from contextlib import asynccontextmanager
 from functools import partial
 from pathlib import Path
 from types import TracebackType
-from typing import Self, TypeVar
+from typing import TYPE_CHECKING, Self, TypeVar
 
 from aiofile import async_open
 from aiohttp import ClientResponseError
@@ -31,7 +31,6 @@ from passport_service.exceptions import (
     UnsupportedDocExtension,
 )
 from passport_service.utils import run_with_concurrency
-from pymupdf import Document, pymupdf
 
 from passport_worker.config import GotenbergPDFConverterConfig, PDFConverterType
 from passport_worker.constants import pil_supported_extensions
@@ -45,6 +44,9 @@ from passport_worker.objects import (
 )
 
 from .config import DefaultPDFPreprocessorConfig, PDFPreprocessorConfigBase
+
+if TYPE_CHECKING:
+    from pymupdf import Document
 
 logger = logging.getLogger(__name__)
 
@@ -352,6 +354,8 @@ async def _preprocess_pdf(
 
 
 async def is_valid_pdf(path: Path) -> bool:
+    from pymupdf import pymupdf  # noqa: PLC0415
+
     if not path.exists():
         return False
     async with async_open(path, "rb") as f:
@@ -370,6 +374,8 @@ async def is_valid_pdf(path: Path) -> bool:
 
 @asynccontextmanager
 async def async_open_pdf(path: Path) -> AsyncGenerator[Document]:
+    from pymupdf import pymupdf  # noqa: PLC0415
+
     doc = None
     try:
         doc = await asyncio.to_thread(pymupdf.open, path)
