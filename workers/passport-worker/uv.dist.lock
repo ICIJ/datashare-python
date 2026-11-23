@@ -345,14 +345,14 @@ dev = [
 
 [[package]]
 name = "datashare-python"
-version = "0.12.14"
+version = "0.12.15"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiofile" },
     { name = "aiohttp" },
     { name = "alive-progress" },
     { name = "hatchling" },
-    { name = "icij-common", extra = ["elasticsearch"] },
+    { name = "icij-common", extra = ["elasticsearch-8"] },
     { name = "langcodes" },
     { name = "lru-dict" },
     { name = "pydantic-extra-types", extra = ["pycountry"] },
@@ -362,9 +362,9 @@ dependencies = [
     { name = "tomlkit" },
     { name = "typer" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/84/69/6e52391393d1043d9e502a13c594a43a90578a47a5ffad3d381667b96c5f/datashare_python-0.12.14.tar.gz", hash = "sha256:2a95207b0a84c0359e430597911cdeac71ee9e7165417f7cbbc764efb9c777b2", size = 335017, upload-time = "2026-10-30T11:28:30.908Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/7c/21/851747f79ce0d9fd4353215e6385f2451d363e17bab88627d1147fe68867/datashare_python-0.12.15.tar.gz", hash = "sha256:a089675b5ed9c676c9570461ca63a549464c3e41ff2d89706aa3175fd6430ac4", size = 304563, upload-time = "2026-11-23T11:03:27.449Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/f0/7d/65732d31a19722305cab45a12a22547ea9f7ad02dea044f3b4c2a12f4995/datashare_python-0.12.14-py3-none-any.whl", hash = "sha256:86dd1d4beb66ec33d1d268009e9204478d7ce4f0b64b35513cd0669a4291677f", size = 340610, upload-time = "2026-10-30T11:28:32.217Z" },
+    { url = "https://files.pythonhosted.org/packages/75/8e/7c69427e354f3e25f0d8e03d7c4aa9c37ea8727a8adc99e8271985bf1fda/datashare_python-0.12.15-py3-none-any.whl", hash = "sha256:f404229f7bb60de48aa8f2b2e1326bd926dac08645dc5440bd5551a733827efb", size = 310585, upload-time = "2026-11-23T11:03:26.429Z" },
 ]
 
 [[package]]
@@ -528,10 +528,6 @@ wheels = [
 ]
 
 [package.optional-dependencies]
-elasticsearch = [
-    { name = "elasticsearch", extra = ["async"] },
-    { name = "tenacity" },
-]
 elasticsearch-8 = [
     { name = "elasticsearch", extra = ["async"] },
     { name = "tenacity" },

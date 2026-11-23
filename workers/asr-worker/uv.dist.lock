@@ -256,12 +256,11 @@ wheels = [
 
 [[package]]
 name = "caul"
-version = "0.13.13"
+version = "0.13.15"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "caul-core", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux') or (sys_platform != 'darwin' and sys_platform != 'linux' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu') or (sys_platform == 'darwin' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu') or (sys_platform == 'linux' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu')" },
     { name = "huggingface-hub", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux') or (sys_platform != 'darwin' and sys_platform != 'linux' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu') or (sys_platform == 'darwin' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu') or (sys_platform == 'linux' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu')" },
-    { name = "icij-common", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux') or (sys_platform != 'darwin' and sys_platform != 'linux' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu') or (sys_platform == 'darwin' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu') or (sys_platform == 'linux' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu')" },
     { name = "kaldialign", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux') or (sys_platform != 'darwin' and sys_platform != 'linux' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu') or (sys_platform == 'darwin' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu') or (sys_platform == 'linux' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu')" },
     { name = "langcodes", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux') or (sys_platform != 'darwin' and sys_platform != 'linux' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu') or (sys_platform == 'darwin' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu') or (sys_platform == 'linux' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu')" },
     { name = "librosa", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux') or (sys_platform != 'darwin' and sys_platform != 'linux' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu') or (sys_platform == 'darwin' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu') or (sys_platform == 'linux' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu')" },
@@ -269,9 +268,9 @@ dependencies = [
     { name = "tiktoken", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux') or (sys_platform != 'darwin' and sys_platform != 'linux' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu') or (sys_platform == 'darwin' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu') or (sys_platform == 'linux' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu')" },
     { name = "typer", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux') or (sys_platform != 'darwin' and sys_platform != 'linux' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu') or (sys_platform == 'darwin' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu') or (sys_platform == 'linux' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu')" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/df/19/bd8d2a2160367e50a5581f57868d1a7d0075774135f3dd7f761bd7e4beed/caul-0.13.13.tar.gz", hash = "sha256:c825780e1fc2bb520e84fe4fabb454f281e88ec294ce2663980e261d86305132", size = 243177, upload-time = "2026-09-30T18:11:01.253Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/55/ad/9552bd0ff4d3919fd542e74e8a164300d4afbc8a8e0a70b33a3f96cbd336/caul-0.13.15.tar.gz", hash = "sha256:b6e6601c1a9db9c9a023a27b1ddd69f03b4da027f546ea2c47a3015e636553be", size = 762102, upload-time = "2026-11-23T11:30:19.576Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/08/08/180f5e620829d7f1298fe7d7b57ce3d65d980f12be5f3e857ad0a1e68965/caul-0.13.13-py3-none-any.whl", hash = "sha256:798da3380495e096f26f90142414631b05498dbfda77e9110878a4fa7932529a", size = 39821, upload-time = "2026-09-30T18:10:59.817Z" },
+    { url = "https://files.pythonhosted.org/packages/2a/19/5fe794dfedb82600fb339a704a64689894cd908cc913cf809af199c524af/caul-0.13.15-py3-none-any.whl", hash = "sha256:edc75639e987883e2eefbe6dce03933e09872a55161b38b1c33b2c2ec8ce9bc5", size = 40053, upload-time = "2026-11-23T11:30:18.272Z" },
 ]
 
 [package.optional-dependencies]
@@ -296,16 +295,16 @@ parakeet-trt = [
 
 [[package]]
 name = "caul-core"
-version = "0.6.6"
+version = "0.6.7"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "icij-common", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux') or (sys_platform != 'darwin' and sys_platform != 'linux' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu') or (sys_platform == 'darwin' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu') or (sys_platform == 'linux' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu')" },
     { name = "overrides", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux') or (sys_platform != 'darwin' and sys_platform != 'linux' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu') or (sys_platform == 'darwin' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu') or (sys_platform == 'linux' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu')" },
     { name = "pydantic-extra-types", extra = ["pycountry"], marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux') or (sys_platform != 'darwin' and sys_platform != 'linux' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu') or (sys_platform == 'darwin' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu') or (sys_platform == 'linux' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu')" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/94/a3/431d7b6d9f984d8b3999a8cd3dea309e2f150be04daa02aa1e804a3ace8e/caul_core-0.6.6.tar.gz", hash = "sha256:800fc986bc579c14e5166d9cb78da45bfa6c4bc423df3782a44dfee8c79471e3", size = 23197, upload-time = "2026-09-30T18:10:26.413Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/a9/76/dd0386868c1f522ce58ecdf1a4419814d2be2f209a5906786646de377c96/caul_core-0.6.7.tar.gz", hash = "sha256:dce8713403fece849154ba385f9de85e9c909025f07ae6069cb0a2e148315c86", size = 18375, upload-time = "2026-11-23T11:25:21.331Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/c6/7b/2132436722c3518cc46adc671466f1220a3ba4d1a6f5dabb4827d11252a5/caul_core-0.6.6-py3-none-any.whl", hash = "sha256:a90353a67912e7f27c89e984ce7cc23c068bb3e57c5bc9ef17d9a40c75d432bf", size = 13872, upload-time = "2026-09-30T18:10:25.457Z" },
+    { url = "https://files.pythonhosted.org/packages/7d/b1/ca374dec8a601125b653df46210f288355312e0ae8e2579d9f662629478d/caul_core-0.6.7-py3-none-any.whl", hash = "sha256:e843d58b9b5c4d2b60cb61ce881c36e409c5fcf5e83ae6c20475805df36c6fc7", size = 13903, upload-time = "2026-11-23T11:25:22.429Z" },
 ]
 
 [[package]]
@@ -496,9 +495,9 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "caul", marker = "extra == 'preprocessing'", specifier = "==0.13.13" },
-    { name = "caul", extras = ["fireredasr2", "nemo", "parakeet-trt"], marker = "extra == 'inference'", specifier = "==0.13.13" },
-    { name = "caul-core", specifier = "==0.6.6" },
+    { name = "caul", marker = "extra == 'preprocessing'", specifier = "==0.13.15" },
+    { name = "caul", extras = ["fireredasr2", "nemo", "parakeet-trt"], marker = "extra == 'inference'", specifier = "==0.13.15" },
+    { name = "caul-core", specifier = "==0.6.7" },
     { name = "cuda-bindings", marker = "sys_platform == 'linux' and extra == 'gpu'", specifier = "==12.9.4" },
     { name = "datashare-python", specifier = "~=0.12.12" },
     { name = "fireredasr2s", marker = "extra == 'inference'" },
@@ -528,14 +527,14 @@ dev = [
 
 [[package]]
 name = "datashare-python"
-version = "0.12.13"
+version = "0.12.15"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiofile", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux') or (sys_platform != 'darwin' and sys_platform != 'linux' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu') or (sys_platform == 'darwin' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu') or (sys_platform == 'linux' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu')" },
     { name = "aiohttp", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux') or (sys_platform != 'darwin' and sys_platform != 'linux' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu') or (sys_platform == 'darwin' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu') or (sys_platform == 'linux' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu')" },
     { name = "alive-progress", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux') or (sys_platform != 'darwin' and sys_platform != 'linux' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu') or (sys_platform == 'darwin' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu') or (sys_platform == 'linux' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu')" },
     { name = "hatchling", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux') or (sys_platform != 'darwin' and sys_platform != 'linux' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu') or (sys_platform == 'darwin' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu') or (sys_platform == 'linux' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu')" },
-    { name = "icij-common", extra = ["elasticsearch"], marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux') or (sys_platform != 'darwin' and sys_platform != 'linux' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu') or (sys_platform == 'darwin' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu') or (sys_platform == 'linux' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu')" },
+    { name = "icij-common", extra = ["elasticsearch-8"], marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux') or (sys_platform != 'darwin' and sys_platform != 'linux' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu') or (sys_platform == 'darwin' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu') or (sys_platform == 'linux' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu')" },
     { name = "langcodes", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux') or (sys_platform != 'darwin' and sys_platform != 'linux' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu') or (sys_platform == 'darwin' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu') or (sys_platform == 'linux' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu')" },
     { name = "lru-dict", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux') or (sys_platform != 'darwin' and sys_platform != 'linux' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu') or (sys_platform == 'darwin' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu') or (sys_platform == 'linux' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu')" },
     { name = "pydantic-extra-types", extra = ["pycountry"], marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux') or (sys_platform != 'darwin' and sys_platform != 'linux' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu') or (sys_platform == 'darwin' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu') or (sys_platform == 'linux' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu')" },
@@ -545,9 +544,9 @@ dependencies = [
     { name = "tomlkit", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux') or (sys_platform != 'darwin' and sys_platform != 'linux' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu') or (sys_platform == 'darwin' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu') or (sys_platform == 'linux' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu')" },
     { name = "typer", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux') or (sys_platform != 'darwin' and sys_platform != 'linux' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu') or (sys_platform == 'darwin' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu') or (sys_platform == 'linux' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu')" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/ed/58/0f96e48d423f61d950cd59fef29081ecd98f01910c22bd9839ee33cd6e05/datashare_python-0.12.13.tar.gz", hash = "sha256:ad1ad66e3f90e2663fb1108dbcdaec4353d2bf975769ccadf452e73e29b045e8", size = 335204, upload-time = "2026-10-28T11:43:13.749Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/7c/21/851747f79ce0d9fd4353215e6385f2451d363e17bab88627d1147fe68867/datashare_python-0.12.15.tar.gz", hash = "sha256:a089675b5ed9c676c9570461ca63a549464c3e41ff2d89706aa3175fd6430ac4", size = 304563, upload-time = "2026-11-23T11:03:27.449Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/fb/63/5e2b72e863566a09a8c4c4494dd1206ee1bb6f357c86349b327680cb74eb/datashare_python-0.12.13-py3-none-any.whl", hash = "sha256:52c862de06e850199b3d0e2a1063afcb8d32848afa8c6927f4c152b77794bf00", size = 340811, upload-time = "2026-10-28T11:43:12.362Z" },
+    { url = "https://files.pythonhosted.org/packages/75/8e/7c69427e354f3e25f0d8e03d7c4aa9c37ea8727a8adc99e8271985bf1fda/datashare_python-0.12.15-py3-none-any.whl", hash = "sha256:f404229f7bb60de48aa8f2b2e1326bd926dac08645dc5440bd5551a733827efb", size = 310585, upload-time = "2026-11-23T11:03:26.429Z" },
 ]
 
 [[package]]
@@ -805,20 +804,20 @@ wheels = [
 
 [[package]]
 name = "icij-common"
-version = "0.8.4"
+version = "0.9.6"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiostream", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux') or (sys_platform != 'darwin' and sys_platform != 'linux' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu') or (sys_platform == 'darwin' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu') or (sys_platform == 'linux' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu')" },
     { name = "pydantic", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux') or (sys_platform != 'darwin' and sys_platform != 'linux' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu') or (sys_platform == 'darwin' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu') or (sys_platform == 'linux' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu')" },
     { name = "pydantic-settings", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux') or (sys_platform != 'darwin' and sys_platform != 'linux' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu') or (sys_platform == 'darwin' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu') or (sys_platform == 'linux' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu')" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/71/1c/601c19339c94a0332663bf32dcc026b875fded48d2abaf6db549b3ffa70d/icij_common-0.8.4.tar.gz", hash = "sha256:d6647db8b2c12e355486046f7a00efe67ce0e33e372f2be3dff04b51691a238a", size = 16177, upload-time = "2026-10-28T11:46:22.923Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/ba/67/af4e1ef2647e202f3af2924ce5a369870021758fa62484bd105a46a419b7/icij_common-0.9.6.tar.gz", hash = "sha256:71cb1692c5cd0b10ebc4a42e42517e189cacbd4472126ae91212640353952310", size = 17226, upload-time = "2026-10-30T15:13:13.647Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/a5/81/e2b22db664471cdb6a6db4c898e89718a6a70ce4849a12464764125cd696/icij_common-0.8.4-py3-none-any.whl", hash = "sha256:9e499318cdc7c481b6e67ae8b8ba8bead4c7834531a8b027ea30f5bb86942352", size = 21042, upload-time = "2026-10-28T11:46:22.074Z" },
+    { url = "https://files.pythonhosted.org/packages/3a/2a/ba84d3791027d129df34a4b77a3623903788b0516b630fa6785ceb7eb186/icij_common-0.9.6-py3-none-any.whl", hash = "sha256:5c8bc55fba195ef1f0f06ab1bcf3638d9454d400d1324c1ed4716cd4962e8ca3", size = 22042, upload-time = "2026-10-30T15:13:12.401Z" },
 ]
 
 [package.optional-dependencies]
-elasticsearch = [
+elasticsearch-8 = [
     { name = "elasticsearch", extra = ["async"], marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux') or (sys_platform != 'darwin' and sys_platform != 'linux' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu') or (sys_platform == 'darwin' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu') or (sys_platform == 'linux' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu')" },
     { name = "tenacity", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux') or (sys_platform != 'darwin' and sys_platform != 'linux' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu') or (sys_platform == 'darwin' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu') or (sys_platform == 'linux' and extra == 'extra-20-datashare-asr-worker-cpu' and extra == 'extra-20-datashare-asr-worker-gpu')" },
 ]
