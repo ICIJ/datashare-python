@@ -18,6 +18,7 @@ from extract_core import (
     DoclingFormatOption,
     DoclingPipelineConfig,
     DoclingSettings,
+    HybridLiteParsePipelineConfig,
     LiteParsePipelineConfig,
     MarkerPipelineConfig,
     MinerUPipelineConfig,
@@ -116,12 +117,14 @@ class MarkdownInferenceWorkerConfig(BaseModel):
         match pipeline_config:
             case DoclingPipelineConfig():
                 return self._resolve_docling_config(pipeline_config)
+            case HybridLiteParsePipelineConfig():
+                return self._resolve_hybrid_liteparse_config(pipeline_config)
+            case LiteParsePipelineConfig():
+                return self._resolve_liteparse_config(pipeline_config)
             case MarkerPipelineConfig():
                 return self._resolve_marker_config(pipeline_config)
             case MinerUPipelineConfig():
                 return self._resolve_mineru_config(pipeline_config)
-            case LiteParsePipelineConfig():
-                return self._resolve_liteparse_config(pipeline_config)
         raise TypeError(f"unexpected type: {pipeline_config.__class__.__name__}")
 
     def _resolve_docling_config(
@@ -130,6 +133,13 @@ class MarkdownInferenceWorkerConfig(BaseModel):
         resolved_settings = self._resolve_docling_settings(pipeline_config)
         format_options = self._resolve_docling_format_options(pipeline_config)
         update = {"settings": resolved_settings, "format_options": format_options}
+        resolved = safe_copy(pipeline_config, update=update)
+        return resolved
+
+    def _resolve_hybrid_liteparse_config(
+        self, pipeline_config: HybridLiteParsePipelineConfig
+    ) -> HybridLiteParsePipelineConfig:
+        update = {"advanced": self.resolve_pipeline_config(pipeline_config.advanced)}
         resolved = safe_copy(pipeline_config, update=update)
         return resolved
 

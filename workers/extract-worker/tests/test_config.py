@@ -1,6 +1,7 @@
 from docling.datamodel.base_models import InputFormat
 from docling.datamodel.settings import DebugSettings
 from extract_core import (
+    BasePipelineConfig,
     BatchConcurrencySettings,
     DoclingPipelineConfig,
     DoclingSettings,
@@ -110,3 +111,18 @@ def test_resolve_hybrid_liteparse_device(
     device = worker_config.resolve_device(config)
     # Then
     assert device == TorchDevice.GPU
+
+
+@pytest.mark.parametrize("config_cls", BasePipelineConfig.__subclasses__())
+def test_all_config_should_have_resolution(
+    config_cls: type[BasePipelineConfig],
+) -> None:
+    # Given
+    config = config_cls()
+    worker_config = MarkdownInferenceWorkerConfig(
+        docling=DoclingWorkerConfig(device=TorchDevice.GPU)
+    )
+    # When
+    resolved = worker_config.resolve_pipeline_config(config)
+    # Then
+    assert isinstance(resolved, BasePipelineConfig)
